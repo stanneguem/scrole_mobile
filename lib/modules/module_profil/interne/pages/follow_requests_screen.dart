@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
@@ -51,11 +52,32 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
   bool _hasMore = true;
   int _offset = 0;
   String? _error;
+  RealtimeChannel? _relationshipChannel;
 
   @override
   void initState() {
     super.initState();
     _load(reset: true);
+    _subscribeToRelationshipChanges();
+  }
+
+  void _subscribeToRelationshipChanges() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      _relationshipChannel = Supabase.instance.client
+          .channel('user:$uid', opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: 'relationship_changed',
+            callback: (payload) {
+              debugPrint('[FOLLOW] relationship_changed requests payload=$payload');
+              if (mounted) _load(reset: true);
+            },
+          )
+          ..subscribe();
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] requests relationship_changed subscription exception=$e\\n$stack');
+    }
   }
 
   Future<void> _load({bool reset = false}) async {
@@ -110,6 +132,15 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
       debugPrint('[FOLLOW] cancel_follow_request user=$userId exception=$e\\n$stack');
       if (mounted) Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
     }
+  }
+
+  @override
+  void dispose() {
+    final channel = _relationshipChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   @override
