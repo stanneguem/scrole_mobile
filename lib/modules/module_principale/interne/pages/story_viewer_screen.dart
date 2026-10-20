@@ -709,6 +709,7 @@ class _StoryViewersSheet extends StatefulWidget {
 class _StoryViewersSheetState extends State<_StoryViewersSheet> {
   final StoriesRepository _repo = StoriesRepository();
   bool _isLoading = true;
+  int _totalViewers = 0;
   List<dynamic> _viewers = [];
 
   @override
@@ -723,6 +724,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
       if (mounted) {
         setState(() {
           _viewers = res['items'] is List ? res['items'] : [];
+          _totalViewers = (res['viewers_count'] as num?)?.toInt() ?? _viewers.length;
           _isLoading = false;
         });
       }
@@ -792,7 +794,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
               Icon(Icons.remove_red_eye_rounded, size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
-                'Personnes ayant vu (${_viewers.length})',
+                'Personnes ayant vu (${_totalViewers})',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
               ),
             ],
