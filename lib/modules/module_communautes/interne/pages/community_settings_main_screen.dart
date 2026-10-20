@@ -387,26 +387,48 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
 
   Future<void> _moderate(String postId, String action) async {
     if (_busyPostIds.contains(postId)) return;
+    String? rejectionReason;
     if (action == 'reject') {
-      final confirmed = await Get.dialog<bool>(
+      final reasonController = TextEditingController();
+      final result = await Get.dialog<String>(
         AlertDialog(
           title: Text('community_mod_reject_post_confirm_title'.tr),
-          content: Text('community_mod_reject_post_confirm_message'.tr),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('community_mod_reject_post_confirm_message'.tr),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLength: 500,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'community_mod_reject_post_reason_label'.tr,
+                    hintText: 'community_mod_reject_post_reason_hint'.tr,
+                  ),
+                ),
+              ],
+            ),
+          ),
           actions: [
-            TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
+            TextButton(onPressed: () => Get.back(), child: Text('cancel'.tr)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Get.back(result: true),
+              onPressed: () => Get.back(result: reasonController.text.trim()),
               child: Text('community_mod_reject_post'.tr),
             ),
           ],
         ),
       );
-      if (confirmed != true) return;
+      reasonController.dispose();
+      if (result == null) return;
+      rejectionReason = result.isEmpty ? null : result;
     }
     setState(() => _busyPostIds.add(postId));
     try {
-      await _service.moderateCommunityPost(postId, action);
+      await _service.moderateCommunityPost(postId, action, reason: rejectionReason);
       await _loadPosts();
       Get.snackbar(
         'community_save_success'.tr,
