@@ -53,7 +53,7 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
         setState(() {
           _role = role;
           _avatarUrl = comm?.avatarUrl ?? widget.communityAvatar;
-          _slogan = comm?.description ?? widget.communitySlogan;
+          _slogan = widget.communitySlogan ?? comm?.description;
           _isLoadingRole = false;
         });
       }
