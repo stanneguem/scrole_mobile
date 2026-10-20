@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:scrole/app/repository_global/location_repository.dart';
 import 'package:scrole/app/service_global/centre_interrets_service.dart';
@@ -61,6 +64,7 @@ class EditProfileController extends GetxController {
     _loadCountries();
     _loadInterests();
     _computeAllLocks();
+    unawaited(_refreshLockMetadata());
   }
 
   void _prefillFromProfile() {
@@ -132,6 +136,35 @@ class EditProfileController extends GetxController {
     }
   }
 
+  Future<void> _refreshLockMetadata() async {
+    try {
+      // Le cache local peut précéder l'ajout des horodatages au payload.
+      // Cette lecture récupère les restrictions actuelles depuis la source de vérité.
+      final response = await Supabase.instance.client.rpc('get_myprofile');
+      final Map<String, dynamic>? data = response is Map
+          ? Map<String, dynamic>.from(response)
+          : response is List && response.isNotEmpty && response.first is Map
+              ? Map<String, dynamic>.from(response.first as Map)
+              : null;
+      if (data == null || isClosed) return;
+
+      _profileController.usernameUpdatedAt.value = _parseLockDate(data['username_updated_at']);
+      _profileController.genderUpdatedAt.value = _parseLockDate(data['gender_updated_at']);
+      _profileController.locationUpdatedAt.value = _parseLockDate(data['location_updated_at']);
+      _profileController.birthDateUpdatedAt.value = _parseLockDate(data['birth_date_updated_at']);
+      _computeAllLocks();
+    } catch (e) {
+      // Le backend reste l'autorité : le trigger continuera de refuser toute
+      // modification prématurée même si cette lecture informative échoue.
+      debugPrint('[EditProfile] Impossible de rafraîchir les verrous: $e');
+    }
+  }
+
+  DateTime? _parseLockDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString())?.toUtc();
+  }
+
   void _computeAllLocks() {
     _checkLock(_profileController.usernameUpdatedAt.value, canChangeUsername, usernameDaysLeft);
     _checkLock(_profileController.genderUpdatedAt.value, canChangeGender, genderDaysLeft);
@@ -145,10 +178,12 @@ class EditProfileController extends GetxController {
       daysLeft.value = 0;
       return;
     }
-    final elapsed = DateTime.now().difference(lastUpdate).inDays;
-    final remaining = _lockDays - elapsed;
-    canChange.value = remaining <= 0;
-    daysLeft.value = remaining > 0 ? remaining : 0;
+
+    final unlockAt = lastUpdate.toUtc().add(const Duration(days: _lockDays));
+    final remaining = unlockAt.difference(DateTime.now().toUtc());
+    final secondsLeft = remaining.inSeconds;
+    canChange.value = secondsLeft <= 0;
+    daysLeft.value = secondsLeft > 0 ? (secondsLeft + 86399) ~/ 86400 : 0;
   }
 
   Future<void> _loadCountries() async {
@@ -240,46 +275,87 @@ class EditProfileController extends GetxController {
   }
 
   Future<void> save() async {
+    if (isSaving.value) return;
     if (!(formKey.currentState?.validate() ?? false)) return;
 
+    final Map<String, dynamic> payload = {
+      'last_name': nomController.text.trim(),
+      'first_name': prenomController.text.trim(),
+      'bio': bioController.text.trim(),
+      if (canChangeUsername.value) 'username': usernameController.text.trim(),
+      if (canChangeGender.value && selectedGender.value != null) 'gender': selectedGender.value,
+      if (canChangeBirthDate.value && selectedBirthDate.value != null)
+        'birth_date': _formatDate(selectedBirthDate.value!),
+    };
+
+    final countryChanged = selectedCountry.value != null &&
+        selectedCountry.value!.nom.toLowerCase() != _profileController.country.value.toLowerCase();
+    final cityChanged = selectedCity.value != null &&
+        selectedCity.value!.nom.toLowerCase() != _profileController.city.value.toLowerCase();
+
+    if (canChangeLocation.value && (countryChanged || cityChanged)) {
+      if (selectedCountry.value != null) payload['country_id'] = selectedCountry.value!.id;
+      if (selectedCity.value != null) payload['city_id'] = selectedCity.value!.id;
+    }
+
+    final interestIds = selectedInterestIds.toList();
+    final userId = _profileController.userId.value;
     isSaving.value = true;
+
+    // Retour immédiat au profil : la persistance continue sans garder
+    // l'utilisateur sur le formulaire pendant les appels réseau.
+    Get.back();
+    Get.snackbar(
+      'edit_profile_title'.tr,
+      'edit_profile_saving'.tr,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 30),
+      showProgressIndicator: true,
+      isDismissible: false,
+    );
+
+    unawaited(_persistProfile(payload, interestIds, userId));
+  }
+
+  Future<void> _persistProfile(
+    Map<String, dynamic> payload,
+    List<String> interestIds,
+    String userId,
+  ) async {
     try {
-      final Map<String, dynamic> payload = {
-        'last_name': nomController.text.trim(),
-        'first_name': prenomController.text.trim(),
-        'bio': bioController.text.trim(),
-        if (canChangeUsername.value) 'username': usernameController.text.trim(),
-        if (canChangeGender.value && selectedGender.value != null) 'gender': selectedGender.value,
-        if (canChangeBirthDate.value && selectedBirthDate.value != null)
-          'birth_date': _formatDate(selectedBirthDate.value!),
-      };
-
-      final countryChanged = selectedCountry.value != null &&
-          selectedCountry.value!.nom.toLowerCase() != _profileController.country.value.toLowerCase();
-      final cityChanged = selectedCity.value != null &&
-          selectedCity.value!.nom.toLowerCase() != _profileController.city.value.toLowerCase();
-
-      if (canChangeLocation.value && (countryChanged || cityChanged)) {
-        if (selectedCountry.value != null) payload['country_id'] = selectedCountry.value!.id;
-        if (selectedCity.value != null) payload['city_id'] = selectedCity.value!.id;
+      final success = await _profileController.updateProfile(
+        payload,
+        showLoading: false,
+        showFeedback: false,
+      );
+      if (!success) {
+        throw StateError('profile_update_failed');
       }
 
-      final success = await _profileController.updateProfile(payload);
-      
-      if (success) {
-        // 1. Sauvegarde des intérêts en base
-        await _interestService.saveUserInterests(
-          _profileController.userId.value, 
-          selectedInterestIds.toList()
-        );
-        
-        // 2. On force le ProfileController à recharger ses intérêts
-        await _profileController.refreshProfile();
-        
-        Get.back();
-      }
+      await _interestService.saveUserInterests(userId, interestIds);
+      await _profileController.refreshProfile();
+
+      Get.closeCurrentSnackbar();
+      Get.snackbar(
+        'profile_success_title'.tr,
+        'edit_profile_saved'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e, stack) {
+      debugPrint('[EditProfile] Erreur enregistrement profil: $e\\n$stack');
+      Get.closeCurrentSnackbar();
+      Get.snackbar(
+        'profile_error_title'.tr,
+        'edit_profile_save_failed'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+      );
     } finally {
-      isSaving.value = false;
+      if (!isClosed) isSaving.value = false;
     }
   }
 
