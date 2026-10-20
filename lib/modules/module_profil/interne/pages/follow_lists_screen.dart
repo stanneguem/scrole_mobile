@@ -194,7 +194,10 @@ class _FollowListTabState extends State<_FollowListTab> {
     _search.dispose();
     _scroll.dispose();
     final channel = _relationshipChannel;
-    if (channel != null) {\n      Supabase.instance.client.removeChannel(channel);\n    }\n    super.dispose();
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   @override
