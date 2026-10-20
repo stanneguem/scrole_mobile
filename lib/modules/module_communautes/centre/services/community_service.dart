@@ -490,6 +490,29 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     return community;
   }
 
+  Future<void> _refreshLocalCommunityFromSnapshot(
+    String communityId,
+    Map<String, dynamic> snapshot,
+  ) async {
+    try {
+      final rawCommunity = snapshot['community'];
+      if (rawCommunity is! Map) return;
+      final data = Map<String, dynamic>.from(rawCommunity);
+      final existing = await _dao.getCommunity(communityId);
+      if (existing == null) return;
+      await _dao.saveCommunity(existing.copyWith(
+        name: data['name']?.toString() ?? existing.name,
+        description: data['description']?.toString() ?? existing.description,
+        avatarUrl: data['photo_profile']?.toString() ?? existing.avatarUrl,
+        bannerUrl: data['photo_cover']?.toString() ?? existing.bannerUrl,
+        visibility: data['visibility']?.toString() ?? existing.visibility,
+        cachedAt: DateTime.now().millisecondsSinceEpoch,
+      ));
+    } catch (e) {
+      debugPrint('[CommunityService] Local community cache refresh failed: $e');
+    }
+  }
+
   Future<void> updateCommunityInfo({
     required String id,
     required String name,
@@ -506,6 +529,12 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       p_photo_profile: photoProfile,
       p_photo_cover: photoCover,
     );
+    try {
+      final snapshot = await _repo.getCommunityManagementSettings(id);
+      await _refreshLocalCommunityFromSnapshot(id, snapshot);
+    } catch (e) {
+      debugPrint('[CommunityService] Community info saved, but snapshot refresh failed: $e');
+    }
   }
 
   Future<Map<String, dynamic>> getCommunityModerationCounts(String communityId) async {
@@ -565,8 +594,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     bool? allowComments,
     bool? allowReactions,
     bool? allowPostPromotion,
-  }) {
-    return _repo.updateCommunityManagementSettings(
+  }) async {
+    final snapshot = await _repo.updateCommunityManagementSettings(
       communityId: communityId,
       visibility: visibility,
       requireManualApproval: requireManualApproval,
@@ -588,6 +617,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       allowReactions: allowReactions,
       allowPostPromotion: allowPostPromotion,
     );
+    await _refreshLocalCommunityFromSnapshot(communityId, snapshot);
+    return snapshot;
   }
 
   Future<void> updateCommunityAccessRules({
