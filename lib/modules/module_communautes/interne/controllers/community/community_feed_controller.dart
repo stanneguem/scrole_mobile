@@ -489,7 +489,8 @@ class CommunityFeedController extends GetxController {
       }
     }
 
-    if (removed == null) return;
+    final deletedComment = removed;
+    if (deletedComment == null) return;
     _incrementCommentCount(postId, -1);
 
     try {
@@ -498,18 +499,22 @@ class CommunityFeedController extends GetxController {
       if (topIndex >= 0) {
         final restored = List<PostComment>.from(commentsByPostId[postId] ?? []);
         if (!restored.any((comment) => comment.id == commentId)) {
-          restored.insert(topIndex.clamp(0, restored.length).toInt(), removed);
+          restored.insert(topIndex.clamp(0, restored.length).toInt(), deletedComment);
         }
         commentsByPostId[postId] = restored;
         commentsByPostId.refresh();
-      } else if (replyParentId != null && originalReplies != null) {
-        final restored = List<PostComment>.from(repliesByCommentId[replyParentId] ?? []);
-        if (!restored.any((reply) => reply.id == commentId)) {
-          restored.insert(replyIndex.clamp(0, restored.length).toInt(), removed);
+      } else {
+        final parentId = replyParentId;
+        final repliesBeforeDelete = originalReplies;
+        if (parentId != null && repliesBeforeDelete != null) {
+          final restored = List<PostComment>.from(repliesByCommentId[parentId] ?? []);
+          if (!restored.any((reply) => reply.id == commentId)) {
+            restored.insert(replyIndex.clamp(0, restored.length).toInt(), deletedComment);
+          }
+          repliesByCommentId[parentId] = restored;
+          repliesByCommentId.refresh();
+          _incrementReplyCount(postId, parentId, 1);
         }
-        repliesByCommentId[replyParentId] = restored;
-        repliesByCommentId.refresh();
-        _incrementReplyCount(postId, replyParentId, 1);
       }
       _incrementCommentCount(postId, 1);
       Get.snackbar(
