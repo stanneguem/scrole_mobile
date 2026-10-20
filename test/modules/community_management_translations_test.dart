@@ -145,6 +145,7 @@ void main() {
       'community_settings_city_country_mismatch',
       'community_mod_reject_post_reason_label',
       'community_mod_reject_post_reason_hint',
+      'community_load_more',
       'community_settings_slogan_label',
     ];
 
