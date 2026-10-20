@@ -1028,14 +1028,6 @@ class _ProfileStats extends StatelessWidget {
             label: 'profile_stat_following'.tr,
           )),
           Expanded(child: _StatItem(
-            value: NumberFormatter.formatCount(profile.friendCount),
-            label: 'profile_action_friends'.tr,
-          )),
-          Expanded(child: _StatItem(
-            value: NumberFormatter.formatCount(profile.postsCount),
-            label: 'profile_stat_posts'.tr,
-          )),
-          Expanded(child: _StatItem(
             value: profile.rating.toStringAsFixed(1),
             label: 'profile_stat_reputation'.tr,
           )),
@@ -1211,11 +1203,7 @@ class _HeaderStats extends StatelessWidget {
           child: _buildStatCol(NumberFormatter.formatCount(profile.followingCount), 'follow_tab_following'.tr, colors),
         ),
         const SizedBox(width: 10),
-        InkWell(
-          borderRadius: BorderRadius.circular(8),
-          onTap: () => Get.toNamed(AppPages.followLists, arguments: {'userId': profile.userId, 'initialTab': 2}),
-          child: _buildStatCol(NumberFormatter.formatCount(profile.friendsCount), 'follow_tab_friends'.tr, colors),
-        ),
+        _buildStatCol(profile.rating.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
       ],
     );
   }
