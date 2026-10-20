@@ -156,7 +156,7 @@ class ExternalProfileRepository {
     try {
       final row = await _client
           .from('user_profiles')
-          .select('user_id, username, first_name, last_name, photo_url, cover_url, bio, slogan')
+          .select('user_id, username, first_name, last_name, photo_url, cover_url, bio, slogan, is_verified')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -181,7 +181,7 @@ class ExternalProfileRepository {
           'connection_request_sent': relationState == RelationState.requestSent,
           'incoming_connection_request': relationState == RelationState.requestReceived,
           'is_following': false,
-          'is_certified': false,
+          'is_certified': row['is_verified'] == true,\n          'is_verified': row['is_verified'] == true,
           'can_message': relationState == RelationState.friend,
           'friend_count': 0,
           'interests': [],
