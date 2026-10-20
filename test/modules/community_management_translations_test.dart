@@ -141,6 +141,8 @@ void main() {
       'community_user_report_target',
       'community_report_exclude_confirm_title',
       'community_report_exclude_confirm_message',
+      'community_settings_location_invalid',
+      'community_settings_city_country_mismatch',
       'community_settings_slogan_label',
     ];
 
