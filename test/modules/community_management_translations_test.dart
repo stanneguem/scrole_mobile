@@ -143,6 +143,8 @@ void main() {
       'community_report_exclude_confirm_message',
       'community_settings_location_invalid',
       'community_settings_city_country_mismatch',
+      'community_mod_reject_post_reason_label',
+      'community_mod_reject_post_reason_hint',
       'community_settings_slogan_label',
     ];
 
