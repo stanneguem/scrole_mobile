@@ -104,6 +104,10 @@ void main() {
       'community_mod_post_rejected',
       'community_mod_reject_post',
       'community_mod_approve_post',
+      'community_settings_allow_reports',
+      'community_settings_allow_comments',
+      'community_settings_allow_reactions',
+      'community_settings_allow_post_promotion',
       'community_settings_slogan_label',
     ];
 
