@@ -1233,6 +1233,10 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   bool _requireManualApproval = false;
   bool _certificationRequired = false;
   bool _membersListVisible = true;
+  bool _allowReports = true;
+  bool _allowComments = true;
+  bool _allowReactions = true;
+  bool _allowPostPromotion = true;
   bool _countriesEnabled = false;
   bool _citiesEnabled = false;
   String? _genderRestriction;
@@ -1363,6 +1367,10 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
       _visibility = community['visibility']?.toString() ?? 'public';
       _requireManualApproval = community['require_manual_approval'] == true;
       _membersListVisible = settings['members_list_visible'] != false;
+      _allowReports = settings['allow_reports'] != false;
+      _allowComments = settings['allow_comments'] != false;
+      _allowReactions = settings['allow_reactions'] != false;
+      _allowPostPromotion = settings['allow_post_promotion'] != false;
       _certificationRequired = access['certification_required'] == true;
       _countriesEnabled = access['countries_enabled'] == true;
       _citiesEnabled = access['cities_enabled'] == true;
@@ -1412,6 +1420,10 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
         visibility: _visibility,
         requireManualApproval: _requireManualApproval,
         membersListVisible: _membersListVisible,
+        allowReports: _allowReports,
+        allowComments: _allowComments,
+        allowReactions: _allowReactions,
+        allowPostPromotion: _allowPostPromotion,
         certificationRequired: _certificationRequired,
         countriesEnabled: _countriesEnabled,
         allowedCountries: _allowedCountries.toList(),
@@ -1470,6 +1482,26 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                         title: Text('community_settings_members_visible'.tr),
                         value: _membersListVisible,
                         onChanged: (val) => setState(() => _membersListVisible = val),
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_allow_reports'.tr),
+                        value: _allowReports,
+                        onChanged: (val) => setState(() => _allowReports = val),
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_allow_comments'.tr),
+                        value: _allowComments,
+                        onChanged: (val) => setState(() => _allowComments = val),
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_allow_reactions'.tr),
+                        value: _allowReactions,
+                        onChanged: (val) => setState(() => _allowReactions = val),
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_allow_post_promotion'.tr),
+                        value: _allowPostPromotion,
+                        onChanged: (val) => setState(() => _allowPostPromotion = val),
                       ),
                       SwitchListTile(
                         title: Text('community_settings_countries_enabled'.tr),
