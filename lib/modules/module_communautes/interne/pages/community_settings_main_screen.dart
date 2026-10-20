@@ -744,6 +744,10 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                           final reason = reasonData['nom']?.toString() ?? reasonData['code']?.toString() ?? '';
                           final description = r['description']?.toString() ?? '';
                           final targetContent = target['content']?.toString() ?? '';
+                          final targetPhotos = target['photos'] is List
+                              ? (target['photos'] as List).map((url) => url.toString()).where((url) => url.isNotEmpty).toList()
+                              : <String>[];
+                          final targetHasVideo = target['video_url']?.toString().isNotEmpty == true;
                           final reporterName = '${reporter['first_name'] ?? ''} ${reporter['last_name'] ?? ''}'.trim();
                           final targetAuthorName = '${targetAuthor['first_name'] ?? ''} ${targetAuthor['last_name'] ?? ''}'.trim();
                           final targetType = r['target_type']?.toString() ?? '';
@@ -779,6 +783,44 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                                       maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                  if (targetPhotos.isNotEmpty || targetHasVideo) ...[
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      height: 84,
+                                      child: ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: targetPhotos.length + (targetHasVideo ? 1 : 0),
+                                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                        itemBuilder: (context, mediaIndex) {
+                                          if (mediaIndex >= targetPhotos.length) {
+                                            return Container(
+                                              width: 84,
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(Icons.play_circle_outline, size: 34),
+                                            );
+                                          }
+                                          return ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              targetPhotos[mediaIndex],
+                                              width: 84,
+                                              height: 84,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 84,
+                                                height: 84,
+                                                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                                child: const Icon(Icons.broken_image_outlined),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                   if (reportsCount > 1)
                                     Text('community_report_reports_count'.trParams({'count': reportsCount.toString()})),
                                 ],
