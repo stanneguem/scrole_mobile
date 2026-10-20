@@ -647,10 +647,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
   }) async {
     await _repo.updateCommunityFeatures(
       communityId: communityId,
-      membersListVisible: membersListVisible ?? true,
-      allowReports: allowReports ?? true,
-      allowComments: allowComments ?? true,
-      allowReactions: allowReactions ?? true,
+      membersListVisible: membersListVisible,
+      allowReports: allowReports,
+      allowComments: allowComments,
+      allowReactions: allowReactions,
     );
   }
 
