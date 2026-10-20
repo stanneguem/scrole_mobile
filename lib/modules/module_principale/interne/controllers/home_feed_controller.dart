@@ -58,36 +58,30 @@ class HomeFeedController extends GetxController {
   Future<void> _flushViewBatch() async {
     _viewBatchTimer?.cancel();
     _viewBatchTimer = null;
-
     if (_pendingViewIds.isEmpty) return;
     final batch = List<String>.from(_pendingViewIds);
     _pendingViewIds.clear();
-
     try {
-      debugPrint('[POST_ACTIONS] Sending view batch of ${batch.length} posts');
       await _feedRepo.recordPostViews(batch);
-
       final counters = await _feedRepo.getPostCounters(batch);
-      if (counters.isNotEmpty) {
-        for (final c in counters) {
-          final id = c['id']?.toString();
-          if (id == null) continue;
-          final idx = posts.indexWhere((p) => p.id == id);
-          if (idx != -1) {
-            final p = posts[idx];
-            posts[idx] = p.copyWith(
-              viewCount: (c['views_count'] as num?)?.toInt() ?? p.viewCount,
-              likeCount: (c['likes_count'] as num?)?.toInt() ?? p.likeCount,
-              dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? p.dislikeCount,
-              commentCount: (c['comments_count'] as num?)?.toInt() ?? p.commentCount,
-              shareCount: (c['shares_count'] as num?)?.toInt() ?? p.shareCount,
-            );
-          }
-        }
-        posts.refresh();
+      for (final counter in counters) {
+        final id = counter['id']?.toString();
+        if (id == null) continue;
+        final index = posts.indexWhere((post) => post.id == id);
+        if (index == -1) continue;
+        final post = posts[index];
+        posts[index] = post.copyWith(
+          viewCount: (counter['views_count'] as num?)?.toInt() ?? post.viewCount,
+          likeCount: (counter['likes_count'] as num?)?.toInt() ?? post.likeCount,
+          dislikeCount: (counter['dislikes_count'] as num?)?.toInt() ?? post.dislikeCount,
+          commentCount: (counter['comments_count'] as num?)?.toInt() ?? post.commentCount,
+          shareCount: (counter['shares_count'] as num?)?.toInt() ?? post.shareCount,
+        );
       }
+      if (counters.isNotEmpty) posts.refresh();
     } catch (e) {
-      debugPrint('[POST_ACTIONS] Error recording view batch or fetching counters: $e');
+      _sentViewIds.removeAll(batch);
+      debugPrint('[POST_ACTIONS] Error recording view batch: $e');
     }
   }
 
@@ -179,10 +173,6 @@ class HomeFeedController extends GetxController {
       int postTypeCount = remoteItems.where((p) => p.communityId == null).length;
       int communityPostCount = remoteItems.where((p) => p.communityId != null).length;
       debugPrint('[HOME_FEED] Item counts per type -> Standard Posts: $postTypeCount, Community Posts: $communityPostCount');
-
-      if (remoteItems.isNotEmpty) {
-        unawaited(_feedRepo.recordPostViews(remoteItems.map((p) => p.id).toList()));
-      }
 
       // Combine pending outbox posts (at top, grayed out) + remote items
       final combined = <CommunityPost>[...pendingPosts, ...remoteItems];
