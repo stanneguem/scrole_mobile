@@ -130,6 +130,19 @@ class CommunityPostMentionsController extends GetxController {
   void confirm() {
     final selected = members.where((member) {
       return selectedUserIds.contains(_memberUserId(member));
+    }).map((member) {
+      final profile = member['user_profiles'] is Map
+          ? Map<String, dynamic>.from(member['user_profiles'] as Map)
+          : <String, dynamic>{};
+      return <String, dynamic>{
+        ...profile,
+        ...member,
+        'user_id': _memberUserId(member),
+        'username': member['username'] ?? profile['username'],
+        'first_name': member['first_name'] ?? profile['first_name'],
+        'last_name': member['last_name'] ?? profile['last_name'],
+        'photo_url': member['photo_url'] ?? profile['photo_url'],
+      };
     }).toList();
     Get.back(result: selected);
   }
