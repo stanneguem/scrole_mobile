@@ -610,6 +610,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Impossible d’enregistrer les modifications. Vérifiez votre connexion puis réessayez.",
       'edit_profile_locked_label': "Ce champ est verrouillé pendant encore @days jour(s).",
       'edit_profile_lock_check_failed': "Impossible de vérifier les restrictions pour le moment. Réessaie avant d’enregistrer.",
+      'edit_profile_checking_lock': "Vérification des restrictions…",
     },
     'en': {
       'profile_stat_posts': 'Posts',
@@ -1213,6 +1214,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Could not save your changes. Check your connection and try again.",
       'edit_profile_locked_label': "This field is locked for another @days day(s).",
       'edit_profile_lock_check_failed': "We can’t verify the field restrictions right now. Please try again before saving.",
+      'edit_profile_checking_lock': "Checking field restrictions…",
     },
     'es': {
       'profile_stat_posts': 'Publicaciones',
@@ -1733,6 +1735,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "No se pudieron guardar los cambios. Comprueba tu conexión e inténtalo de nuevo.",
       'edit_profile_locked_label': "Este campo está bloqueado durante @days día(s) más.",
       'edit_profile_lock_check_failed': "No se pueden verificar las restricciones ahora. Inténtalo de nuevo antes de guardar.",
+      'edit_profile_checking_lock': "Comprobando las restricciones…",
     },
     'de': {
       'profile_stat_posts': 'Beiträge',
@@ -2236,6 +2239,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Änderungen konnten nicht gespeichert werden. Prüfe deine Verbindung und versuche es erneut.",
       'edit_profile_locked_label': "Dieses Feld ist noch @days Tag(e) gesperrt.",
       'edit_profile_lock_check_failed': "Die Feldbeschränkungen können derzeit nicht geprüft werden. Bitte versuche es vor dem Speichern erneut.",
+      'edit_profile_checking_lock': "Feldbeschränkungen werden geprüft…",
     },
     'it': {
       'profile_stat_posts': 'Post',
@@ -2739,6 +2743,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Impossibile salvare le modifiche. Controlla la connessione e riprova.",
       'edit_profile_locked_label': "Questo campo è bloccato per altri @days giorno/i.",
       'edit_profile_lock_check_failed': "Impossibile verificare le restrizioni al momento. Riprova prima di salvare.",
+      'edit_profile_checking_lock': "Verifica delle restrizioni…",
     },
     'pt': {
       'profile_stat_posts': 'Publicações',
@@ -3242,6 +3247,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Não foi possível guardar as alterações. Verifique a ligação e tente novamente.",
       'edit_profile_locked_label': "Este campo está bloqueado por mais @days dia(s).",
       'edit_profile_lock_check_failed': "Não foi possível verificar as restrições agora. Tente novamente antes de guardar.",
+      'edit_profile_checking_lock': "A verificar as restrições…",
     },
     'zh': {
       'profile_stat_posts': '帖子',
@@ -3745,6 +3751,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "无法保存更改。请检查网络连接后重试。",
       'edit_profile_locked_label': "此字段还将锁定 @days 天。",
       'edit_profile_lock_check_failed': "目前无法验证字段限制。请重试后再保存。",
+      'edit_profile_checking_lock': "正在检查字段限制…",
     },
     'ja': {
       'profile_stat_posts': '投稿',
@@ -4247,6 +4254,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "変更を保存できませんでした。接続を確認して再試行してください。",
       'edit_profile_locked_label': "この項目はあと@days日間ロックされています。",
       'edit_profile_lock_check_failed': "現在、項目の制限を確認できません。保存する前にもう一度お試しください。",
+      'edit_profile_checking_lock': "項目の制限を確認中…",
     },
     'ru': {
       'profile_stat_posts': 'Публикации',
@@ -4744,6 +4752,7 @@ class AppTranslationAdditions {
       'edit_profile_save_failed': "Не удалось сохранить изменения. Проверьте подключение и попробуйте ещё раз.",
       'edit_profile_locked_label': "Это поле заблокировано ещё на @days дн.",
       'edit_profile_lock_check_failed': "Сейчас не удаётся проверить ограничения полей. Повторите попытку перед сохранением.",
+      'edit_profile_checking_lock': "Проверка ограничений поля…",
     },
   };
 
