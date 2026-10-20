@@ -30,6 +30,7 @@ void main() {
       'community_mod_tab_reports',
       'community_mod_tab_requests',
       'community_post_permissions_label',
+      'community_post_shared_success',
       'community_report_description_hint',
       'community_report_description_label',
       'community_report_reason_hint',
