@@ -1212,6 +1212,10 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         photoProfile: isProfile ? url : _currentAvatarUrl,
         photoCover: !isProfile ? url : _currentCoverUrl,
       );
+      final previousUrl = isProfile ? _currentAvatarUrl : _currentCoverUrl;
+      if (previousUrl != null && previousUrl != url) {
+        await _storage.deletePublicFile(bucket: 'community-media', publicUrl: previousUrl);
+      }
 
       if (mounted) {
         setState(() {
