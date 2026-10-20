@@ -75,7 +75,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
       }
     });
 
-    _startStory();
+    // Wait until the first frame so inherited widgets (MediaQuery/Theme)
+    // are available before starting story image precaching.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startStory();
+    });
   }
 
   @override
@@ -95,7 +99,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
       if (nextGroup.stories.isNotEmpty) {
         final url = nextGroup.stories.first.imageUrl;
         if (url != null && url.isNotEmpty) {
-          precacheImage(NetworkImage(url), context);
+          precacheImage(NetworkImage(url), context).catchError((Object _) {});
         }
       }
     }
