@@ -236,33 +236,28 @@ class ExternalProfileRepository {
     return [];
   }
 
+  Future<Map<String, dynamic>> getRelationship(String userId, {bool forceRefresh = false}) =>
+      _socialRepo.getRelationship(userId, forceRefresh: forceRefresh);
+
   Future<void> sendConnectionRequest(String userId) async {
-    await _socialRepo.sendFriendRequest(userId);
+    await _socialRepo.followUser(userId);
   }
 
   Future<void> cancelConnection(String userId) async {
-    await _socialRepo.removeFriendship(userId);
+    await _socialRepo.unfollowUser(userId);
   }
 
-  Future<void> respondConnectionRequest(String requestId, bool accept) async {
-    await _socialRepo.respondFriendRequest(requestId, accept);
+  Future<void> respondConnectionRequest(String requestId, bool accept, {required String targetUserId}) async {
+    await _socialRepo.respondFollowRequest(requestId, accept, targetUserId: targetUserId);
   }
 
   Future<bool> follow(String userId) async {
-    try {
-      await _client.rpc('follow_public_certified_profile', params: {'p_user_id': userId});
-      return true;
-    } catch (_) {
-      return false;
-    }
+    await _socialRepo.followUser(userId);
+    return true;
   }
 
   Future<bool> unfollow(String userId) async {
-    try {
-      await _client.rpc('unfollow_profile', params: {'p_user_id': userId});
-      return true;
-    } catch (_) {
-      return false;
-    }
+    await _socialRepo.unfollowUser(userId);
+    return true;
   }
 }
