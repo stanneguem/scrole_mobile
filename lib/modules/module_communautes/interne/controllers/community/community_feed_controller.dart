@@ -139,7 +139,9 @@ class CommunityFeedController extends GetxController {
       nextCursor = result['next_cursor']?.toString();
       hasMore = result['has_more'] == true;
 
-      posts.value = items;
+      final remoteIds = items.map((post) => post.id).toSet();
+      final pendingLocalPosts = posts.where((post) => post.isPublishing && !remoteIds.contains(post.id)).toList();
+      posts.value = [...pendingLocalPosts, ...items];
       errorMessage.value = '';
 
       if (items.isEmpty) {
@@ -205,7 +207,7 @@ class CommunityFeedController extends GetxController {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
-    final tempId = 'new_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = _generateUuidV4();
     final newPost = CommunityPost(
       id: tempId,
       authorName: 'Moi',
@@ -227,6 +229,7 @@ class CommunityFeedController extends GetxController {
       final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService(Get.find(), Get.find()));
       await service.createCommunityPost(
         communityId: communityId ?? '',
+        postId: tempId,
         content: content,
         imageFiles: imageFiles,
         audience: audience,
@@ -238,8 +241,12 @@ class CommunityFeedController extends GetxController {
         poll: poll,
         allowPromotion: allowPromotion,
       );
+      await fetchCommunityFeed(isRefresh: true);
     } catch (e) {
+      posts.removeWhere((post) => post.id == tempId);
+      posts.refresh();
       debugPrint('[POST] [Controller] createPost error: $e');
+      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -387,7 +394,7 @@ class CommunityFeedController extends GetxController {
     final index = posts.indexWhere((post) => post.id == postId);
     if (index == -1) return;
     final post = posts[index];
-    posts[index] = post.copyWith(commentCount: (post.commentCount + delta).clamp(0, 1 << 30));
+    posts[index] = post.copyWith(commentCount: (post.commentCount + delta).clamp(0, 1 << 30).toInt());
     posts.refresh();
   }
 
@@ -399,7 +406,7 @@ class CommunityFeedController extends GetxController {
 
     final comment = list[index];
     final nextReaction = comment.userReaction == reaction ? PostReaction.none : reaction;
-    final nextCount = (comment.likesCount + (comment.userReaction == PostReaction.like ? -1 : 0) + (nextReaction == PostReaction.like ? 1 : 0)).clamp(0, 1 << 30);
+    final nextCount = (comment.likesCount + (comment.userReaction == PostReaction.like ? -1 : 0) + (nextReaction == PostReaction.like ? 1 : 0)).clamp(0, 1 << 30).toInt();
     list[index] = comment.copyWith(userReaction: nextReaction, likesCount: nextCount);
     commentsByPostId.refresh();
 
