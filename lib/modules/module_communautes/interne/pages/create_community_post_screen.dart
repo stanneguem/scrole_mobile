@@ -343,8 +343,22 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
 
     final postContent = content.isNotEmpty ? content : null;
-    final hashtagsList = _selectedHashtags.map((h) => h.name).toList();
-    final mentionsList = _selectedMentionIds;
+    // Keep explicitly selected tags and also persist hashtags typed directly in the text.
+    final hashtagsList = <String>[];
+    final seenHashtags = <String>{};
+    void addHashtag(String raw) {
+      final clean = raw.trim().replaceFirst(RegExp(r'^#+'), '');
+      if (clean.isEmpty) return;
+      final key = clean.toLowerCase();
+      if (seenHashtags.add(key)) hashtagsList.add(clean);
+    }
+    for (final tag in _selectedHashtags) {
+      addHashtag(tag.name);
+    }
+    for (final match in RegExp(r'(?<![A-Za-z0-9_])#([A-Za-z0-9_À-ÿ]+)').allMatches(content)) {
+      addHashtag(match.group(1) ?? '');
+    }
+    final mentionsList = _selectedMentionIds.toSet().toList();
     final isCommunity = widget.communityId != null && widget.communityId!.isNotEmpty;
     final cId = widget.communityId ?? '';
 
