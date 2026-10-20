@@ -158,7 +158,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
             icon: Icons.admin_panel_settings_outlined,
             iconColor: Colors.indigo,
             title: 'community_mgmt_mod'.tr,
-            subtitle: 'community_settings_sec_moderation_sub'.tr,
+            subtitle: 'community_mgmt_mod_sub'.tr,
             badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
             onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
           ),
@@ -170,7 +170,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
               icon: Icons.security_outlined,
               iconColor: Colors.green,
               title: 'community_mgmt_access'.tr,
-              subtitle: 'community_settings_sec_access_sub'.tr,
+              subtitle: 'community_mgmt_access_sub'.tr,
               onTap: () => Get.to(() => CommunityAccessRulesHubScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
             ),
           if (_isAdmin) const SizedBox(height: 12),
@@ -181,7 +181,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
               icon: Icons.info_outline_rounded,
               iconColor: Colors.deepOrange,
               title: 'community_mgmt_info'.tr,
-              subtitle: 'community_settings_sec_info_sub'.tr,
+              subtitle: 'community_mgmt_info_sub'.tr,
               onTap: () => Get.to(() => CommunityInfoHubScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
             ),
         ],
@@ -528,11 +528,11 @@ class CommunityAccessRulesHubScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
-          _buildHubTile(context, title: 'community_access_sub_posts'.tr, subtitle: 'Règles de publication et approbation', icon: Icons.article_outlined, iconColor: Colors.blue, onTap: () => Get.to(() => CommunityPostSettingsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_posts'.tr, subtitle: 'community_access_sub_posts'.tr, icon: Icons.article_outlined, iconColor: Colors.blue, onTap: () => Get.to(() => CommunityPostSettingsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_access_sub_access'.tr, subtitle: 'Visibilité, adhésion et critères d\'accès', icon: Icons.security_outlined, iconColor: Colors.green, onTap: () => Get.to(() => CommunityAccessDetailsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_access'.tr, subtitle: 'community_access_sub_access'.tr, icon: Icons.security_outlined, iconColor: Colors.green, onTap: () => Get.to(() => CommunityAccessDetailsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_access_sub_rules'.tr, subtitle: 'Gestion des règles', icon: Icons.rule_rounded, iconColor: Colors.deepOrange, onTap: () => Get.to(() => CommunityRulesScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_rules'.tr, subtitle: 'community_access_sub_rules'.tr, icon: Icons.rule_rounded, iconColor: Colors.deepOrange, onTap: () => Get.to(() => CommunityRulesScreen(communityId: communityId))),
         ],
       ),
     );
@@ -583,11 +583,11 @@ class CommunityInfoHubScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
-          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'Nom, slogan et description', icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => Get.to(() => CommunityInfoSettingsScreen(communityId: communityId, communityName: communityName))),
+          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => Get.to(() => CommunityInfoSettingsScreen(communityId: communityId, communityName: communityName))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'Thèmes et passions', icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => Get.to(() => CommunityInterestsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => Get.to(() => CommunityInterestsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'Photo de profil et couverture', icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => Get.to(() => CommunityImagesScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'community_info_sub_images'.tr, icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => Get.to(() => CommunityImagesScreen(communityId: communityId))),
         ],
       ),
     );
@@ -682,7 +682,7 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
             TextField(
               controller: _sloganController,
               maxLength: 160,
-              decoration: const InputDecoration(labelText: 'Slogan'),
+              decoration: InputDecoration(labelText: 'community_settings_slogan_label'.tr),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -737,7 +737,7 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
 
   Future<void> _save() async {
     if (_selectedIds.length > 10) {
-      Get.snackbar('error'.tr, 'Maximum 10 interests', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('error'.tr, 'community_max_interests_error'.tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
     setState(() => _isLoading = true);
@@ -1210,7 +1210,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _postPermission,
-              decoration: const InputDecoration(labelText: 'Permissions de publication'),
+              decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
               items: const [
                 DropdownMenuItem(value: 'everyone', child: Text('Tout le monde')),
                 DropdownMenuItem(value: 'members', child: Text('Membres')),
