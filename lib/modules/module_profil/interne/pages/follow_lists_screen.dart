@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
@@ -60,18 +61,39 @@ class _FollowListTabState extends State<_FollowListTab> {
   bool _hasMore = true;
   int _offset = 0;
   String? _error;
+  RealtimeChannel? _relationshipChannel;
 
   @override
   void initState() {
     super.initState();
     _load(reset: true);
     _scroll.addListener(_onScroll);
+    _subscribeToRelationshipChanges();
   }
 
   @override
   void didUpdateWidget(covariant _FollowListTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.kind != widget.kind || oldWidget.userId != widget.userId) _load(reset: true);
+  }
+
+  void _subscribeToRelationshipChanges() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      _relationshipChannel = Supabase.instance.client
+          .channel('user:$uid', opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: 'relationship_changed',
+            callback: (payload) {
+              debugPrint('[FOLLOW] relationship_changed list=${widget.kind} payload=$payload');
+              if (mounted) _load(reset: true);
+            },
+          )
+          ..subscribe();
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] list relationship_changed subscription exception=$e\\n$stack');
+    }
   }
 
   void _onScroll() {
@@ -170,7 +192,8 @@ class _FollowListTabState extends State<_FollowListTab> {
     _debounce?.cancel();
     _search.dispose();
     _scroll.dispose();
-    super.dispose();
+    final channel = _relationshipChannel;
+    if (channel != null) {\n      Supabase.instance.client.removeChannel(channel);\n    }\n    super.dispose();
   }
 
   @override
