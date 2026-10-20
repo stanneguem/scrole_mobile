@@ -115,7 +115,7 @@ class ExternalProfileModel {
       incomingConnectionRequest: incomingConnectionRequest,
       isFollowing: isFollowing ?? this.isFollowing,
       isCertified: isCertified,
-      canMessage: canMessage,
+      canMessage: canMessage ?? this.canMessage,
       friendCount: friendCount ?? this.friendCount,
       eventsParticipatedCount: eventsParticipatedCount ?? this.eventsParticipatedCount,
       eventsInAgendaCount: eventsInAgendaCount ?? this.eventsInAgendaCount,
