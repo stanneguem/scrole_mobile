@@ -17,7 +17,7 @@ class FollowListsScreen extends StatelessWidget {
     final initialTab = (args['initialTab'] as num?)?.toInt() ?? 0;
     return DefaultTabController(
       length: 3,
-      initialIndex: initialTab.clamp(0, 2),
+      initialIndex: initialTab.clamp(0, 2).toInt(),
       child: Scaffold(
         appBar: AppBar(
           title: Text('follow_requests_title'.tr),
