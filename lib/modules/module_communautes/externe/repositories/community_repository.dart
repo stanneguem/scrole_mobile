@@ -617,6 +617,10 @@ class CommunityRepository {
     bool clearAgeMin = false,
     bool clearAgeMax = false,
     bool clearGender = false,
+    bool? allowReports,
+    bool? allowComments,
+    bool? allowReactions,
+    bool? allowPostPromotion,
   }) async {
     final params = <String, dynamic>{'p_community_id': communityId};
     if (visibility != null) params['p_visibility'] = visibility;
@@ -634,6 +638,10 @@ class CommunityRepository {
     params['p_clear_age_min'] = clearAgeMin;
     params['p_clear_age_max'] = clearAgeMax;
     params['p_clear_gender'] = clearGender;
+    if (allowReports != null) params['p_allow_reports'] = allowReports;
+    if (allowComments != null) params['p_allow_comments'] = allowComments;
+    if (allowReactions != null) params['p_allow_reactions'] = allowReactions;
+    if (allowPostPromotion != null) params['p_allow_post_promotion'] = allowPostPromotion;
     final response = await client.rpc('update_community_management_settings', params: params);
     if (response is! Map) {
       throw const FormatException('Réponse invalide après sauvegarde des paramètres de communauté.');
