@@ -366,10 +366,11 @@ class CommunityRepository {
         'p_offset': offset,
       });
       if (response is Map) return Map<String, dynamic>.from(response);
-      return {'items': [], 'total': 0, 'has_more': false};
+      if (response == null) return {'items': [], 'total': 0, 'has_more': false};
+      throw const FormatException('Réponse invalide du serveur pour les exclusions.');
     } catch (e) {
       debugPrint('[MODERATION] [Repository] Error get_community_exclusions: $e');
-      return {'items': [], 'total': 0, 'has_more': false};
+      rethrow;
     }
   }
 
