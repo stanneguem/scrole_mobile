@@ -500,6 +500,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Tout le monde",
       'community_post_permission_admins': "Administrateurs et modérateurs",
       'community_post_permission_nobody': "Personne",
+      'community_mod_reject_post_confirm_title': "Refuser cette publication ?",
+      'community_mod_reject_post_confirm_message': "La publication sera refusée et pourra être supprimée automatiquement après la période de conservation.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -993,6 +995,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Everyone",
       'community_post_permission_admins': "Administrators and moderators",
       'community_post_permission_nobody': "Nobody",
+      'community_mod_reject_post_confirm_title': "Reject this post?",
+      'community_mod_reject_post_confirm_message': "The post will be rejected and may be automatically deleted after the retention period.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1403,6 +1407,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Todos",
       'community_post_permission_admins': "Administradores y moderadores",
       'community_post_permission_nobody': "Nadie",
+      'community_mod_reject_post_confirm_title': "¿Rechazar esta publicación?",
+      'community_mod_reject_post_confirm_message': "La publicación será rechazada y podrá eliminarse automáticamente al finalizar el período de conservación.",
     },
     'de': {
       'status_online': 'Online',
@@ -1796,6 +1802,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Alle",
       'community_post_permission_admins': "Administratoren und Moderatoren",
       'community_post_permission_nobody': "Niemand",
+      'community_mod_reject_post_confirm_title': "Diesen Beitrag ablehnen?",
+      'community_mod_reject_post_confirm_message': "Der Beitrag wird abgelehnt und kann nach Ablauf der Aufbewahrungsfrist automatisch gelöscht werden.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2189,6 +2197,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Tutti",
       'community_post_permission_admins': "Amministratori e moderatori",
       'community_post_permission_nobody': "Nessuno",
+      'community_mod_reject_post_confirm_title': "Rifiutare questo post?",
+      'community_mod_reject_post_confirm_message': "Il post sarà rifiutato e potrà essere eliminato automaticamente al termine del periodo di conservazione.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2582,6 +2592,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Todos",
       'community_post_permission_admins': "Administradores e moderadores",
       'community_post_permission_nobody': "Ninguém",
+      'community_mod_reject_post_confirm_title': "Rejeitar esta publicação?",
+      'community_mod_reject_post_confirm_message': "A publicação será rejeitada e poderá ser eliminada automaticamente após o período de retenção.",
     },
     'zh': {
       'status_online': '在线',
@@ -2975,6 +2987,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "所有人",
       'community_post_permission_admins': "管理员和版主",
       'community_post_permission_nobody': "无人",
+      'community_mod_reject_post_confirm_title': "拒绝此帖子？",
+      'community_mod_reject_post_confirm_message': "此帖子将被拒绝，并可能在保留期限结束后自动删除。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3367,6 +3381,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "全員",
       'community_post_permission_admins': "管理者とモデレーター",
       'community_post_permission_nobody': "誰も許可しない",
+      'community_mod_reject_post_confirm_title': "この投稿を却下しますか？",
+      'community_mod_reject_post_confirm_message': "投稿は却下され、保存期間終了後に自動削除される場合があります。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3754,6 +3770,8 @@ class AppTranslationAdditions {
       'community_post_permission_everyone': "Все",
       'community_post_permission_admins': "Администраторы и модераторы",
       'community_post_permission_nobody': "Никто",
+      'community_mod_reject_post_confirm_title': "Отклонить эту публикацию?",
+      'community_mod_reject_post_confirm_message': "Публикация будет отклонена и может быть автоматически удалена по окончании срока хранения.",
     },
   };
 
