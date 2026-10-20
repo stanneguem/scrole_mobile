@@ -273,7 +273,7 @@ class ExternalProfileController extends GetxController {
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
         debugPrint('[FOLLOW] relationship action exception=$e\\n$stack');
-        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
         isSendingRequest.value = false;
       }
@@ -302,7 +302,7 @@ class ExternalProfileController extends GetxController {
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
         debugPrint('[FOLLOW] respond_follow_request exception=$e\\n$stack');
-        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
         isSendingRequest.value = false;
       }
