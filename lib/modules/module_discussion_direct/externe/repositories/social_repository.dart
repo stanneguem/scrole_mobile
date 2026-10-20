@@ -25,7 +25,12 @@ class SocialRepository {
   // Cache mémoire des relations : invalidé par les appels d'action et la reconnexion.
   static final Map<String, Map<String, dynamic>> _relationshipCache = <String, Map<String, dynamic>>{};
 
-  static String _relationshipCacheKey(String userId) => 'follow_relationship_$userId';
+  static String _relationshipCacheKey(String userId) {
+    final currentId = Get.isRegistered<SupabaseService>()
+        ? (Get.find<SupabaseService>().client.auth.currentUser?.id ?? 'anonymous')
+        : 'anonymous';
+    return 'follow_relationship_${currentId}_$userId';
+  }
 
   static void invalidateRelationshipCache([String? userId]) {
     if (userId == null) {
@@ -34,9 +39,9 @@ class SocialRepository {
         unawaited(Get.find<FastCacheService>().clearPattern('follow_relationship_'));
       }
     } else {
-      _relationshipCache.remove(userId);
+      _relationshipCache.removeWhere((key, _) => key.endsWith('_$userId'));
       if (Get.isRegistered<FastCacheService>()) {
-        unawaited(Get.find<FastCacheService>().remove(_relationshipCacheKey(userId)));
+        unawaited(Get.find<FastCacheService>().clearPattern('follow_relationship_'));
       }
     }
   }
@@ -45,8 +50,9 @@ class SocialRepository {
       Get.isRegistered<FastCacheService>() ? Get.find<FastCacheService>() : null;
 
   Future<Map<String, dynamic>> getRelationship(String targetUserId, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _relationshipCache.containsKey(targetUserId)) {
-      return Map<String, dynamic>.from(_relationshipCache[targetUserId]!);
+    final cacheKey = _relationshipCacheKey(targetUserId);
+    if (!forceRefresh && _relationshipCache.containsKey(cacheKey)) {
+      return Map<String, dynamic>.from(_relationshipCache[cacheKey]!);
     }
     if (!forceRefresh) {
       final persisted = _fastCache?.get<Map<String, dynamic>>(
@@ -54,7 +60,7 @@ class SocialRepository {
         maxAge: const Duration(minutes: 5),
       );
       if (persisted != null && persisted.isNotEmpty) {
-        _relationshipCache[targetUserId] = persisted;
+        _relationshipCache[cacheKey] = persisted;
         return Map<String, dynamic>.from(persisted);
       }
     }
@@ -63,7 +69,7 @@ class SocialRepository {
       final response = await _client.rpc('get_relationship', params: {'p_user_id': targetUserId});
       if (response is! Map) throw StateError('Réponse get_relationship invalide');
       final relation = Map<String, dynamic>.from(response);
-      _relationshipCache[targetUserId] = relation;
+      _relationshipCache[cacheKey] = relation;
       await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC get_relationship response=$relation');
       return Map<String, dynamic>.from(relation);
@@ -88,7 +94,7 @@ class SocialRepository {
       final response = await _client.rpc(rpc, params: params);
       if (response is! Map) throw StateError('Réponse $rpc invalide');
       final relation = Map<String, dynamic>.from(response);
-      _relationshipCache[targetUserId] = relation;
+      _relationshipCache[_relationshipCacheKey(targetUserId)] = relation;
       await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC $rpc response=$relation');
       return relation;
@@ -120,7 +126,7 @@ class SocialRepository {
       final body = Map<String, dynamic>.from(response);
       final relationRaw = body['relationship'];
       final relation = relationRaw is Map ? Map<String, dynamic>.from(relationRaw) : body;
-      _relationshipCache[targetUserId] = relation;
+      _relationshipCache[_relationshipCacheKey(targetUserId)] = relation;
       await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC respond_follow_request response=$body');
       return body;
