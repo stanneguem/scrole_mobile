@@ -57,7 +57,7 @@ class ExternalProfileRepository {
     ProfileResultStatus? explicitStatus;
 
     try {
-      final response = await _client.rpc('get_external_profile', params: {'p_user_id': userId});
+      final response = await _client.rpc('get_external_profile_legacy', params: {'p_user_id': userId});
 
       if (response is Map) {
         final errStr = (response['error'] ?? response['code'] ?? response['message'] ?? '').toString().toLowerCase();
