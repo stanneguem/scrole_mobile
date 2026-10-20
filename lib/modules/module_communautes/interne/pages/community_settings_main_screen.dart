@@ -257,6 +257,25 @@ class CommunityModerationCenterScreen extends StatelessWidget {
             color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
             child: ListTile(
+              onTap: () => Get.to(() => CommunityPendingPostsScreen(communityId: communityId)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.pending_actions_outlined, color: Colors.orange, size: 24),
+              ),
+              title: Text('community_mod_pending_posts_title'.tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: Text('community_mod_pending_posts_subtitle'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
+              trailing: Icon(Icons.chevron_right_rounded, color: colorScheme.outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
+            child: ListTile(
               onTap: () => Get.to(() => CommunityReportsHubScreen(communityId: communityId, communityName: communityName, communityAvatar: communityAvatar)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
@@ -291,6 +310,161 @@ class CommunityModerationCenterScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+class CommunityPendingPostsScreen extends StatefulWidget {
+  final String communityId;
+  const CommunityPendingPostsScreen({super.key, required this.communityId});
+
+  @override
+  State<CommunityPendingPostsScreen> createState() => _CommunityPendingPostsScreenState();
+}
+
+class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScreen> {
+  final CommunityService _service = Get.find<CommunityService>();
+  bool _isLoading = true;
+  String? _loadError;
+  List<dynamic> _posts = [];
+  final Set<String> _busyPostIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
+
+  Future<void> _loadPosts() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
+    try {
+      final response = await _service.getCommunityPendingPosts(widget.communityId);
+      if (response['items'] is! List) {
+        throw const FormatException('Réponse invalide des publications en attente.');
+      }
+      _posts = response['items'] as List;
+    } catch (e) {
+      debugPrint('[CommunityPendingPostsScreen] Failed to load pending posts: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _moderate(String postId, String action) async {
+    if (_busyPostIds.contains(postId)) return;
+    setState(() => _busyPostIds.add(postId));
+    try {
+      await _service.moderateCommunityPost(postId, action);
+      await _loadPosts();
+      Get.snackbar(
+        'community_save_success'.tr,
+        action == 'approve'
+            ? 'community_mod_post_approved'.tr
+            : 'community_mod_post_rejected'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[CommunityPendingPostsScreen] Moderation failed: $e');
+      Get.snackbar(
+        'community_save_error'.tr,
+        _service.localizedCommunityError(e),
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      if (mounted) setState(() => _busyPostIds.remove(postId));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: Text('community_mod_pending_posts_title'.tr)),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_loadError!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        OutlinedButton(onPressed: _loadPosts, child: Text('retry'.tr)),
+                      ],
+                    ),
+                  ),
+                )
+              : _posts.isEmpty
+                  ? Center(child: Text('community_mod_pending_posts_empty'.tr))
+                  : RefreshIndicator(
+                      onRefresh: _loadPosts,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _posts.length,
+                        itemBuilder: (context, index) {
+                          final post = Map<String, dynamic>.from(_posts[index] as Map);
+                          final id = post['id']?.toString() ?? '';
+                          final author = post['author'] is Map
+                              ? Map<String, dynamic>.from(post['author'] as Map)
+                              : <String, dynamic>{};
+                          final authorName = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
+                          final username = author['username']?.toString();
+                          final content = post['content']?.toString() ?? '';
+                          final busy = _busyPostIds.contains(id);
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    authorName.isNotEmpty ? authorName : (username == null ? 'excluded_members_unknown_user'.tr : '@$username'),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  if (content.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text(content, maxLines: 6, overflow: TextOverflow.ellipsis),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: busy || id.isEmpty ? null : () => _moderate(id, 'reject'),
+                                          icon: const Icon(Icons.close),
+                                          label: Text('community_mod_reject_post'.tr),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: busy || id.isEmpty ? null : () => _moderate(id, 'approve'),
+                                          icon: const Icon(Icons.check),
+                                          label: Text('community_mod_approve_post'.tr),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (busy) const LinearProgressIndicator(),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
     );
   }
 }
