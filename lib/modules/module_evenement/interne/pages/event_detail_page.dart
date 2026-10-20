@@ -430,7 +430,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
       'Découvre cet événement : ${event.name}',
       if ((event.description ?? '').trim().isNotEmpty) event.description!.trim(),
     ];
-    return details.join('\\n\\n');
+    return details.join('\n\n');
   }
 
   Future<void> _openEventShareCardPicker({
