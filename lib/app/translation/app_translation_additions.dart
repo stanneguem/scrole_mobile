@@ -573,6 +573,7 @@ class AppTranslationAdditions {
       'follow_profile_private_desc': "Seuls vos abonnés approuvés peuvent consulter le contenu réservé de votre profil.",
       'follow_te_follows_you': "Te suit",
       'follow_cancel_request_action': "Annuler la demande",
+      'follow_lists_title': "Mes relations",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1135,6 +1136,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "You are not friends with this person",
       'follow_error_private_list': "This list is reserved for this profile’s approved followers",
       'follow_error_direction': "Invalid direction",
+      'follow_lists_title': "My connections",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1614,6 +1616,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "No eres amigo de esta persona",
       'follow_error_private_list': "Esta lista está reservada a los seguidores aprobados de este perfil",
       'follow_error_direction': "Dirección no válida",
+      'follow_lists_title': "Mis relaciones",
     },
     'de': {
       'status_online': 'Online',
@@ -2076,6 +2079,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "Du bist mit dieser Person nicht befreundet",
       'follow_error_private_list': "Diese Liste ist nur für bestätigte Follower dieses Profils sichtbar",
       'follow_error_direction': "Ungültige Richtung",
+      'follow_lists_title': "Meine Kontakte",
     },
     'it': {
       'status_online': 'In linea',
@@ -2538,6 +2542,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "Non sei amico di questa persona",
       'follow_error_private_list': "Elenco riservato ai follower approvati di questo profilo",
       'follow_error_direction': "Direzione non valida",
+      'follow_lists_title': "Le mie relazioni",
     },
     'pt': {
       'status_online': 'Online',
@@ -3000,6 +3005,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "Não és amigo desta pessoa",
       'follow_error_private_list': "Esta lista é reservada aos seguidores aprovados deste perfil",
       'follow_error_direction': "Direção inválida",
+      'follow_lists_title': "As minhas relações",
     },
     'zh': {
       'status_online': '在线',
@@ -3462,6 +3468,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "你们不是好友",
       'follow_error_private_list': "此列表仅对该资料获准的关注者开放",
       'follow_error_direction': "方向无效",
+      'follow_lists_title': "我的关系",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3923,6 +3930,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "この人とは友達ではありません",
       'follow_error_private_list': "このリストはプロフィールの承認済みフォロワーのみ表示できます",
       'follow_error_direction': "無効な方向です",
+      'follow_lists_title': "つながり",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4379,6 +4387,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "Вы не друзья с этим человеком",
       'follow_error_private_list': "Список доступен только одобренным подписчикам профиля",
       'follow_error_direction': "Неверное направление",
+      'follow_lists_title': "Мои связи",
     },
   };
 
