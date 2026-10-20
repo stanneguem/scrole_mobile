@@ -294,7 +294,7 @@ class HomeFeedRepository {
       return {'items': [], 'has_more': false};
     } catch (e, st) {
       debugPrint('[POST_ACTIONS] Error in get_community_post_comments: $e\n$st');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
@@ -311,7 +311,7 @@ class HomeFeedRepository {
       return {'items': [], 'has_more': false};
     } catch (e, st) {
       debugPrint('[POST_ACTIONS] Error in get_community_comment_replies: $e\n$st');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
