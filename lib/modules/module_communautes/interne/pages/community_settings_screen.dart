@@ -461,7 +461,7 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                   child: TextButton.icon(
                     onPressed: _showLeaveOptions,
                     icon: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent, size: 20),
-                    label: const Text(
+                    label: Text(
                       'community_leave_only_action'.tr,
                       style: TextStyle(color: Colors.redAccent, fontSize: 15, fontWeight: FontWeight.bold),
                     ),
