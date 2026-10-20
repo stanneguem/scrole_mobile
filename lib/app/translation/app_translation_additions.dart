@@ -483,6 +483,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "La publication a été refusée.",
       'community_mod_reject_post': "Refuser",
       'community_mod_approve_post': "Approuver",
+      'community_settings_allow_post_promotion': "Autoriser la mise en avant des publications",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -959,6 +960,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "The post was rejected.",
       'community_mod_reject_post': "Reject",
       'community_mod_approve_post': "Approve",
+      'community_settings_allow_post_promotion': "Allow post promotion",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1352,6 +1354,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "La publicación ha sido rechazada.",
       'community_mod_reject_post': "Rechazar",
       'community_mod_approve_post': "Aprobar",
+      'community_settings_allow_post_promotion': "Permitir promocionar publicaciones",
     },
     'de': {
       'status_online': 'Online',
@@ -1728,6 +1731,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "Der Beitrag wurde abgelehnt.",
       'community_mod_reject_post': "Ablehnen",
       'community_mod_approve_post': "Freigeben",
+      'community_settings_allow_post_promotion': "Beitragswerbung erlauben",
     },
     'it': {
       'status_online': 'In linea',
@@ -2104,6 +2108,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "Il post è stato rifiutato.",
       'community_mod_reject_post': "Rifiuta",
       'community_mod_approve_post': "Approva",
+      'community_settings_allow_post_promotion': "Consenti la promozione dei post",
     },
     'pt': {
       'status_online': 'Online',
@@ -2480,6 +2485,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "A publicação foi rejeitada.",
       'community_mod_reject_post': "Rejeitar",
       'community_mod_approve_post': "Aprovar",
+      'community_settings_allow_post_promotion': "Permitir promover publicações",
     },
     'zh': {
       'status_online': '在线',
@@ -2856,6 +2862,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "帖子已被拒绝。",
       'community_mod_reject_post': "拒绝",
       'community_mod_approve_post': "批准",
+      'community_settings_allow_post_promotion': "允许推广帖子",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3231,6 +3238,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "投稿を却下しました。",
       'community_mod_reject_post': "却下",
       'community_mod_approve_post': "承認",
+      'community_settings_allow_post_promotion': "投稿の宣伝を許可",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3601,6 +3609,7 @@ class AppTranslationAdditions {
       'community_mod_post_rejected': "Публикация отклонена.",
       'community_mod_reject_post': "Отклонить",
       'community_mod_approve_post': "Одобрить",
+      'community_settings_allow_post_promotion': "Разрешить продвижение публикаций",
     },
   };
 
