@@ -6,6 +6,7 @@ void main() {
     const languages = ['fr', 'en', 'es', 'de', 'it', 'pt', 'zh', 'ja', 'ru'];
     const requiredKeys = [
       'community_access_denied',
+      'community_action_success_title',
       'community_access_sub_access',
       'community_access_sub_access_desc',
       'community_access_sub_posts',
