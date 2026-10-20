@@ -35,6 +35,8 @@ class ProfileScreen extends GetView<ProfileController> {
                     const SizedBox(height: 10),
                     _buildNameAndUsername(colorScheme),
                     const SizedBox(height: 12),
+                    _buildFollowStats(colorScheme),
+                    const SizedBox(height: 12),
                     _buildBio(colorScheme),
                     const SizedBox(height: 20),
                     _buildTabsAndContent(context, colorScheme),
@@ -298,6 +300,57 @@ class ProfileScreen extends GetView<ProfileController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFollowStats(ColorScheme colorScheme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Obx(() => Row(
+        children: [
+          Expanded(
+            child: _followStat(
+              controller.followersCount.value.toString(),
+              'follow_tab_followers'.tr,
+              colorScheme,
+              () => Get.toNamed(AppPages.followLists, arguments: {'userId': controller.userId.value, 'initialTab': 0}),
+            ),
+          ),
+          Expanded(
+            child: _followStat(
+              controller.followingCount.value.toString(),
+              'follow_tab_following'.tr,
+              colorScheme,
+              () => Get.toNamed(AppPages.followLists, arguments: {'userId': controller.userId.value, 'initialTab': 1}),
+            ),
+          ),
+          Expanded(
+            child: _followStat(
+              controller.friendsCount.value.toString(),
+              'follow_tab_friends'.tr,
+              colorScheme,
+              () => Get.toNamed(AppPages.followLists, arguments: {'userId': controller.userId.value, 'initialTab': 2}),
+            ),
+          ),
+        ],
+      )),
+    );
+  }
+
+  Widget _followStat(String count, String label, ColorScheme colors, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          children: [
+            Text(count, style: AppTextStyles.bodyLarge.copyWith(color: colors.onSurface, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(label, style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant)),
+          ],
+        ),
       ),
     );
   }
