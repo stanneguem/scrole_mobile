@@ -31,6 +31,7 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
   final SocialRepository _socialRepo = SocialRepository();
   Map<String, dynamic> _relationship = const {};
   bool _isLoading = true;
+  bool _isSaving = false;
 
   String get _state => (_relationship['state'] ?? 'none').toString();
   String? get _requestId => (_relationship['request_id'] ?? widget.requestId)?.toString();
@@ -62,8 +63,12 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
     }
   }
 
-  Future<void> _run(Future<dynamic> Function() action) async {
-    if (mounted) setState(() => _isLoading = true);
+  Future<void> _run(Future<dynamic> Function() action, {String? optimisticState}) async {
+    if (_isSaving) return;
+    if (mounted) setState(() {
+      _isSaving = true;
+      if (optimisticState != null) _relationship = {..._relationship, 'state': optimisticState};
+    });
     try {
       final result = await action();
       if (result is Map) {
@@ -74,10 +79,10 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
       widget.onRelationChanged?.call();
     } catch (e, stack) {
       debugPrint('[FOLLOW] relation button action user=${widget.targetUserId} exception=$e\\n$stack');
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
-      }
+      await _loadState();
+      if (mounted) Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -88,16 +93,16 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
       isScrollControlled: false,
     );
     if (action == 'unfollow') {
-      await _run(() => _socialRepo.unfollowUser(widget.targetUserId));
+      await _run(() => _socialRepo.unfollowUser(widget.targetUserId), optimisticState: _relationship['follows_me'] == true ? 'follow_back' : 'none');
     } else if (action == 'remove_friend') {
-      await _run(() => _socialRepo.removeFriend(widget.targetUserId));
+      await _run(() => _socialRepo.removeFriend(widget.targetUserId), optimisticState: 'none');
     }
   }
 
   Future<void> _respond(bool accepted) async {
     final id = _requestId;
     if (id == null || id.isEmpty) return;
-    await _run(() => _socialRepo.respondFollowRequest(id, accepted, targetUserId: widget.targetUserId));
+    await _run(() => _socialRepo.respondFollowRequest(id, accepted, targetUserId: widget.targetUserId), optimisticState: accepted ? 'follow_back' : 'none');
   }
 
   @override
@@ -125,12 +130,12 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
         children: [
           IconButton(
             tooltip: 'refuse'.tr,
-            onPressed: () => _respond(false),
+            onPressed: _isSaving ? null : () => _respond(false),
             icon: const Icon(Icons.close_rounded, color: AppColors.error),
           ),
           IconButton(
             tooltip: 'accept'.tr,
-            onPressed: () => _respond(true),
+            onPressed: _isSaving ? null : () => _respond(true),
             icon: const Icon(Icons.check_rounded, color: AppColors.success),
           ),
         ],
@@ -139,7 +144,7 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
 
     if (_state == 'following' || _state == 'friends') {
       return TextButton(
-        onPressed: _showMenu,
+        onPressed: _isSaving ? null : _showMenu,
         child: Text(
           _state == 'friends' ? 'follow_state_friends'.tr : 'follow_state_following'.tr,
           style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700),
@@ -150,9 +155,9 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
     final requested = _state == 'requested';
     final followBack = _state == 'follow_back';
     return ElevatedButton.icon(
-      onPressed: requested
-          ? () => _run(() => _socialRepo.cancelFollowRequest(widget.targetUserId))
-          : () => _run(() => _socialRepo.followUser(widget.targetUserId)),
+      onPressed: _isSaving ? null : requested
+          ? () => _run(() => _socialRepo.cancelFollowRequest(widget.targetUserId), optimisticState: 'none')
+          : () => _run(() => _socialRepo.followUser(widget.targetUserId), optimisticState: _relationship['follows_me'] == true ? 'friends' : (_relationship['is_private'] == true ? 'requested' : 'following')),
       icon: Icon(requested ? Icons.hourglass_top_rounded : Icons.person_add_alt_1_rounded, size: 16),
       label: Text(
         requested
