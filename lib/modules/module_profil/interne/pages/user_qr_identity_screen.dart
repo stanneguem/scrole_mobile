@@ -26,6 +26,7 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
 
   Map<String, dynamic>? _activeQrCode;
   bool _isLoadingQr = true;
+  bool _isSyncingQr = false;
   bool _isScanning = false;
 
   @override
@@ -51,6 +52,38 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
     } catch (e) {
       debugPrint('[UserQrIdentityScreen] Error loading QR: $e');
       if (mounted) setState(() => _isLoadingQr = false);
+    }
+  }
+
+  Future<void> _syncCurrentQrCode() async {
+    final qr = _activeQrCode;
+    if (qr == null || _isSyncingQr) return;
+    setState(() => _isSyncingQr = true);
+    try {
+      await _socialRepo.syncUserQrCode(qr);
+      if (!mounted) return;
+      setState(() {
+        _activeQrCode = {...qr, 'sync_status': 'synced'};
+        _isSyncingQr = false;
+      });
+      Get.snackbar(
+        'QR code synchronisé',
+        'Ton QR code est maintenant enregistré sur le serveur.',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[UserQrIdentityScreen] QR sync failed: $e');
+      if (!mounted) return;
+      setState(() => _isSyncingQr = false);
+      Get.snackbar(
+        'Synchronisation impossible',
+        'Le QR code est conservé sur cet appareil. Vérifie ta connexion puis réessaie.',
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -291,6 +324,21 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
                             'follow_qr_pending_sync'.tr,
                             style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
+                          ),
+                        ),
+                      if (qrId.isNotEmpty && !isSynced)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: OutlinedButton.icon(
+                            onPressed: _isSyncingQr ? null : _syncCurrentQrCode,
+                            icon: _isSyncingQr
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.sync_rounded, size: 18),
+                            label: Text(_isSyncingQr ? 'Synchronisation…' : 'Synchroniser mon QR code'),
                           ),
                         ),
                       if (qrId.isEmpty)
