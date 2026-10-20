@@ -80,7 +80,14 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
     } catch (e, stack) {
       debugPrint('[FOLLOW] relation button action user=${widget.targetUserId} exception=$e\\n$stack');
       await _loadState();
-      if (mounted) Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
+      final retryAt = _retryAt;
+      if (mounted && retryAt != null && retryAt.isAfter(DateTime.now())) {
+        Get.snackbar('error_title'.tr, 'follow_retry_at'.trParams({
+          'date': DateFormat('dd/MM/yyyy HH:mm').format(retryAt.toLocal()),
+        }));
+      } else if (mounted) {
+        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
