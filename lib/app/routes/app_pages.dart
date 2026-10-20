@@ -7,6 +7,7 @@ class AppPages {
   static const externalProfile = "/user-profile/:userId";
   static const editmyprofil = "/editmyprofil";
   static const myContacts = "/user/contacts";
+  static const followLists = "/user/follow-lists";
   static const userQrCode = "/user/qr";
   static const setting = "/setting";
   static const notification = "/notification";
