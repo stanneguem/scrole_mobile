@@ -418,34 +418,103 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                         ),
                       ),
 
-                    // Poll Preview Card
+                    // Interactive poll / quiz preview
                     if (_pollData != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.09),
+                                colorScheme.tertiary.withValues(alpha: 0.06),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.28)),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.poll_rounded, color: colorScheme.primary),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Sondage (${_pollData!['kind']})', style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
-                                    Text('${(_pollData!['options'] as List).length} options', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                  ],
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withValues(alpha: 0.13),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      _pollData!['kind'] == 'quiz' ? Icons.lightbulb_rounded : Icons.poll_rounded,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          switch (_pollData!['kind']) {
+                                            'quiz' => 'Quiz',
+                                            'multiple' => 'Sondage à choix multiples',
+                                            'this_or_that' => 'Tu préfères…',
+                                            _ => 'Sondage classique',
+                                          },
+                                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colorScheme.onSurface),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '${(_pollData!['options'] as List).length} options · prêt à publier',
+                                          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Supprimer le sondage',
+                                    onPressed: () => setState(() => _pollData = null),
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                onPressed: () => setState(() => _pollData = null),
-                                icon: const Icon(Icons.close_rounded),
-                              ),
+                              const SizedBox(height: 12),
+                              ...((_pollData!['options'] as List).asMap().entries.map((entry) {
+                                final option = entry.value is Map
+                                    ? (entry.value['label'] ?? '').toString()
+                                    : entry.value.toString();
+                                final isCorrect = _pollData!['kind'] == 'quiz' && entry.value is Map && entry.value['is_correct'] == true;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 7),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surface.withValues(alpha: 0.9),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isCorrect ? Colors.green.withValues(alpha: 0.7) : colorScheme.outlineVariant.withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isCorrect ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                          size: 18,
+                                          color: isCorrect ? Colors.green : colorScheme.outline,
+                                        ),
+                                        const SizedBox(width: 9),
+                                        Expanded(child: Text(option, style: TextStyle(fontSize: 13, color: colorScheme.onSurface))),
+                                        if (isCorrect)
+                                          const Text('Bonne réponse', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              })),
                             ],
                           ),
                         ),
