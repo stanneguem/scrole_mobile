@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -11,6 +12,7 @@ import 'package:scrole/app_controller.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/modules/module_principale/interne/enums/community_role_enum.dart';
 import 'package:scrole/shared/models/post_media.dart';
+import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
 
 class ProfileController extends GetxController {
   late final AppController _appController;
@@ -45,6 +47,9 @@ class ProfileController extends GetxController {
   final RxString lastSignInAt = ''.obs;
   final RxBool isVerified = false.obs;
   final RxBool isLoading = false.obs;
+  final RxInt followersCount = 0.obs;
+  final RxInt followingCount = 0.obs;
+  final RxInt friendsCount = 0.obs;
 
   final RxList<Interest> userInterests = <Interest>[].obs;
 
@@ -77,7 +82,7 @@ class ProfileController extends GetxController {
     _storageRepository = StorageRepository();
     
     _applyProfileOrDefaults(_appController.profile.value);
-    _profileWorker = ever(_appController.profile, _applyProfileOrDefaults);
+    _profileWorker = ever(_appController.profile, (data) {\n      _applyProfileOrDefaults(data);\n      unawaited(_loadFollowStats());\n    });\n    unawaited(_loadFollowStats());
 
     // Mock initial user posts & saved items
     userPosts.value = [
@@ -129,6 +134,18 @@ class ProfileController extends GetxController {
         ],
       ),
     ];
+  }
+
+  Future<void> _loadFollowStats() async {
+    if (userId.value.isEmpty) return;
+    try {
+      final stats = await SocialRepository().getFollowStats();
+      followersCount.value = (stats['followers_count'] as num?)?.toInt() ?? 0;
+      followingCount.value = (stats['following_count'] as num?)?.toInt() ?? 0;
+      friendsCount.value = (stats['friends_count'] as num?)?.toInt() ?? 0;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] get_follow_stats self exception=$e\\n$stack');
+    }
   }
 
   void _applyProfileOrDefaults(Map<String, dynamic>? data) {
