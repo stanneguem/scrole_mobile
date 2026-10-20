@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
 import '../../../module_discussion_direct/centre/services/follow_error_mapper.dart';
 
@@ -252,6 +253,7 @@ class _FollowListTabState extends State<_FollowListTab> {
                           final pseudo = (item['pseudo'] ?? item['username'] ?? '').toString();
                           final photo = item['photo_url']?.toString();
                           final certified = item['is_certified'] == true;
+                          final isCurrentUser = id.isNotEmpty && id == Supabase.instance.client.auth.currentUser?.id;
                           final isFollowing = item['i_follow'] == true;
                           final label = _buttonLabel(item);
                           return ListTile(
@@ -265,20 +267,21 @@ class _FollowListTabState extends State<_FollowListTab> {
                               Flexible(child: Text(display.isEmpty ? pseudo : display, maxLines: 1, overflow: TextOverflow.ellipsis)),
                               if (certified) ...[
                                 const SizedBox(width: 4),
-                                Icon(Icons.verified_rounded, size: 16, color: scheme.primary),
+                                const UserCertifiedBadge(size: 16, showTooltip: true),
                               ],
                             ]),
                             subtitle: Text(pseudo.startsWith('@') ? pseudo : '@$pseudo'),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                TextButton(
-                                  onPressed: id.isEmpty ? null : () => _followAction(item),
-                                  child: Text(label, style: AppTextStyles.bodySmall.copyWith(
-                                    color: isFollowing || item['is_friend'] == true ? scheme.primary : scheme.onSurface,
-                                    fontWeight: FontWeight.w600,
-                                  )),
-                                ),
+                                if (!isCurrentUser)
+                                  TextButton(
+                                    onPressed: id.isEmpty ? null : () => _followAction(item),
+                                    child: Text(label, style: AppTextStyles.bodySmall.copyWith(
+                                      color: isFollowing || item['is_friend'] == true ? scheme.primary : scheme.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                    )),
+                                  ),
                                 if (widget.kind == 'followers' || widget.kind == 'friends')
                                   PopupMenuButton<String>(
                                     onSelected: (action) => _menuAction(action, item),
