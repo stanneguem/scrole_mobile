@@ -41,7 +41,7 @@ class HomeFeedController extends GetxController {
   void queuePostView(CommunityPost post) {
     if (post.isPublishing) return;
     final myId = _authService.userId;
-    if (myId != null && post.authorId == myId) return;
+    if (myId == null || myId.isEmpty || post.authorId == myId) return;
     final lastViewedAt = _sentViewAt[post.id];
     if (lastViewedAt != null && DateTime.now().difference(lastViewedAt) < const Duration(minutes: 10)) return;
     if (_pendingViewIds.contains(post.id)) return;
