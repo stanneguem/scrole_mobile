@@ -156,6 +156,18 @@ class ExternalProfileController extends GetxController {
             profile.value = result.profile;
             final relation = await _repository.getRelationship(userId, forceRefresh: true);
             final stats = await _repository.getFollowStats(userId: userId);
+            Map<String, dynamic> engagementStats = <String, dynamic>{};
+            try {
+              final rawStats = await Supabase.instance.client.rpc(
+                'get_profile_engagement_stats',
+                params: {'p_user_id': userId},
+              );
+              if (rawStats is Map) {
+                engagementStats = Map<String, dynamic>.from(rawStats);
+              }
+            } catch (e) {
+              debugPrint('[ExternalProfileController] engagement stats unavailable: $e');
+            }
             final relationState = (relation['state'] ?? 'none').toString();
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
@@ -172,6 +184,13 @@ class ExternalProfileController extends GetxController {
               followersCount: (stats['followers_count'] as num?)?.toInt() ?? result.profile!.followersCount,
               followingCount: (stats['following_count'] as num?)?.toInt() ?? result.profile!.followingCount,
               friendsCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendsCount,
+              rating: (engagementStats['reputation'] as num?)?.toDouble() ?? result.profile!.rating,
+              postsCount: (engagementStats['posts_count'] as num?)?.toInt() ?? result.profile!.postsCount,
+              totalLikesReceived: (engagementStats['total_likes_received'] as num?)?.toInt() ?? result.profile!.totalLikesReceived,
+              totalDislikesReceived: (engagementStats['total_dislikes_received'] as num?)?.toInt() ?? result.profile!.totalDislikesReceived,
+              eventsParticipatedCount: (engagementStats['events_attended_count'] as num?)?.toInt() ?? result.profile!.eventsParticipatedCount,
+              eventsOrganizedCount: (engagementStats['events_organized_count'] as num?)?.toInt() ?? result.profile!.eventsOrganizedCount,
+              interactionsCount: (engagementStats['interactions_count'] as num?)?.toInt() ?? result.profile!.interactionsCount,
             );
             profile.value = updated;
             isFollowing.value = updated.isFollowing;
