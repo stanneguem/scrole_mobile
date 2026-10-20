@@ -430,7 +430,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
       'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(event.startsAt)}',
       if ((event.city?.name ?? '').trim().isNotEmpty) 'Lieu : ${event.city!.name.trim()}',
     ];
-    return details.join('\\n');
+    return details.join('\n');
   }
 
   void _shareEvent() {
