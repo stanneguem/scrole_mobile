@@ -92,6 +92,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
   bool _isLoading = true;
   String _role = 'member';
   Map<String, dynamic> _modCounts = {};
+  String? _communityName;
   String? _avatarUrl;
   String? _slogan;
 
@@ -113,6 +114,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
         _modCounts = await _service.getCommunityModerationCounts(widget.communityId);
         final comm = await _service.getCommunityById(widget.communityId);
         if (comm != null) {
+          _communityName = comm.name;
           _avatarUrl = comm.avatarUrl;
           _slogan = comm.description;
         }
@@ -149,7 +151,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
         padding: const EdgeInsets.all(16),
         children: [
           _CommunityHeaderCard(
-            communityName: widget.communityName,
+            communityName: _communityName ?? widget.communityName,
             communityAvatar: _avatarUrl ?? widget.communityAvatar,
             communitySlogan: _slogan ?? widget.communitySlogan,
           ),
@@ -160,7 +162,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
             title: 'community_mgmt_mod'.tr,
             subtitle: 'community_mgmt_mod_sub'.tr,
             badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
-            onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
+            onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
           ),
           const SizedBox(height: 12),
 
@@ -171,7 +173,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
               iconColor: Colors.green,
               title: 'community_mgmt_access'.tr,
               subtitle: 'community_mgmt_access_sub'.tr,
-              onTap: () => Get.to(() => CommunityAccessRulesHubScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
+              onTap: () => Get.to(() => CommunityAccessRulesHubScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
             ),
           if (_isAdmin) const SizedBox(height: 12),
 
@@ -182,7 +184,14 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
               iconColor: Colors.deepOrange,
               title: 'community_mgmt_info'.tr,
               subtitle: 'community_mgmt_info_sub'.tr,
-              onTap: () => Get.to(() => CommunityInfoHubScreen(communityId: widget.communityId, communityName: widget.communityName, communityAvatar: _avatarUrl)),
+              onTap: () async {
+                await Get.to(() => CommunityInfoHubScreen(
+                  communityId: widget.communityId,
+                  communityName: _communityName ?? widget.communityName,
+                  communityAvatar: _avatarUrl,
+                ));
+                if (mounted) await _loadRoleAndCounts();
+              },
             ),
         ],
       ),
@@ -794,7 +803,7 @@ class CommunityAccessRulesHubScreen extends StatelessWidget {
 }
 
 // --- Écran H : Informations de la communauté Hub (3 entrées) ---
-class CommunityInfoHubScreen extends StatelessWidget {
+class CommunityInfoHubScreen extends StatefulWidget {
   final String communityId;
   final String communityName;
   final String? communityAvatar;
@@ -807,6 +816,44 @@ class CommunityInfoHubScreen extends StatelessWidget {
   });
 
   @override
+  State<CommunityInfoHubScreen> createState() => _CommunityInfoHubScreenState();
+}
+
+class _CommunityInfoHubScreenState extends State<CommunityInfoHubScreen> {
+  final CommunityService _service = Get.find<CommunityService>();
+  late String _communityName;
+  String? _communityAvatar;
+
+  @override
+  void initState() {
+    super.initState();
+    _communityName = widget.communityName;
+    _communityAvatar = widget.communityAvatar;
+    _loadCommunitySummary();
+  }
+
+  Future<void> _loadCommunitySummary() async {
+    try {
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final community = snapshot['community'] is Map
+          ? Map<String, dynamic>.from(snapshot['community'] as Map)
+          : <String, dynamic>{};
+      if (!mounted) return;
+      setState(() {
+        _communityName = community['name']?.toString() ?? _communityName;
+        _communityAvatar = community['photo_profile']?.toString() ?? _communityAvatar;
+      });
+    } catch (e) {
+      debugPrint('[CommunityInfoHubScreen] Failed to refresh community summary: $e');
+    }
+  }
+
+  Future<void> _openSubpage(Widget page) async {
+    await Get.to(() => page);
+    await _loadCommunitySummary();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
@@ -814,12 +861,12 @@ class CommunityInfoHubScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
-          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => Get.to(() => CommunityInfoSettingsScreen(communityId: communityId, communityName: communityName))),
+          _CommunityHeaderCard(communityName: _communityName, communityAvatar: _communityAvatar),
+          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => _openSubpage(CommunityInfoSettingsScreen(communityId: widget.communityId, communityName: _communityName))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests_desc'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => Get.to(() => CommunityInterestsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests_desc'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => _openSubpage(CommunityInterestsScreen(communityId: widget.communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'community_info_sub_images_desc'.tr, icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => Get.to(() => CommunityImagesScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'community_info_sub_images_desc'.tr, icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => _openSubpage(CommunityImagesScreen(communityId: widget.communityId))),
         ],
       ),
     );
