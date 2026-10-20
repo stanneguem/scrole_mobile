@@ -154,6 +154,16 @@ class ExternalProfileController extends GetxController {
 
   Future<void> _performFollow(ExternalProfileModel current) async {
     isSendingRequest.value = true;
+    final optimisticState = current.followsMe ? 'friends' : (current.isPrivate ? 'requested' : 'following');
+    profile.value = current.copyWith(
+      isFollowing: optimisticState == 'friends' || optimisticState == 'following',
+      isConnected: optimisticState == 'friends',
+      connectionRequestSent: optimisticState == 'requested',
+      relationshipState: optimisticState,
+      clearRequestId: true,
+      clearRetryAt: true,
+    );
+    isFollowing.value = optimisticState == 'friends' || optimisticState == 'following';
     try {
       final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
       final state = (relation['state'] ?? 'none').toString();
@@ -219,6 +229,12 @@ class ExternalProfileController extends GetxController {
       );
       if (action != 'cancel_request') return;
       isSendingRequest.value = true;
+      profile.value = current.copyWith(
+        relationshipState: current.followsMe ? 'follow_back' : 'none',
+        connectionRequestSent: false,
+        clearRequestId: true,
+        clearRetryAt: true,
+      );
       try {
         await _repository.getRelationship(current.userId, forceRefresh: true);
         await _repository.cancelConnection(current.userId);
@@ -235,6 +251,7 @@ class ExternalProfileController extends GetxController {
         profile.value = updated;
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
+        profile.value = current;
         debugPrint('[FOLLOW] cancel_follow_request exception=$e\\n$stack');
         Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
@@ -250,6 +267,16 @@ class ExternalProfileController extends GetxController {
       );
       if (action == null) return;
       isSendingRequest.value = true;
+      final optimisticState = action == 'remove_friend' ? 'none' : (current.followsMe ? 'follow_back' : 'none');
+      profile.value = current.copyWith(
+        relationshipState: optimisticState,
+        isFollowing: false,
+        isConnected: false,
+        connectionRequestSent: false,
+        clearRequestId: true,
+        clearRetryAt: true,
+      );
+      isFollowing.value = false;
       try {
         if (action == 'unfollow') {
           await _repository.cancelConnection(current.userId);
@@ -272,6 +299,8 @@ class ExternalProfileController extends GetxController {
         isFollowing.value = updated.isFollowing;
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
+        profile.value = current;
+        isFollowing.value = current.isFollowing;
         debugPrint('[FOLLOW] relationship action exception=$e\\n$stack');
         Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
@@ -286,6 +315,12 @@ class ExternalProfileController extends GetxController {
         return;
       }
       isSendingRequest.value = true;
+      profile.value = current.copyWith(
+        relationshipState: 'follow_back',
+        isConnected: false,
+        connectionRequestSent: false,
+        clearRequestId: true,
+      );
       try {
         await _repository.respondConnectionRequest(requestId, true, targetUserId: current.userId);
         final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
@@ -301,6 +336,7 @@ class ExternalProfileController extends GetxController {
         isFollowing.value = updated.isFollowing;
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
+        profile.value = current;
         debugPrint('[FOLLOW] respond_follow_request exception=$e\\n$stack');
         Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
