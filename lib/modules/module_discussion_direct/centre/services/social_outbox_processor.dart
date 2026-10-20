@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/service_global/connectivity_service.dart';
 import '../../../../app/service_global/supabse_service.dart';
 import '../persistence/social_local_dao.dart';
+import '../../externe/repositories/social_repository.dart';
 
 class SocialOutboxProcessor extends GetxService {
   final SocialLocalDao _dao;
@@ -29,6 +30,7 @@ class SocialOutboxProcessor extends GetxService {
       if (status == InternetStatus.connected) {
         final userId = _client.auth.currentUser?.id;
         if (userId != null) {
+          SocialRepository.invalidateRelationshipCache();
           processPendingOutbox(userId);
         }
       }
