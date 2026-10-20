@@ -606,7 +606,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
             children: [
               _buildTabButton(0, Icons.grid_on_rounded, 'Publications', tab == 0, colorScheme),
               _buildTabButton(1, Icons.event_rounded, 'Événements', tab == 1, colorScheme),
-              _buildTabButton(2, Icons.bookmark_border_rounded, 'Enregistrés', tab == 2, colorScheme),
+              _buildTabButton(2, Icons.favorite_border_rounded, 'J’aime récents', tab == 2, colorScheme),
             ],
           );
         }),
@@ -630,7 +630,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
   Widget _buildTabButton(int index, IconData icon, String label, bool isSelected, ColorScheme colorScheme) {
     return Expanded(
       child: GestureDetector(
-        onTap: () => controller.selectedTab.value = index,
+        onTap: () => controller.selectProfileTab(index),
         behavior: HitTestBehavior.opaque,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -652,154 +652,214 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
     );
   }
 
-  Widget _buildUserPostsGrid(ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: Center(
-        child: Text('Aucune publication de cet utilisateur', style: TextStyle(color: colorScheme.onSurfaceVariant)),
+
+  Widget _buildUserPostsGrid(ColorScheme colorScheme) =>
+      _buildMediaGrid(colorScheme, tabIndex: 0);
+
+  Widget _buildSavedPostsGrid(ColorScheme colorScheme) =>
+      _buildMediaGrid(colorScheme, tabIndex: 2);
+
+  Widget _buildMediaGrid(ColorScheme colorScheme, {required int tabIndex}) {
+    return Obx(() {
+      final loading = controller.loadingProfileTabs.contains(tabIndex);
+      final error = controller.profileTabErrors[tabIndex];
+      final items = controller.profileTabItems[tabIndex] ?? const <Map<String, dynamic>>[];
+
+      if (loading && items.isEmpty) {
+        return const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()));
+      }
+      if (error != null && items.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(children: [
+            Text(error, textAlign: TextAlign.center, style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 10),
+            TextButton(onPressed: () => controller.loadProfileTab(tabIndex, forceRefresh: true), child: const Text('Réessayer')),
+          ]),
+        );
+      }
+      if (items.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Text(
+              tabIndex == 0 ? 'Aucune publication pour le moment' : 'Aucun J’aime récent',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+        );
+      }
+
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 8),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 3,
+          mainAxisSpacing: 3,
+          childAspectRatio: 0.92,
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final imageUrl = _profilePostImage(item);
+          return GestureDetector(
+            onTap: imageUrl == null || imageUrl.isEmpty ? null : () => _showProfilePostImage(context, imageUrl),
+            child: Stack(fit: StackFit.expand, children: [
+              if (imageUrl != null && imageUrl.isNotEmpty)
+                AppCachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
+              else
+                Container(
+                  color: colorScheme.surfaceContainerHigh,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    item['video_url'] != null ? Icons.play_circle_outline_rounded : Icons.article_outlined,
+                    color: colorScheme.onSurfaceVariant,
+                    size: 30,
+                  ),
+                ),
+              if ((item['video_url'] ?? '').toString().isNotEmpty)
+                const Positioned(right: 6, top: 6, child: Icon(Icons.play_arrow_rounded, color: Colors.white, shadows: [Shadow(blurRadius: 5)])),
+              if (tabIndex == 2)
+                const Positioned(right: 6, bottom: 6, child: Icon(Icons.favorite_rounded, color: Colors.white, size: 17, shadows: [Shadow(blurRadius: 5)])),
+            ]),
+          );
+        },
+      );
+    });
+  }
+
+  String? _profilePostImage(Map<String, dynamic> item) {
+    final media = item['media'];
+    if (media is List) {
+      for (final entry in media) {
+        if (entry is Map) {
+          final type = (entry['type'] ?? entry['media_type'] ?? 'photo').toString().toLowerCase();
+          final url = (entry['thumbnail_url'] ?? entry['thumbnail'] ?? entry['url'] ?? entry['media_url'] ?? '').toString();
+          if (url.isNotEmpty && (type.contains('photo') || type.contains('image') || type.contains('video'))) return url;
+        } else if (entry is String && entry.isNotEmpty) {
+          return entry;
+        }
+      }
+    }
+    final photos = item['photos'];
+    if (photos is List && photos.isNotEmpty && photos.first.toString().isNotEmpty) return photos.first.toString();
+    final photo = (item['photo'] ?? '').toString();
+    if (photo.isNotEmpty) return photo;
+    final thumbnail = (item['video_thumbnail_url'] ?? '').toString();
+    if (thumbnail.isNotEmpty) return thumbnail;
+    return null;
+  }
+
+  void _showProfilePostImage(BuildContext context, String imageUrl) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(alignment: Alignment.topRight, children: [
+          InteractiveViewer(child: AppCachedImage(imageUrl: imageUrl, fit: BoxFit.contain)),
+          IconButton(onPressed: () => Navigator.of(dialogContext).pop(), icon: const Icon(Icons.close_rounded, color: Colors.white)),
+        ]),
       ),
     );
   }
 
   Widget _buildUserEventsList(ColorScheme colorScheme) {
-    final mockEvents = [
-      {
-        'title': 'Cameroun Otaku Festival',
-        'date': '15 Oct 2026',
-        'location': 'Yaoundé, Palais des Congrès',
-        'image': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop',
-        'role': 'Organisateur',
-      },
-      {
-        'title': 'Yaoundé Tech & Code',
-        'date': '22 Oct 2026',
-        'location': 'Startup Hub, Yaoundé',
-        'image': 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop',
-        'role': 'Participant',
-      },
-      {
-        'title': 'Douala Music Fest',
-        'date': '05 Nov 2026',
-        'location': 'Stade Omnisports, Douala',
-        'image': 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop',
-        'role': 'Intervenant',
-      },
-    ];
+    return Obx(() {
+      const tabIndex = 1;
+      final loading = controller.loadingProfileTabs.contains(tabIndex);
+      final error = controller.profileTabErrors[tabIndex];
+      final events = controller.profileTabItems[tabIndex] ?? const <Map<String, dynamic>>[];
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: mockEvents.length,
-      itemBuilder: (context, index) {
-        final ev = mockEvents[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.25)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  SizedBox(
-                    height: 110,
-                    width: double.infinity,
-                    child: AppCachedImage(
-                      imageUrl: ev['image']!,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Container(
-                    height: 110,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.black.withValues(alpha: 0.3), Colors.transparent],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        ev['role']!,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        ev['date']!,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+      if (loading && events.isEmpty) {
+        return const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()));
+      }
+      if (error != null && events.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(children: [
+            Text(error, textAlign: TextAlign.center, style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 10),
+            TextButton(onPressed: () => controller.loadProfileTab(tabIndex, forceRefresh: true), child: const Text('Réessayer')),
+          ]),
+        );
+      }
+      if (events.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(child: Text('Aucun événement à afficher', textAlign: TextAlign.center, style: TextStyle(color: colorScheme.onSurfaceVariant))),
+        );
+      }
+
+      return ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          final event = events[index];
+          final photo = (event['photo'] ?? '').toString();
+          final start = DateTime.tryParse((event['starts_at'] ?? '').toString());
+          final date = start == null ? '' : '\${start.day.toString().padLeft(2, '0')}/\${start.month.toString().padLeft(2, '0')}/\${start.year}';
+          final location = [event['city'], event['country']].where((value) => value != null && value.toString().trim().isNotEmpty).join(', ');
+          final role = (event['role'] ?? '').toString().replaceAll('_', ' ');
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.25)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (photo.isNotEmpty)
+                SizedBox(height: 150, width: double.infinity, child: AppCachedImage(imageUrl: photo, fit: BoxFit.cover)),
               Padding(
                 padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      ev['title']!,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text((event['name'] ?? 'Événement').toString(),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
+                    if (role.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(20)),
+                        child: Text(role, style: TextStyle(fontSize: 10, color: colorScheme.onPrimaryContainer)),
+                      ),
+                  ]),
+                  if (date.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_rounded, size: 14, color: colorScheme.primary),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            ev['location']!,
-                            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+                    Row(children: [
+                      Icon(Icons.calendar_month_outlined, size: 15, color: colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(date, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
+                    ]),
                   ],
-                ),
+                  if (location.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      Icon(Icons.location_on_outlined, size: 15, color: colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(location, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    ]),
+                  ],
+                ]),
               ),
-            ],
-          ),
-        );
-      },
-    );
+            ]),
+          );
+        },
+      );
+    });
   }
 
-  Widget _buildSavedPostsGrid(ColorScheme colorScheme) {
-    return Padding(
-      padding: const EdgeInsets.all(40),
-      child: Center(
-        child: Text('Aucun média associé', style: TextStyle(color: colorScheme.onSurfaceVariant)),
-      ),
-    );
-  }
 }
 
 class _ExpandableBio extends StatefulWidget {
