@@ -20,172 +20,228 @@ class SocialRepository {
 
   String? get currentUserId => _client.auth.currentUser?.id;
 
-  /// Calcul de l'état de relation (§1) strictement depuis le cache local SQLite.
-  Future<RelationState> getRelationState(String targetUserId) async {
-    final userId = currentUserId;
-    if (userId == null) return RelationState.none;
-    return await _dao.getRelationState(userId, targetUserId);
-  }
+  // Cache mémoire des relations : invalidé par les appels d'action et la reconnexion.
+  final Map<String, Map<String, dynamic>> _relationshipCache = <String, Map<String, dynamic>>{};
 
-  /// Récupère la liste des amis confirmés.
-  Future<List<Map<String, dynamic>>> getAcceptedConnections() async {
-    final userId = currentUserId;
-    if (userId == null) return [];
-
-    // 1. Essai de rechargement distant
+  Future<Map<String, dynamic>> getRelationship(String targetUserId, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _relationshipCache.containsKey(targetUserId)) {
+      return Map<String, dynamic>.from(_relationshipCache[targetUserId]!);
+    }
+    debugPrint('[FOLLOW] RPC get_relationship params={p_user_id: $targetUserId}');
     try {
-      final rows = await _client.from('friendships').select();
-      final List<Map<String, dynamic>> friendships = List<Map<String, dynamic>>.from(rows);
-
-      await _dao.saveFriendships(friendships, replaceAll: true);
-
-      final blockedIds = await _dao.getBlockedUserIds();
-
-      final otherUserIds = friendships.map((f) {
-        final a = f['user_a_id'] as String;
-        final b = f['user_b_id'] as String;
-        return a == userId ? b : a;
-      }).where((id) => !blockedIds.contains(id)).toSet().toList();
-
-      if (otherUserIds.isEmpty) return [];
-
-      // Batch profiles (colonnes restreintes de sécurité, JAMAIS select *)
-      final profiles = await _client
-          .from('user_profiles')
-          .select('user_id, username, first_name, last_name, photo_url, is_verified, account_status, deleted_at')
-          .inFilter('user_id', otherUserIds);
-
-      final List<Map<String, dynamic>> safeProfiles = List<Map<String, dynamic>>.from(profiles);
-      await _dao.savePeople(safeProfiles);
-
-      return safeProfiles.where((p) => p['deleted_at'] == null && !blockedIds.contains(p['user_id'])).toList();
-    } catch (e) {
-      debugPrint('[SocialRepository] Error loading remote friends: $e. Falling back to local cache...');
-      final blockedIds = await _dao.getBlockedUserIds();
-      final localFriendships = await _dao.getFriendships(userId);
-      final otherIds = localFriendships.map((f) {
-        final a = f['user_a_id'] as String;
-        final b = f['user_b_id'] as String;
-        return a == userId ? b : a;
-      }).where((id) => !blockedIds.contains(id)).toList();
-
-      return await _dao.getPeople(otherIds);
+      final response = await _client.rpc('get_relationship', params: {'p_user_id': targetUserId});
+      if (response is! Map) throw StateError('Réponse get_relationship invalide');
+      final relation = Map<String, dynamic>.from(response);
+      _relationshipCache[targetUserId] = relation;
+      debugPrint('[FOLLOW] RPC get_relationship response=$relation');
+      return Map<String, dynamic>.from(relation);
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC get_relationship exception=$e\n$stack');
+      rethrow;
     }
   }
 
-  /// Envoyer une demande d'ami.
-  Future<void> sendFriendRequest(String receiverId) async {
-    final userId = currentUserId;
-    if (userId == null) throw 'Utilisateur non connecté';
-
-    final localReq = {
-      'id': 'local:$receiverId',
-      'sender_id': userId,
-      'receiver_id': receiverId,
-      'status': 'pending',
-      'attempt_count': 1,
-      'created_at': DateTime.now().toUtc().toIso8601String(),
-      'sync_status': 'pending_push',
-    };
-
-    // Local DB first
-    await _dao.saveFriendRequests([localReq]);
-
-    // Outbox
-    await _dao.enqueueOutbox(
-      userId: userId,
-      operation: 'send_friend_request',
-      payload: {'receiver_id': receiverId},
-    );
-
-    // Immediate RPC if online
+  Future<Map<String, dynamic>> _relationshipAction(
+    String operation,
+    String rpc,
+    Map<String, dynamic> params,
+    String targetUserId,
+  ) async {
+    _relationshipCache.remove(targetUserId);
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non connecté');
+    await _dao.enqueueOutbox(userId: uid, operation: operation, payload: params);
+    debugPrint('[FOLLOW] RPC $rpc params=$params');
     try {
-      final res = await _client.rpc('send_friend_request', params: {'p_receiver_id': receiverId});
-      if (res is Map) {
-        await _dao.saveFriendRequests([Map<String, dynamic>.from(res)]);
+      final response = await _client.rpc(rpc, params: params);
+      if (response is! Map) throw StateError('Réponse $rpc invalide');
+      final relation = Map<String, dynamic>.from(response);
+      _relationshipCache[targetUserId] = relation;
+      debugPrint('[FOLLOW] RPC $rpc response=$relation');
+      return relation;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC $rpc exception=$e\n$stack');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> followUser(String targetUserId) =>
+      _relationshipAction('follow_user', 'follow_user', {'p_user_id': targetUserId}, targetUserId);
+
+  Future<Map<String, dynamic>> unfollowUser(String targetUserId) =>
+      _relationshipAction('unfollow_user', 'unfollow_user', {'p_user_id': targetUserId}, targetUserId);
+
+  Future<Map<String, dynamic>> cancelFollowRequest(String targetUserId) =>
+      _relationshipAction('cancel_follow_request', 'cancel_follow_request', {'p_user_id': targetUserId}, targetUserId);
+
+  Future<Map<String, dynamic>> respondFollowRequest(String requestId, bool accepted, {required String targetUserId}) async {
+    _relationshipCache.remove(targetUserId);
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non connecté');
+    final params = {'p_request_id': requestId, 'p_accepted': accepted};
+    await _dao.enqueueOutbox(userId: uid, operation: 'respond_follow_request', payload: params);
+    debugPrint('[FOLLOW] RPC respond_follow_request params=$params');
+    try {
+      final response = await _client.rpc('respond_follow_request', params: params);
+      if (response is! Map) throw StateError('Réponse respond_follow_request invalide');
+      final body = Map<String, dynamic>.from(response);
+      final relationRaw = body['relationship'];
+      final relation = relationRaw is Map ? Map<String, dynamic>.from(relationRaw) : body;
+      _relationshipCache[targetUserId] = relation;
+      debugPrint('[FOLLOW] RPC respond_follow_request response=$body');
+      return body;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC respond_follow_request exception=$e\n$stack');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> removeFollower(String targetUserId) =>
+      _relationshipAction('remove_follower', 'remove_follower', {'p_user_id': targetUserId}, targetUserId);
+
+  Future<Map<String, dynamic>> removeFriend(String targetUserId) =>
+      _relationshipAction('remove_friend', 'remove_friend', {'p_user_id': targetUserId}, targetUserId);
+
+  Future<Map<String, dynamic>> getFollowStats({String? userId}) async {
+    final params = <String, dynamic>{if (userId != null) 'p_user_id': userId};
+    debugPrint('[FOLLOW] RPC get_follow_stats params=$params');
+    try {
+      final response = await _client.rpc('get_follow_stats', params: params);
+      if (response is Map) {
+        final result = Map<String, dynamic>.from(response);
+        debugPrint('[FOLLOW] RPC get_follow_stats response=$result');
+        return result;
       }
-    } catch (e) {
-      debugPrint('[SocialRepository] sendFriendRequest offline/error: $e. Outbox will replay.');
+      throw StateError('Réponse get_follow_stats invalide');
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC get_follow_stats exception=$e\n$stack');
+      rethrow;
     }
   }
 
-  /// Répondre à une demande d'ami (Accepter / Refuser).
+  Future<Map<String, dynamic>> getFollowList(
+    String kind, {
+    String? userId,
+    int limit = 30,
+    int offset = 0,
+    String? query,
+  }) async {
+    final rpc = switch (kind) {
+      'followers' => 'get_followers',
+      'following' => 'get_following',
+      'friends' => 'get_friends',
+      _ => throw ArgumentError.value(kind, 'kind', 'Direction invalide'),
+    };
+    final params = <String, dynamic>{
+      'p_user_id': userId,
+      'p_limit': limit,
+      'p_offset': offset,
+      'p_query': query,
+    };
+    debugPrint('[FOLLOW] RPC $rpc params=$params');
+    try {
+      final response = await _client.rpc(rpc, params: params);
+      if (response is Map) {
+        final result = Map<String, dynamic>.from(response);
+        debugPrint('[FOLLOW] RPC $rpc response=$result');
+        return result;
+      }
+      throw StateError('Réponse $rpc invalide');
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC $rpc exception=$e\n$stack');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getMyFollowRequests({
+    required String direction,
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    if (direction != 'received' && direction != 'sent') {
+      throw ArgumentError.value(direction, 'direction', 'Direction invalide');
+    }
+    final params = {'p_direction': direction, 'p_limit': limit, 'p_offset': offset};
+    debugPrint('[FOLLOW] RPC get_my_follow_requests params=$params');
+    try {
+      final response = await _client.rpc('get_my_follow_requests', params: params);
+      if (response is Map) {
+        final result = Map<String, dynamic>.from(response);
+        debugPrint('[FOLLOW] RPC get_my_follow_requests response=$result');
+        return result;
+      }
+      throw StateError('Réponse get_my_follow_requests invalide');
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC get_my_follow_requests exception=$e\n$stack');
+      rethrow;
+    }
+  }
+
+  /// Compatibilité locale : l'état dérivé vient maintenant de get_relationship.
+  Future<RelationState> getRelationState(String targetUserId) async {
+    final relation = await getRelationship(targetUserId);
+    switch ((relation['state'] ?? 'none').toString()) {
+      case 'self': return RelationState.self;
+      case 'friends': return RelationState.friend;
+      case 'requested': return RelationState.requestSent;
+      case 'request_received': return RelationState.requestReceived;
+      case 'blocked': return RelationState.blockedByMe;
+      default: return RelationState.none;
+    }
+  }
+
+  /// Récupère les amis (suivis mutuels) depuis la RPC, sans accès direct à friendships.
+  Future<List<Map<String, dynamic>>> getAcceptedConnections() async {
+    final response = await getFollowList('friends');
+    final rawItems = response['items'];
+    if (rawItems is! List) return [];
+    final profiles = rawItems.whereType<Map>().map((item) {
+      final row = Map<String, dynamic>.from(item);
+      return <String, dynamic>{
+        'user_id': row['user_id'],
+        'username': row['username'],
+        'first_name': row['first_name'],
+        'last_name': row['last_name'],
+        'photo_url': row['photo_url'],
+        'is_verified': row['is_certified'] ?? false,
+        'is_certified': row['is_certified'] ?? false,
+        'account_status': 'active',
+        'deleted_at': null,
+      };
+    }).toList();
+    await _dao.savePeople(profiles);
+    return profiles;
+  }
+
+  /// Compatibilité transitoire : l'ancien appel signifie désormais suivre.
+  Future<void> sendFriendRequest(String receiverId) async {
+    await followUser(receiverId);
+  }
+
   Future<void> respondFriendRequest(String requestId, bool accept, {String? senderId}) async {
-    final userId = currentUserId;
-    if (userId == null) throw 'Utilisateur non connecté';
-
-    if (accept && senderId != null) {
-      await _dao.saveFriendships([{
-        'user_a_id': userId,
-        'user_b_id': senderId,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-        'sync_status': 'pending_push',
-      }]);
-    }
-
-    await _dao.saveFriendRequests([{
-      'id': requestId,
-      'sender_id': senderId ?? '',
-      'receiver_id': userId,
-      'status': accept ? 'accepted' : 'rejected',
-      'responded_at': DateTime.now().toUtc().toIso8601String(),
-      'sync_status': 'pending_push',
-    }]);
-
-    await _dao.enqueueOutbox(
-      userId: userId,
-      operation: 'respond_friend_request',
-      payload: {'request_id': requestId, 'accepted': accept},
-    );
-
-    try {
-      await _client.rpc('respond_friend_request', params: {
-        'p_request_id': requestId,
-        'p_accepted': accept,
-      });
-    } catch (e) {
-      debugPrint('[SocialRepository] respondFriendRequest offline/error: $e. Outbox will replay.');
-    }
+    if (senderId == null || senderId.isEmpty) throw ArgumentError('Utilisateur cible requis');
+    await respondFollowRequest(requestId, accept, targetUserId: senderId);
   }
 
-  /// Annuler une demande envoyée encore pending.
   Future<void> cancelFriendRequest(String requestId) async {
-    final userId = currentUserId;
-    if (userId == null) return;
-
-    await _dao.removeFriendRequest(requestId);
-
-    await _dao.enqueueOutbox(
-      userId: userId,
-      operation: 'cancel_friend_request',
-      payload: {'request_id': requestId},
-    );
-
-    try {
-      await _client.rpc('cancel_friend_request', params: {'p_request_id': requestId});
-    } catch (e) {
-      debugPrint('[SocialRepository] cancelFriendRequest offline/error: $e.');
+    final uid = currentUserId;
+    if (uid == null) return;
+    final requests = await getMyFollowRequests(direction: 'sent', limit: 100, offset: 0);
+    final items = requests['items'];
+    if (items is! List) return;
+    for (final item in items.whereType<Map>()) {
+      if ((item['request_id'] ?? '').toString() == requestId) {
+        final user = item['user'];
+        if (user is Map && user['user_id'] != null) {
+          await cancelFollowRequest(user['user_id'].toString());
+        }
+        return;
+      }
     }
   }
 
-  /// Retirer un ami.
   Future<void> removeFriendship(String otherUserId) async {
-    final userId = currentUserId;
-    if (userId == null) return;
-
-    await _dao.removeFriendship(userId, otherUserId);
-
-    await _dao.enqueueOutbox(
-      userId: userId,
-      operation: 'remove_friendship',
-      payload: {'other_user_id': otherUserId},
-    );
-
-    try {
-      await _client.rpc('remove_friendship', params: {'p_other_user_id': otherUserId});
-    } catch (e) {
-      debugPrint('[SocialRepository] removeFriendship offline/error: $e.');
-    }
+    await removeFriend(otherUserId);
   }
 
   /// Bloquer un utilisateur.
