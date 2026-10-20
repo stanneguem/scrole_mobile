@@ -131,17 +131,5 @@ class ContactsController extends GetxController {
     return contacts.where((c) => c.name.toLowerCase().contains(query) || c.username.toLowerCase().contains(query)).toList();
   }
 
-  List<FriendRequestModel> get incomingRequests {
-    final uid = _userId;
-    if (uid == null) return [];
-    return friendRequests.where((r) => r.receiverId == uid && r.status == 'pending').toList();
-  }
-
-  List<FriendRequestModel> get outgoingRequests {
-    final uid = _userId;
-    if (uid == null) return [];
-    return friendRequests.where((r) => r.senderId == uid && r.status == 'pending').toList();
-  }
-
   void onBack() => Get.back();
 }
