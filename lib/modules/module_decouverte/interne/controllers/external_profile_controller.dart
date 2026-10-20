@@ -333,7 +333,6 @@ class ExternalProfileController extends GetxController {
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
-          canMessage: relation['is_friend'] == true,
         );
         profile.value = updated;
         isFollowing.value = updated.isFollowing;
