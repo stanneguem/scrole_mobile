@@ -275,6 +275,9 @@ class ExternalProfileRepository {
     await _socialRepo.respondFollowRequest(requestId, accept, targetUserId: target);
   }
 
+  Future<Map<String, dynamic>> removeFriend(String userId) =>
+      _socialRepo.removeFriend(userId);
+
   Future<bool> follow(String userId) async {
     await _socialRepo.followUser(userId);
     return true;
