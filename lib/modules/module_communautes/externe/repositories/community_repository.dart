@@ -181,6 +181,27 @@ class CommunityRepository {
     }
   }
 
+  Future<List<Map<String, dynamic>>> searchCommunityHashtags(String query, {int limit = 20}) async {
+    try {
+      final response = await client.rpc('search_community_hashtags', params: {
+        'p_query': query.trim(),
+        'p_limit': limit,
+      });
+      dynamic decoded = response;
+      if (decoded is String) decoded = jsonDecode(decoded);
+      if (decoded is Map) {
+        decoded = decoded['items'] ?? decoded['results'] ?? decoded['data'] ?? [];
+      }
+      if (decoded is! List) return <Map<String, dynamic>>[];
+      return decoded.whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+    } catch (e) {
+      debugPrint('[CommunityRepository] search_community_hashtags failed: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> getCommunityMembersRpc({
     required String communityId,
     int limit = 50,
