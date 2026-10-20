@@ -132,7 +132,13 @@ class ExternalProfileRepository {
     // 4. If RPC returned valid profile json, populate user activities and save to cache
     if (rawJson != null) {
       final modelTmp = ExternalProfileModel.fromJson(rawJson);
-      if (!modelTmp.isPrivate && !modelTmp.isBlocked) {
+      final rawRelationship = rawJson['relationship'];
+      final relationship = rawRelationship is Map ? Map<String, dynamic>.from(rawRelationship) : <String, dynamic>{};
+      final hasApprovedPrivateAccess = rawJson['is_following'] == true ||
+          rawJson['is_friend'] == true ||
+          relationship['is_following'] == true ||
+          relationship['is_friend'] == true;
+      if (!modelTmp.isBlocked && (!modelTmp.isPrivate || hasApprovedPrivateAccess)) {
         final acts = await fetchUserActivities(userId);
         if (acts.isNotEmpty) {
           rawJson['activities'] = acts;
