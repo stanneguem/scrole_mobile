@@ -51,6 +51,13 @@ class ProfileController extends GetxController {
   final RxInt followersCount = 0.obs;
   final RxInt followingCount = 0.obs;
   final RxInt friendsCount = 0.obs;
+  final RxInt postsCount = 0.obs;
+  final RxInt totalLikesReceived = 0.obs;
+  final RxInt totalDislikesReceived = 0.obs;
+  final RxInt eventsAttendedCount = 0.obs;
+  final RxInt eventsOrganizedCount = 0.obs;
+  final RxInt interactionsCount = 0.obs;
+  final RxDouble reputation = 1.0.obs;
 
   final RxList<Interest> userInterests = <Interest>[].obs;
 
@@ -293,9 +300,32 @@ class ProfileController extends GetxController {
       
       if (userId.value.isNotEmpty) {
         _loadUserInterests();
+        unawaited(_loadEngagementStats());
       }
     } catch (e) {
       debugPrint('Erreur mise à jour données: $e');
+    }
+  }
+
+  Future<void> _loadEngagementStats() async {
+    final uid = userId.value;
+    if (uid.isEmpty) return;
+    try {
+      final raw = await Supabase.instance.client.rpc(
+        'get_profile_engagement_stats',
+        params: {'p_user_id': uid},
+      );
+      if (raw is! Map) return;
+      final stats = Map<String, dynamic>.from(raw);
+      postsCount.value = (stats['posts_count'] as num?)?.toInt() ?? 0;
+      totalLikesReceived.value = (stats['total_likes_received'] as num?)?.toInt() ?? 0;
+      totalDislikesReceived.value = (stats['total_dislikes_received'] as num?)?.toInt() ?? 0;
+      eventsAttendedCount.value = (stats['events_attended_count'] as num?)?.toInt() ?? 0;
+      eventsOrganizedCount.value = (stats['events_organized_count'] as num?)?.toInt() ?? 0;
+      interactionsCount.value = (stats['interactions_count'] as num?)?.toInt() ?? 0;
+      reputation.value = (stats['reputation'] as num?)?.toDouble() ?? 1.0;
+    } catch (e, stack) {
+      debugPrint('[ProfileController] get_profile_engagement_stats failed: $e\\n$stack');
     }
   }
 
