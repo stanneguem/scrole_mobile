@@ -84,7 +84,7 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Vous allez quitter cette communauté. Vous pourrez la rejoindre plus tard si vous le souhaitez.',
+              'community_leave_confirmation_message'.tr,
               style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
