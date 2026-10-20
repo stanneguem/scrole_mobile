@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:scrole/app/repository_global/storage_repository.dart';
 import 'package:scrole/app/service_global/media_service.dart';
@@ -72,6 +73,7 @@ class ProfileController extends GetxController {
   final RxBool isUploadingProfileImage = false.obs;
 
   Worker? _profileWorker;
+  RealtimeChannel? _relationshipChannel;
 
   @override
   void onInit() {
@@ -83,6 +85,7 @@ class ProfileController extends GetxController {
     
     _applyProfileOrDefaults(_appController.profile.value);
     _profileWorker = ever(_appController.profile, (data) {\n      _applyProfileOrDefaults(data);\n      unawaited(_loadFollowStats());\n    });\n    unawaited(_loadFollowStats());
+    _subscribeToRelationshipChanges();
 
     // Mock initial user posts & saved items
     userPosts.value = [
@@ -134,6 +137,35 @@ class ProfileController extends GetxController {
         ],
       ),
     ];
+  }
+
+  void _subscribeToRelationshipChanges() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      _relationshipChannel = Supabase.instance.client
+          .channel('user:$uid', opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: 'relationship_changed',
+            callback: (payload) {
+              debugPrint('[FOLLOW] relationship_changed self stats payload=$payload');
+              unawaited(_loadFollowStats());
+            },
+          )
+          ..subscribe();
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] self relationship_changed subscription exception=$e\\n$stack');
+    }
+  }
+
+  @override
+  void onClose() {
+    _profileWorker?.dispose();
+    final channel = _relationshipChannel;
+    if (channel != null) {
+      unawaited(Supabase.instance.client.removeChannel(channel));
+    }
+    super.onClose();
   }
 
   Future<void> _loadFollowStats() async {
