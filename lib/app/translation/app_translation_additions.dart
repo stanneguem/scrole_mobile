@@ -544,7 +544,7 @@ class AppTranslationAdditions {
       'follow_requests_title': "Demandes de suivi",
       'follow_requests_received': "Reçues",
       'follow_requests_sent': "Envoyées",
-      'follow_retry_at': "Réessayer le @date",
+      'follow_retry_at': "Tu pourras renvoyer une demande le @date",
       'follow_notification_new_follower': "@name vous suit",
       'follow_notification_new_friend': "Vous êtes maintenant amis avec @name",
       'follow_notification_request': "@name souhaite vous suivre",
