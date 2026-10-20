@@ -113,6 +113,7 @@ class ExternalProfileController extends GetxController {
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
               isConnected: relation['is_friend'] == true,
+              canMessage: relation['is_friend'] == true,
               connectionRequestSent: relationState == 'requested',
               followsMe: relation['follows_me'] == true,
               relationshipState: relationState,
@@ -242,6 +243,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
+          canMessage: relation['is_friend'] == true,
           connectionRequestSent: false,
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
@@ -287,6 +289,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
+          canMessage: relation['is_friend'] == true,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
@@ -327,6 +330,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
+          canMessage: relation['is_friend'] == true,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
