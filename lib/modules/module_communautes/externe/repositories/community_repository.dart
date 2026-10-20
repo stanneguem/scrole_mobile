@@ -614,6 +614,8 @@ class CommunityRepository {
     int? ageMin,
     int? ageMax,
     bool clearAge = false,
+    bool clearAgeMin = false,
+    bool clearAgeMax = false,
     bool clearGender = false,
   }) async {
     final params = <String, dynamic>{'p_community_id': communityId};
@@ -629,6 +631,8 @@ class CommunityRepository {
     if (ageMin != null) params['p_age_min'] = ageMin;
     if (ageMax != null) params['p_age_max'] = ageMax;
     params['p_clear_age'] = clearAge;
+    params['p_clear_age_min'] = clearAgeMin;
+    params['p_clear_age_max'] = clearAgeMax;
     params['p_clear_gender'] = clearGender;
     final response = await client.rpc('update_community_management_settings', params: params);
     if (response is! Map) {
