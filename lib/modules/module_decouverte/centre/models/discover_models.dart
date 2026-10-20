@@ -28,7 +28,7 @@ class SearchResultItem {
       subtitle: json['subtitle']?.toString(),
       photoUrl: json['photo_url']?.toString(),
       friendCount: (json['friend_count'] as num?)?.toInt(),
-      isCertified: json['is_certified'] == true,
+      isCertified: json['is_certified'] == true || json['is_verified'] == true || json['is_certified'] == 1 || json['is_verified'] == 1,
       followsMe: json['follows_me'] == true,
     );
   }
