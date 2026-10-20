@@ -98,7 +98,7 @@ String _formatPublicationDate(String rawDate) {
   final parsed = DateTime.tryParse(rawDate.trim());
   if (parsed == null) return rawDate;
   final localDate = parsed.toLocal();
-  return DateFormat('dd/MM/yyyy à HH:mm').format(localDate);
+  return DateFormat('dd/MM/yyyy HH:mm').format(localDate);
 }
 
 class _PostMediaPage extends StatefulWidget {
