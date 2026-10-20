@@ -11,6 +11,7 @@ import '../../externe/repositories/home_feed_repository.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/user_identity_row.dart';
+import '../../../../shared/widgets/comment_share_poster.dart';
 import '../pages/create_story_screen.dart';
 
 class _MentionHighlightingController extends TextEditingController {
@@ -1058,11 +1059,22 @@ class _ShareCommentSheetWidget extends StatelessWidget {
                   svgAsset: 'assets/svg_icons/story-svgrepo-com.svg',
                   color: Colors.pink,
                   label: 'Ma story',
-                  onTap: () {
+                  onTap: () async {
                     Navigator.of(context).pop();
-                    Get.to(() => CreateStoryScreen(
-                          prefilledText: 'Commentaire de @$username : "$content"',
-                        ));
+                    try {
+                      final image = await CommentSharePosterService.generateImage(
+                        authorName: authorName,
+                        username: username,
+                        content: content,
+                        context: context,
+                      );
+                      Get.to(() => CreateStoryScreen(
+                            prefilledText: 'Commentaire de @${username.isEmpty ? authorName : username}',
+                            prefilledMediaUrl: image.path,
+                          ));
+                    } catch (e) {
+                      Get.snackbar('Erreur', 'Impossible de préparer la carte du commentaire.');
+                    }
                   },
                 ),
                 const SizedBox(width: 16),
@@ -1113,7 +1125,16 @@ class _ShareCommentSheetWidget extends StatelessWidget {
                   label: 'Autres apps',
                   onTap: () async {
                     Navigator.of(context).pop();
-                    await Share.share('Commentaire de @$username sur Scrole : "$content"');
+                    try {
+                      await CommentSharePosterService.shareImage(
+                        authorName: authorName,
+                        username: username,
+                        content: content,
+                        context: context,
+                      );
+                    } catch (e) {
+                      Get.snackbar('Erreur', 'Impossible de partager l’image du commentaire.');
+                    }
                   },
                 ),
               ],
