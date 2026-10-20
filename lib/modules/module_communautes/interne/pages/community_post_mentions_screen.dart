@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -7,6 +9,7 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CommunityPostMentionsController extends GetxController {
   late final CommunityService _service = Get.isRegistered<CommunityService>()
@@ -19,6 +22,9 @@ class CommunityPostMentionsController extends GetxController {
   final selectedUserIds = <String>{}.obs;
   final isLoading = true.obs;
   final searchController = TextEditingController();
+  final Map<String, Map<String, dynamic>> _knownMembersById = {};
+  Timer? _searchDebounce;
+  int _loadRequestId = 0;
 
   @override
   void onInit() {
@@ -33,34 +39,90 @@ class CommunityPostMentionsController extends GetxController {
 
   @override
   void onClose() {
+    _searchDebounce?.cancel();
     searchController.dispose();
     super.onClose();
   }
 
-  Future<void> loadMembers() async {
+  Future<void> loadMembers({String? query}) async {
+    final requestId = ++_loadRequestId;
     isLoading.value = true;
     try {
-      final res = await _service.getCommunityMembers(communityId);
-      final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null;
+      List<Map<String, dynamic>> res;
+      if (communityId.trim().isNotEmpty) {
+        res = await _service.getCommunityMembers(communityId);
+      } else {
+        final client = Supabase.instance.client;
+        final search = (query ?? '').trim();
+        Future<List<Map<String, dynamic>>> fetchProfiles(String column) async {
+          final rows = await client
+              .from('user_profiles')
+              .select('user_id, username, first_name, last_name, photo_url, is_verified')
+              .eq('account_status', 'active')
+              .isFilter('deleted_at', null)
+              .ilike(column, '%$search%')
+              .order('username')
+              .limit(50);
+          return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+        }
 
-      // Filter out current user
+        if (search.isEmpty) {
+          final rows = await client
+              .from('user_profiles')
+              .select('user_id, username, first_name, last_name, photo_url, is_verified')
+              .eq('account_status', 'active')
+              .isFilter('deleted_at', null)
+              .order('username')
+              .limit(50);
+          res = rows.map((row) => Map<String, dynamic>.from(row)).toList();
+        } else {
+          final results = await Future.wait([
+            fetchProfiles('username'),
+            fetchProfiles('first_name'),
+            fetchProfiles('last_name'),
+          ]);
+          final byId = <String, Map<String, dynamic>>{};
+          for (final rows in results) {
+            for (final row in rows) {
+              final id = (row['user_id'] ?? '').toString();
+              if (id.isNotEmpty) byId[id] = row;
+            }
+          }
+          res = byId.values.toList();
+        }
+      }
+
+      final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null;
       final cleanMembers = res.where((m) {
         final profile = m['user_profiles'] is Map ? Map<String, dynamic>.from(m['user_profiles']) : <String, dynamic>{};
         final uid = profile['user_id']?.toString() ?? profile['id']?.toString() ?? m['user_id']?.toString() ?? m['userId']?.toString() ?? '';
-        return uid != currentUserId;
+        return uid.isNotEmpty && uid != currentUserId;
       }).toList();
 
+      if (requestId != _loadRequestId) return;
+      for (final member in cleanMembers) {
+        final profile = member['user_profiles'] is Map ? Map<String, dynamic>.from(member['user_profiles']) : member;
+        final uid = (profile['user_id'] ?? profile['id'] ?? member['user_id'] ?? member['id'] ?? '').toString();
+        if (uid.isNotEmpty) _knownMembersById[uid] = member;
+      }
       members.value = cleanMembers;
       filteredMembers.value = cleanMembers;
     } catch (e) {
       debugPrint('[CommunityMentions] Error loading members: $e');
     } finally {
-      isLoading.value = false;
+      if (requestId == _loadRequestId) isLoading.value = false;
     }
   }
 
   void _filterMembers() {
     final query = searchController.text.trim().toLowerCase();
+    if (communityId.trim().isEmpty) {
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+        loadMembers(query: query);
+      });
+      return;
+    }
     if (query.isEmpty) {
       filteredMembers.value = members;
     } else {
@@ -81,15 +143,20 @@ class CommunityPostMentionsController extends GetxController {
         Get.snackbar('Limite atteinte', 'Vous ne pouvez identifier que 20 personnes au maximum.', snackPosition: SnackPosition.BOTTOM);
         return;
       }
+      final member = members.firstWhereOrNull((m) {
+        final profile = m['user_profiles'] is Map ? Map<String, dynamic>.from(m['user_profiles']) : m;
+        return (profile['user_id'] ?? profile['id'] ?? m['user_id'] ?? m['id'] ?? '').toString() == userId;
+      });
+      if (member != null) _knownMembersById[userId] = member;
       selectedUserIds.add(userId);
     }
   }
 
   void confirm() {
-    final selected = members.where((m) {
-      final uId = (m['user_id'] ?? m['id'] ?? '').toString();
-      return selectedUserIds.contains(uId);
-    }).toList();
+    final selected = selectedUserIds
+        .map((id) => _knownMembersById[id])
+        .whereType<Map<String, dynamic>>()
+        .toList();
     Get.back(result: selected);
   }
 }
