@@ -188,6 +188,12 @@ class ExternalProfileController extends GetxController {
       return;
     }
     if (state == 'requested') {
+      final action = await Get.bottomSheet<String>(
+        const _RelationshipActionSheet(isFriend: false, isRequest: true),
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black.withValues(alpha: .35),
+      );
+      if (action != 'cancel_request') return;
       isSendingRequest.value = true;
       try {
         await _repository.getRelationship(current.userId, forceRefresh: true);
@@ -392,8 +398,9 @@ class _ConnectionActionSheet extends StatelessWidget {
 }
 
 class _RelationshipActionSheet extends StatelessWidget {
-  const _RelationshipActionSheet({required this.isFriend});
+  const _RelationshipActionSheet({required this.isFriend, this.isRequest = false});
   final bool isFriend;
+  final bool isRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -414,7 +421,10 @@ class _RelationshipActionSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            action('unfollow', 'follow_unfollow_action'.tr, Icons.person_remove_alt_1_rounded),
+            if (isRequest)
+              action('cancel_request', 'follow_cancel_request_action'.tr, Icons.close_rounded)
+            else
+              action('unfollow', 'follow_unfollow_action'.tr, Icons.person_remove_alt_1_rounded),
             if (isFriend) action('remove_friend', 'follow_remove_friend_action'.tr, Icons.person_off_outlined),
             ListTile(
               leading: const Icon(Icons.close_rounded),
