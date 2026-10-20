@@ -497,6 +497,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "L’image dépasse la taille maximale de 5 Mo.",
       'community_settings_image_compression_failed': "Impossible de préparer cette image. Essaie avec une autre photo.",
       'community_rule_required': "La règle ne peut pas être vide.",
+      'community_post_permission_everyone': "Tout le monde",
+      'community_post_permission_admins': "Administrateurs et modérateurs",
+      'community_post_permission_nobody': "Personne",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -987,6 +990,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "The image exceeds the 5 MB limit.",
       'community_settings_image_compression_failed': "Could not prepare this image. Try another photo.",
       'community_rule_required': "The rule cannot be empty.",
+      'community_post_permission_everyone': "Everyone",
+      'community_post_permission_admins': "Administrators and moderators",
+      'community_post_permission_nobody': "Nobody",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1394,6 +1400,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "La imagen supera el límite de 5 MB.",
       'community_settings_image_compression_failed': "No se pudo preparar esta imagen. Prueba con otra foto.",
       'community_rule_required': "La regla no puede estar vacía.",
+      'community_post_permission_everyone': "Todos",
+      'community_post_permission_admins': "Administradores y moderadores",
+      'community_post_permission_nobody': "Nadie",
     },
     'de': {
       'status_online': 'Online',
@@ -1784,6 +1793,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "Das Bild überschreitet die Grenze von 5 MB.",
       'community_settings_image_compression_failed': "Das Bild konnte nicht vorbereitet werden. Versuche ein anderes Foto.",
       'community_rule_required': "Die Regel darf nicht leer sein.",
+      'community_post_permission_everyone': "Alle",
+      'community_post_permission_admins': "Administratoren und Moderatoren",
+      'community_post_permission_nobody': "Niemand",
     },
     'it': {
       'status_online': 'In linea',
@@ -2174,6 +2186,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "L’immagine supera il limite di 5 MB.",
       'community_settings_image_compression_failed': "Impossibile preparare questa immagine. Prova con un’altra foto.",
       'community_rule_required': "La regola non può essere vuota.",
+      'community_post_permission_everyone': "Tutti",
+      'community_post_permission_admins': "Amministratori e moderatori",
+      'community_post_permission_nobody': "Nessuno",
     },
     'pt': {
       'status_online': 'Online',
@@ -2564,6 +2579,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "A imagem excede o limite de 5 MB.",
       'community_settings_image_compression_failed': "Não foi possível preparar esta imagem. Tente outra foto.",
       'community_rule_required': "A regra não pode estar vazia.",
+      'community_post_permission_everyone': "Todos",
+      'community_post_permission_admins': "Administradores e moderadores",
+      'community_post_permission_nobody': "Ninguém",
     },
     'zh': {
       'status_online': '在线',
@@ -2954,6 +2972,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "图片超过了 5 MB 的大小限制。",
       'community_settings_image_compression_failed': "无法处理此图片，请尝试其他照片。",
       'community_rule_required': "规则不能为空。",
+      'community_post_permission_everyone': "所有人",
+      'community_post_permission_admins': "管理员和版主",
+      'community_post_permission_nobody': "无人",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3343,6 +3364,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "画像が5MBの上限を超えています。",
       'community_settings_image_compression_failed': "画像を処理できませんでした。別の写真をお試しください。",
       'community_rule_required': "ルールを空にすることはできません。",
+      'community_post_permission_everyone': "全員",
+      'community_post_permission_admins': "管理者とモデレーター",
+      'community_post_permission_nobody': "誰も許可しない",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3727,6 +3751,9 @@ class AppTranslationAdditions {
       'community_settings_image_too_large': "Размер изображения превышает лимит 5 МБ.",
       'community_settings_image_compression_failed': "Не удалось подготовить изображение. Попробуйте другое фото.",
       'community_rule_required': "Правило не может быть пустым.",
+      'community_post_permission_everyone': "Все",
+      'community_post_permission_admins': "Администраторы и модераторы",
+      'community_post_permission_nobody': "Никто",
     },
   };
 
