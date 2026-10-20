@@ -925,28 +925,30 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isCalendarLoading ? null : _handleCalendarAction,
-                          icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
-                          label: Text(
-                            _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
-                            style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
-                            foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
-                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
+                  if (_preview == null || _preview!.canAddToCalendar) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isCalendarLoading ? null : _handleCalendarAction,
+                            icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
+                            label: Text(
+                              _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
+                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
+                              foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   Row(
                     children: [
                       // 1. LIKE
