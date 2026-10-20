@@ -812,11 +812,13 @@ class CommunityRepository {
         'p_limit': limit,
         'p_offset': offset,
       });
-      if (response is Map) return Map<String, dynamic>.from(response);
-      return {'items': [], 'has_more': false};
+      if (response is! Map) {
+        throw const FormatException('Réponse invalide des publications en attente.');
+      }
+      return Map<String, dynamic>.from(response);
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getCommunityPendingPosts: $e');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
@@ -842,11 +844,13 @@ class CommunityRepository {
       };
       if (cursor != null && cursor.isNotEmpty) params['p_cursor'] = cursor;
       final response = await client.rpc('get_community_join_requests', params: params);
-      if (response is Map) return Map<String, dynamic>.from(response);
-      return {'items': [], 'has_more': false};
+      if (response is! Map) {
+        throw const FormatException('Réponse invalide des demandes d’adhésion.');
+      }
+      return Map<String, dynamic>.from(response);
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getCommunityJoinRequests: $e');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
@@ -950,14 +954,13 @@ class CommunityRepository {
 
   Future<List<Map<String, dynamic>>> getAvailableInterests() async {
     try {
-      final response = await client.from('interests').select();
-      if (response is List) {
-        return response.map((e) => Map<String, dynamic>.from(e)).toList();
-      }
-      return [];
+      final response = await client.from('interests').select().order('name');
+      return (response as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getAvailableInterests: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -966,22 +969,16 @@ class CommunityRepository {
       final response = await client.rpc('get_community_interests', params: {'p_community_id': communityId});
       if (response is List) {
         return response.map((e) => Map<String, dynamic>.from(e)).toList();
-      } else if (response is Map && response['items'] is List) {
-        return (response['items'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
       }
-      return [];
+      if (response is Map && response['items'] is List) {
+        return (response['items'] as List)
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      throw const FormatException('Réponse invalide des centres d’intérêt de la communauté.');
     } catch (e) {
-      try {
-        final response = await client.from('community_interests').select('interests(*)').eq('community_id', communityId);
-        if (response is List) {
-          return response.map((e) {
-            final item = Map<String, dynamic>.from(e);
-            return item['interests'] is Map ? Map<String, dynamic>.from(item['interests']) : item;
-          }).toList();
-        }
-      } catch (_) {}
       debugPrint('[CommunityRepository] Error in getCommunityInterests: $e');
-      return [];
+      rethrow;
     }
   }
 
