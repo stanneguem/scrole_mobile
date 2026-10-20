@@ -108,28 +108,41 @@ class SocialOutboxProcessor extends GetxService {
     required Map<String, dynamic> payload,
   }) async {
     switch (operation) {
+      case 'follow_user':
       case 'send_friend_request':
-        final receiverId = payload['receiver_id'] as String;
-        await _client.rpc('send_friend_request', params: {'p_receiver_id': receiverId});
+        final userId = (payload['p_user_id'] ?? payload['receiver_id'])?.toString();
+        if (userId == null || userId.isEmpty) throw StateError('p_user_id manquant');
+        await _client.rpc('follow_user', params: {'p_user_id': userId});
         break;
 
+      case 'unfollow_user':
+        await _client.rpc('unfollow_user', params: {'p_user_id': payload['p_user_id']});
+        break;
+
+      case 'cancel_follow_request':
+      case 'cancel_friend_request':
+        final userId = (payload['p_user_id'] ?? payload['target_user_id'])?.toString();
+        if (userId == null || userId.isEmpty) throw StateError('p_user_id manquant');
+        await _client.rpc('cancel_follow_request', params: {'p_user_id': userId});
+        break;
+
+      case 'respond_follow_request':
       case 'respond_friend_request':
-        final requestId = payload['request_id'] as String;
-        final accepted = payload['accepted'] as bool;
-        await _client.rpc('respond_friend_request', params: {
-          'p_request_id': requestId,
-          'p_accepted': accepted,
+        await _client.rpc('respond_follow_request', params: {
+          'p_request_id': payload['p_request_id'] ?? payload['request_id'],
+          'p_accepted': payload['p_accepted'] ?? payload['accepted'],
         });
         break;
 
-      case 'cancel_friend_request':
-        final requestId = payload['request_id'] as String;
-        await _client.rpc('cancel_friend_request', params: {'p_request_id': requestId});
+      case 'remove_follower':
+        await _client.rpc('remove_follower', params: {'p_user_id': payload['p_user_id']});
         break;
 
+      case 'remove_friend':
       case 'remove_friendship':
-        final otherUserId = payload['other_user_id'] as String;
-        await _client.rpc('remove_friendship', params: {'p_other_user_id': otherUserId});
+        final userId = (payload['p_user_id'] ?? payload['other_user_id'])?.toString();
+        if (userId == null || userId.isEmpty) throw StateError('p_user_id manquant');
+        await _client.rpc('remove_friend', params: {'p_user_id': userId});
         break;
 
       case 'generate_user_qr_code':
@@ -139,21 +152,20 @@ class SocialOutboxProcessor extends GetxService {
 
       case 'scan_qr_code':
         final qrId = payload['qr_id'] as String;
-        final mode = payload['mode'] as String;
-        await _client.rpc('scan_qr_code', params: {'p_qr_id': qrId, 'p_mode': mode});
+        debugPrint('[FOLLOW] RPC scan_qr_code params={p_qr_id: $qrId, p_mode: null}');
+        await _client.rpc('scan_qr_code', params: {'p_qr_id': qrId, 'p_mode': null});
         break;
 
       case 'block_user':
         final targetId = payload['bloque_id'] as String;
         final reason = payload['raison'] as String?;
         final until = payload['bloque_jusquau'] as String?;
-
-        // 1. Remove friendship first (§7)
+        // Le blocage reste géré par la table dédiée ; la suppression des liens passe par la RPC.
         try {
-          await _client.rpc('remove_friendship', params: {'p_other_user_id': targetId});
-        } catch (_) {}
-
-        // 2. Insert into blocage_utilisateur
+          await _client.rpc('remove_friend', params: {'p_user_id': targetId});
+        } catch (e, stack) {
+          debugPrint('[FOLLOW] RPC remove_friend pendant blocage exception=$e\\n$stack');
+        }
         await _client.from('blocage_utilisateur').insert({
           'bloqueur_id': _client.auth.currentUser?.id,
           'bloque_id': targetId,
