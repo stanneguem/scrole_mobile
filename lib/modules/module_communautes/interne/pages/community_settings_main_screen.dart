@@ -630,6 +630,23 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
   }
 
   Future<void> _resolveReport(String reportId, String action) async {
+    if (action == 'remove_content') {
+      final confirmed = await Get.dialog<bool>(
+        AlertDialog(
+          title: Text('community_report_remove_confirm_title'.tr),
+          content: Text('community_report_remove_confirm_message'.tr),
+          actions: [
+            TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Get.back(result: true),
+              child: Text('community_report_remove_confirm_action'.tr),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
     try {
       await _service.resolveCommunityReport(reportId, action);
       await _loadReports();
@@ -682,52 +699,156 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
               controller: _tabController,
               children: [
                 // 1. Content Reports
-                ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _reports.length,
-                  itemBuilder: (context, index) {
-                    final r = _reports[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text('community_report_item_title'.trParams({'type': r['target_type']?.toString() ?? ''})),
-                        subtitle: Text(r['description'] ?? r['reason'] ?? ''),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => _resolveReport(r['id'], 'dismiss')),
-                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _resolveReport(r['id'], 'remove_content')),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                // 2. Member Reports
-                ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _userReports.length,
-                  itemBuilder: (context, index) {
-                    final r = _userReports[index];
-                    return Card(
-                      child: ListTile(
-                        title: Text('community_member_report_title'.tr),
-                        subtitle: Text(r['description'] ?? r['reason'] ?? ''),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => _resolveUserReport(r['id'], 'dismiss')),
-                            if (_role == 'admin')
-                              IconButton(
-                                tooltip: 'community_exclude_action'.tr,
-                                icon: const Icon(Icons.block, color: Colors.red),
-                                onPressed: () => _resolveUserReport(r['id'].toString(), 'exclude_member'),
+                _reports.isEmpty
+                    ? Center(child: Text('community_reports_content_empty'.tr))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _reports.length,
+                        itemBuilder: (context, index) {
+                          final r = Map<String, dynamic>.from(_reports[index] as Map);
+                          final target = r['target'] is Map
+                              ? Map<String, dynamic>.from(r['target'] as Map)
+                              : <String, dynamic>{};
+                          final targetAuthor = target['author'] is Map
+                              ? Map<String, dynamic>.from(target['author'] as Map)
+                              : <String, dynamic>{};
+                          final reporter = r['reporter'] is Map
+                              ? Map<String, dynamic>.from(r['reporter'] as Map)
+                              : <String, dynamic>{};
+                          final reasonData = r['reason'] is Map
+                              ? Map<String, dynamic>.from(r['reason'] as Map)
+                              : <String, dynamic>{};
+                          final reason = reasonData['nom']?.toString() ?? reasonData['code']?.toString() ?? '';
+                          final description = r['description']?.toString() ?? '';
+                          final targetContent = target['content']?.toString() ?? '';
+                          final reporterName = '${reporter['first_name'] ?? ''} ${reporter['last_name'] ?? ''}'.trim();
+                          final targetAuthorName = '${targetAuthor['first_name'] ?? ''} ${targetAuthor['last_name'] ?? ''}'.trim();
+                          final targetType = r['target_type']?.toString() ?? '';
+                          final reportsCount = (r['reports_count'] as num?)?.toInt() ?? 1;
+                          final reportId = r['id']?.toString() ?? '';
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              isThreeLine: true,
+                              title: Text('community_report_item_title'.trParams({'type': targetType})),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (targetAuthorName.isNotEmpty || targetAuthor['username'] != null)
+                                    Text('community_report_target_author'.trParams({
+                                      'name': targetAuthorName.isNotEmpty
+                                          ? targetAuthorName
+                                          : '@${targetAuthor['username']}',
+                                    })),
+                                  if (reporterName.isNotEmpty || reporter['username'] != null)
+                                    Text('community_reported_by'.trParams({
+                                      'name': reporterName.isNotEmpty
+                                          ? reporterName
+                                          : '@${reporter['username']}',
+                                    })),
+                                  if (reason.isNotEmpty)
+                                    Text('community_report_reason_prefix'.trParams({'reason': reason})),
+                                  if (description.isNotEmpty) Text(description),
+                                  if (targetContent.isNotEmpty)
+                                    Text(
+                                      'community_report_target_content'.trParams({'content': targetContent}),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  if (reportsCount > 1)
+                                    Text('community_report_reports_count'.trParams({'count': reportsCount.toString()})),
+                                ],
                               ),
-                          ],
-                        ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'community_report_dismiss'.tr,
+                                    icon: const Icon(Icons.close, color: Colors.grey),
+                                    onPressed: reportId.isEmpty ? null : () => _resolveReport(reportId, 'dismiss'),
+                                  ),
+                                  if (targetType == 'post' || targetType == 'comment')
+                                    IconButton(
+                                      tooltip: 'community_report_remove_confirm_action'.tr,
+                                      icon: const Icon(Icons.delete, color: Colors.red),
+                                      onPressed: reportId.isEmpty ? null : () => _resolveReport(reportId, 'remove_content'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+                // 2. Member Reports
+                _userReports.isEmpty
+                    ? Center(child: Text('community_reports_members_empty'.tr))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _userReports.length,
+                        itemBuilder: (context, index) {
+                          final r = Map<String, dynamic>.from(_userReports[index] as Map);
+                          final target = r['target'] is Map
+                              ? Map<String, dynamic>.from(r['target'] as Map)
+                              : <String, dynamic>{};
+                          final reporter = r['reporter'] is Map
+                              ? Map<String, dynamic>.from(r['reporter'] as Map)
+                              : <String, dynamic>{};
+                          final reasonData = r['reason'] is Map
+                              ? Map<String, dynamic>.from(r['reason'] as Map)
+                              : <String, dynamic>{};
+                          final reason = reasonData['nom']?.toString() ?? reasonData['code']?.toString() ?? '';
+                          final description = r['description']?.toString() ?? '';
+                          final targetName = '${target['first_name'] ?? ''} ${target['last_name'] ?? ''}'.trim();
+                          final reporterName = '${reporter['first_name'] ?? ''} ${reporter['last_name'] ?? ''}'.trim();
+                          final reportId = r['id']?.toString() ?? '';
+                          final reportsCount = (r['reports_count'] as num?)?.toInt() ?? 1;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              title: Text('community_member_report_title'.tr),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('community_user_report_target'.trParams({
+                                    'name': targetName.isNotEmpty
+                                        ? targetName
+                                        : (target['username'] == null ? 'excluded_members_unknown_user'.tr : '@${target['username']}'),
+                                  })),
+                                  if (reporterName.isNotEmpty || reporter['username'] != null)
+                                    Text('community_reported_by'.trParams({
+                                      'name': reporterName.isNotEmpty
+                                          ? reporterName
+                                          : '@${reporter['username']}',
+                                    })),
+                                  if (reason.isNotEmpty)
+                                    Text('community_report_reason_prefix'.trParams({'reason': reason})),
+                                  if (description.isNotEmpty) Text(description),
+                                  if (reportsCount > 1)
+                                    Text('community_report_reports_count'.trParams({'count': reportsCount.toString()})),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'community_report_dismiss'.tr,
+                                    icon: const Icon(Icons.close, color: Colors.grey),
+                                    onPressed: reportId.isEmpty ? null : () => _resolveUserReport(reportId, 'dismiss'),
+                                  ),
+                                  if (_role == 'admin')
+                                    IconButton(
+                                      tooltip: 'community_exclude_action'.tr,
+                                      icon: const Icon(Icons.block, color: Colors.red),
+                                      onPressed: reportId.isEmpty ? null : () => _resolveUserReport(reportId, 'exclude_member'),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ],
             ),
     );
