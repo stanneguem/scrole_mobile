@@ -42,11 +42,12 @@ class EditProfileController extends GetxController {
 
   static const int _lockDays = 90;
 
-  // Verrous individuels
-  final RxBool canChangeUsername = true.obs;
-  final RxBool canChangeGender = true.obs;
-  final RxBool canChangeLocation = true.obs;
-  final RxBool canChangeBirthDate = true.obs;
+  // Verrous individuels : verrouillés par défaut jusqu'à la réponse backend.
+  final RxBool canChangeUsername = false.obs;
+  final RxBool canChangeGender = false.obs;
+  final RxBool canChangeLocation = false.obs;
+  final RxBool canChangeBirthDate = false.obs;
+  final RxBool lockMetadataLoaded = false.obs;
 
   final RxInt usernameDaysLeft = 0.obs;
   final RxInt genderDaysLeft = 0.obs;
@@ -63,7 +64,6 @@ class EditProfileController extends GetxController {
     _prefillFromProfile();
     _loadCountries();
     _loadInterests();
-    _computeAllLocks();
     unawaited(_refreshLockMetadata());
   }
 
@@ -153,10 +153,12 @@ class EditProfileController extends GetxController {
       _profileController.locationUpdatedAt.value = _parseLockDate(data['location_updated_at']);
       _profileController.birthDateUpdatedAt.value = _parseLockDate(data['birth_date_updated_at']);
       _computeAllLocks();
+      lockMetadataLoaded.value = true;
     } catch (e) {
       // Le backend reste l'autorité : le trigger continuera de refuser toute
       // modification prématurée même si cette lecture informative échoue.
       debugPrint('[EditProfile] Impossible de rafraîchir les verrous: $e');
+      lockMetadataLoaded.value = false;
     }
   }
 
@@ -276,6 +278,18 @@ class EditProfileController extends GetxController {
 
   Future<void> save() async {
     if (isSaving.value) return;
+    if (!lockMetadataLoaded.value) {
+      await _refreshLockMetadata();
+      if (!lockMetadataLoaded.value) {
+        Get.snackbar(
+          'profile_error_title'.tr,
+          'edit_profile_lock_check_failed'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 5),
+        );
+        return;
+      }
+    }
     if (!(formKey.currentState?.validate() ?? false)) return;
 
     final Map<String, dynamic> payload = {
