@@ -8,6 +8,7 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/image_source_sheet.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
 import 'package:scrole/modules/module_profil/interne/widgets/circle_button_widget.dart';
 
