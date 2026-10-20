@@ -225,7 +225,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       return;
     }
     final prefix = value.substring(0, cursor);
-    final match = RegExp(r'(^|\s)([@*~])([^\s@*~]*).firstMatch(prefix);
+    final match = RegExp(r'(^|\s)([@*~])([^\s@*~]*)$').firstMatch(prefix);
     if (match == null) {
       _removeMentionOverlay();
       return;
@@ -1757,13 +1757,6 @@ class _CommunityShareCommentSheetState extends State<_CommunityShareCommentSheet
                       ),
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'Mentionner des personnes',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _openCommentMentions,
-                      icon: const Icon(Icons.person_add_alt_1_rounded),
-                    ),
-                    const SizedBox(width: 4),
                     GestureDetector(
                       onTap: _submitComment,
                       child: Container(
