@@ -381,6 +381,13 @@ class _ProfileActions extends GetView<ExternalProfileController> {
       final pending = relationState == 'requested';
       final connected = relationState == 'friends';
       final busy = controller.isSendingRequest.value;
+      if (relationState == 'blocked') return const SizedBox.shrink();
+      if (relationState == 'self') {
+        return OutlinedButton(
+          onPressed: () => Get.toNamed(AppPages.editmyprofil),
+          child: Text('follow_state_self'.tr),
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
