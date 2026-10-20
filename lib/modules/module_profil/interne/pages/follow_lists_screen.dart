@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
