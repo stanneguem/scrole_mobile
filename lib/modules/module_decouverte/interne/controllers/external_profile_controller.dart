@@ -117,7 +117,9 @@ class ExternalProfileController extends GetxController {
               followsMe: relation['follows_me'] == true,
               relationshipState: relationState,
               requestId: relation['request_id']?.toString(),
+              clearRequestId: relation['request_id'] == null,
               retryAt: relation['retry_at'] == null ? null : DateTime.tryParse(relation['retry_at'].toString()),
+              clearRetryAt: relation['retry_at'] == null,
               friendCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendCount,
               followersCount: (stats['followers_count'] as num?)?.toInt() ?? result.profile!.followersCount,
               followingCount: (stats['following_count'] as num?)?.toInt() ?? result.profile!.followingCount,
@@ -166,7 +168,9 @@ class ExternalProfileController extends GetxController {
         followsMe: freshRelation['follows_me'] == true,
         relationshipState: nextState,
         requestId: freshRelation['request_id']?.toString(),
+          clearRequestId: freshRelation['request_id'] == null,
         retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
+          clearRetryAt: freshRelation['retry_at'] == null,
         canMessage: freshRelation['is_friend'] == true || nextState == 'friends',
       );
       profile.value = updated;
