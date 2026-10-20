@@ -8,6 +8,11 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import '../../centre/models/event_comment.dart';
 import '../controllers/event_comments_controller.dart';
 
+String _commentTranslation(String key, String fallback) {
+  final translated = key.tr.trim();
+  return translated.isEmpty || translated == key ? fallback : translated;
+}
+
 /// Écran complet dédié à la consultation et discussion par commentaires d'un événement.
 class EventCommentsScreen extends StatefulWidget {
   final String eventId;
@@ -86,7 +91,7 @@ class _EventCommentsScreenState extends State<EventCommentsScreen> {
             Row(
               children: [
                 Text(
-                  'comments_title'.tr,
+                  _commentTranslation('comments_title', 'Commentaires'),
                   style: GoogleFonts.spaceGrotesk(
                     color: colorScheme.onSurface,
                     fontSize: 18,
@@ -299,7 +304,7 @@ class _EventCommentsScreenState extends State<EventCommentsScreen> {
                           decoration: InputDecoration(
                             hintText: replyingTo != null
                                 ? 'Votre réponse...'
-                                : 'comments_add_hint'.tr,
+                                : _commentTranslation('comments_add_hint', 'Écrire un commentaire…'),
                             hintStyle: GoogleFonts.spaceGrotesk(
                               color: colorScheme.onSurfaceVariant,
                               fontSize: 13,
@@ -417,7 +422,7 @@ class _EmptyCommentsState extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'comments_empty'.tr,
+              _commentTranslation('comments_empty', 'Soyez la première personne à lancer la discussion autour de cet événement.'),
               style: AppTextStyles.body.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 height: 1.45,
@@ -773,7 +778,7 @@ class _CommentBodyCard extends StatelessWidget {
                           const Icon(Icons.reply_rounded, size: 14, color: AppColors.primary),
                           const SizedBox(width: 4),
                           Text(
-                            'comments_reply_button'.tr,
+                            _commentTranslation('comments_reply_button', 'Répondre'),
                             style: GoogleFonts.spaceGrotesk(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,
