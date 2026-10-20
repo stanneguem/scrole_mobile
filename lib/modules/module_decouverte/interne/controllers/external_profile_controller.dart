@@ -178,6 +178,25 @@ class ExternalProfileController extends GetxController {
       await _repository.updateCachedProfile(updated);
     } catch (e, stack) {
       debugPrint('[FOLLOW] follow_user exception=$e\\n$stack');
+      try {
+        final latest = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final retryAt = latest['retry_at'] == null ? null : DateTime.tryParse(latest['retry_at'].toString());
+        if (retryAt != null && retryAt.isAfter(DateTime.now())) {
+          profile.value = current.copyWith(
+            relationshipState: (latest['state'] ?? current.relationshipState).toString(),
+            retryAt: retryAt,
+            clearRetryAt: false,
+            requestId: latest['request_id']?.toString(),
+            clearRequestId: latest['request_id'] == null,
+          );
+          Get.snackbar('error_title'.tr, 'follow_retry_at'.trParams({
+            'date': retryAt.toLocal().toString().substring(0, 16),
+          }));
+          return;
+        }
+      } catch (_) {}
+      profile.value = current;
+      isFollowing.value = current.isFollowing;
       Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     } finally {
       isSendingRequest.value = false;
