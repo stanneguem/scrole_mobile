@@ -550,6 +550,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     bool? requireManualApproval,
     bool? membersListVisible,
     bool? certificationRequired,
+    bool? countriesEnabled,
+    List<String>? allowedCountries,
+    bool? citiesEnabled,
+    List<String>? allowedCities,
     String? genderRestriction,
     int? ageMin,
     int? ageMax,
@@ -562,6 +566,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       requireManualApproval: requireManualApproval,
       membersListVisible: membersListVisible,
       certificationRequired: certificationRequired,
+      countriesEnabled: countriesEnabled,
+      allowedCountries: allowedCountries,
+      citiesEnabled: citiesEnabled,
+      allowedCities: allowedCities,
       genderRestriction: genderRestriction,
       ageMin: ageMin,
       ageMax: ageMax,
@@ -695,6 +703,14 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
   Future<Map<String, dynamic>> resolveCommunityUserReport(String reportId, String action, {String? note, bool deleteContent = false}) async {
     return await _repo.resolveCommunityUserReport(reportId, action, note: note, deleteContent: deleteContent);
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableCountries() {
+    return _repo.getAvailableCountries();
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableCities() {
+    return _repo.getAvailableCities();
   }
 
   Future<List<Map<String, dynamic>>> getAvailableInterests() async {
