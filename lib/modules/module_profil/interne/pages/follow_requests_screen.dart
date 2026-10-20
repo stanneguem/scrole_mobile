@@ -113,7 +113,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
       });
     } catch (e, stack) {
       debugPrint('[FOLLOW] get_my_follow_requests direction=${widget.direction} exception=$e\\n$stack');
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = FollowErrorMapper.keyFor(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -160,7 +160,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     if (_error != null && _items.isEmpty && !_loading) {
-      return Center(child: Text('follow_action_failed'.tr));
+      return Center(child: Text((_error ?? 'follow_action_impossible').tr));
     }
     if (_items.isEmpty && _loading) return const Center(child: CircularProgressIndicator());
     if (_items.isEmpty) return Center(child: Text('profile_contacts_empty'.tr));
