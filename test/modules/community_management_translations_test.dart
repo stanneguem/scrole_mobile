@@ -21,6 +21,7 @@ void main() {
       'community_info_sub_interests_desc',
       'community_leave_success_msg',
       'community_leave_success_title',
+      'community_leave_confirmation_message',
       'community_leave_title',
       'community_max_interests_error',
       'community_mgmt_access_sub',
