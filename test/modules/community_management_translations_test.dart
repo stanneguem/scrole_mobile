@@ -118,6 +118,8 @@ void main() {
       'community_settings_profile_photo',
       'community_settings_cover_photo',
       'community_settings_change_photo',
+      'community_settings_image_too_large',
+      'community_settings_image_compression_failed',
       'community_settings_slogan_label',
     ];
 
