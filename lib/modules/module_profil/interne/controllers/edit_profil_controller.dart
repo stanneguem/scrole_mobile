@@ -148,9 +148,10 @@ class EditProfileController extends GetxController {
           : response is List && response.isNotEmpty && response.first is Map
               ? Map<String, dynamic>.from(response.first as Map)
               : null;
-      if (data == null || isClosed) return;
+      if (isClosed) return;
+      if (data == null) throw StateError('get_myprofile returned no profile data');
 
-      _profileController.usernameUpdatedAt.value = _parseLockDate(data['username_updated_at']);
+      _profileController.usernameUpdatedAt = _parseLockDate(data['username_updated_at']);
       _profileController.genderUpdatedAt.value = _parseLockDate(data['gender_updated_at']);
       _profileController.locationUpdatedAt.value = _parseLockDate(data['location_updated_at']);
       _profileController.birthDateUpdatedAt.value = _parseLockDate(data['birth_date_updated_at']);
