@@ -200,6 +200,7 @@ class CommunityPost {
       timeAgo: map['created_at']?.toString() ?? '',
       content: map['content']?.toString() ?? '',
       media: mediaList,
+      poll: map['poll'] ?? map['poll_state'] ?? map['community_poll'],
       likeCount: (map['likes_count'] as num?)?.toInt() ?? 0,
       dislikeCount: (map['dislikes_count'] as num?)?.toInt() ?? 0,
       commentCount: (map['comments_count'] as num?)?.toInt() ?? 0,
@@ -242,6 +243,7 @@ class CommunityPost {
     String? reasonSubtitle,
     List<CommunityPostMention>? mentionedUsers,
     List<CommunityPostMention>? influencerReactions,
+    dynamic poll,
   }) {
     return CommunityPost(
       id: id,
@@ -256,7 +258,7 @@ class CommunityPost {
       hashtags: hashtags,
       mentionedUsers: mentionedUsers ?? this.mentionedUsers,
       influencerReactions: influencerReactions ?? this.influencerReactions,
-      poll: map['poll'] ?? map['poll_state'] ?? map['community_poll'],
+      poll: poll ?? this.poll,
       likeCount: likeCount ?? this.likeCount,
       dislikeCount: dislikeCount ?? this.dislikeCount,
       commentCount: commentCount ?? this.commentCount,
