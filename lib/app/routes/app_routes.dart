@@ -22,6 +22,7 @@ import '../../modules/module_profil/interne/pages/edit_profile_screen.dart';
 import '../../modules/module_profil/interne/pages/profile_screen.dart';
 import '../../modules/module_profil/interne/pages/profile_contacts_screen.dart';
 import '../../modules/module_profil/interne/pages/follow_lists_screen.dart';
+import '../../modules/module_profil/interne/pages/follow_requests_screen.dart';
 import '../../modules/module_profil/interne/pages/user_qr_identity_screen.dart';
 import '../../modules/module_profil/interne/pages/interest_selection_screen.dart';
 import '../../modules/module_decouverte/interne/controllers/external_profile_controller.dart';
@@ -123,6 +124,7 @@ class AppRoutes {
     GetPage(name: AppPages.editmyprofil, page: () => const EditProfileScreen(), binding: EditProfilBinding()),
     GetPage(name: AppPages.myContacts, page: () => const ProfileContactsScreen(), binding: BindingsBuilder(() => Get.lazyPut(() => ContactsController()))),
     GetPage(name: AppPages.followLists, page: () => const FollowListsScreen()),
+    GetPage(name: AppPages.followRequests, page: () => const FollowRequestsScreen()),
     GetPage(name: AppPages.userQrCode, page: () => const UserQrIdentityScreen()),
     GetPage(name: AppPages.interestSelection, page: () => const InterestSelectionScreen()),
     GetPage(name: AppPages.creationSelection, page: () => const CreationSelectionScreen()),
