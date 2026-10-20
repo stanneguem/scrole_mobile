@@ -568,6 +568,7 @@ class AppTranslationAdditions {
       'follow_error_not_friend': "Vous n’êtes pas ami(e) avec cette personne",
       'follow_error_private_list': "Cette liste est réservée aux abonnés de ce profil",
       'follow_error_direction': "Direction invalide",
+      'follow_remove_follower_action': "Retirer cet abonné",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1115,6 +1116,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "You are already friends with this person",
       'follow_user_not_found': "User not found",
       'follow_action_impossible': "Action unavailable",
+      'follow_remove_follower_action': "Remove follower",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1579,6 +1581,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "Ya eres amigo de esta persona",
       'follow_user_not_found': "Usuario no encontrado",
       'follow_action_impossible': "Acción no disponible",
+      'follow_remove_follower_action': "Eliminar seguidor",
     },
     'de': {
       'status_online': 'Online',
@@ -2026,6 +2029,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "Ihr seid bereits befreundet",
       'follow_user_not_found': "Benutzer nicht gefunden",
       'follow_action_impossible': "Aktion nicht möglich",
+      'follow_remove_follower_action': "Follower entfernen",
     },
     'it': {
       'status_online': 'In linea',
@@ -2473,6 +2477,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "Sei già amico di questa persona",
       'follow_user_not_found': "Utente non trovato",
       'follow_action_impossible': "Azione non disponibile",
+      'follow_remove_follower_action': "Rimuovi follower",
     },
     'pt': {
       'status_online': 'Online',
@@ -2920,6 +2925,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "Já és amigo desta pessoa",
       'follow_user_not_found': "Utilizador não encontrado",
       'follow_action_impossible': "Ação indisponível",
+      'follow_remove_follower_action': "Remover seguidor",
     },
     'zh': {
       'status_online': '在线',
@@ -3367,6 +3373,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "你们已经是好友",
       'follow_user_not_found': "找不到用户",
       'follow_action_impossible': "无法执行此操作",
+      'follow_remove_follower_action': "移除粉丝",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3813,6 +3820,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "すでに友達です",
       'follow_user_not_found': "ユーザーが見つかりません",
       'follow_action_impossible': "操作できません",
+      'follow_remove_follower_action': "フォロワーを削除",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4254,6 +4262,7 @@ class AppTranslationAdditions {
       'follow_qr_already_friends': "Вы уже друзья",
       'follow_user_not_found': "Пользователь не найден",
       'follow_action_impossible': "Действие недоступно",
+      'follow_remove_follower_action': "Удалить подписчика",
     },
   };
 
