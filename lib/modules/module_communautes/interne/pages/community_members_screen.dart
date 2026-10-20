@@ -258,9 +258,10 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
         );
         await _loadMembers(refresh: true);
       } catch (e) {
+        debugPrint('[CommunityMembersScreen] Exclusion failed: $e');
         Get.snackbar(
           'community_save_error'.tr,
-          e.toString().replaceFirst('Exception: ', '').tr,
+          _service.localizedCommunityError(e),
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
@@ -277,7 +278,8 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
       Get.snackbar('Rôle mis à jour', 'Le rôle de $userName a été mis à jour avec succès.', snackPosition: SnackPosition.BOTTOM);
       await _loadMembers(refresh: true);
     } catch (e) {
-      Get.snackbar('Erreur', e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      debugPrint('[CommunityMembersScreen] Role update failed: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
