@@ -17,7 +17,6 @@ import 'package:scrole/modules/module_communautes/centre/models/news/community_h
 import 'community_poll_composer_screen.dart';
 import 'community_post_hashtag_selection_screen.dart';
 import 'community_post_settings_screen.dart';
-import 'community_post_mentions_screen.dart';
 
 class CreateCommunityPostScreen extends StatefulWidget {
   final String communityName;
@@ -431,24 +430,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     );
   }
 
-  Future<void> _openMentions() async {
-    final cId = widget.communityId ?? Get.parameters['id'] ?? '';
-    final result = await Get.to<List<Map<String, dynamic>>>(
-      () => const CommunityPostMentionsScreen(),
-      arguments: {'communityId': cId, 'initialSelected': _selectedMentionIds},
-    );
-    if (result != null) {
-      setState(() {
-        _selectedMentions = result;
-        // Always send auth user UUIDs, never a nested profile row's primary key.
-        _selectedMentionIds = result
-            .map((m) => (m['user_id'] ?? m['userId'] ?? '').toString())
-            .where((id) => id.isNotEmpty)
-            .toSet()
-            .toList();
-      });
-    }
-  }
 
   Future<void> _openPollCreator() async {
     if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
