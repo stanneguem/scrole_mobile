@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -61,6 +62,8 @@ class EditProfileScreen extends GetView<EditProfileController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildLockedField(
+                  label: 'username'.tr,
+                  lockedValueBuilder: () => controller.usernameController.text,
                   isLocked: controller.canChangeUsername,
                   daysLeft: controller.usernameDaysLeft,
                   builder: () => TextInputField(
@@ -182,6 +185,8 @@ class EditProfileScreen extends GetView<EditProfileController> {
 
                 const SizedBox(height: 24),
                 _buildLockedField(
+                  label: 'edit_profile_gender'.tr,
+                  lockedValueBuilder: () => controller.selectedGender.value ?? '—',
                   isLocked: controller.canChangeGender,
                   daysLeft: controller.genderDaysLeft,
                   builder: () => GenderSelectorField(
@@ -191,6 +196,11 @@ class EditProfileScreen extends GetView<EditProfileController> {
                 ),
                 const SizedBox(height: 16),
                 _buildLockedField(
+                  label: 'edit_profile_birth_date'.tr,
+                  lockedValueBuilder: () {
+                    final date = controller.selectedBirthDate.value;
+                    return date == null ? '—' : DateFormat('dd/MM/yyyy').format(date);
+                  },
                   isLocked: controller.canChangeBirthDate,
                   daysLeft: controller.birthDateDaysLeft,
                   builder: () => BirthDatePickerField(
@@ -200,6 +210,13 @@ class EditProfileScreen extends GetView<EditProfileController> {
                 ),
                 const SizedBox(height: 24),
                 _buildLockedField(
+                  label: 'edit_profile_location_hint'.tr,
+                  lockedValueBuilder: () {
+                    final country = controller.selectedCountry.value?.nom ?? '';
+                    final city = controller.selectedCity.value?.nom ?? '';
+                    final location = [city, country].where((value) => value.trim().isNotEmpty).join(', ');
+                    return location.isEmpty ? '—' : location;
+                  },
                   isLocked: controller.canChangeLocation,
                   daysLeft: controller.locationDaysLeft,
                   builder: () => Column(
@@ -245,60 +262,61 @@ class EditProfileScreen extends GetView<EditProfileController> {
   }
 
   Widget _buildLockedField({
+    required String label,
+    String Function()? lockedValueBuilder,
     required RxBool isLocked,
     required RxInt daysLeft,
     required Widget Function() builder,
   }) {
     return Obx(() {
       final canModify = isLocked.value;
+      if (!canModify && lockedValueBuilder != null) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(Get.context!).colorScheme.surfaceContainerHighest.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Theme.of(Get.context!).colorScheme.outlineVariant),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: AppTextStyles.caption.copyWith(
+                      color: Theme.of(Get.context!).colorScheme.onSurfaceVariant,
+                    )),
+                    const SizedBox(height: 5),
+                    Text(
+                      lockedValueBuilder(),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Theme.of(Get.context!).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'edit_profile_locked_label'.trParams({'days': daysLeft.value.toString()}),
+                      style: AppTextStyles.caption.copyWith(color: AppColors.error),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.lock_outline, size: 18, color: Theme.of(Get.context!).colorScheme.onSurfaceVariant),
+            ],
+          ),
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              AbsorbPointer(
-                absorbing: !canModify,
-                child: Opacity(
-                  opacity: canModify ? 1.0 : 0.6,
-                  child: builder(),
-                ),
-              ),
-              if (!canModify)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.lock_outline, size: 12, color: Colors.white70),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${daysLeft.value}j',
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
+          AbsorbPointer(
+            absorbing: !canModify,
+            child: Opacity(opacity: canModify ? 1.0 : 0.6, child: builder()),
           ),
-          if (!canModify)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4),
-              child: Text(
-                'edit_profile_locked_label'.trParams({'days': daysLeft.value.toString()}),
-                style: AppTextStyles.caption.copyWith(color: AppColors.error),
-              ),
-            ),
         ],
       );
     });
