@@ -118,13 +118,12 @@ class EventShareCardArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final event = preview.event;
-    final design = eventShareCardDesigns[designIndex.clamp(0, eventShareCardDesigns.length - 1)];
+    final design = eventShareCardDesigns[designIndex.clamp(0, eventShareCardDesigns.length - 1).toInt()];
     final foreground = design.minimal ? const Color(0xFF111827) : Colors.white;
-    final date = DateFormat('EEE d MMM · HH:mm', 'fr_FR').format(event.startsAt.toLocal());
+    final date = DateFormat('dd/MM/yyyy · HH:mm').format(event.startsAt.toLocal());
     final description = (event.description ?? '').trim();
 
-    Widget cover({required double height}) => SizedBox(
-      height: height,
+    Widget cover() => SizedBox(
       width: double.infinity,
       child: event.coverImageUrl != null && event.coverImageUrl!.isNotEmpty
           ? Image.network(event.coverImageUrl!, fit: BoxFit.cover,
@@ -170,7 +169,7 @@ class EventShareCardArtwork extends StatelessWidget {
       ),
       child: design.imageFirst
           ? Column(children: [
-              Expanded(flex: compact ? 5 : 6, child: cover(height: 0)),
+              Expanded(flex: compact ? 5 : 6, child: cover()),
               Expanded(flex: compact ? 6 : 7, child: details()),
             ])
           : Column(children: [
