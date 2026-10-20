@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/service_global/privacy_service.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/models/user_models.dart';
@@ -33,6 +34,39 @@ class PrivacyDataScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
+            _buildSwitchTile(
+              title: 'follow_profile_private'.tr,
+              subtitle: 'follow_profile_private_desc'.tr,
+              value: p.profileVisibility == 'private',
+              onChanged: (val) async {
+                final client = Supabase.instance.client;
+                final userId = client.auth.currentUser?.id;
+                if (userId == null) {
+                  Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+                  return;
+                }
+                final old = p;
+                try {
+                  await client.from('user_privacy').update({
+                    'profile_visibility': val ? 'private' : 'public',
+                  }).eq('user_id', userId);
+                  service.applyPrivacy(AppPrivacy(
+                    profileVisibility: val ? 'private' : 'public',
+                    showOnlineStatus: old.showOnlineStatus,
+                    allowMessagesFrom: old.allowMessagesFrom,
+                    afficherPays: old.afficherPays,
+                    afficherVille: old.afficherVille,
+                    afficherDerniereConnexion: old.afficherDerniereConnexion,
+                  ));
+                } catch (e, stack) {
+                  debugPrint('[FOLLOW] update user_privacy.profile_visibility exception=$e\\n$stack');
+                  Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+                }
+              },
+              textPrimary: textPrimary,
+              textSecondary: textSecondary,
+            ),
+            const SizedBox(height: 20),
             _buildSwitchTile(
               title: 'privacy_use_data_improve'.tr,
               subtitle: 'privacy_use_data_improve_desc'.tr,
