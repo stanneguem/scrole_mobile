@@ -914,7 +914,8 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   final StorageRepository _storage = StorageRepository();
   final MediaService _mediaService = MediaService();
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError;
   String? _currentAvatarUrl;
   String? _currentCoverUrl;
 
@@ -925,15 +926,29 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
   }
 
   Future<void> _loadImages() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
-      final comm = await _service.getCommunityById(widget.communityId);
-      if (comm != null && mounted) {
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final community = snapshot['community'] is Map
+          ? Map<String, dynamic>.from(snapshot['community'] as Map)
+          : <String, dynamic>{};
+      if (mounted) {
         setState(() {
-          _currentAvatarUrl = comm.avatarUrl;
-          _currentCoverUrl = comm.bannerUrl;
+          _currentAvatarUrl = community['photo_profile']?.toString();
+          _currentCoverUrl = community['photo_cover']?.toString();
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[CommunityImagesScreen] Failed to load images: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickAndUploadImage({required bool isProfile}) async {
@@ -976,7 +991,8 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
 
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      debugPrint('[CommunityImagesScreen] Upload failed: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -984,10 +1000,20 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text('community_info_sub_images'.tr)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center, style: TextStyle(color: colorScheme.error)),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadImages, child: Text('retry'.tr)),
+                  ]),
+                ))
           : Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -996,7 +1022,7 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                     leading: const Icon(Icons.person),
                     title: const Text('Photo de profil'),
                     trailing: ElevatedButton(
-                      onPressed: () => _pickAndUploadImage(isProfile: true),
+                      onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: true),
                       child: const Text('Changer'),
                     ),
                   ),
@@ -1005,7 +1031,7 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                     leading: const Icon(Icons.image),
                     title: const Text('Photo de couverture'),
                     trailing: ElevatedButton(
-                      onPressed: () => _pickAndUploadImage(isProfile: false),
+                      onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: false),
                       child: const Text('Changer'),
                     ),
                   ),
@@ -1186,8 +1212,11 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   Future<void> _save() async {
     final parsedAgeMin = int.tryParse(_ageMinController.text.trim());
     final parsedAgeMax = int.tryParse(_ageMaxController.text.trim());
-    if (_ageMinController.text.trim().isNotEmpty && parsedAgeMin == null ||
-        _ageMaxController.text.trim().isNotEmpty && parsedAgeMax == null) {
+    if ((_ageMinController.text.trim().isNotEmpty && parsedAgeMin == null) ||
+        (_ageMaxController.text.trim().isNotEmpty && parsedAgeMax == null) ||
+        (parsedAgeMin != null && (parsedAgeMin < 0 || parsedAgeMin > 120)) ||
+        (parsedAgeMax != null && (parsedAgeMax < 0 || parsedAgeMax > 120)) ||
+        (parsedAgeMin != null && parsedAgeMax != null && parsedAgeMin > parsedAgeMax)) {
       Get.snackbar('community_save_error'.tr, 'community_settings_age_invalid'.tr,
           snackPosition: SnackPosition.BOTTOM);
       return;
