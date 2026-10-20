@@ -160,11 +160,14 @@ class SocialOutboxProcessor extends GetxService {
         final targetId = payload['bloque_id'] as String;
         final reason = payload['raison'] as String?;
         final until = payload['bloque_jusquau'] as String?;
-        // Le blocage reste géré par la table dédiée ; la suppression des liens passe par la RPC.
-        try {
-          await _client.rpc('remove_friend', params: {'p_user_id': targetId});
-        } catch (e, stack) {
-          debugPrint('[FOLLOW] RPC remove_friend pendant blocage exception=$e\\n$stack');
+        // Nettoyer les liens dans les deux sens avant d'enregistrer le blocage.
+        for (final rpc in ['unfollow_user', 'remove_follower', 'cancel_follow_request', 'remove_friend']) {
+          try {
+            debugPrint('[FOLLOW] RPC $rpc pendant blocage params={p_user_id: $targetId}');
+            await _client.rpc(rpc, params: {'p_user_id': targetId});
+          } catch (e, stack) {
+            debugPrint('[FOLLOW] RPC $rpc pendant blocage exception=$e\\n$stack');
+          }
         }
         await _client.from('blocage_utilisateur').insert({
           'bloqueur_id': _client.auth.currentUser?.id,
