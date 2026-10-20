@@ -735,24 +735,17 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
 
   String _formatViewedTime(String? raw) {
     if (raw == null || raw.isEmpty) return '';
-    final dt = DateTime.tryParse(raw);
-    if (dt != null) {
-      final now = DateTime.now();
-      final difference = now.difference(dt);
-
-      if (difference.isNegative || difference.inSeconds < 60) {
-        return 'à l\'instant';
-      } else if (difference.inMinutes < 60) {
-        return 'il y a ${difference.inMinutes}min';
-      } else if (difference.inHours < 24) {
-        return 'il y a ${difference.inHours}h';
-      } else if (difference.inDays < 7) {
-        return difference.inDays == 1 ? 'il y a 1 jour' : 'il y a ${difference.inDays} jours';
-      } else {
-        return 'le ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-      }
-    }
-    return raw;
+    final dt = DateTime.tryParse(raw)?.toLocal();
+    if (dt == null) return raw;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(dt.year, dt.month, dt.day);
+    final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final days = today.difference(day).inDays;
+    if (days == 0) return "Aujourd’hui à $time";
+    if (days == 1) return 'Hier à $time';
+    if (days < 7) return 'Il y a $days jours · $time';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} · $time';
   }
 
   @override
