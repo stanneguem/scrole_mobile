@@ -12,8 +12,12 @@ class SearchRepository {
         'p_limit': limit,
         'p_offset': offset,
       });
-      if (response is! List) return [];
-      final profiles = response.whereType<Map>().map((raw) {
+      final rawItems = response is List
+          ? response
+          : response is Map && response['items'] is List
+              ? response['items'] as List
+              : const <dynamic>[];
+      final profiles = rawItems.whereType<Map>().map((raw) {
         final json = Map<String, dynamic>.from(raw);
         final first = (json['first_name'] ?? '').toString().trim();
         final last = (json['last_name'] ?? '').toString().trim();
