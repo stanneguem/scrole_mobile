@@ -574,6 +574,7 @@ class AppTranslationAdditions {
       'follow_te_follows_you': "Te suit",
       'follow_cancel_request_action': "Annuler la demande",
       'follow_lists_title': "Mes relations",
+      'suggested_profiles_title': "Suggestions de profils",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1141,6 +1142,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Received",
       'follow_requests_sent': "Sent",
       'follow_retry_at': "Try again on @date",
+      'suggested_profiles_title': "Suggested profiles",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1625,6 +1627,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Recibidas",
       'follow_requests_sent': "Enviadas",
       'follow_retry_at': "Volver a intentarlo el @date",
+      'suggested_profiles_title': "Perfiles sugeridos",
     },
     'de': {
       'status_online': 'Online',
@@ -2092,6 +2095,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Erhalten",
       'follow_requests_sent': "Gesendet",
       'follow_retry_at': "Erneut versuchen am @date",
+      'suggested_profiles_title': "Profilvorschläge",
     },
     'it': {
       'status_online': 'In linea',
@@ -2559,6 +2563,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Ricevute",
       'follow_requests_sent': "Inviate",
       'follow_retry_at': "Riprova il @date",
+      'suggested_profiles_title': "Profili suggeriti",
     },
     'pt': {
       'status_online': 'Online',
@@ -3026,6 +3031,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Recebidos",
       'follow_requests_sent': "Enviados",
       'follow_retry_at': "Tentar novamente em @date",
+      'suggested_profiles_title': "Perfis sugeridos",
     },
     'zh': {
       'status_online': '在线',
@@ -3493,6 +3499,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "收到的",
       'follow_requests_sent': "已发送",
       'follow_retry_at': "请于 @date 重试",
+      'suggested_profiles_title': "推荐用户",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3959,6 +3966,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "受信",
       'follow_requests_sent': "送信",
       'follow_retry_at': "@date に再試行",
+      'suggested_profiles_title': "おすすめのプロフィール",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4420,6 +4428,7 @@ class AppTranslationAdditions {
       'follow_requests_received': "Входящие",
       'follow_requests_sent': "Отправленные",
       'follow_retry_at': "Повторить @date",
+      'suggested_profiles_title': "Рекомендуемые профили",
     },
   };
 
