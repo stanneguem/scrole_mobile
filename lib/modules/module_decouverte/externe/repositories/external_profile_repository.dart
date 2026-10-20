@@ -166,6 +166,26 @@ class ExternalProfileRepository {
           relationState = await _socialRepo.getRelationState(userId);
         } catch (_) {}
 
+        var hasActiveCertification = false;
+        try {
+          final certifications = await _client
+              .from('user_certifications')
+              .select('issued_at, expires_at')
+              .eq('user_id', userId)
+              .eq('status', 'active');
+          final now = DateTime.now().toUtc();
+          hasActiveCertification = (certifications as List).any((item) {
+            final issuedAt = DateTime.tryParse((item['issued_at'] ?? '').toString())?.toUtc();
+            final expiresAt = DateTime.tryParse((item['expires_at'] ?? '').toString())?.toUtc();
+            return issuedAt != null &&
+                !issuedAt.isAfter(now) &&
+                (expiresAt == null || !expiresAt.isBefore(now));
+          });
+        } catch (e) {
+          debugPrint('[ExternalProfileRepository] certification fallback failed: $e');
+        }
+
+        final isCertified = row['is_verified'] == true || hasActiveCertification;
         rawJson = {
           'user_id': userId,
           'username': row['username'] ?? '',
@@ -181,7 +201,7 @@ class ExternalProfileRepository {
           'connection_request_sent': relationState == RelationState.requestSent,
           'incoming_connection_request': relationState == RelationState.requestReceived,
           'is_following': false,
-          'is_certified': row['is_verified'] == true,
+          'is_certified': isCertified,
           'is_verified': row['is_verified'] == true,
           'can_message': relationState == RelationState.friend,
           'friend_count': 0,
