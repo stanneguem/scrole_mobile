@@ -3813,7 +3813,7 @@ class AppTranslationAdditions {
       'community_save_error': 'Ошибка при сохранении',
       'community_management_title': 'Управление сообществом',
       'community_leave_options_title': 'Параметры выхода',
-      'community_leave_confirmation_message': "Вы собираетесь покинуть это сообщество. При желании вы сможете присоединиться снова позже。",
+      'community_leave_confirmation_message': "Вы собираетесь покинуть это сообщество. При желании вы сможете присоединиться снова позже.",
       'community_leave_only_action': 'Покинуть сообщество',
       'community_leave_and_report_action': 'Покинуть и пожаловаться на сообщество',
       'community_report_reason_harassment': 'Угрозы или домогательства',
