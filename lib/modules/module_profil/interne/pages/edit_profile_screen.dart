@@ -292,7 +292,7 @@ class EditProfileScreen extends GetView<EditProfileController> {
                     const SizedBox(height: 5),
                     Text(
                       lockedValueBuilder(),
-                      style: AppTextStyles.bodyMedium.copyWith(
+                      style: AppTextStyles.bodyLarge.copyWith(
                         color: Theme.of(Get.context!).colorScheme.onSurface,
                       ),
                     ),
