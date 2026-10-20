@@ -1294,7 +1294,15 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.person),
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundImage: _currentAvatarUrl != null && _currentAvatarUrl!.isNotEmpty
+                          ? NetworkImage(_currentAvatarUrl!)
+                          : null,
+                      child: _currentAvatarUrl == null || _currentAvatarUrl!.isEmpty
+                          ? const Icon(Icons.person)
+                          : null,
+                    ),
                     title: Text('community_settings_profile_photo'.tr),
                     trailing: ElevatedButton(
                       onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: true),
@@ -1303,7 +1311,22 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.image),
+                    leading: _currentCoverUrl != null && _currentCoverUrl!.isNotEmpty
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.network(
+                              _currentCoverUrl!,
+                              width: 48,
+                              height: 36,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(Icons.image),
+                            ),
+                          )
+                        : const SizedBox(
+                            width: 48,
+                            height: 36,
+                            child: Icon(Icons.image),
+                          ),
                     title: Text('community_settings_cover_photo'.tr),
                     trailing: ElevatedButton(
                       onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: false),
