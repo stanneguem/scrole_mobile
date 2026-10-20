@@ -483,7 +483,7 @@ class ProfileScreen extends GetView<ProfileController> {
         itemCount: posts.length,
         itemBuilder: (context, index) {
           final post = posts[index];
-          final imageUrl = post.media.isNotEmpty ? (post.media.first.url ?? '') : '';
+          final imageUrl = post.media.isNotEmpty ? (post.media.first.isVideo ? (post.media.first.thumbnailUrl ?? '') : post.media.first.url) : '';
           return GestureDetector(
             onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
             child: Stack(fit: StackFit.expand, children: [
