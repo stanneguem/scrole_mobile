@@ -137,9 +137,9 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
     } catch (e, stack) {
       debugPrint('[FOLLOW] RPC scan_qr_code exception=$e\\n$stack');
       final raw = e.toString().toLowerCase();
-      final key = raw.contains('qr_not_found') || raw.contains('qr code not found')
+      final key = raw.contains('qr_not_found') || raw.contains('qr code not found') || raw.contains('qr code introuvable')
           ? 'follow_qr_not_found'
-          : raw.contains('qr_expired') || raw.contains('qr_invalid') || raw.contains('no longer valid')
+          : raw.contains('qr_expired') || raw.contains('qr_invalid') || raw.contains('no longer valid') || raw.contains('plus valide')
               ? 'follow_qr_expired'
               : raw.contains('own_qr') || raw.contains('self') || raw.contains('propre qr')
                   ? 'follow_qr_self'
