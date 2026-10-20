@@ -528,11 +528,11 @@ class CommunityAccessRulesHubScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
-          _buildHubTile(context, title: 'community_access_sub_posts'.tr, subtitle: 'community_access_sub_posts'.tr, icon: Icons.article_outlined, iconColor: Colors.blue, onTap: () => Get.to(() => CommunityPostSettingsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_posts'.tr, subtitle: 'community_access_sub_posts_desc'.tr, icon: Icons.article_outlined, iconColor: Colors.blue, onTap: () => Get.to(() => CommunityPostSettingsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_access_sub_access'.tr, subtitle: 'community_access_sub_access'.tr, icon: Icons.security_outlined, iconColor: Colors.green, onTap: () => Get.to(() => CommunityAccessDetailsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_access'.tr, subtitle: 'community_access_sub_access_desc'.tr, icon: Icons.security_outlined, iconColor: Colors.green, onTap: () => Get.to(() => CommunityAccessDetailsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_access_sub_rules'.tr, subtitle: 'community_access_sub_rules'.tr, icon: Icons.rule_rounded, iconColor: Colors.deepOrange, onTap: () => Get.to(() => CommunityRulesScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_access_sub_rules'.tr, subtitle: 'community_access_sub_rules_desc'.tr, icon: Icons.rule_rounded, iconColor: Colors.deepOrange, onTap: () => Get.to(() => CommunityRulesScreen(communityId: communityId))),
         ],
       ),
     );
@@ -583,11 +583,11 @@ class CommunityInfoHubScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
-          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => Get.to(() => CommunityInfoSettingsScreen(communityId: communityId, communityName: communityName))),
+          _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => Get.to(() => CommunityInfoSettingsScreen(communityId: communityId, communityName: communityName))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => Get.to(() => CommunityInterestsScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests_desc'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => Get.to(() => CommunityInterestsScreen(communityId: communityId))),
           const SizedBox(height: 12),
-          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'community_info_sub_images'.tr, icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => Get.to(() => CommunityImagesScreen(communityId: communityId))),
+          _buildHubTile(context, title: 'community_info_sub_images'.tr, subtitle: 'community_info_sub_images_desc'.tr, icon: Icons.image_outlined, iconColor: Colors.purple, onTap: () => Get.to(() => CommunityImagesScreen(communityId: communityId))),
         ],
       ),
     );
