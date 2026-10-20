@@ -1016,33 +1016,29 @@ class _ProfileStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        alignment: WrapAlignment.spaceAround,
-        runAlignment: WrapAlignment.center,
-        spacing: 18,
-        runSpacing: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      child: Row(
         children: [
-          _StatItem(
+          Expanded(child: _StatItem(
             value: NumberFormatter.formatCount(profile.followersCount),
             label: 'profile_stat_followers'.tr,
-          ),
-          _StatItem(
+          )),
+          Expanded(child: _StatItem(
             value: NumberFormatter.formatCount(profile.followingCount),
             label: 'profile_stat_following'.tr,
-          ),
-          _StatItem(
+          )),
+          Expanded(child: _StatItem(
             value: NumberFormatter.formatCount(profile.friendCount),
             label: 'profile_action_friends'.tr,
-          ),
-          _StatItem(
+          )),
+          Expanded(child: _StatItem(
             value: NumberFormatter.formatCount(profile.postsCount),
             label: 'profile_stat_posts'.tr,
-          ),
-          _StatItem(
+          )),
+          Expanded(child: _StatItem(
             value: profile.rating.toStringAsFixed(1),
             label: 'profile_stat_reputation'.tr,
-          ),
+          )),
         ],
       ),
     );
