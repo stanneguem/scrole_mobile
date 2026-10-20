@@ -5,6 +5,8 @@ import '../widgets/app_cached_image.dart';
 import '../widgets/user_certified_badge.dart';
 import '../../modules/module_decouverte/centre/models/discover_models.dart';
 import '../../app/theme/text_styles.dart';
+import '../../app/routes/app_pages.dart';
+import '../../modules/module_decouverte/interne/widgets/account_list_tile.dart';
 import 'relation_button_widget.dart';
 
 class SearchScreen extends StatelessWidget {
@@ -148,7 +150,7 @@ class SearchScreen extends StatelessWidget {
               switch (state) {
                 case SearchState.initial:
                   final recent = controller.recentSearches;
-                  if (recent.isEmpty) {
+                  if (recent.isEmpty && controller.suggestedProfiles.isEmpty && !controller.isLoadingSuggestions.value) {
                     return Center(
                       child: Text(
                         'no_recent_searches'.tr,
@@ -159,42 +161,64 @@ class SearchScreen extends StatelessWidget {
                   return ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'recent_searches'.tr,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: controller.clearHistory,
-                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                            child: Text('clear_history'.tr, style: TextStyle(color: colorScheme.error, fontSize: 13, fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ...recent.map((q) => Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.history_rounded, size: 18, color: colorScheme.onSurfaceVariant),
+                      if (recent.isNotEmpty) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'recent_searches'.tr,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurfaceVariant,
                               ),
-                              title: Text(q, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500, fontSize: 14.5)),
-                              trailing: Icon(Icons.north_west_rounded, size: 16, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-                              onTap: () => controller.selectRecentSearch(q),
                             ),
-                          )),
+                            TextButton(
+                              onPressed: controller.clearHistory,
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
+                              child: Text('clear_history'.tr, style: TextStyle(color: colorScheme.error, fontSize: 13, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ...recent.map((q) => Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.history_rounded, size: 18, color: colorScheme.onSurfaceVariant),
+                            ),
+                            title: Text(q, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500, fontSize: 14.5)),
+                            trailing: Icon(Icons.north_west_rounded, size: 16, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                            onTap: () => controller.selectRecentSearch(q),
+                          ),
+                        )),
+                      ],
+                      if (controller.suggestedProfiles.isNotEmpty) ...[
+                        const SizedBox(height: 18),
+                        Text(
+                          'suggested_profiles_title'.tr,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 8),
+                        ...controller.suggestedProfiles.map((account) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: AccountListTile(
+                            account: account,
+                            onTap: () => Get.toNamed(AppPages.externalProfilePath(account.id)),
+                          ),
+                        )),
+                      ],
+                      if (controller.isLoadingSuggestions.value && controller.suggestedProfiles.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                     ],
                   );
 
