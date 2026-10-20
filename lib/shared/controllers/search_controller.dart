@@ -21,6 +21,8 @@ class AppSearchController extends GetxController {
   final Rx<SearchState> state = SearchState.initial.obs;
   final Rx<SearchFilter> filter = SearchFilter.all.obs;
   final RxList<SearchResultItem> results = <SearchResultItem>[].obs;
+  final RxList<AccountSuggestion> suggestedProfiles = <AccountSuggestion>[].obs;
+  final RxBool isLoadingSuggestions = false.obs;
   final RxString errorMessage = ''.obs;
 
   final Map<String, List<SearchResultItem>> _sessionCache = {};
@@ -32,12 +34,29 @@ class AppSearchController extends GetxController {
   void onInit() {
     super.onInit();
     debounce(query, _onQueryChanged, time: const Duration(milliseconds: 400));
+    unawaited(loadSuggestedProfiles());
   }
 
   @override
   void onClose() {
     textController.dispose();
     super.onClose();
+  }
+
+  Future<void> loadSuggestedProfiles({int limit = 30, int offset = 0}) async {
+    isLoadingSuggestions.value = true;
+    try {
+      final profiles = await _repository.getSuggestedProfiles(limit: limit, offset: offset);
+      if (offset == 0) {
+        suggestedProfiles.assignAll(profiles);
+      } else {
+        suggestedProfiles.addAll(profiles);
+      }
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] get_suggested_profiles UI exception=$e\\n$stack');
+    } finally {
+      isLoadingSuggestions.value = false;
+    }
   }
 
   void onQueryChanged(String val) {
