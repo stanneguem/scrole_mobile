@@ -396,7 +396,11 @@ class _SearchResultTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          if (item.category == 'user' && item.followsMe) ...[\n            const SizedBox(height: 2),\n            Text('follow_te_follows_you'.tr, style: TextStyle(color: colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),\n          ],\n          if (item.category == 'user' && item.friendCount != null && item.friendCount! > 0) ...[
+          if (item.category == 'user' && item.followsMe) ...[
+            const SizedBox(height: 2),
+            Text('follow_te_follows_you'.tr, style: TextStyle(color: colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+          ],
+          if (item.category == 'user' && item.friendCount != null && item.friendCount! > 0) ...[
             const SizedBox(height: 2),
             Text(
               '${item.friendCount} amis en commun',
