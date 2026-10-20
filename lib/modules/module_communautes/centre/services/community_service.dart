@@ -201,6 +201,38 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
   }
 
   /// Resolves the user's role inside this specific community, not the platform.
+  /// Maps stable backend moderation errors to app-localized messages.
+  /// Keep raw backend text in logs, not in user-facing UI.
+  String localizedCommunityError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').toLowerCase();
+    if (message.contains('action réservée aux administrateurs') ||
+        message.contains('administrateurs de la communauté')) {
+      return 'community_admin_required'.tr;
+    }
+    if (message.contains('créateur de la communauté') ||
+        message.contains('createur de la communaute')) {
+      return 'community_creator_cannot_exclude'.tr;
+    }
+    if (message.contains('retirez d’abord') ||
+        message.contains("retirez d'abord") ||
+        message.contains('rôle administrateur')) {
+      return 'community_remove_admin_role_first'.tr;
+    }
+    if (message.contains('vous ne pouvez pas vous exclure')) {
+      return 'community_cannot_exclude_self'.tr;
+    }
+    if (message.contains('motif trop long')) {
+      return 'community_exclusion_reason_too_long'.tr;
+    }
+    if (message.contains('non authentifié') || message.contains('authentication required')) {
+      return 'community_auth_required'.tr;
+    }
+    if (message.contains('introuvable') || message.contains('not found')) {
+      return 'community_user_not_found'.tr;
+    }
+    return 'community_operation_failed'.tr;
+  }
+
   Future<String> getCurrentUserRole(String communityId) async {
     final userId = _authService.userId;
     if (userId == null || userId.trim().isEmpty) return 'member';
