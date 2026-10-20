@@ -16,7 +16,6 @@ import 'package:scrole/modules/module_communautes/centre/models/news/community_h
 import 'community_poll_composer_screen.dart';
 import 'community_post_hashtag_selection_screen.dart';
 import 'community_post_settings_screen.dart';
-import 'community_post_mentions_screen.dart';
 
 class CreateCommunityPostScreen extends StatefulWidget {
   final String communityName;
@@ -732,11 +731,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                     },
                     icon: Icon(Icons.tag_rounded, color: _selectedHashtags.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
                     tooltip: 'Hashtags',
-                  ),
-                  IconButton(
-                    onPressed: _openMentions,
-                    icon: Icon(Icons.alternate_email_rounded, color: _selectedMentions.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
-                    tooltip: 'Mentions',
                   ),
                   IconButton(
                     onPressed: () async {
