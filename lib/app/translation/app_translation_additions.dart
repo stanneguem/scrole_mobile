@@ -523,6 +523,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Motif du refus (facultatif)",
       'community_mod_reject_post_reason_hint': "Explique pourquoi la publication est refusée",
       'community_load_more': "Charger plus",
+      'community_report_community_subtitle': "Signaler un problème",
+      'community_member_search_hint': "Rechercher un membre...",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1039,6 +1041,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Rejection reason (optional)",
       'community_mod_reject_post_reason_hint': "Explain why the post is being rejected",
       'community_load_more': "Load more",
+      'community_report_community_subtitle': "Report a problem",
+      'community_member_search_hint': "Search members...",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1472,6 +1476,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Motivo del rechazo (opcional)",
       'community_mod_reject_post_reason_hint': "Explica por qué se rechaza la publicación",
       'community_load_more': "Cargar más",
+      'community_report_community_subtitle': "Informar de un problema",
+      'community_member_search_hint': "Buscar miembros...",
     },
     'de': {
       'status_online': 'Online',
@@ -1888,6 +1894,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Ablehnungsgrund (optional)",
       'community_mod_reject_post_reason_hint': "Erkläre, warum der Beitrag abgelehnt wird",
       'community_load_more': "Mehr laden",
+      'community_report_community_subtitle': "Ein Problem melden",
+      'community_member_search_hint': "Mitglieder suchen...",
     },
     'it': {
       'status_online': 'In linea',
@@ -2304,6 +2312,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Motivo del rifiuto (facoltativo)",
       'community_mod_reject_post_reason_hint': "Spiega perché il post viene rifiutato",
       'community_load_more': "Carica altro",
+      'community_report_community_subtitle': "Segnala un problema",
+      'community_member_search_hint': "Cerca membri...",
     },
     'pt': {
       'status_online': 'Online',
@@ -2720,6 +2730,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Motivo da rejeição (opcional)",
       'community_mod_reject_post_reason_hint': "Explique por que a publicação está a ser rejeitada",
       'community_load_more': "Carregar mais",
+      'community_report_community_subtitle': "Denunciar um problema",
+      'community_member_search_hint': "Pesquisar membros...",
     },
     'zh': {
       'status_online': '在线',
@@ -3136,6 +3148,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "拒绝原因（可选）",
       'community_mod_reject_post_reason_hint': "说明拒绝此帖子的原因",
       'community_load_more': "加载更多",
+      'community_report_community_subtitle': "举报问题",
+      'community_member_search_hint': "搜索成员...",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3551,6 +3565,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "却下理由（任意）",
       'community_mod_reject_post_reason_hint': "投稿を却下する理由を入力してください",
       'community_load_more': "さらに読み込む",
+      'community_report_community_subtitle': "問題を報告する",
+      'community_member_search_hint': "メンバーを検索...",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3961,6 +3977,8 @@ class AppTranslationAdditions {
       'community_mod_reject_post_reason_label': "Причина отклонения (необязательно)",
       'community_mod_reject_post_reason_hint': "Укажите, почему публикация отклоняется",
       'community_load_more': "Загрузить ещё",
+      'community_report_community_subtitle': "Сообщить о проблеме",
+      'community_member_search_hint': "Поиск участников...",
     },
   };
 
