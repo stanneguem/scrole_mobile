@@ -9,6 +9,7 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/image_source_sheet.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
+import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
 import 'package:scrole/modules/module_profil/interne/widgets/circle_button_widget.dart';
 
@@ -484,7 +485,7 @@ class ProfileScreen extends GetView<ProfileController> {
           final post = posts[index];
           final imageUrl = post.media.isNotEmpty ? (post.media.first.url ?? '') : '';
           return GestureDetector(
-            onTap: imageUrl.isEmpty ? null : () => _showProfilePostImage(context, imageUrl),
+            onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
             child: Stack(fit: StackFit.expand, children: [
               Container(
                 color: colorScheme.surfaceContainerHighest,
@@ -498,6 +499,10 @@ class ProfileScreen extends GetView<ProfileController> {
                         ),
                       ),
               ),
+              if (post.media.length > 1)
+                const Positioned(right: 5, top: 5, child: Icon(Icons.collections_rounded, color: Colors.white, size: 18, shadows: [Shadow(blurRadius: 5)])),
+              if (post.media.any((m) => (m.type).toLowerCase().contains('video')))
+                const Positioned(left: 5, top: 5, child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 18, shadows: [Shadow(blurRadius: 5)])),
               if (tabIndex == 2)
                 const Positioned(right: 5, bottom: 5, child: Icon(Icons.favorite_rounded, color: Colors.white, size: 17, shadows: [Shadow(blurRadius: 5)])),
             ]),
@@ -559,7 +564,12 @@ class ProfileScreen extends GetView<ProfileController> {
           final date = start == null ? '' : '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')}/${start.year}';
           final location = [ev['city'], ev['country']].where((v) => v != null && v.toString().trim().isNotEmpty).join(', ');
           final role = (ev['role'] ?? '').toString().replaceAll('_', ' ');
-          return Container(
+          return GestureDetector(
+            onTap: () {
+              final eventId = (ev['id'] ?? '').toString();
+              if (eventId.isNotEmpty) Get.toNamed(AppPages.eventPreviewPath(eventId));
+            },
+            child: Container(
             margin: const EdgeInsets.only(bottom: 14),
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
@@ -590,6 +600,7 @@ class ProfileScreen extends GetView<ProfileController> {
                 ]),
               ),
             ]),
+          ),
           );
         },
       );
