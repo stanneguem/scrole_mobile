@@ -162,6 +162,13 @@ class SocialOutboxProcessor extends GetxService {
       case 'generate_user_qr_code':
         final qrId = payload['id'] as String;
         await _client.rpc('generate_user_qr_code', params: {'p_id': qrId});
+        await _dao.saveUserQrCodes([
+          {
+            'id': qrId,
+            'user_id': _client.auth.currentUser?.id ?? '',
+            'sync_status': 'synced',
+          },
+        ]);
         break;
 
       case 'scan_qr_code':
