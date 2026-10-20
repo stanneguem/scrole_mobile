@@ -93,6 +93,7 @@ class ExternalProfileModel {
     String? relationshipState,
     String? requestId,
     DateTime? retryAt,
+    bool? canMessage,
     double? rating,
     List<Map<String, dynamic>>? activities,
   }) {
