@@ -122,9 +122,17 @@ class NotificationScreen extends GetView<NotificationController> {
     final payload = controller.payloadOf(notification);
     final data = payload['data'];
 
-    // Cas 1 : Connexion acceptée -> Profil de la personne
-    if (notification.type == 'connection_request' || notification.type == 'connection_accepted') {
-      final actorId = payload['actor_id']?.toString() ?? data?['user_id']?.toString();
+    final type = notification.type.toLowerCase();
+
+    if (type == 'follow_request') {
+      Get.toNamed(AppPages.followRequests, arguments: {'requestId': data is Map ? data['request_id'] : null});
+      return;
+    }
+
+    // Les notifications de relation ouvrent le profil de l'autre personne.
+    if (['new_follower', 'new_friend', 'follow_request_accepted', 'friend_via_qr',
+         'connection_request', 'connection_accepted', 'demande_ami', 'demande_ami_acceptee', 'ami_confirme'].contains(type)) {
+      final actorId = payload['actor_id']?.toString() ?? (data is Map ? data['user_id']?.toString() : null);
       if (actorId != null && actorId.isNotEmpty) {
         Get.toNamed(AppPages.externalProfilePath(actorId));
         return;
@@ -164,6 +172,30 @@ class _NotificationTile extends StatelessWidget {
   final VoidCallback onMarkAsRead;
   final VoidCallback onDelete;
   final String? avatarUrl;
+
+  String _localizedTitle(NotificationController controller) {
+    final type = notification.type.toLowerCase();
+    const supported = {'new_follower', 'new_friend', 'follow_request', 'follow_request_accepted', 'friend_via_qr'};
+    if (!supported.contains(type)) return notification.title;
+    final payload = controller.payloadOf(notification);
+    final rawData = payload['data'];
+    final data = rawData is Map ? Map<String, dynamic>.from(rawData) : <String, dynamic>{};
+    final name = (data['display_name'] ?? data['name'] ?? data['username'] ?? data['pseudo'] ?? payload['actor_name'] ?? '').toString();
+    final key = switch (type) {
+      'new_follower' => 'follow_notification_new_follower',
+      'new_friend' => 'follow_notification_new_friend',
+      'follow_request' => 'follow_notification_request',
+      'follow_request_accepted' => 'follow_notification_accepted',
+      _ => 'follow_notification_friend_qr',
+    };
+    return key.trParams({'name': name});
+  }
+
+  String _localizedMessage(NotificationController controller) {
+    const supported = {'new_follower', 'new_friend', 'follow_request', 'follow_request_accepted', 'friend_via_qr'};
+    if (supported.contains(notification.type.toLowerCase())) return '';
+    return notification.message;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +249,7 @@ class _NotificationTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            notification.title,
+                            _localizedTitle(controller),
                             style: AppTextStyles.body.copyWith(
                               color: colorScheme.onSurface,
                               fontSize: 13.5,
@@ -236,7 +268,7 @@ class _NotificationTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      notification.message,
+                      _localizedMessage(controller),
                       style: AppTextStyles.bodySmall.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         fontSize: 12,
@@ -466,6 +498,11 @@ class _NotificationTile extends StatelessWidget {
       case 'activite_liee_suppression_j30':
       case 'evenement_suppression_j30':
         return (icon: Icons.pending_actions_rounded, color: Colors.orange);
+      case 'new_follower':
+      case 'new_friend':
+      case 'follow_request':
+      case 'follow_request_accepted':
+      case 'friend_via_qr':
       case 'connection_request':
       case 'demande_ami':
       case 'friend_request':
