@@ -328,21 +328,6 @@ class ProfileScreen extends GetView<ProfileController> {
             ),
           ),
           Expanded(
-            child: _followStat(
-              controller.friendsCount.value.toString(),
-              'follow_tab_friends'.tr,
-              colorScheme,
-              () => Get.toNamed(AppPages.followLists, arguments: {'userId': controller.userId.value, 'initialTab': 2}),
-            ),
-          ),
-          Expanded(
-            child: _engagementStat(
-              controller.postsCount.value.toString(),
-              'profile_stat_posts'.tr,
-              colorScheme,
-            ),
-          ),
-          Expanded(
             child: _engagementStat(
               controller.reputation.value.toStringAsFixed(1),
               'profile_stat_reputation'.tr,
