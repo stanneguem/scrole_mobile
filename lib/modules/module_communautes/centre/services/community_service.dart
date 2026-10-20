@@ -200,10 +200,14 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     );
   }
 
+  /// Returns a non-privileged role unless the backend confirms staff access.
+  ///
+  /// This value is used to decide which management controls to show in the UI;
+  /// sensitive operations must still be authorized by their Supabase RPC/RLS.
   Future<String> getCurrentUserRole(String communityId) async {
     try {
       final userId = _authService.userId;
-      if (userId == null) return 'admin';
+      if (userId == null) return 'member';
 
       try {
         final myCommunities = await _repo.getMyCommunities();
@@ -216,22 +220,41 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
                 comm['role_id']?.toString() ??
                 '';
             final role = rawRole.toLowerCase();
-            if (role.contains('admin') || role.contains('owner') || role.contains('fondateur') || role.contains('administrateur') || role.contains('créateur')) {
+            if (role.contains('admin') ||
+                role.contains('owner') ||
+                role.contains('fondateur') ||
+                role.contains('administrateur') ||
+                role.contains('créateur')) {
               return 'admin';
             }
+            if (role.contains('moderator') ||
+                role.contains('modérateur') ||
+                role.contains('moderateur')) {
+              return 'moderator';
+            }
+            if (role.isNotEmpty) return 'member';
           }
         }
-      } catch (_) {}
-
-      final isStaff = await _repo.isCommunityStaffRpc(communityId);
-      if (isStaff) {
-        return 'admin';
+      } catch (e) {
+        debugPrint('[CommunityService] Could not read community membership role: $e');
       }
 
-      return 'admin';
+      try {
+        final isStaff = await _repo.isCommunityStaffRpc(communityId);
+        if (isStaff) {
+          // The current RPC only reports whether the user is staff, not the
+          // precise role. Keep existing UI compatibility while avoiding
+          // privilege escalation when the check fails.
+          return 'admin';
+        }
+      } catch (e) {
+        debugPrint('[CommunityService] Could not verify community staff role: $e');
+      }
+
+      return 'member';
     } catch (e) {
       debugPrint('[CommunityService] getCurrentUserRole error: $e');
-      return 'admin';
+      return 'member';
     }
   }
 
