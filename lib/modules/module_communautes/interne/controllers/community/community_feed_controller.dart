@@ -463,25 +463,54 @@ class CommunityFeedController extends GetxController {
   }
 
   Future<void> deleteComment(String postId, String commentId) async {
-    final original = commentsByPostId[postId];
-    if (original == null) return;
-    final index = original.indexWhere((comment) => comment.id == commentId);
-    if (index < 0) return;
+    final topLevel = commentsByPostId[postId] ?? [];
+    final topIndex = topLevel.indexWhere((comment) => comment.id == commentId);
+    String? replyParentId;
+    List<PostComment>? originalReplies;
+    var replyIndex = -1;
+    PostComment? removed;
 
-    final removed = original[index];
-    commentsByPostId[postId] = List<PostComment>.from(original)..removeAt(index);
-    commentsByPostId.refresh();
+    if (topIndex >= 0) {
+      removed = topLevel[topIndex];
+      commentsByPostId[postId] = List<PostComment>.from(topLevel)..removeAt(topIndex);
+      commentsByPostId.refresh();
+    } else {
+      for (final entry in repliesByCommentId.entries) {
+        final index = entry.value.indexWhere((reply) => reply.id == commentId);
+        if (index < 0) continue;
+        replyParentId = entry.key;
+        originalReplies = List<PostComment>.from(entry.value);
+        replyIndex = index;
+        removed = entry.value[index];
+        repliesByCommentId[entry.key] = List<PostComment>.from(entry.value)..removeAt(index);
+        repliesByCommentId.refresh();
+        _incrementReplyCount(postId, entry.key, -1);
+        break;
+      }
+    }
+
+    if (removed == null) return;
     _incrementCommentCount(postId, -1);
 
     try {
       await _feedRepo.deleteCommunityComment(commentId);
     } catch (e) {
-      final restored = List<PostComment>.from(commentsByPostId[postId] ?? []);
-      if (!restored.any((comment) => comment.id == commentId)) {
-        restored.insert(index.clamp(0, restored.length).toInt(), removed);
+      if (topIndex >= 0) {
+        final restored = List<PostComment>.from(commentsByPostId[postId] ?? []);
+        if (!restored.any((comment) => comment.id == commentId)) {
+          restored.insert(topIndex.clamp(0, restored.length).toInt(), removed);
+        }
+        commentsByPostId[postId] = restored;
+        commentsByPostId.refresh();
+      } else if (replyParentId != null && originalReplies != null) {
+        final restored = List<PostComment>.from(repliesByCommentId[replyParentId] ?? []);
+        if (!restored.any((reply) => reply.id == commentId)) {
+          restored.insert(replyIndex.clamp(0, restored.length).toInt(), removed);
+        }
+        repliesByCommentId[replyParentId] = restored;
+        repliesByCommentId.refresh();
+        _incrementReplyCount(postId, replyParentId, 1);
       }
-      commentsByPostId[postId] = restored;
-      commentsByPostId.refresh();
       _incrementCommentCount(postId, 1);
       Get.snackbar(
         'error'.tr,
