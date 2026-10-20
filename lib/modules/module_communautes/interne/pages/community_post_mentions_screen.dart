@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -37,23 +38,64 @@ class CommunityPostMentionsController extends GetxController {
     super.onClose();
   }
 
+  String _memberUserId(Map<String, dynamic> member) {
+    final profile = member['user_profiles'] is Map
+        ? Map<String, dynamic>.from(member['user_profiles'] as Map)
+        : <String, dynamic>{};
+    return (profile['user_id'] ?? profile['id'] ?? member['user_id'] ??
+            member['userId'] ?? member['profile_id'] ?? member['id'] ?? '')
+        .toString();
+  }
+
   Future<void> loadMembers() async {
     isLoading.value = true;
     try {
-      final res = await _service.getCommunityMembers(communityId);
-      final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null;
+      final client = Supabase.instance.client;
+      final currentUserId = client.auth.currentUser?.id ??
+          (Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null);
+      List<Map<String, dynamic>> res;
 
-      // Filter out current user
-      final cleanMembers = res.where((m) {
-        final profile = m['user_profiles'] is Map ? Map<String, dynamic>.from(m['user_profiles']) : <String, dynamic>{};
-        final uid = profile['user_id']?.toString() ?? profile['id']?.toString() ?? m['user_id']?.toString() ?? m['userId']?.toString() ?? '';
-        return uid != currentUserId;
+      if (communityId.isNotEmpty) {
+        res = await _service.getCommunityMembers(communityId);
+      } else {
+        // General-feed mentions are limited to the user's friends.
+        final uid = currentUserId;
+        if (uid == null || uid.isEmpty) {
+          res = [];
+        } else {
+          final relations = await client.from('friendships')
+              .select('user_a_id,user_b_id')
+              .or('user_a_id.eq.$uid,user_b_id.eq.$uid')
+              .limit(300);
+          final friendIds = <String>{};
+          for (final relation in relations) {
+            final other = relation['user_a_id']?.toString() == uid
+                ? relation['user_b_id']?.toString()
+                : relation['user_a_id']?.toString();
+            if (other != null && other.isNotEmpty && other != uid) friendIds.add(other);
+          }
+          if (friendIds.isEmpty) {
+            res = [];
+          } else {
+            final profiles = await client.from('user_profiles')
+                .select('user_id,username,first_name,last_name,photo_url,is_verified')
+                .inFilter('user_id', friendIds.toList())
+                .limit(300);
+            res = List<Map<String, dynamic>>.from(profiles);
+          }
+        }
+      }
+
+      final cleanMembers = res.where((member) {
+        final uid = _memberUserId(member);
+        return uid.isNotEmpty && uid != currentUserId;
       }).toList();
-
-      members.value = cleanMembers;
-      filteredMembers.value = cleanMembers;
+      members.assignAll(cleanMembers);
+      filteredMembers.assignAll(cleanMembers);
     } catch (e) {
       debugPrint('[CommunityMentions] Error loading members: $e');
+      members.clear();
+      filteredMembers.clear();
     } finally {
       isLoading.value = false;
     }
@@ -86,9 +128,8 @@ class CommunityPostMentionsController extends GetxController {
   }
 
   void confirm() {
-    final selected = members.where((m) {
-      final uId = (m['user_id'] ?? m['id'] ?? '').toString();
-      return selectedUserIds.contains(uId);
+    final selected = members.where((member) {
+      return selectedUserIds.contains(_memberUserId(member));
     }).toList();
     Get.back(result: selected);
   }
@@ -149,7 +190,7 @@ class CommunityPostMentionsScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final m = controller.filteredMembers[index];
                   final profile = m['user_profiles'] is Map ? Map<String, dynamic>.from(m['user_profiles']) : <String, dynamic>{};
-                  final userId = profile['user_id']?.toString() ?? profile['id']?.toString() ?? m['user_id']?.toString() ?? m['userId']?.toString() ?? '';
+                  final userId = controller._memberUserId(m);
                   final username = profile['username']?.toString() ?? m['username']?.toString() ?? 'Membre';
                   final firstName = profile['first_name']?.toString() ?? m['first_name']?.toString() ?? '';
                   final lastName = profile['last_name']?.toString() ?? m['last_name']?.toString() ?? '';
