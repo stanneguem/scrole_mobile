@@ -113,115 +113,42 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
       qrId = rawValue.replaceFirst('scrole_qr:', '');
     }
 
-    _showModeSelectionSheet(qrId);
+    _performScan(qrId);
   }
 
-  void _showModeSelectionSheet(String qrId) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => ScroleBottomSheet(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Option d\'ajout d\'ami', style: AppTextStyles.h4),
-            const SizedBox(height: 8),
-            Text(
-              'Choisissez comment vous souhaitez ajouter cet utilisateur via son QR Code.',
-              style: AppTextStyles.bodySmall,
-            ),
-            const SizedBox(height: 20),
-            ScroleBottomSheetGroup(
-              children: [
-                ScroleBottomSheetAction(
-                  icon: Icons.person_add_rounded,
-                  label: 'Envoyer une demande d\'ami',
-                  subtitle: 'Le destinataire devra accepter votre demande.',
-                  color: AppColors.primary,
-                  onTap: () {
-                    Get.back();
-                    _performScan(qrId, 'demande');
-                  },
-                ),
-                const ScroleBottomSheetDivider(),
-                ScroleBottomSheetAction(
-                  icon: Icons.flash_on_rounded,
-                  label: 'Confirmation directe (Amitié immédiate)',
-                  subtitle: 'Crée l\'amitié immédiatement sans attente (consomme 1 usage du QR).',
-                  color: Colors.amber[800],
-                  onTap: () {
-                    Get.back();
-                    _confirmDirectScan(qrId);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: () {
-                Get.back();
-                setState(() => _isScanning = false);
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-                backgroundColor: AppColors.surfaceDark,
-              ),
-              child: const Text('Annuler'),
-            ),
-          ],
-        ),
-      ),
-    ).then((_) {
-      if (mounted) setState(() => _isScanning = false);
-    });
-  }
-
-  void _confirmDirectScan(String qrId) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirmation Directe'),
-        content: const Text(
-          'Attention : Confirmation directe crée l\'amitié immédiatement sans validation du propriétaire du QR code. Souhaitez-vous continuer ?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              setState(() => _isScanning = false);
-            },
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _performScan(qrId, 'confirmation_directe');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[800]),
-            child: const Text('Confirmer'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _performScan(String qrId, String mode) async {
+  Future<void> _performScan(String qrId) async {
     try {
-      final res = await _socialRepo.scanQrCode(qrId, mode);
-      final friendId = res != null ? (res['friend_id'] ?? res['user_id'] ?? res['receiver_id'])?.toString() : null;
-
-      if (mode == 'confirmation_directe') {
-        Get.snackbar('Succès', 'Nouvel ami confirmé directement !', backgroundColor: Colors.green, colorText: Colors.white);
-        if (friendId != null && friendId.isNotEmpty) {
-          Get.toNamed(AppPages.externalProfilePath(friendId));
-        }
-      } else {
-        Get.snackbar('Succès', 'Demande d\'ami envoyée !', backgroundColor: AppColors.primary, colorText: Colors.white);
+      debugPrint('[FOLLOW] personal QR scan p_qr_id=$qrId p_mode=null');
+      final result = await _socialRepo.scanQrCode(qrId);
+      final friendId = result != null
+          ? (result['friend_id'] ?? result['user_id'] ?? result['receiver_id'])?.toString()
+          : null;
+      if (friendId == null || friendId.isEmpty) {
+        throw StateError('follow_action_impossible');
       }
-    } catch (e) {
-      showAppErrorDialog(context, e);
+      final displayName = (result?['name'] ?? result?['username'] ?? '').toString();
+      Get.snackbar(
+        'follow_qr_success_title'.tr,
+        'follow_qr_success_message'.trParams({'name': displayName.isEmpty ? friendId : displayName}),
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+      await Get.toNamed(AppPages.externalProfilePath(friendId));
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC scan_qr_code exception=$e\\n$stack');
+      final raw = e.toString().toLowerCase();
+      final key = raw.contains('qr_not_found') || raw.contains('qr code not found')
+          ? 'follow_qr_not_found'
+          : raw.contains('qr_expired') || raw.contains('qr_invalid') || raw.contains('no longer valid')
+              ? 'follow_qr_expired'
+              : raw.contains('own_qr') || raw.contains('self') || raw.contains('propre qr')
+                  ? 'follow_qr_self'
+                  : raw.contains('already_friend') || raw.contains('already friends') || raw.contains('déjà ami')
+                      ? 'follow_qr_already_friends'
+                      : raw.contains('user_not_found') || raw.contains('utilisateur introuvable')
+                          ? 'follow_user_not_found'
+                          : 'follow_action_impossible';
+      if (mounted) Get.snackbar('error_title'.tr, key.tr);
     } finally {
       if (mounted) setState(() => _isScanning = false);
     }
