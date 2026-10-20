@@ -42,6 +42,7 @@ void main() {
       'community_exclude_action',
       'community_exclude_success_title',
       'community_exclude_success_message',
+      'community_reports_load_error',
       'community_post_shared_success',
       'community_report_description_hint',
       'community_report_description_label',
