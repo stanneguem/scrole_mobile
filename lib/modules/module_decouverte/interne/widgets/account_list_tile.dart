@@ -6,6 +6,7 @@ import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
+import '../../../../shared/widgets/relation_button_widget.dart';
 import '../../centre/models/discover_models.dart';
 
 class AccountListTile extends StatelessWidget {
@@ -103,6 +104,10 @@ class AccountListTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (account.followsMe) ...[
+                    const SizedBox(height: 3),
+                    Text('follow_te_follows_you'.tr, style: AppTextStyles.caption.copyWith(color: colorScheme.primary, fontWeight: FontWeight.w600)),
+                  ],
                   if (friendText != null) ...[
                     const SizedBox(height: 4),
                     Row(
@@ -138,6 +143,8 @@ class AccountListTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            RelationButtonWidget(targetUserId: account.id),
+            const SizedBox(width: 4),
             Icon(
               Icons.chevron_right_rounded,
               color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
