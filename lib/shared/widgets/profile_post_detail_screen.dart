@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 
@@ -28,7 +29,10 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
     final media = post.media;
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: AppBar(title: const Text('Publication'), leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: Get.back)),
+      appBar: AppBar(
+        title: const Text('Publication'),
+        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Get.back()),
+      ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
@@ -40,11 +44,7 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
                   controller: _pageController,
                   itemCount: media.length,
                   onPageChanged: (index) => setState(() => _currentPage = index),
-                  itemBuilder: (context, index) {
-                    final url = (media[index].url ?? '').trim();
-                    if (url.isEmpty) return Center(child: Icon(Icons.image_not_supported_outlined, size: 48, color: colors.onSurfaceVariant));
-                    return InteractiveViewer(minScale: 1, maxScale: 4, child: AppCachedImage(imageUrl: url, fit: BoxFit.contain));
-                  },
+                  itemBuilder: (context, index) => _PostMediaPage(key: ValueKey('${post.id}:$index'), media: media[index]),
                 ),
                 if (media.length > 1)
                   Positioned(top: 12, right: 12, child: Container(
@@ -62,7 +62,8 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
                 ],
               ]),
             ),
-          Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(post.content, style: Theme.of(context).textTheme.bodyLarge)),
+          if (post.content.trim().isNotEmpty)
+            Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(post.content, style: Theme.of(context).textTheme.bodyLarge)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Wrap(spacing: 22, runSpacing: 12, children: [
@@ -78,6 +79,90 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
         ],
       ),
     );
+  }
+}
+
+class _PostMediaPage extends StatefulWidget {
+  const _PostMediaPage({super.key, required this.media});
+  final dynamic media;
+
+  @override
+  State<_PostMediaPage> createState() => _PostMediaPageState();
+}
+
+class _PostMediaPageState extends State<_PostMediaPage> {
+  VideoPlayerController? _videoController;
+  bool _videoFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeVideo();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PostMediaPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.media.url != widget.media.url || oldWidget.media.type != widget.media.type) {
+      _disposeVideo();
+      _initializeVideo();
+    }
+  }
+
+  void _initializeVideo() {
+    if (!widget.media.isVideo || widget.media.url.toString().trim().isEmpty) return;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.media.url));
+    _videoController = controller;
+    controller.initialize().then((_) {
+      if (!mounted) return;
+      setState(() {});
+    }).catchError((_) {
+      if (mounted) setState(() => _videoFailed = true);
+    });
+  }
+
+  void _disposeVideo() {
+    final controller = _videoController;
+    _videoController = null;
+    if (controller != null) controller.dispose();
+  }
+
+  @override
+  void dispose() {
+    _disposeVideo();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final url = widget.media.url.toString().trim();
+    if (widget.media.isVideo) {
+      final controller = _videoController;
+      if (_videoFailed) {
+        return Center(child: Icon(Icons.videocam_off_outlined, size: 48, color: colors.onSurfaceVariant));
+      }
+      if (controller == null || !controller.value.isInitialized) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return GestureDetector(
+        onTap: () {
+          if (controller.value.isPlaying) {
+            controller.pause();
+          } else {
+            controller.play();
+          }
+          setState(() {});
+        },
+        child: Stack(alignment: Alignment.center, children: [
+          Center(child: AspectRatio(aspectRatio: controller.value.aspectRatio, child: VideoPlayer(controller))),
+          if (!controller.value.isPlaying)
+            const CircleAvatar(backgroundColor: Colors.black54, radius: 28, child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36)),
+        ]),
+      );
+    }
+    if (url.isEmpty) return Center(child: Icon(Icons.image_not_supported_outlined, size: 48, color: colors.onSurfaceVariant));
+    return InteractiveViewer(minScale: 1, maxScale: 4, child: AppCachedImage(imageUrl: url, fit: BoxFit.contain));
   }
 }
 
