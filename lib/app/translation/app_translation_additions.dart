@@ -569,6 +569,8 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Cette liste est réservée aux abonnés de ce profil",
       'follow_error_direction': "Direction invalide",
       'follow_remove_follower_action': "Retirer cet abonné",
+      'follow_profile_private': "Profil privé",
+      'follow_profile_private_desc': "Seuls vos abonnés approuvés peuvent consulter le contenu réservé de votre profil.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1117,6 +1119,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "User not found",
       'follow_action_impossible': "Action unavailable",
       'follow_remove_follower_action': "Remove follower",
+      'follow_profile_private': "Private profile",
+      'follow_profile_private_desc': "Only your approved followers can view private profile content.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1582,6 +1586,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "Usuario no encontrado",
       'follow_action_impossible': "Acción no disponible",
       'follow_remove_follower_action': "Eliminar seguidor",
+      'follow_profile_private': "Perfil privado",
+      'follow_profile_private_desc': "Solo tus seguidores aprobados pueden ver el contenido privado de tu perfil.",
     },
     'de': {
       'status_online': 'Online',
@@ -2030,6 +2036,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "Benutzer nicht gefunden",
       'follow_action_impossible': "Aktion nicht möglich",
       'follow_remove_follower_action': "Follower entfernen",
+      'follow_profile_private': "Privates Profil",
+      'follow_profile_private_desc': "Nur bestätigte Follower können private Profilinhalte sehen.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2478,6 +2486,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "Utente non trovato",
       'follow_action_impossible': "Azione non disponibile",
       'follow_remove_follower_action': "Rimuovi follower",
+      'follow_profile_private': "Profilo privato",
+      'follow_profile_private_desc': "Solo i follower approvati possono vedere i contenuti privati del profilo.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2926,6 +2936,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "Utilizador não encontrado",
       'follow_action_impossible': "Ação indisponível",
       'follow_remove_follower_action': "Remover seguidor",
+      'follow_profile_private': "Perfil privado",
+      'follow_profile_private_desc': "Só os seguidores aprovados podem ver o conteúdo privado do perfil.",
     },
     'zh': {
       'status_online': '在线',
@@ -3374,6 +3386,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "找不到用户",
       'follow_action_impossible': "无法执行此操作",
       'follow_remove_follower_action': "移除粉丝",
+      'follow_profile_private': "私人个人资料",
+      'follow_profile_private_desc': "只有获准的关注者才能查看个人资料的私密内容。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3821,6 +3835,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "ユーザーが見つかりません",
       'follow_action_impossible': "操作できません",
       'follow_remove_follower_action': "フォロワーを削除",
+      'follow_profile_private': "非公開プロフィール",
+      'follow_profile_private_desc': "承認したフォロワーのみがプロフィールの非公開コンテンツを閲覧できます。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4263,6 +4279,8 @@ class AppTranslationAdditions {
       'follow_user_not_found': "Пользователь не найден",
       'follow_action_impossible': "Действие недоступно",
       'follow_remove_follower_action': "Удалить подписчика",
+      'follow_profile_private': "Закрытый профиль",
+      'follow_profile_private_desc': "Только одобренные подписчики могут видеть закрытое содержимое профиля.",
     },
   };
 
