@@ -88,9 +88,10 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
       );
       await _loadExclusions();
     } catch (e) {
+      debugPrint('[ExcludedMembersScreen] Removing exclusion failed: $e');
       Get.snackbar(
         'community_save_error'.tr,
-        e.toString().replaceFirst('Exception: ', '').tr,
+        _service.localizedCommunityError(e),
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
