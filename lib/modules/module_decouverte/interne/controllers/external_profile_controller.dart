@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import '../../../module_discussion_direct/centre/services/chat_service.dart';
@@ -26,6 +29,7 @@ class ExternalProfileController extends GetxController {
   final RxString error = ''.obs;
   final RxInt selectedTab = 0.obs;
   late final String userId;
+  RealtimeChannel? _relationshipChannel;
 
   @override
   void onInit() {
@@ -39,6 +43,39 @@ class ExternalProfileController extends GetxController {
       return;
     }
     loadProfile();
+    _subscribeToRelationshipChanges();
+  }
+
+  void _subscribeToRelationshipChanges() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      _relationshipChannel = Supabase.instance.client
+          .channel('user:$uid', opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: 'relationship_changed',
+            callback: (payload) {
+              final changedUserId = payload['user_id']?.toString();
+              if (changedUserId == userId) {
+                debugPrint('[FOLLOW] relationship_changed user_id=$changedUserId; refreshing profile relation and stats');
+                unawaited(loadProfile());
+              }
+            },
+          )
+          ..subscribe();
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] relationship_changed subscription exception=$e\\n$stack');
+    }
+  }
+
+  @override
+  void onClose() {
+    final channel = _relationshipChannel;
+    if (channel != null) {
+      unawaited(Supabase.instance.client.removeChannel(channel));
+      _relationshipChannel = null;
+    }
+    super.onClose();
   }
 
   Future<void> loadProfile() async {
