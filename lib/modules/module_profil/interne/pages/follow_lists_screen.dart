@@ -22,7 +22,7 @@ class FollowListsScreen extends StatelessWidget {
       initialIndex: initialTab.clamp(0, 2).toInt(),
       child: Scaffold(
         appBar: AppBar(
-          title: Text('follow_requests_title'.tr),
+          title: Text('follow_lists_title'.tr),
           bottom: TabBar(
             tabs: [
               Tab(text: 'follow_tab_followers'.tr),
