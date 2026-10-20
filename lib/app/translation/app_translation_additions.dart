@@ -521,6 +521,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Chaque ville sélectionnée doit appartenir à l’un des pays sélectionnés.",
       'community_mod_reject_post_reason_label': "Motif du refus (facultatif)",
       'community_mod_reject_post_reason_hint': "Explique pourquoi la publication est refusée",
+      'community_load_more': "Charger plus",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1035,6 +1036,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Each selected city must belong to one of the selected countries.",
       'community_mod_reject_post_reason_label': "Rejection reason (optional)",
       'community_mod_reject_post_reason_hint': "Explain why the post is being rejected",
+      'community_load_more': "Load more",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1466,6 +1468,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Cada ciudad seleccionada debe pertenecer a uno de los países seleccionados.",
       'community_mod_reject_post_reason_label': "Motivo del rechazo (opcional)",
       'community_mod_reject_post_reason_hint': "Explica por qué se rechaza la publicación",
+      'community_load_more': "Cargar más",
     },
     'de': {
       'status_online': 'Online',
@@ -1880,6 +1883,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Jede ausgewählte Stadt muss zu einem ausgewählten Land gehören.",
       'community_mod_reject_post_reason_label': "Ablehnungsgrund (optional)",
       'community_mod_reject_post_reason_hint': "Erkläre, warum der Beitrag abgelehnt wird",
+      'community_load_more': "Mehr laden",
     },
     'it': {
       'status_online': 'In linea',
@@ -2294,6 +2298,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Ogni città selezionata deve appartenere a uno dei paesi selezionati.",
       'community_mod_reject_post_reason_label': "Motivo del rifiuto (facoltativo)",
       'community_mod_reject_post_reason_hint': "Spiega perché il post viene rifiutato",
+      'community_load_more': "Carica altro",
     },
     'pt': {
       'status_online': 'Online',
@@ -2708,6 +2713,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Cada cidade selecionada deve pertencer a um dos países selecionados.",
       'community_mod_reject_post_reason_label': "Motivo da rejeição (opcional)",
       'community_mod_reject_post_reason_hint': "Explique por que a publicação está a ser rejeitada",
+      'community_load_more': "Carregar mais",
     },
     'zh': {
       'status_online': '在线',
@@ -3122,6 +3128,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "每个所选城市都必须属于所选国家/地区之一。",
       'community_mod_reject_post_reason_label': "拒绝原因（可选）",
       'community_mod_reject_post_reason_hint': "说明拒绝此帖子的原因",
+      'community_load_more': "加载更多",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3535,6 +3542,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "選択した各都市は、選択した国のいずれかに属している必要があります。",
       'community_mod_reject_post_reason_label': "却下理由（任意）",
       'community_mod_reject_post_reason_hint': "投稿を却下する理由を入力してください",
+      'community_load_more': "さらに読み込む",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3943,6 +3951,7 @@ class AppTranslationAdditions {
       'community_settings_city_country_mismatch': "Каждый выбранный город должен относиться к одной из выбранных стран.",
       'community_mod_reject_post_reason_label': "Причина отклонения (необязательно)",
       'community_mod_reject_post_reason_hint': "Укажите, почему публикация отклоняется",
+      'community_load_more': "Загрузить ещё",
     },
   };
 
