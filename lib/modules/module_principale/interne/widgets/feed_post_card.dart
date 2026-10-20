@@ -625,9 +625,21 @@ class FeedPostCard extends StatelessWidget {
                               child: Text(u.username.isNotEmpty ? u.username[0].toUpperCase() : '?', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold)),
                             ),
                     ),
-                    title: Text(
-                      '@${u.username}',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '@${u.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                          ),
+                        ),
+                        if (u.isCertified) ...[
+                          const SizedBox(width: 6),
+                          const UserCertifiedBadge(size: 14),
+                        ],
+                      ],
                     ),
                     trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: colorScheme.onSurfaceVariant),
                     onTap: () {
