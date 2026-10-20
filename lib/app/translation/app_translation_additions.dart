@@ -515,6 +515,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count signalements ouverts sur ce contenu",
       'community_report_dismiss': "Rejeter le signalement",
       'community_user_report_target': "Personne signalée : @name",
+      'community_report_exclude_confirm_title': "Exclure ce membre ?",
+      'community_report_exclude_confirm_message': "Le membre sera exclu de cette communauté. Cette action ne supprime pas son compte.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1023,6 +1025,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count open reports for this content",
       'community_report_dismiss': "Dismiss report",
       'community_user_report_target': "Reported person: @name",
+      'community_report_exclude_confirm_title': "Exclude this member?",
+      'community_report_exclude_confirm_message': "The member will be excluded from this community. This does not delete their account.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1448,6 +1452,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count denuncias abiertas sobre este contenido",
       'community_report_dismiss': "Descartar denuncia",
       'community_user_report_target': "Persona denunciada: @name",
+      'community_report_exclude_confirm_title': "¿Excluir a este miembro?",
+      'community_report_exclude_confirm_message': "El miembro será excluido de esta comunidad. Esto no elimina su cuenta.",
     },
     'de': {
       'status_online': 'Online',
@@ -1856,6 +1862,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count offene Meldungen zu diesem Inhalt",
       'community_report_dismiss': "Meldung verwerfen",
       'community_user_report_target': "Gemeldete Person: @name",
+      'community_report_exclude_confirm_title': "Dieses Mitglied ausschließen?",
+      'community_report_exclude_confirm_message': "Das Mitglied wird aus dieser Community ausgeschlossen. Das Konto wird dadurch nicht gelöscht.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2264,6 +2272,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count segnalazioni aperte per questo contenuto",
       'community_report_dismiss': "Ignora segnalazione",
       'community_user_report_target': "Persona segnalata: @name",
+      'community_report_exclude_confirm_title': "Escludere questo membro?",
+      'community_report_exclude_confirm_message': "Il membro sarà escluso da questa community. L’account non verrà eliminato.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2672,6 +2682,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "@count denúncias abertas sobre este conteúdo",
       'community_report_dismiss': "Descartar denúncia",
       'community_user_report_target': "Pessoa denunciada: @name",
+      'community_report_exclude_confirm_title': "Excluir este membro?",
+      'community_report_exclude_confirm_message': "O membro será excluído desta comunidade. A conta não será eliminada.",
     },
     'zh': {
       'status_online': '在线',
@@ -3080,6 +3092,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "此内容有 @count 条未处理举报",
       'community_report_dismiss': "驳回举报",
       'community_user_report_target': "被举报者：@name",
+      'community_report_exclude_confirm_title': "排除此成员？",
+      'community_report_exclude_confirm_message': "该成员将被排除在此社区之外，但其账户不会被删除。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3487,6 +3501,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "このコンテンツには未処理の報告が@count件あります",
       'community_report_dismiss': "報告を却下",
       'community_user_report_target': "報告対象：@name",
+      'community_report_exclude_confirm_title': "このメンバーを除外しますか？",
+      'community_report_exclude_confirm_message': "このメンバーはコミュニティから除外されます。アカウント自体は削除されません。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3889,6 +3905,8 @@ class AppTranslationAdditions {
       'community_report_reports_count': "Открытых жалоб на этот контент: @count",
       'community_report_dismiss': "Отклонить жалобу",
       'community_user_report_target': "На кого жалоба: @name",
+      'community_report_exclude_confirm_title': "Исключить участника?",
+      'community_report_exclude_confirm_message': "Участник будет исключён из сообщества. Его аккаунт не будет удалён.",
     },
   };
 
