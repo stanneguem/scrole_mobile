@@ -49,6 +49,7 @@ class _FollowRequestsTab extends StatefulWidget {
 class _FollowRequestsTabState extends State<_FollowRequestsTab> {
   final SocialRepository _repository = SocialRepository();
   final List<Map<String, dynamic>> _items = [];
+  final ScrollController _scroll = ScrollController();
   bool _loading = false;
   bool _hasMore = true;
   int _offset = 0;
@@ -60,6 +61,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
     super.initState();
     _load(reset: true);
     _subscribeToRelationshipChanges();
+    _scroll.addListener(_onScroll);
   }
 
   void _subscribeToRelationshipChanges() {
@@ -78,6 +80,15 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
           ..subscribe();
     } catch (e, stack) {
       debugPrint('[FOLLOW] requests relationship_changed subscription exception=$e\\n$stack');
+    }
+  }
+
+  void _onScroll() {
+    if (_scroll.hasClients &&
+        _scroll.position.pixels >= _scroll.position.maxScrollExtent - 220 &&
+        !_loading &&
+        _hasMore) {
+      _load();
     }
   }
 
@@ -137,6 +148,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     final channel = _relationshipChannel;
     if (channel != null) {
       Supabase.instance.client.removeChannel(channel);
@@ -155,6 +167,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
     return RefreshIndicator(
       onRefresh: () => _load(reset: true),
       child: ListView.separated(
+        controller: _scroll,
         padding: const EdgeInsets.all(12),
         itemCount: _items.length + (_loading ? 1 : 0),
         separatorBuilder: (_, __) => const Divider(height: 1),
