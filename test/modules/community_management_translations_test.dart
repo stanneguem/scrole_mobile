@@ -127,6 +127,18 @@ void main() {
       'community_mod_reject_post_confirm_title',
       'community_mod_reject_post_confirm_message',
       'community_slogan_default',
+      'community_report_remove_confirm_title',
+      'community_report_remove_confirm_message',
+      'community_report_remove_confirm_action',
+      'community_reports_content_empty',
+      'community_reports_members_empty',
+      'community_report_target_author',
+      'community_reported_by',
+      'community_report_reason_prefix',
+      'community_report_target_content',
+      'community_report_reports_count',
+      'community_report_dismiss',
+      'community_user_report_target',
       'community_settings_slogan_label',
     ];
 
