@@ -412,7 +412,7 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                     final r = _reports[index];
                     return Card(
                       child: ListTile(
-                        title: Text('Signalement: ${r['target_type'] ?? ''}'),
+                        title: Text('community_report_item_title'.trParams({'type': r['target_type']?.toString() ?? ''})),
                         subtitle: Text(r['description'] ?? r['reason'] ?? ''),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -433,7 +433,7 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                     final r = _userReports[index];
                     return Card(
                       child: ListTile(
-                        title: const Text('Signalement membre'),
+                        title: Text('community_member_report_title'.tr),
                         subtitle: Text(r['description'] ?? r['reason'] ?? ''),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
