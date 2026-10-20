@@ -571,6 +571,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Retirer cet abonné",
       'follow_profile_private': "Profil privé",
       'follow_profile_private_desc': "Seuls vos abonnés approuvés peuvent consulter le contenu réservé de votre profil.",
+      'follow_te_follows_you': "Te suit",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1121,6 +1122,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Remove follower",
       'follow_profile_private': "Private profile",
       'follow_profile_private_desc': "Only your approved followers can view private profile content.",
+      'follow_te_follows_you': "Follows you",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1588,6 +1590,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Eliminar seguidor",
       'follow_profile_private': "Perfil privado",
       'follow_profile_private_desc': "Solo tus seguidores aprobados pueden ver el contenido privado de tu perfil.",
+      'follow_te_follows_you': "Te sigue",
     },
     'de': {
       'status_online': 'Online',
@@ -2038,6 +2041,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Follower entfernen",
       'follow_profile_private': "Privates Profil",
       'follow_profile_private_desc': "Nur bestätigte Follower können private Profilinhalte sehen.",
+      'follow_te_follows_you': "Folgt dir",
     },
     'it': {
       'status_online': 'In linea',
@@ -2488,6 +2492,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Rimuovi follower",
       'follow_profile_private': "Profilo privato",
       'follow_profile_private_desc': "Solo i follower approvati possono vedere i contenuti privati del profilo.",
+      'follow_te_follows_you': "Ti segue",
     },
     'pt': {
       'status_online': 'Online',
@@ -2938,6 +2943,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Remover seguidor",
       'follow_profile_private': "Perfil privado",
       'follow_profile_private_desc': "Só os seguidores aprovados podem ver o conteúdo privado do perfil.",
+      'follow_te_follows_you': "Segue-te",
     },
     'zh': {
       'status_online': '在线',
@@ -3388,6 +3394,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "移除粉丝",
       'follow_profile_private': "私人个人资料",
       'follow_profile_private_desc': "只有获准的关注者才能查看个人资料的私密内容。",
+      'follow_te_follows_you': "关注了你",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3837,6 +3844,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "フォロワーを削除",
       'follow_profile_private': "非公開プロフィール",
       'follow_profile_private_desc': "承認したフォロワーのみがプロフィールの非公開コンテンツを閲覧できます。",
+      'follow_te_follows_you': "あなたをフォロー中",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4281,6 +4289,7 @@ class AppTranslationAdditions {
       'follow_remove_follower_action': "Удалить подписчика",
       'follow_profile_private': "Закрытый профиль",
       'follow_profile_private_desc': "Только одобренные подписчики могут видеть закрытое содержимое профиля.",
+      'follow_te_follows_you': "Подписан на вас",
     },
   };
 
