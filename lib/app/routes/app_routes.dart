@@ -122,7 +122,7 @@ class AppRoutes {
     GetPage(name: AppPages.conversation, page: () => const DirectConversationScreen(), binding: ConversationBinding()),
     GetPage(name: AppPages.contacts, page: () => const ContactsScreen(), binding: BindingsBuilder(() => Get.lazyPut(() => ContactsController()))),
     GetPage(name: AppPages.editmyprofil, page: () => const EditProfileScreen(), binding: EditProfilBinding()),
-    GetPage(name: AppPages.myContacts, page: () => const ProfileContactsScreen(), binding: BindingsBuilder(() => Get.lazyPut(() => ContactsController()))),
+    GetPage(name: AppPages.myContacts, page: () => const FollowListsScreen()),
     GetPage(name: AppPages.followLists, page: () => const FollowListsScreen()),
     GetPage(name: AppPages.followRequests, page: () => const FollowRequestsScreen()),
     GetPage(name: AppPages.userQrCode, page: () => const UserQrIdentityScreen()),
