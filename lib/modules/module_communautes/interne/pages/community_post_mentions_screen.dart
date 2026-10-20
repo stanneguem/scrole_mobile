@@ -120,6 +120,7 @@ class CommunityPostMentionsController extends GetxController {
   }
 
   void toggleSelection(String userId) {
+    if (userId.isEmpty) return;
     if (selectedUserIds.contains(userId)) {
       selectedUserIds.remove(userId);
     } else {
@@ -129,6 +130,8 @@ class CommunityPostMentionsController extends GetxController {
       }
       selectedUserIds.add(userId);
     }
+    // Force row checkmarks and selection count to rebuild on all GetX versions.
+    selectedUserIds.refresh();
   }
 
   void confirm() {
@@ -162,7 +165,7 @@ class CommunityPostMentionsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mentionner des personnes', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold)),
+        title: Text('Mentionner des personnes', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700)),
         actions: [
           Obx(() => TextButton(
                 onPressed: controller.selectedUserIds.isEmpty ? null : controller.confirm,
@@ -184,7 +187,7 @@ class CommunityPostMentionsScreen extends StatelessWidget {
             child: TextField(
               controller: controller.searchController,
               decoration: InputDecoration(
-                hintText: 'Rechercher un membre...',
+                hintText: controller.communityId.isEmpty ? 'Rechercher un ami...' : 'Rechercher un membre...',
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
                 fillColor: colors.surfaceContainerLow,
@@ -213,30 +216,74 @@ class CommunityPostMentionsScreen extends StatelessWidget {
                   final lastName = profile['last_name']?.toString() ?? m['last_name']?.toString() ?? '';
                   final displayName = (firstName.isNotEmpty || lastName.isNotEmpty) ? '$firstName $lastName'.trim() : username;
                   final photoUrl = profile['photo_url']?.toString() ?? m['photo_url']?.toString();
-                  final isSelected = controller.selectedUserIds.contains(userId);
-
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    leading: ClipOval(
-                      child: photoUrl != null && photoUrl.isNotEmpty
-                          ? AppCachedImage(imageUrl: photoUrl, width: 40, height: 40, fit: BoxFit.cover)
-                          : Container(
-                              width: 40,
-                              height: 40,
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              alignment: Alignment.center,
-                              child: Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
-                            ),
-                    ),
-                    title: Text(displayName, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
-                    subtitle: Text('@$username', style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
-                    trailing: CupertinoCheckbox(
-                      value: isSelected,
-                      activeColor: AppColors.primary,
-                      onChanged: (_) => controller.toggleSelection(userId),
-                    ),
-                    onTap: () => controller.toggleSelection(userId),
-                  );
+                  return Obx(() {
+                    final isSelected = userId.isNotEmpty && controller.selectedUserIds.contains(userId);
+                    return Card(
+                      elevation: 0,
+                      margin: const EdgeInsets.symmetric(vertical: 3),
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.07)
+                          : colors.surfaceContainerLow,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.65)
+                              : colors.outlineVariant.withValues(alpha: 0.35),
+                          width: isSelected ? 1.4 : 0.8,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: userId.isEmpty ? null : () => controller.toggleSelection(userId),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 23,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                child: photoUrl != null && photoUrl.isNotEmpty
+                                    ? ClipOval(child: AppCachedImage(imageUrl: photoUrl, width: 46, height: 46, fit: BoxFit.cover))
+                                    : Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : 'M',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 3),
+                                    Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                width: 25,
+                                height: 25,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected ? AppColors.primary : Colors.transparent,
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.primary : colors.outline,
+                                    width: isSelected ? 0 : 1.5,
+                                  ),
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 17)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  });
                 },
               );
             }),
