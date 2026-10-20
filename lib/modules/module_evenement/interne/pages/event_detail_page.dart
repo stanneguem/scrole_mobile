@@ -25,6 +25,9 @@ import '../widgets/add_to_calendar_dialog.dart';
 import 'event_days_selector_screen.dart';
 import 'event_comments_screen.dart';
 import 'event_rating_screen.dart';
+import '../widgets/event_share_options_sheet.dart';
+import '../../../module_principale/interne/pages/create_story_screen.dart';
+import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 
 class EventDetailPage extends StatefulWidget {
   final EventModel event;
@@ -420,18 +423,72 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
     }
   }
 
+  String _eventShareText() {
+    final event = _preview?.event ?? widget.event;
+    final details = <String>[
+      'Découvre cet événement : ${event.name}',
+      'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(event.startsAt)}',
+      if ((event.city ?? '').trim().isNotEmpty) 'Lieu : ${event.city!.trim()}',
+    ];
+    return details.join('\\n');
+  }
+
   void _shareEvent() {
     if (_preview == null || !_preview!.canShare) return;
 
-    EventSharePosterService.shareEventPoster(
+    showModalBottomSheet<void>(
       context: context,
-      preview: _preview!,
-      repository: Get.find<EventRepository>(),
-      onShareSuccess: (_) {
-        if (mounted) {
-          setState(() {});
-        }
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => EventShareOptionsSheet(
+        preview: _preview!,
+        onFeed: () {
+          Navigator.of(sheetContext).pop();
+          Get.to(() => CreateCommunityPostScreen(
+                communityName: 'Mon fil',
+                prefilledText: _eventShareText(),
+              ));
+        },
+        onCommunity: () {
+          Navigator.of(sheetContext).pop();
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (pickerContext) => EventShareCommunityPicker(
+              onSelected: (community) {
+                Navigator.of(pickerContext).pop();
+                final communityId = (community['id'] ?? '').toString();
+                final communityName = (community['name'] ?? 'Communauté').toString();
+                if (communityId.isEmpty) {
+                  Get.snackbar('Partage', 'Cette communauté est introuvable.');
+                  return;
+                }
+                Get.to(() => CreateCommunityPostScreen(
+                      communityId: communityId,
+                      communityName: communityName,
+                      prefilledText: _eventShareText(),
+                    ));
+              },
+            ),
+          );
+        },
+        onStory: () {
+          Navigator.of(sheetContext).pop();
+          Get.to(() => CreateStoryScreen(prefilledText: _eventShareText()));
+        },
+        onNativeApps: () {
+          Navigator.of(sheetContext).pop();
+          EventSharePosterService.shareEventPoster(
+            context: context,
+            preview: _preview!,
+            repository: Get.find<EventRepository>(),
+            onShareSuccess: (_) {
+              if (mounted) setState(() {});
+            },
+          );
+        },
+      ),
     );
   }
 
