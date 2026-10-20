@@ -855,7 +855,6 @@ class _CommunityInfoHubScreenState extends State<CommunityInfoHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text('community_mgmt_info'.tr)),
       body: ListView(
