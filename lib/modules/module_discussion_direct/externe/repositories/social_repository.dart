@@ -305,9 +305,7 @@ class SocialRepository {
       if (e.code != '23505') rethrow;
     }
 
-    await _dao.saveUserQrCodes([
-      {...qr, 'user_id': userId, 'sync_status': 'synced'},
-    ]);
+    await _dao.updateUserQrCodeSyncStatus(qrId, 'synced');
     debugPrint('[FOLLOW] QR synchronisé user_id=$userId id=$qrId');
   }
 
