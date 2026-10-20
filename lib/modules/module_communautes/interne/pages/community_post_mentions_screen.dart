@@ -58,6 +58,8 @@ class CommunityPostMentionsController extends GetxController {
       List<Map<String, dynamic>> res;
 
       if (communityId.isNotEmpty) {
+        // The RPC already filters active, non-deleted profiles. Apply a second
+        // defensive filter here in case a member payload includes profile data.
         res = await _service.getCommunityMembers(communityId);
       } else {
         // General-feed mentions are limited to the user's friends.
@@ -91,8 +93,25 @@ class CommunityPostMentionsController extends GetxController {
       }
 
       final cleanMembers = res.where((member) {
+        final nested = member['user_profiles'] is Map
+            ? Map<String, dynamic>.from(member['user_profiles'] as Map)
+            : <String, dynamic>{};
         final uid = _memberUserId(member);
-        return uid.isNotEmpty && uid != currentUserId;
+        final status = (member['account_status'] ?? nested['account_status'] ?? 'active')
+            .toString().toLowerCase();
+        final deletedAt = member['deleted_at'] ?? nested['deleted_at'];
+        final banned = member['is_banned'] == true ||
+            nested['is_banned'] == true ||
+            status == 'banned' ||
+            status == 'suspended' ||
+            status == 'deleted' ||
+            status == 'disabled' ||
+            status == 'blocked';
+        return uid.isNotEmpty &&
+            uid != currentUserId &&
+            !banned &&
+            deletedAt == null &&
+            (status == 'active' || status.isEmpty);
       }).toList();
       members.assignAll(cleanMembers);
       filteredMembers.assignAll(cleanMembers);
