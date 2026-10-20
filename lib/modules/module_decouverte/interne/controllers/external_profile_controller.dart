@@ -69,7 +69,20 @@ class ExternalProfileController extends GetxController {
           if (result.profile != null) {
             profileState.value = ProfileScreenState.loaded;
             profile.value = result.profile;
-            isFollowing.value = result.profile!.isFollowing;
+            final relation = await _repository.getRelationship(userId, forceRefresh: true);
+            final relationState = (relation['state'] ?? 'none').toString();
+            final updated = result.profile!.copyWith(
+              isFollowing: relation['is_following'] == true,
+              isConnected: relation['is_friend'] == true,
+              connectionRequestSent: relationState == 'requested',
+              followsMe: relation['follows_me'] == true,
+              relationshipState: relationState,
+              requestId: relation['request_id']?.toString(),
+              retryAt: relation['retry_at'] == null ? null : DateTime.tryParse(relation['retry_at'].toString()),
+              friendCount: (relation['friends_count'] as num?)?.toInt() ?? result.profile!.friendCount,
+            );
+            profile.value = updated;
+            isFollowing.value = updated.isFollowing;
           } else {
             profileState.value = ProfileScreenState.error;
             error.value = 'Impossible de charger ce profil.';
@@ -91,25 +104,35 @@ class ExternalProfileController extends GetxController {
 
   Future<void> sendConnectionRequest() async {
     final current = profile.value;
-    if (current == null || current.connectionRequestSent || current.isConnected) return;
+    if (current == null || isSendingRequest.value) return;
+    await _performFollow(current);
+  }
 
+  Future<void> _performFollow(ExternalProfileModel current) async {
     isSendingRequest.value = true;
     try {
-      await _repository.sendConnectionRequest(current.userId);
-      final updated = current.copyWith(connectionRequestSent: true);
-      profile.value = updated;
-      await _repository.updateCachedProfile(updated);
-      Get.snackbar('Demande envoyée', 'Votre demande de connexion a été envoyée.');
-    } catch (e) {
-      final message = e.toString();
-      Get.snackbar(
-        'Connexion',
-        message.contains('connection_request_exists')
-            ? 'Une demande est déjà en attente.'
-            : message.contains('already_connected')
-                ? 'Vous êtes déjà connectés.'
-                : 'Impossible d’envoyer la demande.',
+      final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+      final state = (relation['state'] ?? 'none').toString();
+      if (state == 'blocked' || state == 'self') return;
+      final result = await _repository.follow(current.userId);
+      final freshRelation = await _repository.getRelationship(current.userId, forceRefresh: true);
+      final nextState = (freshRelation['state'] ?? (result ? 'following' : state)).toString();
+      final updated = current.copyWith(
+        isFollowing: freshRelation['is_following'] == true || nextState == 'following' || nextState == 'friends',
+        isConnected: freshRelation['is_friend'] == true || nextState == 'friends',
+        connectionRequestSent: nextState == 'requested',
+        followsMe: freshRelation['follows_me'] == true,
+        relationshipState: nextState,
+        requestId: freshRelation['request_id']?.toString(),
+        retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
+        canMessage: freshRelation['is_friend'] == true || nextState == 'friends',
       );
+      profile.value = updated;
+      isFollowing.value = updated.isFollowing;
+      await _repository.updateCachedProfile(updated);
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] follow_user exception=$e\\n$stack');
+      Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
     } finally {
       isSendingRequest.value = false;
     }
@@ -118,75 +141,71 @@ class ExternalProfileController extends GetxController {
   Future<void> handleConnectionTap() async {
     final current = profile.value;
     if (current == null || isSendingRequest.value) return;
-
-    if (!current.isConnected && !current.connectionRequestSent) {
-      await sendConnectionRequest();
+    final state = current.relationshipState;
+    if (state == 'none' || state == 'follow_back') {
+      await _performFollow(current);
       return;
     }
-
-    final isPending = current.connectionRequestSent;
-    final confirmed = await _showConnectionActionSheet(isPending);
-    if (!confirmed) return;
-
-    isSendingRequest.value = true;
-    try {
-      await _repository.cancelConnection(current.userId);
-
-      final updated = isPending
-          ? current.copyWith(connectionRequestSent: false)
-          : current.copyWith(
-              isConnected: false,
-              friendCount: current.friendCount > 0 ? current.friendCount - 1 : 0,
-            );
-
-      profile.value = updated;
-      await _repository.updateCachedProfile(updated);
-
-      Get.snackbar(
-        'Connexion',
-        isPending ? 'Demande annulée.' : 'Connexion supprimée.',
-      );
-    } catch (e) {
-      Get.snackbar(
-        'Connexion',
-        e.toString().contains('not_request_sender')
-            ? 'Seul l’auteur de la demande peut l’annuler.'
-            : 'Impossible de modifier la connexion.',
-      );
-    } finally {
-      isSendingRequest.value = false;
-    }
-  }
-
-  Future<bool> _showConnectionActionSheet(bool isPending) async {
-    final result = await Get.bottomSheet<bool>(
-      _ConnectionActionSheet(isPending: isPending),
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: .35),
-      isScrollControlled: false,
-    );
-    return result == true;
-  }
-
-  Future<void> toggleFollow() async {
-    final current = profile.value;
-    if (current == null || !current.isCertified || current.isPrivate) return;
-    try {
-      if (isFollowing.value) {
-        await _repository.unfollow(current.userId);
-        isFollowing.value = false;
-        final updated = current.copyWith(isFollowing: false);
+    if (state == 'requested') {
+      isSendingRequest.value = true;
+      try {
+        await _repository.getRelationship(current.userId, forceRefresh: true);
+        await _repository.cancelConnection(current.userId);
+        final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final updated = current.copyWith(
+          isFollowing: relation['is_following'] == true,
+          isConnected: relation['is_friend'] == true,
+          connectionRequestSent: false,
+          relationshipState: (relation['state'] ?? 'none').toString(),
+          requestId: relation['request_id']?.toString(),
+        );
         profile.value = updated;
         await _repository.updateCachedProfile(updated);
-      } else {
-        await _repository.follow(current.userId);
-        isFollowing.value = true;
-        final updated = current.copyWith(isFollowing: true);
-        profile.value = updated;
-        await _repository.updateCachedProfile(updated);
+      } catch (e, stack) {
+        debugPrint('[FOLLOW] cancel_follow_request exception=$e\\n$stack');
+        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      } finally {
+        isSendingRequest.value = false;
       }
-    } catch (_) {
-      Get.snackbar('Suivre', 'Impossible de modifier le suivi.');
+      return;
+    }
+    if (state == 'following' || state == 'friends') {
+      final action = await Get.bottomSheet<String>(
+        _RelationshipActionSheet(isFriend: state == 'friends'),
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black.withValues(alpha: .35),
+      );
+      if (action == null) return;
+      isSendingRequest.value = true;
+      try {
+        if (action == 'unfollow') {
+          await _repository.cancelConnection(current.userId);
+        } else if (action == 'remove_friend') {
+          await _repository.removeFriend(current.userId);
+        }
+        final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final updated = current.copyWith(
+          isFollowing: relation['is_following'] == true,
+          isConnected: relation['is_friend'] == true,
+          connectionRequestSent: relation['state'] == 'requested',
+          followsMe: relation['follows_me'] == true,
+          relationshipState: (relation['state'] ?? 'none').toString(),
+          requestId: relation['request_id']?.toString(),
+          retryAt: relation['retry_at'] == null ? null : DateTime.tryParse(relation['retry_at'].toString()),
+        );
+        profile.value = updated;
+        isFollowing.value = updated.isFollowing;
+        await _repository.updateCachedProfile(updated);
+      } catch (e, stack) {
+        debugPrint('[FOLLOW] relationship action exception=$e\\n$stack');
+        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      } finally {
+        isSendingRequest.value = false;
+      }
+      return;
+    }
+    if (state == 'request_received') {
+      Get.snackbar('follow_request_received_title'.tr, 'follow_request_received_hint'.tr);
     }
   }
 
@@ -298,6 +317,43 @@ class _ConnectionActionSheet extends StatelessWidget {
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RelationshipActionSheet extends StatelessWidget {
+  const _RelationshipActionSheet({required this.isFriend});
+  final bool isFriend;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget action(String value, String label, IconData icon) => ListTile(
+      leading: Icon(icon, color: scheme.error),
+      title: Text(label),
+      onTap: () => Navigator.of(context).pop(value),
+    );
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            action('unfollow', 'follow_unfollow_action'.tr, Icons.person_remove_alt_1_rounded),
+            if (isFriend) action('remove_friend', 'follow_remove_friend_action'.tr, Icons.person_off_outlined),
+            ListTile(
+              leading: const Icon(Icons.close_rounded),
+              title: Text('cancel'.tr),
+              onTap: () => Navigator.of(context).pop(),
             ),
           ],
         ),
