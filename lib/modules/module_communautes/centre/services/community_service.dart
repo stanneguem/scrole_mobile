@@ -630,6 +630,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
   Future<void> createCommunityPost({
     required String communityId,
+    String? postId,
     String? content,
     List<File>? imageFiles,
     String? audience,
@@ -642,7 +643,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     bool allowPromotion = true,
   }) async {
     final userId = _authService.userId ?? 'local_user';
-    final postId = _generateUuidV4();
+    final postId = postId ?? _generateUuidV4();
     final operationId = postId;
 
     List<String> localMediaPaths = [];
