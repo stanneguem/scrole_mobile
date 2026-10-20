@@ -5,6 +5,7 @@ import '../widgets/app_cached_image.dart';
 import '../widgets/user_certified_badge.dart';
 import '../../modules/module_decouverte/centre/models/discover_models.dart';
 import '../../app/theme/text_styles.dart';
+import 'relation_button_widget.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -395,7 +396,7 @@ class _SearchResultTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          if (item.category == 'user' && item.friendCount != null && item.friendCount! > 0) ...[
+          if (item.category == 'user' && item.followsMe) ...[\n            const SizedBox(height: 2),\n            Text('follow_te_follows_you'.tr, style: TextStyle(color: colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),\n          ],\n          if (item.category == 'user' && item.friendCount != null && item.friendCount! > 0) ...[
             const SizedBox(height: 2),
             Text(
               '${item.friendCount} amis en commun',
@@ -404,17 +405,19 @@ class _SearchResultTile extends StatelessWidget {
           ],
         ],
       ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          localizedCategory.toUpperCase(),
-          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.bold),
-        ),
-      ),
+      trailing: item.category == 'user'
+          ? RelationButtonWidget(targetUserId: item.id)
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                localizedCategory.toUpperCase(),
+                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
     );
   }
 }
