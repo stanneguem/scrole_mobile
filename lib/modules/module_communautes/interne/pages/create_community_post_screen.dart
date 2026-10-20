@@ -227,20 +227,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     setState(() {});
   }
 
-  Future<void> _openMentions() async {
-    final cId = widget.communityId ?? Get.parameters['id'] ?? '';
-    final result = await Get.to<List<Map<String, dynamic>>>(
-      () => const CommunityPostMentionsScreen(),
-      arguments: {'communityId': cId, 'initialSelected': _selectedMentionIds},
-    );
-    if (result != null) {
-      setState(() {
-        _selectedMentions = result;
-        _selectedMentionIds = result.map((m) => (m['user_id'] ?? m['id'] ?? '').toString()).toList();
-      });
-    }
-  }
-
   Future<void> _openPollCreator() async {
     if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
       Get.snackbar('Attention', 'Un sondage ne peut pas contenir de photos.', backgroundColor: Colors.black87, colorText: Colors.white);
