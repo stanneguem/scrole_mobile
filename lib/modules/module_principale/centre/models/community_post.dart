@@ -142,9 +142,37 @@ class CommunityPost {
         if (m is Map) return PostMedia.fromJson(Map<String, dynamic>.from(m));
         if (m is String) return PostMedia(type: 'photo', url: m);
         return null;
-      }).whereType<PostMedia>().toList();
-    } else if (map['photos'] is List) {
-      mediaList = (map['photos'] as List).map((p) => PostMedia(type: 'photo', url: p.toString())).toList();
+      }).whereType<PostMedia>().where((m) => m.url.trim().isNotEmpty).toList();
+    }
+    if (mediaList.isEmpty && map['photos'] is List) {
+      mediaList = (map['photos'] as List)
+          .map((p) => PostMedia(type: 'photo', url: p.toString()))
+          .where((m) => m.url.trim().isNotEmpty)
+          .toList();
+    }
+    if (mediaList.isEmpty) {
+      final photo = (map['photo'] ?? '').toString();
+      if (photo.isNotEmpty) mediaList.add(PostMedia(type: 'photo', url: photo));
+    }
+    final videoUrl = (map['video_url'] ?? '').toString();
+    if (videoUrl.isNotEmpty && !mediaList.any((m) => m.isVideo && m.url == videoUrl)) {
+      mediaList.add(PostMedia(
+        type: 'video',
+        url: videoUrl,
+        thumbnailUrl: (map['video_thumbnail_url'] ?? '').toString().isEmpty
+            ? null
+            : (map['video_thumbnail_url']).toString(),
+      ));
+    }
+    if (mediaList.isEmpty && map['videos'] is List) {
+      for (final entry in map['videos'] as List) {
+        if (entry is Map) {
+          final item = PostMedia.fromJson(Map<String, dynamic>.from(entry));
+          if (item.url.isNotEmpty) mediaList.add(item.isVideo ? item : PostMedia(type: 'video', storage: item.storage, url: item.url, thumbnailUrl: item.thumbnailUrl));
+        } else if (entry is String && entry.isNotEmpty) {
+          mediaList.add(PostMedia(type: 'video', url: entry));
+        }
+      }
     }
 
     CommunityPost? shared;
