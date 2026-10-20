@@ -70,8 +70,37 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
     }
   }
 
+  bool get _eventHasStarted => !DateTime.now().isBefore(widget.event.startsAt);
+
+  String _friendlyRatingError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('pourrez noter') || message.contains('aura commencé')) {
+      return 'Vous pourrez noter cet événement dès qu’il aura commencé.';
+    }
+    if (message.contains('équipe de l') || message.contains('team')) {
+      return 'Les organisateurs et les membres de l’équipe ne peuvent pas noter cet événement.';
+    }
+    if (message.contains('conditions d’accès') || message.contains('conditions d\'accès') || message.contains('accès à cet événement')) {
+      return 'Votre profil ne remplit pas les conditions d’accès à cet événement.';
+    }
+    if (message.contains('authentification')) {
+      return 'Connectez-vous pour pouvoir noter cet événement.';
+    }
+    return 'Impossible d’enregistrer votre note. Vérifiez votre accès à l’événement et réessayez.';
+  }
+
   Future<void> _submitRating() async {
     if (_selectedScore == null || _isSaving) return;
+    if (!_eventHasStarted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vous pourrez noter cet événement dès qu’il aura commencé.'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -260,6 +289,32 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                     ),
                   ],
 
+                  if (!_eventHasStarted) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colorScheme.tertiaryContainer.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.45)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.schedule_rounded, color: colorScheme.onTertiaryContainer, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'La notation sera disponible dès le début de l’événement.',
+                              style: AppTextStyles.bodySmall.copyWith(color: colorScheme.onTertiaryContainer, height: 1.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 28),
 
                   // Affichage de la note sélectionnée
@@ -324,7 +379,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                       final isSelected = score == _selectedScore;
 
                       return InkWell(
-                        onTap: () => setState(() => _selectedScore = score),
+                        onTap: _eventHasStarted ? () => setState(() => _selectedScore = score) : null,
                         borderRadius: BorderRadius.circular(14),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
@@ -368,7 +423,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: (_selectedScore == null || _isSaving) ? null : _submitRating,
+                      onPressed: (_selectedScore == null || _isSaving || !_eventHasStarted) ? null : _submitRating,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
