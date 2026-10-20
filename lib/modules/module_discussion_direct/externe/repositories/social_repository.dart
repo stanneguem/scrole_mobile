@@ -368,51 +368,51 @@ class SocialRepository {
     return '${chars.substring(0, 8)}-${chars.substring(8, 12)}-${chars.substring(12, 16)}-${chars.substring(16, 20)}-${chars.substring(20, 32)}';
   }
 
-  /// Récupère la liste de mes demandes d'amis.
+  /// Adaptateur temporaire pour les anciens écrans ; les données viennent des RPC de suivi.
   Future<List<Map<String, dynamic>>> getMyFriendRequests() async {
     final userId = currentUserId;
     if (userId == null) return [];
-
     try {
-      final response = await _client.rpc('get_my_friend_requests');
-      if (response is! List) return [];
-
-      final requests = List<Map<String, dynamic>>.from(response);
-      await _dao.saveFriendRequests(requests, replaceAll: true);
-
-      final otherUserIds = requests.map((r) {
-        final sender = r['sender_id'] as String;
-        final receiver = r['receiver_id'] as String;
-        return sender == userId ? receiver : sender;
-      }).toSet().toList();
-
-      if (otherUserIds.isNotEmpty) {
-        final profiles = await _client
-            .from('user_profiles')
-            .select('user_id, username, first_name, last_name, photo_url, is_verified, account_status, deleted_at')
-            .inFilter('user_id', otherUserIds);
-        await _dao.savePeople(List<Map<String, dynamic>>.from(profiles));
+      final received = await getMyFollowRequests(direction: 'received', limit: 100, offset: 0);
+      final sent = await getMyFollowRequests(direction: 'sent', limit: 100, offset: 0);
+      final combined = <Map<String, dynamic>>[];
+      void appendItems(Map<String, dynamic> response, bool isReceived) {
+        final raw = response['items'];
+        if (raw is! List) return;
+        for (final value in raw.whereType<Map>()) {
+          final item = Map<String, dynamic>.from(value);
+          final rawUser = item['user'];
+          final user = rawUser is Map ? Map<String, dynamic>.from(rawUser) : <String, dynamic>{};
+          final otherId = (user['user_id'] ?? user['id'] ?? '').toString();
+          if (otherId.isEmpty) continue;
+          final profile = <String, dynamic>{
+            ...user,
+            'user_id': otherId,
+            'username': user['username'] ?? user['pseudo'] ?? '',
+            'is_verified': user['is_certified'] ?? false,
+          };
+          combined.add({
+            'id': (item['request_id'] ?? '').toString(),
+            'request_id': (item['request_id'] ?? '').toString(),
+            'sender_id': isReceived ? otherId : userId,
+            'receiver_id': isReceived ? userId : otherId,
+            'status': item['status'] ?? 'pending',
+            'created_at': item['created_at'],
+            'next_retry_at': item['next_retry_at'],
+          });
+          // Keep the identity payload local for any legacy widget still mounted.
+          unawaited(_dao.savePeople([profile]));
+        }
       }
-
-      final blockedIds = await _dao.getBlockedUserIds();
-      final filteredRequests = requests.where((r) {
-        final sender = r['sender_id'] as String;
-        final receiver = r['receiver_id'] as String;
-        final other = sender == userId ? receiver : sender;
-        return !blockedIds.contains(other);
-      }).toList();
-
-      return filteredRequests;
-    } catch (e) {
-      debugPrint('[SocialRepository] Error getMyFriendRequests: $e. Returning local...');
-      final blockedIds = await _dao.getBlockedUserIds();
-      final local = await _dao.getFriendRequests(userId);
-      return local.where((r) {
-        final sender = r['sender_id'] as String;
-        final receiver = r['receiver_id'] as String;
-        final other = sender == userId ? receiver : sender;
-        return !blockedIds.contains(other);
-      }).toList();
+      appendItems(received, true);
+      appendItems(sent, false);
+      await _dao.saveFriendRequests(combined, replaceAll: true);
+      debugPrint('[FOLLOW] adapted legacy getMyFriendRequests from get_my_follow_requests count=${combined.length}');
+      return combined;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] get_my_follow_requests adapter exception=$e\\n$stack');
+      return [];
     }
   }
+
 }
