@@ -1,3 +1,4 @@
+import '../../centre/services/follow_error_mapper.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -154,22 +155,24 @@ class ContactsController extends GetxController {
 
   Future<void> sendFriendRequest(String targetUserId) async {
     try {
-      await _socialRepository.sendFriendRequest(targetUserId);
-      Get.snackbar('Demande d\'ami', 'Demande envoyée !');
+      final relation = await _socialRepository.followUser(targetUserId);
+      final state = (relation['state'] ?? 'following').toString();
+      final key = state == 'requested' ? 'follow_state_requested' : state == 'friends' ? 'follow_state_friends' : 'follow_state_following';
+      Get.snackbar('follow_lists_title'.tr, key.tr);
       await loadFriendRequests();
     } catch (e) {
-      Get.snackbar('Erreur', e.toString());
+      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
   Future<void> respondFriendRequest(String requestId, bool accept, String senderId) async {
     try {
-      await _socialRepository.respondFriendRequest(requestId, accept, senderId: senderId);
-      Get.snackbar('Demande d\'ami', accept ? 'Demande acceptée !' : 'Demande refusée.');
+      await _socialRepository.respondFollowRequest(requestId, accept, targetUserId: senderId);
+      Get.snackbar('follow_request_received_title'.tr, accept ? 'follow_state_follow_back'.tr : 'follow_action_impossible'.tr);
       await loadContacts();
       await loadFriendRequests();
     } catch (e) {
-      Get.snackbar('Erreur', e.toString());
+      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
@@ -177,19 +180,19 @@ class ContactsController extends GetxController {
     try {
       await _socialRepository.cancelFriendRequest(requestId);
       friendRequests.removeWhere((r) => r.id == requestId);
-      Get.snackbar('Demande d\'ami', 'Demande annulée.');
+      Get.snackbar('follow_lists_title'.tr, 'follow_cancel_request_action'.tr);
     } catch (e) {
-      Get.snackbar('Erreur', e.toString());
+      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
   Future<void> removeFriendship(String otherUserId) async {
     try {
-      await _socialRepository.removeFriendship(otherUserId);
+      await _socialRepository.removeFriend(otherUserId);
       contacts.removeWhere((c) => c.id == otherUserId);
-      Get.snackbar('Amis', 'Ami retiré.');
+      Get.snackbar('follow_lists_title'.tr, 'follow_remove_friend_action'.tr);
     } catch (e) {
-      Get.snackbar('Erreur', e.toString());
+      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
