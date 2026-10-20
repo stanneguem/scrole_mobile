@@ -157,7 +157,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                 ? Map<String, dynamic>.from(row['user_profiles'] as Map) : <String, dynamic>{};
             return {
               ...profile, ...row,
-              'user_id': row['user_id'] ?? row['profile_id'] ?? profile['user_id'] ?? profile['id'],
+              'user_id': row['user_id'] ?? profile['user_id'] ?? row['userId'] ?? row['profile_id'] ?? profile['id'],
               'username': row['username'] ?? profile['username'],
               'first_name': row['first_name'] ?? profile['first_name'],
               'last_name': row['last_name'] ?? profile['last_name'],
