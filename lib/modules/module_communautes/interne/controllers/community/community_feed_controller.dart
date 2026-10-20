@@ -209,11 +209,16 @@ class CommunityFeedController extends GetxController {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
+    final userId = currentUserId;
+    if (userId == null || userId.isEmpty) {
+      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     final tempId = _generateUuidV4();
     final newPost = CommunityPost(
       id: tempId,
       authorName: 'Moi',
-      authorId: 'me',
+      authorId: userId,
       authorColor: Colors.purple,
       authorRole: CommunityRole.member,
       timeAgo: 'publication_in_progress'.tr,
@@ -266,6 +271,12 @@ class CommunityFeedController extends GetxController {
         ? Map<String, dynamic>.from(map['author'] as Map)
         : <String, dynamic>{};
     final authorId = (map['author_id'] ?? map['user_id'] ?? author['user_id'] ?? author['id'] ?? '').toString();
+    final reaction = (map['viewer_reaction'] ?? map['user_reaction'] ?? map['reaction'])?.toString().toLowerCase();
+    final userReaction = reaction == 'like'
+        ? PostReaction.like
+        : reaction == 'dislike'
+            ? PostReaction.dislike
+            : PostReaction.none;
     return PostComment(
       id: (map['id'] ?? map['comment_id'] ?? '').toString(),
       authorName: (map['author_name'] ?? author['display_name'] ?? author['username'] ?? 'Utilisateur').toString(),
@@ -275,6 +286,7 @@ class CommunityFeedController extends GetxController {
       timeAgo: (map['created_at'] ?? map['time_ago'] ?? '').toString(),
       content: (map['content'] ?? map['text'] ?? '').toString(),
       likesCount: (map['likes_count'] as num?)?.toInt() ?? 0,
+      userReaction: userReaction,
       repliesCount: (map['replies_count'] as num?)?.toInt() ?? 0,
       isCertified: map['is_certified'] == true || author['is_certified'] == true,
       isOp: map['is_op'] == true || map['is_author'] == true,
@@ -366,6 +378,8 @@ class CommunityFeedController extends GetxController {
       content: trimmed,
     );
     repliesByCommentId[commentId] = [...list, newReply];
+    _incrementReplyCount(postId, commentId, 1);
+    _incrementCommentCount(postId, 1);
     try {
       final result = await _feedRepo.replyToCommunityComment(
         p_id: localId,
@@ -376,18 +390,13 @@ class CommunityFeedController extends GetxController {
       if (serverId != localId) {
         repliesByCommentId[commentId] = (repliesByCommentId[commentId] ?? []).map((reply) {
           if (reply.id != localId) return reply;
-          return PostComment(
-            id: serverId,
-            authorName: newReply.authorName,
-            authorId: newReply.authorId,
-            authorColor: newReply.authorColor,
-            timeAgo: newReply.timeAgo,
-            content: newReply.content,
-          );
+          return reply.copyWith(id: serverId);
         }).toList();
       }
     } catch (e) {
       repliesByCommentId[commentId] = (repliesByCommentId[commentId] ?? []).where((reply) => reply.id != localId).toList();
+      _incrementReplyCount(postId, commentId, -1);
+      _incrementCommentCount(postId, -1);
       Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
@@ -398,6 +407,18 @@ class CommunityFeedController extends GetxController {
     final post = posts[index];
     posts[index] = post.copyWith(commentCount: (post.commentCount + delta).clamp(0, 1 << 30).toInt());
     posts.refresh();
+  }
+
+  void _incrementReplyCount(String postId, String commentId, int delta) {
+    final list = commentsByPostId[postId];
+    if (list == null) return;
+    final index = list.indexWhere((comment) => comment.id == commentId);
+    if (index == -1) return;
+    list[index] = list[index].copyWith(
+      repliesCount: (list[index].repliesCount + delta).clamp(0, 1 << 30).toInt(),
+    );
+    commentsByPostId[postId] = List<PostComment>.from(list);
+    commentsByPostId.refresh();
   }
 
   Future<void> toggleCommentReaction(String postId, String commentId, PostReaction reaction) async {
