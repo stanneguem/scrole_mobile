@@ -420,7 +420,7 @@ class FeedPostCard extends StatelessWidget {
                     PollCardWidget(
                       poll: post.poll!,
                       postId: post.id,
-                      controller: Get.find<CommunityFeedController>(),
+                      controller: null,
                     ),
                   ],
 
@@ -1774,7 +1774,7 @@ class _RepublicationPostCard extends StatelessWidget {
                                 PollCardWidget(
                                   poll: shared.poll!,
                                   postId: shared.id,
-                                  controller: Get.find<CommunityFeedController>(),
+                                  controller: null,
                                 ),
                                 const SizedBox(height: 8),
                               ],
