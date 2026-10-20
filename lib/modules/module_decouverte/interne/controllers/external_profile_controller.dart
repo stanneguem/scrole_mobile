@@ -209,7 +209,32 @@ class ExternalProfileController extends GetxController {
       return;
     }
     if (state == 'request_received') {
-      Get.snackbar('follow_request_received_title'.tr, 'follow_request_received_hint'.tr);
+      final requestId = current.requestId;
+      if (requestId == null || requestId.isEmpty) {
+        Get.snackbar('follow_request_received_title'.tr, 'follow_request_received_hint'.tr);
+        return;
+      }
+      isSendingRequest.value = true;
+      try {
+        await _repository.respondConnectionRequest(requestId, true, targetUserId: current.userId);
+        final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final updated = current.copyWith(
+          isFollowing: relation['is_following'] == true,
+          isConnected: relation['is_friend'] == true,
+          connectionRequestSent: relation['state'] == 'requested',
+          followsMe: relation['follows_me'] == true,
+          relationshipState: (relation['state'] ?? 'none').toString(),
+          canMessage: relation['is_friend'] == true,
+        );
+        profile.value = updated;
+        isFollowing.value = updated.isFollowing;
+        await _repository.updateCachedProfile(updated);
+      } catch (e, stack) {
+        debugPrint('[FOLLOW] respond_follow_request exception=$e\\n$stack');
+        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      } finally {
+        isSendingRequest.value = false;
+      }
     }
   }
 
