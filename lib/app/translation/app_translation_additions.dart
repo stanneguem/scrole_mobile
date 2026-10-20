@@ -436,6 +436,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Exclure",
       'community_exclude_success_title': "Exclusion effectuée",
       'community_exclude_success_message': "@name a été exclu de la communauté.",
+      'community_reports_load_error': "Impossible de charger les signalements de cette communauté.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -865,6 +866,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Exclude",
       'community_exclude_success_title': "Member excluded",
       'community_exclude_success_message': "@name has been excluded from the community.",
+      'community_reports_load_error': "Could not load reports for this community.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1210,6 +1212,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Excluir",
       'community_exclude_success_title': "Miembro excluido",
       'community_exclude_success_message': "@name ha sido excluido de la comunidad.",
+      'community_reports_load_error': "No se pudieron cargar los reportes de esta comunidad.",
     },
     'de': {
       'status_online': 'Online',
@@ -1538,6 +1541,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Ausschließen",
       'community_exclude_success_title': "Mitglied ausgeschlossen",
       'community_exclude_success_message': "@name wurde aus der Community ausgeschlossen.",
+      'community_reports_load_error': "Die Meldungen für diese Community konnten nicht geladen werden.",
     },
     'it': {
       'status_online': 'In linea',
@@ -1866,6 +1870,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Escludi",
       'community_exclude_success_title': "Membro escluso",
       'community_exclude_success_message': "@name è stato escluso dalla community.",
+      'community_reports_load_error': "Impossibile caricare le segnalazioni di questa community.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2194,6 +2199,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Excluir",
       'community_exclude_success_title': "Membro excluído",
       'community_exclude_success_message': "@name foi excluído da comunidade.",
+      'community_reports_load_error': "Não foi possível carregar as denúncias desta comunidade.",
     },
     'zh': {
       'status_online': '在线',
@@ -2522,6 +2528,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "排除",
       'community_exclude_success_title': "成员已排除",
       'community_exclude_success_message': "@name 已被移出社区。",
+      'community_reports_load_error': "无法加载此社区的举报。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -2849,6 +2856,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "除外",
       'community_exclude_success_title': "メンバーを除外しました",
       'community_exclude_success_message': "@name をコミュニティから除外しました。",
+      'community_reports_load_error': "このコミュニティの報告を読み込めませんでした。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3168,6 +3176,7 @@ class AppTranslationAdditions {
       'community_exclude_action': "Исключить",
       'community_exclude_success_title': "Участник исключён",
       'community_exclude_success_message': "@name исключён из сообщества.",
+      'community_reports_load_error': "Не удалось загрузить жалобы для этого сообщества.",
     },
   };
 
