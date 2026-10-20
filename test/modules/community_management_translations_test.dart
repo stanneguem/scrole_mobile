@@ -113,6 +113,11 @@ void main() {
       'community_settings_name_too_long',
       'community_settings_slogan_too_long',
       'community_settings_description_too_long',
+      'community_settings_visibility_public',
+      'community_settings_visibility_private',
+      'community_settings_profile_photo',
+      'community_settings_cover_photo',
+      'community_settings_change_photo',
       'community_settings_slogan_label',
     ];
 
