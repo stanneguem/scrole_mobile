@@ -663,6 +663,12 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
   String? _loadError;
   List<dynamic> _reports = [];
   List<dynamic> _userReports = [];
+  int _reportsOffset = 0;
+  int _userReportsOffset = 0;
+  bool _reportsHasMore = false;
+  bool _userReportsHasMore = false;
+  bool _loadingMoreReports = false;
+  bool _loadingMoreUserReports = false;
 
   @override
   void initState() {
@@ -680,18 +686,61 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
     }
     try {
       _role = await _service.getCurrentUserRole(widget.communityId);
-      final reportsRes = await _service.getCommunityReports(widget.communityId);
-      final userReportsRes = await _service.getCommunityUserReports(widget.communityId);
+      final reportsRes = await _service.getCommunityReports(widget.communityId, limit: 20, offset: 0);
+      final userReportsRes = await _service.getCommunityUserReports(widget.communityId, limit: 20, offset: 0);
       if (reportsRes['items'] is! List || userReportsRes['items'] is! List) {
         throw const FormatException('Réponse invalide lors du chargement des signalements.');
       }
       _reports = reportsRes['items'] as List;
       _userReports = userReportsRes['items'] as List;
+      _reportsOffset = _reports.length;
+      _userReportsOffset = _userReports.length;
+      _reportsHasMore = reportsRes['has_more'] == true;
+      _userReportsHasMore = userReportsRes['has_more'] == true;
     } catch (e) {
       debugPrint('[CommunityReportsHubScreen] Failed to load reports: $e');
       _loadError = 'community_reports_load_error'.tr;
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadMoreReports({required bool members}) async {
+    if (members) {
+      if (!_userReportsHasMore || _loadingMoreUserReports) return;
+      setState(() => _loadingMoreUserReports = true);
+    } else {
+      if (!_reportsHasMore || _loadingMoreReports) return;
+      setState(() => _loadingMoreReports = true);
+    }
+    try {
+      final response = members
+          ? await _service.getCommunityUserReports(widget.communityId, limit: 20, offset: _userReportsOffset)
+          : await _service.getCommunityReports(widget.communityId, limit: 20, offset: _reportsOffset);
+      if (response['items'] is! List) {
+        throw const FormatException('Réponse invalide lors du chargement des signalements.');
+      }
+      final items = response['items'] as List;
+      if (members) {
+        _userReports.addAll(items);
+        _userReportsOffset = _userReports.length;
+        _userReportsHasMore = response['has_more'] == true;
+      } else {
+        _reports.addAll(items);
+        _reportsOffset = _reports.length;
+        _reportsHasMore = response['has_more'] == true;
+      }
+    } catch (e) {
+      debugPrint('[CommunityReportsHubScreen] Failed to load more reports: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e),
+          snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingMoreReports = false;
+          _loadingMoreUserReports = false;
+        });
+      }
+    }
   }
 
   Future<void> _resolveReport(String reportId, String action) async {
@@ -791,8 +840,21 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                     ? Center(child: Text('community_reports_content_empty'.tr))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _reports.length,
+                        itemCount: _reports.length + (_reportsHasMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index >= _reports.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: _loadingMoreReports
+                                    ? const CircularProgressIndicator()
+                                    : TextButton(
+                                        onPressed: () => _loadMoreReports(members: false),
+                                        child: Text('community_load_more'.tr),
+                                      ),
+                              ),
+                            );
+                          }
                           final r = Map<String, dynamic>.from(_reports[index] as Map);
                           final target = r['target'] is Map
                               ? Map<String, dynamic>.from(r['target'] as Map)
@@ -915,8 +977,21 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                     ? Center(child: Text('community_reports_members_empty'.tr))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _userReports.length,
+                        itemCount: _userReports.length + (_userReportsHasMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index >= _userReports.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: _loadingMoreUserReports
+                                    ? const CircularProgressIndicator()
+                                    : TextButton(
+                                        onPressed: () => _loadMoreReports(members: true),
+                                        child: Text('community_load_more'.tr),
+                                      ),
+                              ),
+                            );
+                          }
                           final r = Map<String, dynamic>.from(_userReports[index] as Map);
                           final target = r['target'] is Map
                               ? Map<String, dynamic>.from(r['target'] as Map)
