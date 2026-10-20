@@ -399,7 +399,6 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text('community_mod_pending_posts_title'.tr)),
       body: _isLoading
