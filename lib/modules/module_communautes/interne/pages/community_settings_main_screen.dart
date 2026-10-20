@@ -657,6 +657,23 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
   }
 
   Future<void> _resolveUserReport(String reportId, String action) async {
+    if (action == 'exclude_member') {
+      final confirmed = await Get.dialog<bool>(
+        AlertDialog(
+          title: Text('community_report_exclude_confirm_title'.tr),
+          content: Text('community_report_exclude_confirm_message'.tr),
+          actions: [
+            TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Get.back(result: true),
+              child: Text('community_exclude_action'.tr),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
     try {
       await _service.resolveCommunityUserReport(reportId, action);
       await _loadReports();
