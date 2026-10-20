@@ -669,40 +669,75 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
 
               // Modern Input field at bottom
               const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(
+                    color: _commentFocusNode.hasFocus
+                        ? colorScheme.primary.withValues(alpha: 0.65)
+                        : colorScheme.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.shadow.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      margin: const EdgeInsets.only(right: 8, bottom: 1),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.09),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.chat_bubble_outline_rounded, size: 17, color: colorScheme.primary),
+                    ),
                     Expanded(
                       child: CompositedTransformTarget(
                         link: _mentionLayerLink,
                         child: TextField(
-                        controller: _commentController,
-                        onChanged: _onCommentChanged,
-                        focusNode: _commentFocusNode,
-                        style: const TextStyle(color: Colors.black),
-                        decoration: InputDecoration(
-                          hintText: _replyingTo != null ? 'Écrire une réponse...' : 'Écrire un commentaire...',
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          controller: _commentController,
+                          onChanged: _onCommentChanged,
+                          focusNode: _commentFocusNode,
+                          style: const TextStyle(color: Colors.black, fontSize: 14.5, height: 1.35),
+                          minLines: 1,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.newline,
+                          decoration: InputDecoration(
+                            hintText: _replyingTo != null ? 'Écrire une réponse...' : 'Ajouter un commentaire...',
+                            hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8), fontSize: 13.5),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                          ),
                         ),
-                        maxLines: null,
-                      ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: _submitComment,
                       child: Container(
-                        width: 36,
-                        height: 36,
+                        width: 38,
+                        height: 38,
+                        margin: const EdgeInsets.only(bottom: 1),
                         decoration: BoxDecoration(
-                          color: colorScheme.primary,
+                          gradient: LinearGradient(
+                            colors: [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.82)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
