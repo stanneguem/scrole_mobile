@@ -354,6 +354,9 @@ class CommunityPendingPostsScreen extends StatefulWidget {
 class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = false;
+  int _offset = 0;
   String? _loadError;
   List<dynamic> _posts = [];
   final Set<String> _busyPostIds = {};
@@ -364,24 +367,51 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
     _loadPosts();
   }
 
-  Future<void> _loadPosts() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _loadError = null;
-      });
+  Future<void> _loadPosts({bool loadMore = false}) async {
+    if (loadMore) {
+      if (!_hasMore || _isLoadingMore || _isLoading) return;
+      if (mounted) setState(() => _isLoadingMore = true);
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _loadError = null;
+        });
+      }
+      _offset = 0;
     }
     try {
-      final response = await _service.getCommunityPendingPosts(widget.communityId);
+      final response = await _service.getCommunityPendingPosts(
+        widget.communityId,
+        limit: 20,
+        offset: loadMore ? _offset : 0,
+      );
       if (response['items'] is! List) {
         throw const FormatException('Réponse invalide des publications en attente.');
       }
-      _posts = response['items'] as List;
+      final items = response['items'] as List;
+      if (loadMore) {
+        _posts.addAll(items);
+      } else {
+        _posts = items;
+      }
+      _offset = _posts.length;
+      _hasMore = response['has_more'] == true;
     } catch (e) {
       debugPrint('[CommunityPendingPostsScreen] Failed to load pending posts: $e');
-      _loadError = _service.localizedCommunityError(e);
+      if (loadMore) {
+        Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e),
+            snackPosition: SnackPosition.BOTTOM);
+      } else {
+        _loadError = _service.localizedCommunityError(e);
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -479,11 +509,24 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
               : _posts.isEmpty
                   ? Center(child: Text('community_mod_pending_posts_empty'.tr))
                   : RefreshIndicator(
-                      onRefresh: _loadPosts,
+                      onRefresh: () => _loadPosts(),
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _posts.length,
+                        itemCount: _posts.length + (_hasMore ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index >= _posts.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: _isLoadingMore
+                                    ? const CircularProgressIndicator()
+                                    : TextButton(
+                                        onPressed: () => _loadPosts(loadMore: true),
+                                        child: Text('community_load_more'.tr),
+                                      ),
+                              ),
+                            );
+                          }
                           final post = Map<String, dynamic>.from(_posts[index] as Map);
                           final id = post['id']?.toString() ?? '';
                           final author = post['author'] is Map
