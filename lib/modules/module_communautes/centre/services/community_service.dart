@@ -232,6 +232,19 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     if (message.contains('visibilité invalide')) {
       return 'community_settings_visibility_invalid'.tr;
     }
+    if (message.contains('au moins un pays')) {
+      return 'community_settings_select_at_least_one_country'.tr;
+    }
+    if (message.contains('au moins une ville')) {
+      return 'community_settings_select_at_least_one_city'.tr;
+    }
+    if (message.contains('pays sélectionné est invalide') ||
+        message.contains('ville sélectionnée est invalide')) {
+      return 'community_settings_location_invalid'.tr;
+    }
+    if (message.contains('villes sélectionnées doivent appartenir')) {
+      return 'community_settings_city_country_mismatch'.tr;
+    }
     if (message.contains('nom ne peut pas être vide')) {
       return 'community_settings_name_required'.tr;
     }
