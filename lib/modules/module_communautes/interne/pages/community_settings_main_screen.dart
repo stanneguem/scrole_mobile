@@ -501,7 +501,7 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
                       children: [
                         Text(_loadError!, textAlign: TextAlign.center),
                         const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _loadPosts, child: Text('retry'.tr)),
+                        OutlinedButton(onPressed: () => _loadPosts(), child: Text('retry'.tr)),
                       ],
                     ),
                   ),
@@ -1162,7 +1162,7 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text(_loadError!, textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    OutlinedButton(onPressed: _loadRequests, child: Text('retry'.tr)),
+                    OutlinedButton(onPressed: () => _loadRequests(), child: Text('retry'.tr)),
                   ]),
                 ))
               : _joinRequests.isEmpty && !_hasMore
