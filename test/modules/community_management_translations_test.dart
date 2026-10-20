@@ -139,6 +139,8 @@ void main() {
       'community_report_reports_count',
       'community_report_dismiss',
       'community_user_report_target',
+      'community_report_exclude_confirm_title',
+      'community_report_exclude_confirm_message',
       'community_settings_slogan_label',
     ];
 
