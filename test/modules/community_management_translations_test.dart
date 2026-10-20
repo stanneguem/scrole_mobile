@@ -120,6 +120,7 @@ void main() {
       'community_settings_change_photo',
       'community_settings_image_too_large',
       'community_settings_image_compression_failed',
+      'community_rule_required',
       'community_settings_slogan_label',
     ];
 
