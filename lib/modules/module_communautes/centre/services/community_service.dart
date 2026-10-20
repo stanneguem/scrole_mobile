@@ -540,6 +540,36 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     return await _repo.getCommunityAccessRules(communityId);
   }
 
+  Future<Map<String, dynamic>> getCommunityManagementSettings(String communityId) {
+    return _repo.getCommunityManagementSettings(communityId);
+  }
+
+  Future<Map<String, dynamic>> updateCommunityManagementSettings({
+    required String communityId,
+    String? visibility,
+    bool? requireManualApproval,
+    bool? membersListVisible,
+    bool? certificationRequired,
+    String? genderRestriction,
+    int? ageMin,
+    int? ageMax,
+    bool clearAge = false,
+    bool clearGender = false,
+  }) {
+    return _repo.updateCommunityManagementSettings(
+      communityId: communityId,
+      visibility: visibility,
+      requireManualApproval: requireManualApproval,
+      membersListVisible: membersListVisible,
+      certificationRequired: certificationRequired,
+      genderRestriction: genderRestriction,
+      ageMin: ageMin,
+      ageMax: ageMax,
+      clearAge: clearAge,
+      clearGender: clearGender,
+    );
+  }
+
   Future<void> updateCommunityAccessRules({
     required String communityId,
     required bool countriesEnabled,
