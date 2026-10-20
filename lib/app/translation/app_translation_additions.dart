@@ -456,6 +456,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Connectez-vous pour effectuer cette action.",
       'community_user_not_found': "Utilisateur introuvable.",
       'community_operation_failed': "L’opération a échoué. Veuillez réessayer.",
+      'community_rules_empty': "Aucune règle pour le moment.",
+      'community_requests_empty': "Aucune demande en attente.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -905,6 +907,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Sign in to perform this action.",
       'community_user_not_found': "User not found.",
       'community_operation_failed': "The operation failed. Please try again.",
+      'community_rules_empty': "No rules yet.",
+      'community_requests_empty': "No pending requests.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1271,6 +1275,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Inicia sesión para realizar esta acción.",
       'community_user_not_found': "Usuario no encontrado.",
       'community_operation_failed': "La operación falló. Inténtalo de nuevo.",
+      'community_rules_empty': "Todavía no hay reglas.",
+      'community_requests_empty': "No hay solicitudes pendientes.",
     },
     'de': {
       'status_online': 'Online',
@@ -1620,6 +1626,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Melde dich an, um diese Aktion auszuführen.",
       'community_user_not_found': "Benutzer nicht gefunden.",
       'community_operation_failed': "Die Aktion ist fehlgeschlagen. Bitte versuche es erneut.",
+      'community_rules_empty': "Noch keine Regeln vorhanden.",
+      'community_requests_empty': "Keine ausstehenden Anfragen.",
     },
     'it': {
       'status_online': 'In linea',
@@ -1969,6 +1977,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Accedi per eseguire questa azione.",
       'community_user_not_found': "Utente non trovato.",
       'community_operation_failed': "Operazione non riuscita. Riprova.",
+      'community_rules_empty': "Nessuna regola al momento.",
+      'community_requests_empty': "Nessuna richiesta in attesa.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2318,6 +2328,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Inicie sessão para realizar esta ação.",
       'community_user_not_found': "Utilizador não encontrado.",
       'community_operation_failed': "A operação falhou. Tente novamente.",
+      'community_rules_empty': "Ainda não há regras.",
+      'community_requests_empty': "Não há solicitações pendentes.",
     },
     'zh': {
       'status_online': '在线',
@@ -2667,6 +2679,8 @@ class AppTranslationAdditions {
       'community_auth_required': "请登录后执行此操作。",
       'community_user_not_found': "未找到用户。",
       'community_operation_failed': "操作失败，请重试。",
+      'community_rules_empty': "目前没有规则。",
+      'community_requests_empty': "没有待处理的申请。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3015,6 +3029,8 @@ class AppTranslationAdditions {
       'community_auth_required': "この操作を行うにはログインしてください。",
       'community_user_not_found': "ユーザーが見つかりません。",
       'community_operation_failed': "操作に失敗しました。もう一度お試しください。",
+      'community_rules_empty': "ルールはまだありません。",
+      'community_requests_empty': "保留中の申請はありません。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3358,6 +3374,8 @@ class AppTranslationAdditions {
       'community_auth_required': "Войдите в систему, чтобы выполнить это действие.",
       'community_user_not_found': "Пользователь не найден.",
       'community_operation_failed': "Не удалось выполнить действие. Попробуйте ещё раз.",
+      'community_rules_empty': "Правил пока нет.",
+      'community_requests_empty': "Нет ожидающих заявок.",
     },
   };
 
