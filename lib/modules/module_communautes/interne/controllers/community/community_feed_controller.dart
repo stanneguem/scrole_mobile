@@ -146,7 +146,7 @@ class CommunityFeedController extends GetxController {
       posts.value = [...pendingLocalPosts, ...items];
       errorMessage.value = '';
 
-      if (items.isEmpty) {
+      if (posts.isEmpty) {
         feedState.value = CommunityFeedState.empty;
       } else {
         feedState.value = CommunityFeedState.loaded;
@@ -459,16 +459,57 @@ class CommunityFeedController extends GetxController {
     }
   }
 
-  void deleteComment(String postId, String commentId) {
-    final list = commentsByPostId[postId];
-    if (list != null) {
-      list.removeWhere((c) => c.id == commentId);
+  Future<void> deleteComment(String postId, String commentId) async {
+    final original = commentsByPostId[postId];
+    if (original == null) return;
+    final index = original.indexWhere((comment) => comment.id == commentId);
+    if (index < 0) return;
+
+    final removed = original[index];
+    commentsByPostId[postId] = List<PostComment>.from(original)..removeAt(index);
+    commentsByPostId.refresh();
+    _incrementCommentCount(postId, -1);
+
+    try {
+      await _feedRepo.deleteCommunityComment(commentId);
+    } catch (e) {
+      final restored = List<PostComment>.from(commentsByPostId[postId] ?? []);
+      if (!restored.any((comment) => comment.id == commentId)) {
+        restored.insert(index.clamp(0, restored.length).toInt(), removed);
+      }
+      commentsByPostId[postId] = restored;
       commentsByPostId.refresh();
+      _incrementCommentCount(postId, 1);
+      Get.snackbar(
+        'error'.tr,
+        e.toString().replaceFirst('Exception: ', '').tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
-  void sharePost(CommunityPost post) {
-    Get.snackbar('Partage', 'Publication partagée avec succès', snackPosition: SnackPosition.BOTTOM);
+  Future<void> sharePost(CommunityPost post) async {
+    if (!post.sharingEnabled || post.isPublishing) return;
+    try {
+      await _feedRepo.sharePost(
+        p_id: _generateUuidV4(),
+        p_original_post_id: post.id,
+        p_community_id: communityId,
+        p_audience: post.audience,
+      );
+      await fetchCommunityFeed(isRefresh: true);
+      Get.snackbar('success'.tr, 'community_post_shared_success'.tr, snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      Get.snackbar(
+        'error'.tr,
+        e.toString().replaceFirst('Exception: ', '').tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
   Future<void> deletePost(String postId, {String? reason}) async {
