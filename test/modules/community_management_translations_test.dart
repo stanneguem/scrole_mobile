@@ -108,6 +108,11 @@ void main() {
       'community_settings_allow_comments',
       'community_settings_allow_reactions',
       'community_settings_allow_post_promotion',
+      'community_settings_visibility_invalid',
+      'community_settings_name_required',
+      'community_settings_name_too_long',
+      'community_settings_slogan_too_long',
+      'community_settings_description_too_long',
       'community_settings_slogan_label',
     ];
 
