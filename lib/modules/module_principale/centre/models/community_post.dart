@@ -256,7 +256,7 @@ class CommunityPost {
       hashtags: hashtags,
       mentionedUsers: mentionedUsers ?? this.mentionedUsers,
       influencerReactions: influencerReactions ?? this.influencerReactions,
-      poll: poll,
+      poll: map['poll'] ?? map['poll_state'] ?? map['community_poll'] ?? poll,
       likeCount: likeCount ?? this.likeCount,
       dislikeCount: dislikeCount ?? this.dislikeCount,
       commentCount: commentCount ?? this.commentCount,
