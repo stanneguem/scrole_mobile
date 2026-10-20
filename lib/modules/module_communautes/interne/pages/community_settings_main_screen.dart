@@ -469,6 +469,12 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
                           final authorName = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
                           final username = author['username']?.toString();
                           final content = post['content']?.toString() ?? '';
+                          final mediaItems = post['media'] is List
+                              ? (post['media'] as List)
+                                  .whereType<Map>()
+                                  .map((item) => Map<String, dynamic>.from(item))
+                                  .toList()
+                              : <Map<String, dynamic>>[];
                           final busy = _busyPostIds.contains(id);
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -484,6 +490,54 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
                                   if (content.isNotEmpty) ...[
                                     const SizedBox(height: 8),
                                     Text(content, maxLines: 6, overflow: TextOverflow.ellipsis),
+                                  ],
+                                  if (mediaItems.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      height: 120,
+                                      child: ListView.separated(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: mediaItems.length,
+                                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                        itemBuilder: (context, mediaIndex) {
+                                          final media = mediaItems[mediaIndex];
+                                          final type = media['type']?.toString() ?? 'photo';
+                                          final imageUrl = type == 'video'
+                                              ? media['thumbnail_url']?.toString()
+                                              : media['url']?.toString();
+                                          return ClipRRect(
+                                            borderRadius: BorderRadius.circular(10),
+                                            child: SizedBox(
+                                              width: 120,
+                                              height: 120,
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  if (imageUrl != null && imageUrl.isNotEmpty)
+                                                    Image.network(
+                                                      imageUrl,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (_, __, ___) => Container(
+                                                        color: colorScheme.surfaceContainerHighest,
+                                                        child: const Icon(Icons.broken_image_outlined),
+                                                      ),
+                                                    )
+                                                  else
+                                                    Container(
+                                                      color: colorScheme.surfaceContainerHighest,
+                                                      child: const Icon(Icons.perm_media_outlined),
+                                                    ),
+                                                  if (type == 'video')
+                                                    const Center(
+                                                      child: Icon(Icons.play_circle_fill, size: 42, color: Colors.white),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ],
                                   const SizedBox(height: 12),
                                   Row(
