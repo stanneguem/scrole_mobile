@@ -219,6 +219,44 @@ class CommunityRepository {
     }
   }
 
+  /// Resolves the authenticated user's role within one specific community.
+  ///
+  /// Creator ownership is checked against communities.creator_id first. If the
+  /// creator lookup is hidden by RLS, community_members.role remains the
+  /// authoritative fallback (the creator is inserted there as admin).
+  Future<String?> getCurrentUserCommunityRole(String communityId) async {
+    final userId = client.auth.currentUser?.id;
+    if (userId == null || userId.isEmpty) return null;
+
+    try {
+      final community = await client
+          .from('communities')
+          .select('creator_id')
+          .eq('id', communityId)
+          .maybeSingle();
+      if (community?['creator_id']?.toString() == userId) {
+        return 'admin';
+      }
+    } catch (e) {
+      debugPrint('[CommunityRepository] Creator lookup failed for $communityId: $e');
+    }
+
+    try {
+      final membership = await client
+          .from('community_members')
+          .select('role')
+          .eq('community_id', communityId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      final role = membership?['role']?.toString().trim().toLowerCase();
+      if (role != null && role.isNotEmpty) return role;
+    } catch (e) {
+      debugPrint('[CommunityRepository] Membership role lookup failed for $communityId: $e');
+    }
+
+    return null;
+  }
+
   Future<bool> isCommunityStaffRpc(String communityId) async {
     try {
       final response = await client.rpc('is_community_staff', params: {'p_community_id': communityId});
