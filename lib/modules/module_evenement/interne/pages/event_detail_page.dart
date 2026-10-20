@@ -436,7 +436,6 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
   }
 
   void _openCommentSheet() {
-    if (_preview != null && (_preview!.viewerRole == 'staff' || !_preview!.canComment)) return;
     Get.to(() => EventCommentsScreen(
       eventId: widget.event.id,
       eventName: widget.event.name,
@@ -539,9 +538,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                   ),
                   actions: [
                     GestureDetector(
-                      onTap: (_preview != null && _preview!.viewerRole == 'staff')
-                          ? null
-                          : ((_preview == null || _preview!.canComment) ? _openCommentSheet : null),
+                      onTap: _openCommentSheet,
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
                         width: 40,
@@ -928,53 +925,28 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_preview == null || _preview!.canAddToCalendar) ...[
-                    Row(
-                      children: [
-                        // 1. S'inscrire (4/6 de l'espace à gauche)
-                        Expanded(
-                          flex: 4,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              _showTicketsOrRegistrationSheet(context, _preview);
-                            },
-                            icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                            label: Text(
-                              'S\'inscrire (${NumberFormatter.formatCount(_preview?.attendeeCount ?? 0)})',
-                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isCalendarLoading ? null : _handleCalendarAction,
+                          icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
+                          label: Text(
+                            _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
+                            style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
+                            foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        // 2. Ajouter à l'agenda (2/6 de l'espace à droite)
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton.icon(
-                            onPressed: _isCalendarLoading ? null : _handleCalendarAction,
-                            icon: Icon(_isEventAdded ? Icons.check : Icons.calendar_today, size: 16),
-                            label: Text(
-                              '${NumberFormatter.formatCount(totalAdded)}',
-                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 12),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
-                              foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                  ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       // 1. LIKE
