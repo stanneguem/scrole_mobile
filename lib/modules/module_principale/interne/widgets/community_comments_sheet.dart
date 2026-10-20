@@ -189,7 +189,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
         .toList();
     final result = await Get.to<List<Map<String, dynamic>>>(
       () => const CommunityPostMentionsScreen(),
-      arguments: {'communityId': '', 'initialSelected': initialIds},
+      arguments: {'communityId': widget.post.communityId ?? '', 'initialSelected': initialIds},
     );
     if (result == null || !mounted) return;
     setState(() {
