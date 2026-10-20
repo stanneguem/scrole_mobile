@@ -1004,7 +1004,11 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                       // 2. NOTER
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: (_preview != null && _preview!.canRate) ? _openRatingSheet : null,
+                          onPressed: (_preview != null &&
+                                  _preview!.canRate &&
+                                  !DateTime.now().isBefore(event.startsAt))
+                              ? _openRatingSheet
+                              : null,
                           icon: Icon(Icons.star_outline_rounded, size: 16, color: colorScheme.onSurface),
                           label: Text(
                             'Noter',
