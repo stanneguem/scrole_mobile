@@ -805,7 +805,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
           final event = events[index];
           final photo = (event['photo'] ?? '').toString();
           final start = DateTime.tryParse((event['starts_at'] ?? '').toString());
-          final date = start == null ? '' : '\${start.day.toString().padLeft(2, '0')}/\${start.month.toString().padLeft(2, '0')}/\${start.year}';
+          final date = start == null ? '' : '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')}/${start.year}';
           final location = [event['city'], event['country']].where((value) => value != null && value.toString().trim().isNotEmpty).join(', ');
           final role = (event['role'] ?? '').toString().replaceAll('_', ' ');
           return Container(
