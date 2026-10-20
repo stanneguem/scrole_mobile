@@ -2174,7 +2174,7 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                       DropdownButtonFormField<String>(
                         value: _visibility,
                         decoration: InputDecoration(labelText: 'community_settings_visibility_label'.tr),
-                        items: const [
+                        items: [
                           DropdownMenuItem(value: 'public', child: Text('community_settings_visibility_public'.tr)),
                           DropdownMenuItem(value: 'prive', child: Text('community_settings_visibility_private'.tr)),
                         ],
@@ -2439,7 +2439,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
             DropdownButtonFormField<String>(
               value: _postPermission,
               decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
-              items: const [
+              items: [
                 DropdownMenuItem(value: 'everyone', child: Text('community_post_permission_everyone'.tr)),
                 DropdownMenuItem(value: 'admins_and_moderators', child: Text('community_post_permission_admins'.tr)),
                 DropdownMenuItem(value: 'nobody', child: Text('community_post_permission_nobody'.tr)),
