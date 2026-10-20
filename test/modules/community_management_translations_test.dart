@@ -124,6 +124,8 @@ void main() {
       'community_post_permission_everyone',
       'community_post_permission_admins',
       'community_post_permission_nobody',
+      'community_mod_reject_post_confirm_title',
+      'community_mod_reject_post_confirm_message',
       'community_settings_slogan_label',
     ];
 
