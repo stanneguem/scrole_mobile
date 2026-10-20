@@ -42,8 +42,10 @@ class CommunityPostMentionsController extends GetxController {
     final profile = member['user_profiles'] is Map
         ? Map<String, dynamic>.from(member['user_profiles'] as Map)
         : <String, dynamic>{};
-    return (profile['user_id'] ?? profile['id'] ?? member['user_id'] ??
-            member['userId'] ?? member['profile_id'] ?? member['id'] ?? '')
+    // community_members.user_id is the canonical auth/profile user UUID.
+    // Prefer it over a nested profile row's primary key (profile.id).
+    return (member['user_id'] ?? member['userId'] ?? profile['user_id'] ??
+            member['profile_id'] ?? profile['id'] ?? member['id'] ?? '')
         .toString();
   }
 
@@ -78,8 +80,10 @@ class CommunityPostMentionsController extends GetxController {
             res = [];
           } else {
             final profiles = await client.from('user_profiles')
-                .select('user_id,username,first_name,last_name,photo_url,is_verified')
+                .select('user_id,username,first_name,last_name,photo_url,is_verified,account_status,deleted_at')
                 .inFilter('user_id', friendIds.toList())
+                .eq('account_status', 'active')
+                .isFilter('deleted_at', null)
                 .limit(300);
             res = List<Map<String, dynamic>>.from(profiles);
           }
