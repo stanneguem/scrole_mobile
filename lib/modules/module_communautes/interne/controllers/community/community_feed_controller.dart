@@ -500,7 +500,7 @@ class CommunityFeedController extends GetxController {
         p_audience: post.audience,
       );
       await fetchCommunityFeed(isRefresh: true);
-      Get.snackbar('success'.tr, 'community_post_shared_success'.tr, snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('community_action_success_title'.tr, 'community_post_shared_success'.tr, snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Get.snackbar(
         'error'.tr,
