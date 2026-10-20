@@ -494,6 +494,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Photo de profil",
       'community_settings_cover_photo': "Photo de couverture",
       'community_settings_change_photo': "Changer",
+      'community_settings_image_too_large': "L’image dépasse la taille maximale de 5 Mo.",
+      'community_settings_image_compression_failed': "Impossible de préparer cette image. Essaie avec une autre photo.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -981,6 +983,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Profile photo",
       'community_settings_cover_photo': "Cover photo",
       'community_settings_change_photo': "Change",
+      'community_settings_image_too_large': "The image exceeds the 5 MB limit.",
+      'community_settings_image_compression_failed': "Could not prepare this image. Try another photo.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1385,6 +1389,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Foto de perfil",
       'community_settings_cover_photo': "Foto de portada",
       'community_settings_change_photo': "Cambiar",
+      'community_settings_image_too_large': "La imagen supera el límite de 5 MB.",
+      'community_settings_image_compression_failed': "No se pudo preparar esta imagen. Prueba con otra foto.",
     },
     'de': {
       'status_online': 'Online',
@@ -1772,6 +1778,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Profilbild",
       'community_settings_cover_photo': "Titelbild",
       'community_settings_change_photo': "Ändern",
+      'community_settings_image_too_large': "Das Bild überschreitet die Grenze von 5 MB.",
+      'community_settings_image_compression_failed': "Das Bild konnte nicht vorbereitet werden. Versuche ein anderes Foto.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2159,6 +2167,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Foto del profilo",
       'community_settings_cover_photo': "Foto di copertina",
       'community_settings_change_photo': "Modifica",
+      'community_settings_image_too_large': "L’immagine supera il limite di 5 MB.",
+      'community_settings_image_compression_failed': "Impossibile preparare questa immagine. Prova con un’altra foto.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2546,6 +2556,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Foto do perfil",
       'community_settings_cover_photo': "Foto de capa",
       'community_settings_change_photo': "Alterar",
+      'community_settings_image_too_large': "A imagem excede o limite de 5 MB.",
+      'community_settings_image_compression_failed': "Não foi possível preparar esta imagem. Tente outra foto.",
     },
     'zh': {
       'status_online': '在线',
@@ -2933,6 +2945,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "头像",
       'community_settings_cover_photo': "封面照片",
       'community_settings_change_photo': "更改",
+      'community_settings_image_too_large': "图片超过了 5 MB 的大小限制。",
+      'community_settings_image_compression_failed': "无法处理此图片，请尝试其他照片。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3319,6 +3333,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "プロフィール写真",
       'community_settings_cover_photo': "カバー写真",
       'community_settings_change_photo': "変更",
+      'community_settings_image_too_large': "画像が5MBの上限を超えています。",
+      'community_settings_image_compression_failed': "画像を処理できませんでした。別の写真をお試しください。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3700,6 +3716,8 @@ class AppTranslationAdditions {
       'community_settings_profile_photo': "Фото профиля",
       'community_settings_cover_photo': "Фото обложки",
       'community_settings_change_photo': "Изменить",
+      'community_settings_image_too_large': "Размер изображения превышает лимит 5 МБ.",
+      'community_settings_image_compression_failed': "Не удалось подготовить изображение. Попробуйте другое фото.",
     },
   };
 
