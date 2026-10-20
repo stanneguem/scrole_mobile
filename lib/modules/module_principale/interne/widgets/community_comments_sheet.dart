@@ -10,6 +10,7 @@ import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/user_identity_row.dart';
 import '../pages/create_story_screen.dart';
+import '../../../module_communautes/interne/pages/community_post_mentions_screen.dart';
 
 class CommunityCommentsSheet extends StatefulWidget {
   final CommunityPost post;
@@ -42,6 +43,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   final Map<String, bool> _repliesHasMore = {};
 
   Map<String, dynamic>? _replyingTo;
+  final List<Map<String, dynamic>> _selectedMentions = [];
 
   final Map<String, PostReaction> _commentReactions = {};
   final Map<String, int> _commentLikeCounts = {};
@@ -180,6 +182,23 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     }
   }
 
+  Future<void> _openCommentMentions() async {
+    final initialIds = _selectedMentions
+        .map((m) => (m['user_id'] ?? m['id'] ?? m['user_profiles']?['user_id'] ?? '').toString())
+        .where((id) => id.isNotEmpty)
+        .toList();
+    final result = await Get.to<List<Map<String, dynamic>>>(
+      () => const CommunityPostMentionsScreen(),
+      arguments: {'communityId': '', 'initialSelected': initialIds},
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _selectedMentions
+        ..clear()
+        ..addAll(result);
+    });
+  }
+
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -188,6 +207,11 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId ?? 'me' : 'me';
 
     final targetReplyTo = _replyingTo;
+    final mentionIds = _selectedMentions
+        .map((m) => (m['user_id'] ?? m['id'] ?? m['user_profiles']?['user_id'] ?? '').toString())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
 
     final tempComment = {
       'id': pId,
@@ -218,6 +242,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       }
       _commentController.clear();
       _replyingTo = null;
+      _selectedMentions.clear();
     });
 
     try {
@@ -225,6 +250,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
         p_id: pId,
         postId: widget.post.id,
         content: text,
+        mentions: mentionIds,
         parentCommentId: targetReplyTo != null ? targetReplyTo['id']?.toString() : null,
       );
       await _loadComments();
@@ -435,6 +461,33 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                 ),
               ],
 
+              if (_selectedMentions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: _selectedMentions.map((member) {
+                      final profile = member['user_profiles'] is Map
+                          ? Map<String, dynamic>.from(member['user_profiles'])
+                          : member;
+                      final username = (profile['username'] ?? member['username'] ?? 'membre').toString();
+                      final id = (profile['user_id'] ?? profile['id'] ?? member['user_id'] ?? member['id'] ?? '').toString();
+                      return InputChip(
+                        label: Text('@$username'),
+                        onDeleted: () => setState(() {
+                          _selectedMentions.removeWhere((item) {
+                            final nested = item['user_profiles'] is Map
+                                ? Map<String, dynamic>.from(item['user_profiles'])
+                                : item;
+                            return (nested['user_id'] ?? nested['id'] ?? item['user_id'] ?? item['id'] ?? '').toString() == id;
+                          });
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
               // Modern Input field at bottom
               const SizedBox(height: 6),
               Container(
@@ -459,7 +512,13 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                         maxLines: null,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Mentionner des personnes',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _openCommentMentions,
+                      icon: const Icon(Icons.person_add_alt_1_rounded),
+                    ),
+                    const SizedBox(width: 4),
                     GestureDetector(
                       onTap: _submitComment,
                       child: Container(
