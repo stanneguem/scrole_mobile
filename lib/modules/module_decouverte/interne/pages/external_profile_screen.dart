@@ -1016,29 +1016,44 @@ class _ProfileStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(
+        alignment: WrapAlignment.spaceAround,
+        runAlignment: WrapAlignment.center,
+        spacing: 18,
+        runSpacing: 12,
         children: [
           _StatItem(
-            value: NumberFormatter.formatCount(profile.friendCount),
-            label: 'profile_action_friends'.tr,
+            value: NumberFormatter.formatCount(profile.postsCount),
+            label: 'profile_stat_posts'.tr,
+          ),
+          _StatItem(
+            value: NumberFormatter.formatCount(profile.totalLikesReceived),
+            label: 'profile_stat_likes_received'.tr,
+          ),
+          _StatItem(
+            value: profile.rating.toStringAsFixed(1),
+            label: 'profile_stat_reputation'.tr,
           ),
           _StatItem(
             value: NumberFormatter.formatCount(profile.eventsParticipatedCount),
             label: 'profile_stat_participated'.tr,
           ),
           _StatItem(
-            value: NumberFormatter.formatCount(profile.eventsInAgendaCount),
-            label: 'profile_stat_agenda'.tr,
+            value: NumberFormatter.formatCount(profile.eventsOrganizedCount),
+            label: 'profile_stat_organized'.tr,
+          ),
+          _StatItem(
+            value: NumberFormatter.formatCount(profile.friendCount),
+            label: 'profile_action_friends'.tr,
           ),
           _StatItem(
             value: NumberFormatter.formatCount(profile.followersCount),
             label: 'profile_stat_followers'.tr,
           ),
           _StatItem(
-            value: profile.rating > 0 ? profile.rating.toStringAsFixed(1) : '0.0',
-            label: 'profile_stat_rating'.tr,
+            value: NumberFormatter.formatCount(profile.eventsInAgendaCount),
+            label: 'profile_stat_agenda'.tr,
           ),
         ],
       ),
