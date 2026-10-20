@@ -18,9 +18,11 @@ class _MentionHighlightingController extends TextEditingController {
 
   @override
   TextSpan buildTextSpan({
-    required TextStyle style,
+    required BuildContext context,
+    TextStyle? style,
     required bool withComposing,
   }) {
+    final baseStyle = style ?? const TextStyle();
     final text = value.text;
     final spans = <InlineSpan>[];
     var lastEnd = 0;
@@ -28,25 +30,25 @@ class _MentionHighlightingController extends TextEditingController {
       if (match.start > lastEnd) {
         spans.add(TextSpan(
           text: text.substring(lastEnd, match.start),
-          style: style.copyWith(color: Colors.black),
+          style: baseStyle.copyWith(color: Colors.black),
         ));
       }
       spans.add(TextSpan(
         text: match.group(0),
-        style: style.copyWith(color: Colors.blue, fontWeight: FontWeight.w600),
+        style: baseStyle.copyWith(color: Colors.blue, fontWeight: FontWeight.w600),
       ));
       lastEnd = match.end;
     }
     if (lastEnd < text.length) {
       spans.add(TextSpan(
         text: text.substring(lastEnd),
-        style: style.copyWith(color: Colors.black),
+        style: baseStyle.copyWith(color: Colors.black),
       ));
     }
     if (spans.isEmpty) {
-      spans.add(TextSpan(text: text, style: style.copyWith(color: Colors.black)));
+      spans.add(TextSpan(text: text, style: baseStyle.copyWith(color: Colors.black)));
     }
-    return TextSpan(style: style.copyWith(color: Colors.black), children: spans);
+    return TextSpan(style: baseStyle.copyWith(color: Colors.black), children: spans);
   }
 }
 
