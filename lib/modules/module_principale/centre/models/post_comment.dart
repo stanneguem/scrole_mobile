@@ -37,7 +37,6 @@ class PostComment {
     String? authorName,
     int? likesCount,
     PostReaction? userReaction,
-    int? repliesCount,
     List<PostComment>? replies,
   }) {
     return PostComment(
@@ -52,7 +51,7 @@ class PostComment {
       userReaction: userReaction ?? this.userReaction,
       isCertified: isCertified,
       isOp: isOp,
-      repliesCount: repliesCount ?? this.repliesCount,
+      repliesCount: repliesCount,
       replies: replies ?? this.replies,
     );
   }
