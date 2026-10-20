@@ -224,6 +224,26 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     if (message.contains('motif trop long')) {
       return 'community_exclusion_reason_too_long'.tr;
     }
+    if (message.contains('âge invalide') ||
+        message.contains('age invalid') ||
+        message.contains('âge minimum doit être inférieur')) {
+      return 'community_settings_age_invalid'.tr;
+    }
+    if (message.contains('visibilité invalide')) {
+      return 'community_settings_visibility_invalid'.tr;
+    }
+    if (message.contains('nom ne peut pas être vide')) {
+      return 'community_settings_name_required'.tr;
+    }
+    if (message.contains('nom est trop long')) {
+      return 'community_settings_name_too_long'.tr;
+    }
+    if (message.contains('slogan est trop long')) {
+      return 'community_settings_slogan_too_long'.tr;
+    }
+    if (message.contains('description est trop longue')) {
+      return 'community_settings_description_too_long'.tr;
+    }
     if (message.contains('non authentifié') || message.contains('authentication required')) {
       return 'community_auth_required'.tr;
     }
