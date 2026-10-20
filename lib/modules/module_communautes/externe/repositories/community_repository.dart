@@ -557,6 +557,38 @@ class CommunityRepository {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getAvailableCountries() async {
+    try {
+      final response = await client
+          .from('countries')
+          .select('id, nom, code_iso')
+          .eq('is_active', true)
+          .order('nom');
+      return (response as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } catch (e) {
+      debugPrint('[CommunityRepository] Error in getAvailableCountries: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAvailableCities() async {
+    try {
+      final response = await client
+          .from('cities')
+          .select('id, country_id, nom')
+          .eq('is_active', true)
+          .order('nom');
+      return (response as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } catch (e) {
+      debugPrint('[CommunityRepository] Error in getAvailableCities: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> getCommunityManagementSettings(String communityId) async {
     final response = await client.rpc(
       'get_community_management_settings',
@@ -574,6 +606,10 @@ class CommunityRepository {
     bool? requireManualApproval,
     bool? membersListVisible,
     bool? certificationRequired,
+    bool? countriesEnabled,
+    List<String>? allowedCountries,
+    bool? citiesEnabled,
+    List<String>? allowedCities,
     String? genderRestriction,
     int? ageMin,
     int? ageMax,
@@ -585,6 +621,10 @@ class CommunityRepository {
     if (requireManualApproval != null) params['p_require_manual_approval'] = requireManualApproval;
     if (membersListVisible != null) params['p_members_list_visible'] = membersListVisible;
     if (certificationRequired != null) params['p_certification_required'] = certificationRequired;
+    if (countriesEnabled != null) params['p_countries_enabled'] = countriesEnabled;
+    if (allowedCountries != null) params['p_allowed_countries'] = allowedCountries;
+    if (citiesEnabled != null) params['p_cities_enabled'] = citiesEnabled;
+    if (allowedCities != null) params['p_allowed_cities'] = allowedCities;
     if (genderRestriction != null) params['p_gender_restriction'] = genderRestriction;
     if (ageMin != null) params['p_age_min'] = ageMin;
     if (ageMax != null) params['p_age_max'] = ageMax;
