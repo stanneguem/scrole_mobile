@@ -5,6 +5,38 @@ import '../../modules/module_decouverte/centre/models/discover_models.dart';
 class SearchRepository {
   final SupabaseClient _client = Supabase.instance.client;
 
+  Future<List<AccountSuggestion>> getSuggestedProfiles({int limit = 30, int offset = 0}) async {
+    debugPrint('[FOLLOW] RPC get_suggested_profiles params={p_limit: $limit, p_offset: $offset}');
+    try {
+      final response = await _client.rpc('get_suggested_profiles', params: {
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      if (response is! List) return [];
+      final profiles = response.whereType<Map>().map((raw) {
+        final json = Map<String, dynamic>.from(raw);
+        final first = (json['first_name'] ?? '').toString().trim();
+        final last = (json['last_name'] ?? '').toString().trim();
+        final fullName = '$first $last'.trim();
+        return AccountSuggestion(
+          id: (json['user_id'] ?? json['id'] ?? '').toString(),
+          username: (json['username'] ?? json['pseudo'] ?? '').toString(),
+          displayName: fullName.isEmpty ? (json['pseudo'] ?? json['username'] ?? '').toString() : fullName,
+          avatarUrl: json['photo_url']?.toString(),
+          bio: json['bio']?.toString(),
+          isVerified: json['is_certified'] == true,
+          friendCount: (json['friends_count'] as num?)?.toInt() ?? (json['friend_count'] as num?)?.toInt(),
+          followsMe: json['follows_me'] == true,
+        );
+      }).where((profile) => profile.id.isNotEmpty).toList();
+      debugPrint('[FOLLOW] RPC get_suggested_profiles response count=${profiles.length}');
+      return profiles;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC get_suggested_profiles exception=$e\\n$stack');
+      rethrow;
+    }
+  }
+
   Future<List<SearchResultItem>> searchAll(String query) async {
     try {
       debugPrint('[SearchRepository] calling search_all with query: "$query"');
