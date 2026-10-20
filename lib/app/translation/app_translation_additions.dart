@@ -424,6 +424,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Thèmes et passions",
       'community_info_sub_images_desc': "Photo de profil et couverture",
       'community_post_shared_success': "Publication partagée avec succès.",
+      'community_action_success_title': "Succès",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -841,6 +842,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Topics and interests",
       'community_info_sub_images_desc': "Profile and cover photos",
       'community_post_shared_success': "Post shared successfully.",
+      'community_action_success_title': "Success",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1174,6 +1176,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Temas e intereses",
       'community_info_sub_images_desc': "Foto de perfil y portada",
       'community_post_shared_success': "Publicación compartida correctamente.",
+      'community_action_success_title': "Éxito",
     },
     'de': {
       'status_online': 'Online',
@@ -1490,6 +1493,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Themen und Interessen",
       'community_info_sub_images_desc': "Profil- und Titelbilder",
       'community_post_shared_success': "Beitrag erfolgreich geteilt.",
+      'community_action_success_title': "Erfolg",
     },
     'it': {
       'status_online': 'In linea',
@@ -1806,6 +1810,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Temi e interessi",
       'community_info_sub_images_desc': "Foto profilo e copertina",
       'community_post_shared_success': "Post condiviso con successo.",
+      'community_action_success_title': "Successo",
     },
     'pt': {
       'status_online': 'Online',
@@ -2122,6 +2127,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "Temas e interesses",
       'community_info_sub_images_desc': "Foto de perfil e capa",
       'community_post_shared_success': "Publicação partilhada com sucesso.",
+      'community_action_success_title': "Sucesso",
     },
     'zh': {
       'status_online': '在线',
@@ -2438,6 +2444,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "主题和兴趣",
       'community_info_sub_images_desc': "头像和封面图片",
       'community_post_shared_success': "帖子已成功分享。",
+      'community_action_success_title': "成功",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -2753,6 +2760,7 @@ class AppTranslationAdditions {
       'community_info_sub_interests_desc': "テーマと興味",
       'community_info_sub_images_desc': "プロフィール画像とカバー画像",
       'community_post_shared_success': "投稿を共有しました。",
+      'community_action_success_title': "成功",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3060,6 +3068,7 @@ class AppTranslationAdditions {
       'community_mgmt_access_sub': 'Публикации, доступ и правила сообщества',
       'community_mgmt_info_sub': 'Описание, интересы и изображения',
       'community_post_shared_success': "Публикация успешно опубликована.",
+      'community_action_success_title': "Успешно",
     },
   };
 
