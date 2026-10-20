@@ -191,14 +191,14 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
         children: [
           _buildTabChip(
             index: 0,
-            label: 'Mon QR Code',
+            label: 'follow_qr_tab_my_code'.tr,
             icon: Icons.qr_code_rounded,
             isActive: activeIndex == 0,
           ),
           const SizedBox(width: 4),
           _buildTabChip(
             index: 1,
-            label: 'Scanner',
+            label: 'follow_qr_tab_scan'.tr,
             icon: Icons.qr_code_scanner_rounded,
             isActive: activeIndex == 1,
           ),
@@ -287,8 +287,8 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
                             color: Colors.amber[100],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
-                            'En attente de connexion réseau pour activation du QR code...',
+                          child: Text(
+                            'follow_qr_pending_sync'.tr,
                             style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
@@ -297,7 +297,7 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
                         ElevatedButton.icon(
                           onPressed: _forceRegenerateQrCode,
                           icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Générer mon QR Code'),
+                          label: Text('follow_qr_generate'.tr),
                         )
                       else
                         QrImageView(
@@ -344,7 +344,7 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
                           child: OutlinedButton.icon(
                             onPressed: _forceRegenerateQrCode,
                             icon: const Icon(Icons.refresh_rounded, size: 18),
-                            label: const Text('Régénérer un QR Code'),
+                            label: Text('follow_qr_regenerate'.tr),
                           ),
                         ),
                     ],
@@ -383,7 +383,7 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
             ),
             const SizedBox(height: 30),
             Text(
-              'SCROLE IDENTITY QR CODE',
+              'follow_qr_identity_title'.tr,
               style: GoogleFonts.spaceGrotesk(
                 color: Colors.white54,
                 letterSpacing: 2,
@@ -426,8 +426,8 @@ class _UserQrIdentityScreenState extends State<UserQrIdentityScreen> with Single
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: Colors.white24),
               ),
-              child: const Text(
-                'Placez le code QR d\'un ami dans le cadre pour le scanner',
+              child: Text(
+                'follow_qr_scan_hint'.tr,
                 style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),
