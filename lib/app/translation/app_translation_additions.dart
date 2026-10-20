@@ -502,6 +502,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Personne",
       'community_mod_reject_post_confirm_title': "Refuser cette publication ?",
       'community_mod_reject_post_confirm_message': "La publication sera refusée et pourra être supprimée automatiquement après la période de conservation.",
+      'community_slogan_default': "Vivre la technologie ensemble",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -997,6 +998,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Nobody",
       'community_mod_reject_post_confirm_title': "Reject this post?",
       'community_mod_reject_post_confirm_message': "The post will be rejected and may be automatically deleted after the retention period.",
+      'community_slogan_default': "Sharing technology together",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1409,6 +1411,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Nadie",
       'community_mod_reject_post_confirm_title': "¿Rechazar esta publicación?",
       'community_mod_reject_post_confirm_message': "La publicación será rechazada y podrá eliminarse automáticamente al finalizar el período de conservación.",
+      'community_slogan_default': "Compartir la tecnología",
     },
     'de': {
       'status_online': 'Online',
@@ -1804,6 +1807,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Niemand",
       'community_mod_reject_post_confirm_title': "Diesen Beitrag ablehnen?",
       'community_mod_reject_post_confirm_message': "Der Beitrag wird abgelehnt und kann nach Ablauf der Aufbewahrungsfrist automatisch gelöscht werden.",
+      'community_slogan_default': "Technologie gemeinsam erleben",
     },
     'it': {
       'status_online': 'In linea',
@@ -2199,6 +2203,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Nessuno",
       'community_mod_reject_post_confirm_title': "Rifiutare questo post?",
       'community_mod_reject_post_confirm_message': "Il post sarà rifiutato e potrà essere eliminato automaticamente al termine del periodo di conservazione.",
+      'community_slogan_default': "Condividere la tecnologia",
     },
     'pt': {
       'status_online': 'Online',
@@ -2594,6 +2599,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Ninguém",
       'community_mod_reject_post_confirm_title': "Rejeitar esta publicação?",
       'community_mod_reject_post_confirm_message': "A publicação será rejeitada e poderá ser eliminada automaticamente após o período de retenção.",
+      'community_slogan_default': "Partilhar tecnologia em comunidade",
     },
     'zh': {
       'status_online': '在线',
@@ -2989,6 +2995,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "无人",
       'community_mod_reject_post_confirm_title': "拒绝此帖子？",
       'community_mod_reject_post_confirm_message': "此帖子将被拒绝，并可能在保留期限结束后自动删除。",
+      'community_slogan_default': "一起体验科技",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3383,6 +3390,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "誰も許可しない",
       'community_mod_reject_post_confirm_title': "この投稿を却下しますか？",
       'community_mod_reject_post_confirm_message': "投稿は却下され、保存期間終了後に自動削除される場合があります。",
+      'community_slogan_default': "テクノロジーを共に楽しむ",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3772,6 +3780,7 @@ class AppTranslationAdditions {
       'community_post_permission_nobody': "Никто",
       'community_mod_reject_post_confirm_title': "Отклонить эту публикацию?",
       'community_mod_reject_post_confirm_message': "Публикация будет отклонена и может быть автоматически удалена по окончании срока хранения.",
+      'community_slogan_default': "Вместе о технологиях",
     },
   };
 
