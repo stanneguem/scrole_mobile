@@ -122,17 +122,12 @@ class HomeFeedRepository {
   }
 
   Future<void> recordPostViews(List<String> postIds) async {
-    final uniqueIds = postIds.where((id) => id.isNotEmpty).toSet().toList();
-    if (uniqueIds.isEmpty) return;
+    if (postIds.isEmpty) return;
     try {
-      debugPrint('[POST_ACTIONS] Calling RPC record_post_views with ${uniqueIds.length} IDs');
-      await client.rpc('record_post_views', params: {'p_post_ids': uniqueIds});
-    } on PostgrestException catch (e) {
-      debugPrint('[POST_ACTIONS] record_post_views failed: code=${e.code}, message=${e.message}');
-      rethrow;
+      debugPrint('[POST_ACTIONS] Calling RPC record_post_views with ${postIds.length} IDs');
+      await client.rpc('record_post_views', params: {'p_post_ids': postIds});
     } catch (e, st) {
-      debugPrint('[POST_ACTIONS] Error in record_post_views: $e\n$st');
-      rethrow;
+      debugPrint('[POST_ACTIONS] Error in record_post_views (ignored): $e\n$st');
     }
   }
 
@@ -299,7 +294,7 @@ class HomeFeedRepository {
       return {'items': [], 'has_more': false};
     } catch (e, st) {
       debugPrint('[POST_ACTIONS] Error in get_community_post_comments: $e\n$st');
-      rethrow;
+      return {'items': [], 'has_more': false};
     }
   }
 
@@ -316,7 +311,7 @@ class HomeFeedRepository {
       return {'items': [], 'has_more': false};
     } catch (e, st) {
       debugPrint('[POST_ACTIONS] Error in get_community_comment_replies: $e\n$st');
-      rethrow;
+      return {'items': [], 'has_more': false};
     }
   }
 
