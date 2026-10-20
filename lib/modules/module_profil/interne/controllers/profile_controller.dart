@@ -402,29 +402,33 @@ class ProfileController extends GetxController {
   // UPDATE PROFILE
   // ============================================
 
-  Future<bool> updateProfile(Map<String, dynamic> data, {bool showLoading = true}) async {
+  Future<bool> updateProfile(Map<String, dynamic> data, {bool showLoading = true, bool showFeedback = true}) async {
     if (showLoading) isLoading.value = true;
     try {
       final updated = await _appController.updateProfile(data);
 
       if (updated != null) {
-        Get.snackbar(
-          'profile_success_title'.tr,
-          'profile_success_update'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        if (showFeedback) {
+          Get.snackbar(
+            'profile_success_title'.tr,
+            'profile_success_update'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        }
         return true;
       }
 
-      Get.snackbar(
-        'profile_error_title'.tr,
-        'profile_error_update'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      if (showFeedback) {
+        Get.snackbar(
+          'profile_error_title'.tr,
+          'profile_error_update'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
       return false;
     } finally {
       if (showLoading && Get.isRegistered<ProfileController>()) {
