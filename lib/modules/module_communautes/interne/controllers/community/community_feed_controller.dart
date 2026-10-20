@@ -29,7 +29,7 @@ class CommunityFeedController extends GetxController {
   }
 
   // Track views per signed-in user, not just per post.
-  static final Set<String> _globalSentViewIds = {};
+  static final Map<String, DateTime> _globalSentViewAt = {};
   final List<String> _pendingViewIds = [];
   final Map<String, String> _pendingViewKeys = {};
   Timer? _viewBatchTimer;
@@ -66,10 +66,13 @@ class CommunityFeedController extends GetxController {
     final userId = currentUserId;
     if (userId == null || userId.isEmpty || post.authorId == userId) return;
     final viewKey = '$userId:${post.id}';
-    if (_globalSentViewIds.contains(viewKey) || _pendingViewKeys.containsKey(post.id)) return;
+    final lastViewedAt = _globalSentViewAt[viewKey];
+    if (lastViewedAt != null && DateTime.now().difference(lastViewedAt) < const Duration(minutes: 10)) return;
+    if (_pendingViewKeys.containsKey(post.id)) return;
     _pendingViewIds.add(post.id);
     _pendingViewKeys[post.id] = viewKey;
-    _globalSentViewIds.add(viewKey);
+    _globalSentViewAt[viewKey] = DateTime.now();
+    _globalSentViewAt.removeWhere((_, time) => DateTime.now().difference(time) > const Duration(days: 1));
     if (_pendingViewIds.length >= 20) {
       unawaited(_flushViewBatch());
     } else {
@@ -104,7 +107,7 @@ class CommunityFeedController extends GetxController {
     } catch (e) {
       for (final id in batch) {
         final key = _pendingViewKeys[id];
-        if (key != null) _globalSentViewIds.remove(key);
+        if (key != null) _globalSentViewAt.remove(key);
       }
       debugPrint('[POST_ACTIONS] [CommunityFeed] Error flushing view batch: $e');
     } finally {
