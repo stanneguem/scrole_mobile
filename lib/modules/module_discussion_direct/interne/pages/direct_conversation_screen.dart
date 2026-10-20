@@ -1,0 +1,995 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:scrole/shared/models/chat_message.dart'
+    as legacy;
+import '../widgets/direct_voice_message_player.dart';
+
+import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/text_styles.dart';
+import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/image_source_sheet.dart';
+import '../../../../shared/widgets/media_full_screen_page.dart';
+import '../../centre/models/message_model.dart';
+import '../widgets/chat_cached_media.dart';
+import '../controllers/direct_conversation_controller.dart';
+import '../widgets/direct_voice_recorder_panel.dart';
+import 'direct_conversation_details_screen.dart';
+
+class DirectConversationScreen extends GetView<DirectConversationController> {
+  const DirectConversationScreen({super.key});
+
+  Widget? _buildChatBackground() {
+    final wp = controller.selectedWallpaper.value;
+    if (wp == 'none') return null;
+
+    if (wp.startsWith('custom:')) {
+      final path = wp.substring(7);
+      final file = File(path);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          key: ValueKey('${file.path}_${file.lastModifiedSync().millisecondsSinceEpoch}'),
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Image.asset(
+            'assets/message_fond/messsage_fond1.png',
+            fit: BoxFit.cover,
+          ),
+        );
+      }
+      return Image.asset('assets/message_fond/messsage_fond1.png', fit: BoxFit.cover);
+    }
+
+    if (wp == 'fond2') return Image.asset('assets/message_fond/messsage_fond2.png', fit: BoxFit.cover);
+    if (wp == 'fond3') return Image.asset('assets/message_fond/messsage_fond3.png', fit: BoxFit.cover);
+    return Image.asset('assets/message_fond/messsage_fond1.png', fit: BoxFit.cover);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      backgroundColor: colors.surface,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        elevation: .5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: controller.onBack,
+        ),
+        title: Obx(() => _buildTitle()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: _openDetails,
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // 1. Image de fond d'écran (Asset ou Personnalisé Bac à sable) + Calque d'assombrissement
+          Obx(() {
+            final bgWidget = _buildChatBackground();
+            if (bgWidget == null) return const SizedBox.shrink();
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: bgWidget,
+                ),
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(
+                      alpha: Get.isDarkMode ? 0.60 : 0.45,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+
+          // 2. Contenu (Messages + Zone de saisie transparente)
+          Column(
+            children: [
+              Expanded(child: _messages(colors)),
+              Obx(
+                () => controller.recordingState.value != RecordingState.idle
+                    ? DirectVoiceRecorderPanel(controller: controller)
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _reply(colors),
+                          _composer(context, colors),
+                          _emoji(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openDetails() {
+    Get.to(
+      () => DirectConversationDetailsScreen(
+        userId: controller.otherUserId,
+        userName: controller.otherUserName.value,
+        userColor: controller.otherUserColor,
+        userAvatar: controller.otherUserAvatar.value,
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return GestureDetector(
+      onTap: _openDetails,
+      child: Row(
+        children: [
+          ClipOval(
+            child: SizedBox(
+              width: 32,
+              height: 32,
+              child:
+                  controller.otherUserAvatar.value != null &&
+                      controller.otherUserAvatar.value!.isNotEmpty
+                  ? AppCachedImage(
+                      imageUrl: controller.otherUserAvatar.value!,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: controller.otherUserColor.withValues(alpha: .1),
+                      alignment: Alignment.center,
+                      child: Text(
+                        controller.otherUserName.value.characters.first.toUpperCase(),
+                        style: TextStyle(
+                          color: controller.otherUserColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Obx(
+            () => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  controller.otherUserName.value.toUpperCase(),
+                  style: AppTextStyles.h6.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (controller.isOtherUserTyping.value)
+                  const Text(
+                    "En train d'écrire...",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyChatState(ColorScheme colors) {
+    final hasWallpaper = controller.selectedWallpaper.value != 'none';
+    final isDark = Get.isDarkMode;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: hasWallpaper
+                ? Colors.black.withValues(alpha: 0.20)
+                : (isDark
+                    ? colors.surfaceContainerHighest.withValues(alpha: 0.20)
+                    : Colors.white.withValues(alpha: 0.95)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: hasWallpaper
+                  ? Colors.white.withValues(alpha: 0.20)
+                  : colors.outlineVariant.withValues(alpha: 0.20),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'chats_empty_title'.tr,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h4.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: hasWallpaper ? Colors.white : colors.onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'chats_empty_subtitle'.tr,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: hasWallpaper ? Colors.white.withValues(alpha: 0.85) : colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _messages(ColorScheme colors) {
+    return Obx(() {
+      if (controller.isLoading.value && controller.messages.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (controller.messages.isEmpty) {
+        return _buildEmptyChatState(colors);
+      }
+
+      return _MessagesList(
+        controller: controller,
+        colors: colors,
+        bubbleBuilder: _bubble,
+      );
+    });
+  }
+
+  Widget _bubble(
+    BuildContext context,
+    ColorScheme colors,
+    MessageModel m,
+    bool header,
+  ) {
+    final isMe = m.senderId == controller.currentUserId;
+    final hasWallpaper = controller.selectedWallpaper.value != 'none';
+
+    if (m.deletedSilently) return const SizedBox.shrink();
+    if (m.isDeleted) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 10),
+        child: Text(
+          'Ce message a été supprimé',
+          style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.white70),
+        ),
+      );
+    }
+
+    final content = <Widget>[];
+    if (header) {
+      content.add(
+        Text(
+          (isMe ? 'Moi' : controller.otherUserName.value).toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: isMe
+                ? (hasWallpaper ? Colors.white70 : Colors.grey)
+                : controller.otherUserColor,
+          ),
+        ),
+      );
+    }
+    if (m.repliedToId != null) content.add(_quoted(colors, m.repliedToId!));
+    if (m.type == MessageType.audio && m.audioUrl != null) {
+      content.add(
+        DirectVoiceMessagePlayer(
+          voiceMessage: legacy.VoiceMessage(
+            fileName: 'audio.m4a',
+            sizeLabel: '',
+            durationLabel: '${m.audioDuration?.inSeconds ?? 0}',
+            url: m.audioUrl,
+          ),
+          audioPath: m.audioUrl,
+          messageId: m.id,
+          isMine: isMe,
+        ),
+      );
+    }
+    if (m.mediaUrls?.isNotEmpty == true) content.add(_media(m.mediaUrls!));
+    if (m.text != null) {
+      content.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                m.text!,
+                style: AppTextStyles.bodyLarge.copyWith(
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .95)
+                      : colors.onSurface.withValues(alpha: .9),
+                ),
+              ),
+            ),
+            if (m.isEdited && !m.editedSilently)
+              Padding(
+                padding: const EdgeInsets.only(left: 5, bottom: 2),
+                child: Icon(
+                  Icons.edit_outlined,
+                  size: 11,
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .7)
+                      : colors.onSurfaceVariant.withValues(alpha: .65),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    if (m.status == MessageStatus.sending) {
+      content.add(
+        Text(
+          'Envoi...',
+          style: TextStyle(
+            fontSize: 10,
+            fontStyle: FontStyle.italic,
+            color: hasWallpaper ? Colors.white70 : Colors.grey,
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onDoubleTap: () => _options(context, m),
+      child: Padding(
+        padding: EdgeInsets.only(top: header ? 16 : 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 4,
+              height: 50,
+              decoration: BoxDecoration(
+                color: (isMe ? Colors.grey : controller.otherUserColor)
+                    .withValues(alpha: .5),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: content,
+              ),
+            ),
+            if (header)
+              Column(
+                children: [
+                  Text(
+                    DateFormat.Hm().format(m.createdAt),
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: hasWallpaper
+                          ? Colors.white70
+                          : colors.onSurfaceVariant.withValues(alpha: .5),
+                    ),
+                  ),
+                  if (isMe) _status(m.status),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _status(MessageStatus s) {
+    final icon = s == MessageStatus.read || s == MessageStatus.received
+        ? Icons.done_all_rounded
+        : s == MessageStatus.sent
+        ? Icons.check_rounded
+        : Icons.error_outline;
+    final color = s == MessageStatus.read
+        ? Colors.blue
+        : s == MessageStatus.error || s == MessageStatus.failed
+        ? AppColors.error
+        : null;
+    return Icon(icon, size: 15, color: color);
+  }
+
+  Widget _media(List<String> urls) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      child: urls.length == 1
+          ? _one(urls.first, urls)
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: urls
+                  .asMap()
+                  .entries
+                  .map((entry) => _thumb(entry.value, entry.key, urls))
+                  .toList(),
+            ),
+    );
+  }
+
+  Widget _one(String path, List<String> all) {
+    return GestureDetector(
+      onTap: () =>
+          Get.to(() => MediaFullScreenPage(mediaUrls: all, initialIndex: 0)),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ChatCachedMedia(
+          remoteUrl: path,
+          fit: BoxFit.cover,
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  Widget _thumb(String path, int index, List<String> all) {
+    return GestureDetector(
+      onTap: () => Get.to(
+        () => MediaFullScreenPage(mediaUrls: all, initialIndex: index),
+      ),
+      child: ChatCachedMedia(
+        remoteUrl: path,
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
+  Widget _quoted(ColorScheme colors, String id) {
+    final q = controller.messages.firstWhereOrNull((m) => m.id == id);
+    if (q == null || q.deletedSilently) return const SizedBox.shrink();
+    final me = q.senderId == controller.currentUserId;
+    final hasWallpaper = controller.selectedWallpaper.value != 'none';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: hasWallpaper
+            ? Colors.white.withValues(alpha: .1)
+            : colors.onSurface.withValues(alpha: .05),
+        borderRadius: BorderRadius.circular(4),
+        border: Border(
+          left: BorderSide(
+            color: me ? Colors.grey : controller.otherUserColor,
+            width: 3,
+          ),
+        ),
+      ),
+      child: Text(
+        q.type == MessageType.audio ? '🎤 Message vocal' : (q.text ?? 'Média'),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 11,
+          color: hasWallpaper ? Colors.white70 : colors.onSurface,
+        ),
+      ),
+    );
+  }
+
+  bool _interactionAllowed(MessageModel m) {
+    return DateTime.now().difference(m.createdAt) < const Duration(minutes: 5);
+  }
+
+  void _options(BuildContext context, MessageModel m) {
+    final me = m.senderId == controller.currentUserId;
+    final canInteractGlobally = me && _interactionAllowed(m);
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (m.status == MessageStatus.failed)
+                ListTile(
+                  leading: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+                  title: const Text('Réessayer l’envoi'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    controller.retryMessage(m.localId);
+                  },
+                ),
+              if (m.text != null)
+                ListTile(
+                  leading: const Icon(Icons.copy_outlined),
+                  title: Text('chats_copy'.tr),
+                  onTap: () => Navigator.of(sheetContext).pop(),
+                ),
+              if (canInteractGlobally && m.type == MessageType.text)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Modifier'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    controller.beginEditing(m);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.reply_outlined),
+                title: Text('chats_reply'.tr),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  controller.setReply(m);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_sweep_outlined),
+                title: const Text('Supprimer pour moi'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  controller.deleteMessageForMe(m.id);
+                },
+              ),
+              if (canInteractGlobally)
+                ListTile(
+                  leading: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
+                  title: Text(
+                    'chats_delete_everyone'.tr,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    controller.deleteMessageForEveryone(m.id);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _reply(ColorScheme colors) {
+    return Obx(() {
+      final message = controller.repliedMessage.value;
+      if (message == null) return const SizedBox.shrink();
+      final hasWallpaper = controller.selectedWallpaper.value != 'none';
+
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: hasWallpaper
+              ? Colors.black54
+              : colors.surfaceContainerHighest.withValues(alpha: .5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 34,
+              color: message.senderId == controller.currentUserId
+                  ? Colors.grey
+                  : controller.otherUserColor,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message.type == MessageType.audio
+                    ? '🎤 Message vocal'
+                    : (message.text ?? 'Média'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: hasWallpaper ? Colors.white : colors.onSurface,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: hasWallpaper ? Colors.white : colors.onSurface,
+              ),
+              onPressed: controller.clearReply,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _composer(BuildContext context, ColorScheme colors) {
+    return Obx(() {
+      final editing = controller.editingMessage.value;
+      final editingMode = editing != null;
+      final canSendText = editingMode || controller.isTyping.value;
+      final hasWallpaper = controller.selectedWallpaper.value != 'none';
+
+      return Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        child: Column(
+          children: [
+            if (editingMode)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: hasWallpaper
+                      ? Colors.black54
+                      : colors.surfaceContainerHighest.withValues(alpha: .45),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: hasWallpaper ? Colors.white : colors.onSurface,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Modification du message',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: hasWallpaper ? Colors.white : colors.onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: hasWallpaper ? Colors.white : colors.onSurface,
+                      ),
+                      onPressed: controller.cancelEditing,
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              children: [
+                if (!editingMode)
+                  _CircleIcon(
+                    icon: Icons.add,
+                    color: hasWallpaper ? Colors.white : null,
+                    onTap: () => showImageSourceSheet(
+                      context,
+                      onCamera: controller.pickCameraMedia,
+                      onGallery: controller.pickGalleryMedia,
+                    ),
+                  ),
+                if (!editingMode) const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: controller.messageController,
+                    onTap: () => controller.showEmojiPicker.value = false,
+                    style: TextStyle(
+                      color: hasWallpaper ? Colors.white : colors.onSurface,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: editingMode
+                          ? 'Modifier le message...'
+                          : 'chats_message_hint'.tr,
+                      hintStyle: TextStyle(
+                        color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: hasWallpaper
+                          ? Colors.black.withValues(alpha: .45)
+                          : colors.surfaceContainerHighest.withValues(alpha: .3),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    onSubmitted: (_) => controller.sendMessage(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CircleIcon(
+                  icon: editingMode
+                      ? Icons.check_rounded
+                      : controller.isTyping.value
+                      ? Icons.send
+                      : Icons.mic_none,
+                  color: canSendText ? AppColors.primary : (hasWallpaper ? Colors.white : null),
+                  onTap: canSendText
+                      ? controller.sendMessage
+                      : controller.startRecording,
+                  onLongPress: editingMode ? null : controller.startRecording,
+                  onLongPressUp: editingMode ? null : controller.stopRecording,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _emoji() {
+    return Obx(
+      () => controller.showEmojiPicker.value
+          ? SizedBox(
+              height: 280,
+              child: EmojiPicker(
+                textEditingController: controller.messageController,
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _CircleIcon extends StatelessWidget {
+  const _CircleIcon({
+    required this.icon,
+    this.color,
+    this.onTap,
+    this.onLongPress,
+    this.onLongPressUp,
+  });
+
+  final IconData icon;
+  final Color? color;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onLongPressUp;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? Theme.of(context).colorScheme.onSurface;
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onLongPressUp: onLongPressUp,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: c.withValues(alpha: .15),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: c, size: 21),
+      ),
+    );
+  }
+}
+
+class _MessagesList extends StatefulWidget {
+  const _MessagesList({
+    required this.controller,
+    required this.colors,
+    required this.bubbleBuilder,
+  });
+
+  final DirectConversationController controller;
+  final ColorScheme colors;
+  final Widget Function(BuildContext, ColorScheme, MessageModel, bool)
+  bubbleBuilder;
+
+  @override
+  State<_MessagesList> createState() => _MessagesListState();
+}
+
+class _MessagesListState extends State<_MessagesList> {
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, Timer> _visibilityTimers = <String, Timer>{};
+  bool _showJumpButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  void _onScroll() {
+    final show = _scrollController.hasClients && _scrollController.offset > 280;
+    if (show != _showJumpButton && mounted) {
+      setState(() => _showJumpButton = show);
+    }
+  }
+
+  bool _isUnreadMessage(MessageModel message) {
+    final cursor = widget.controller.lastReadAt.value;
+    return message.senderId != widget.controller.currentUserId &&
+        !message.isDeleted &&
+        (cursor == null || message.createdAt.isAfter(cursor));
+  }
+
+  void _markVisibleAsRead(MessageModel message) {
+    if (!_isUnreadMessage(message) ||
+        _visibilityTimers.containsKey(message.id)) {
+      return;
+    }
+
+    _visibilityTimers[message.id] = Timer(
+      const Duration(milliseconds: 300),
+      () {
+        _visibilityTimers.remove(message.id);
+        if (mounted && _isUnreadMessage(message)) {
+          widget.controller.queueVisibleMessageAsRead(message);
+        }
+      },
+    );
+  }
+
+  void _jumpToFirstUnread() {
+    final count = widget.controller.unreadCount.value;
+    if (count == 0) {
+      _jumpToLatest();
+      return;
+    }
+
+    final id = widget.controller.firstUnreadMessageId.value;
+    final index = widget.controller.messages.indexWhere((m) => m.id == id);
+    final target = index >= 0 ? index : count;
+    final maxExtent = _scrollController.hasClients
+        ? _scrollController.position.maxScrollExtent
+        : 0.0;
+    final offset = (target * 92.0).clamp(0.0, maxExtent);
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _jumpToLatest() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _visibilityTimers.values) {
+      timer.cancel();
+    }
+    _visibilityTimers.clear();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(
+      () => Stack(
+        children: [
+          ListView.builder(
+            controller: _scrollController,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            itemCount: widget.controller.messages.length,
+            itemBuilder: (context, index) {
+              final messages = widget.controller.messages.toList(
+                growable: false,
+              );
+              if (index >= messages.length) return const SizedBox.shrink();
+
+              final message = messages[index];
+              final next = index < messages.length - 1
+                  ? messages[index + 1]
+                  : null;
+              final header = next == null || next.senderId != message.senderId;
+
+              if (index < 5) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _markVisibleAsRead(message);
+                });
+              }
+
+              return widget.bubbleBuilder(
+                context,
+                widget.colors,
+                message,
+                header,
+              );
+            },
+          ),
+          IgnorePointer(
+            ignoring:
+                !(_showJumpButton || widget.controller.unreadCount.value > 0),
+            child: AnimatedOpacity(
+              opacity:
+                  _showJumpButton || widget.controller.unreadCount.value > 0
+                  ? 1
+                  : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 14, bottom: 14),
+                  child: _buildJumpButton(context),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJumpButton(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final unread = widget.controller.unreadCount.value;
+
+    return Material(
+      color: Colors.transparent,
+      elevation: 6,
+      shadowColor: Colors.black.withValues(alpha: .25),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: _jumpToFirstUnread,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 46,
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: colors.outline.withValues(alpha: .15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 24),
+              if (unread > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 3),
+                  child: Text(
+                    '$unread',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
