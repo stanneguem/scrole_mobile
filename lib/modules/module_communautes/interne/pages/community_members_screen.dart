@@ -198,24 +198,24 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
   }
 
   Future<void> _showExclusionDialog(String userId, String userName) async {
-    final TextEditingController reasonController = TextEditingController();
-    bool deleteContent = false;
+    final reasonController = TextEditingController();
+    var deleteContent = false;
 
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Exclure $userName', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('community_exclude_title'.trParams({'name': userName}), style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Voulez-vous vraiment exclure ce membre de la communauté ?'),
+            Text('community_exclude_confirm'.tr),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
               decoration: InputDecoration(
-                labelText: 'Motif (optionnel)',
-                hintText: 'Raison de l\'exclusion...',
+                labelText: 'community_exclude_reason_label'.tr,
+                hintText: 'community_exclude_reason_hint'.tr,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               maxLength: 500,
@@ -225,7 +225,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
             StatefulBuilder(
               builder: (context, setStateSB) => CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Supprimer aussi ses publications et commentaires', style: TextStyle(fontSize: 13)),
+                title: Text('community_exclude_delete_content'.tr, style: const TextStyle(fontSize: 13)),
                 value: deleteContent,
                 onChanged: (val) => setStateSB(() => deleteContent = val ?? false),
               ),
@@ -233,11 +233,11 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(result: false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
           ElevatedButton(
             onPressed: () => Get.back(result: true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Exclure'),
+            child: Text('community_exclude_action'.tr),
           ),
         ],
       ),
@@ -251,13 +251,25 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           reason: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : null,
           deleteContent: deleteContent,
         );
-        Get.snackbar('Exclusion', '$userName a été exclu de la communauté.', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'community_exclude_success_title'.tr,
+          'community_exclude_success_message'.trParams({'name': userName}),
+          snackPosition: SnackPosition.BOTTOM,
+        );
         await _loadMembers(refresh: true);
       } catch (e) {
-        Get.snackbar('Erreur', e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+        Get.snackbar(
+          'community_save_error'.tr,
+          e.toString().replaceFirst('Exception: ', '').tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
     }
+    reasonController.dispose();
   }
+
 
   Future<void> _changeRole(String userId, String userName, String newRole) async {
     try {
@@ -345,14 +357,15 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                   },
                 ),
             ],
-            ListTile(
-              leading: const Icon(Icons.block_rounded, color: Colors.red),
-              title: const Text('Exclure de la communauté', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Get.back();
-                _showExclusionDialog(userId, userName);
-              },
-            ),
+            if (_isAdminUser)
+              ListTile(
+                leading: const Icon(Icons.block_rounded, color: Colors.red),
+                title: Text('community_exclude_action'.tr, style: const TextStyle(color: Colors.red)),
+                onTap: () {
+                  Get.back();
+                  _showExclusionDialog(userId, userName);
+                },
+              ),
           ],
         ),
       ),
