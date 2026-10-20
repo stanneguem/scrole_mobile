@@ -170,6 +170,15 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     return await _dao.getCommunities(userId);
   }
 
+  Future<List<CommunityHashtag>> searchCommunityHashtags(String query, {int limit = 20}) async {
+    final rows = await _repo.searchCommunityHashtags(query, limit: limit);
+    return rows.map((row) => CommunityHashtag(
+      id: (row['id'] ?? '').toString(),
+      name: (row['name'] ?? row['normalized_name'] ?? '').toString(),
+      postCount: (row['post_count'] as num?)?.toInt() ?? 0,
+    )).where((tag) => tag.name.isNotEmpty).toList();
+  }
+
   Future<Map<String, dynamic>> getCommunityMembersRpc({
     required String communityId,
     int limit = 50,
