@@ -184,6 +184,34 @@ class CommunityPost {
       }
     }
 
+    final rawHashtags = map['hashtags'] ?? map['post_hashtags'] ?? map['tags'];
+    final parsedHashtags = rawHashtags is List
+        ? rawHashtags.map((entry) {
+            if (entry is Map) {
+              final name = (entry['name'] ?? entry['hashtag'] ?? entry['normalized_name'] ?? '').toString().trim();
+              return name.isEmpty ? null : HashtagModel(name: name.replaceFirst(RegExp(r'^#+'), ''));
+            }
+            final name = entry.toString().trim();
+            return name.isEmpty ? null : HashtagModel(name: name.replaceFirst(RegExp(r'^#+'), ''));
+          }).whereType<HashtagModel>().toList()
+        : <HashtagModel>[];
+
+    final rawMentions = map['mentions'] ?? map['mentioned_users'] ?? map['mentionedUsers'];
+    final parsedMentions = rawMentions is List
+        ? rawMentions.map((entry) {
+            if (entry is! Map) return null;
+            final row = Map<String, dynamic>.from(entry);
+            final userId = (row['user_id'] ?? row['id'] ?? row['profile_id'] ?? '').toString();
+            final username = (row['username'] ?? row['user_profiles']?['username'] ?? '').toString();
+            if (userId.isEmpty) return null;
+            return CommunityPostMention(
+              userId: userId,
+              username: username,
+              photoUrl: (row['photo_url'] ?? row['user_profiles']?['photo_url'])?.toString(),
+            );
+          }).whereType<CommunityPostMention>().toList()
+        : <CommunityPostMention>[];
+
     CommunityPost? shared;
     if (map['shared_post'] is Map) {
       final spMap = Map<String, dynamic>.from(map['shared_post']);
@@ -200,6 +228,8 @@ class CommunityPost {
       timeAgo: map['created_at']?.toString() ?? '',
       content: map['content']?.toString() ?? '',
       media: mediaList,
+      hashtags: parsedHashtags,
+      mentionedUsers: parsedMentions,
       poll: map['poll'] ?? map['poll_state'] ?? map['community_poll'],
       likeCount: (map['likes_count'] as num?)?.toInt() ?? 0,
       dislikeCount: (map['dislikes_count'] as num?)?.toInt() ?? 0,
