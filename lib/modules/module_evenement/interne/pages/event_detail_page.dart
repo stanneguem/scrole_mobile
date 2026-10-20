@@ -26,6 +26,7 @@ import 'event_days_selector_screen.dart';
 import 'event_comments_screen.dart';
 import 'event_rating_screen.dart';
 import '../widgets/event_share_options_sheet.dart';
+import '../widgets/event_share_card_design_picker.dart';
 import '../../../module_principale/interne/pages/create_story_screen.dart';
 import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 
@@ -427,10 +428,56 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
     final event = _preview?.event ?? widget.event;
     final details = <String>[
       'Découvre cet événement : ${event.name}',
-      'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(event.startsAt)}',
-      if ((event.city?.name ?? '').trim().isNotEmpty) 'Lieu : ${event.city!.name.trim()}',
+      if ((event.description ?? '').trim().isNotEmpty) event.description!.trim(),
     ];
-    return details.join('\n');
+    return details.join('\\n\\n');
+  }
+
+  Future<void> _openEventShareCardPicker({
+    required String destination,
+    Map<String, dynamic>? community,
+  }) async {
+    final preview = _preview;
+    if (preview == null || !mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (pickerContext) => EventShareCardDesignPicker(
+        preview: preview,
+        onSelected: (designIndex) async {
+          Navigator.of(pickerContext).pop();
+          try {
+            final cardFile = await EventShareCardRenderer.renderToFile(
+              context: context,
+              preview: preview,
+              designIndex: designIndex,
+            );
+            if (!mounted) return;
+            final caption = _eventShareText();
+            if (destination == 'story') {
+              Get.to(() => CreateStoryScreen(
+                    prefilledText: caption,
+                    prefilledMediaUrl: cardFile.path,
+                  ));
+            } else {
+              Get.to(() => CreateCommunityPostScreen(
+                    communityId: community == null ? null : (community['id'] ?? '').toString(),
+                    communityName: community == null ? 'Mon fil' : (community['name'] ?? 'Communauté').toString(),
+                    prefilledText: caption,
+                    prefilledMediaUrl: cardFile.path,
+                  ));
+            }
+          } catch (error) {
+            if (mounted) {
+              Get.snackbar('Partage impossible', 'La carte de l’événement n’a pas pu être créée.');
+            }
+            debugPrint('[EventShare] Could not render event card: $error');
+          }
+        },
+      ),
+    );
   }
 
   void _shareEvent() {
@@ -444,10 +491,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
         preview: _preview!,
         onFeed: () {
           Navigator.of(sheetContext).pop();
-          Get.to(() => CreateCommunityPostScreen(
-                communityName: 'Mon fil',
-                prefilledText: _eventShareText(),
-              ));
+          _openEventShareCardPicker(destination: 'feed');
         },
         onCommunity: () {
           Navigator.of(sheetContext).pop();
@@ -459,23 +503,18 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
               onSelected: (community) {
                 Navigator.of(pickerContext).pop();
                 final communityId = (community['id'] ?? '').toString();
-                final communityName = (community['name'] ?? 'Communauté').toString();
                 if (communityId.isEmpty) {
                   Get.snackbar('Partage', 'Cette communauté est introuvable.');
                   return;
                 }
-                Get.to(() => CreateCommunityPostScreen(
-                      communityId: communityId,
-                      communityName: communityName,
-                      prefilledText: _eventShareText(),
-                    ));
+                _openEventShareCardPicker(destination: 'community', community: community);
               },
             ),
           );
         },
         onStory: () {
           Navigator.of(sheetContext).pop();
-          Get.to(() => CreateStoryScreen(prefilledText: _eventShareText()));
+          _openEventShareCardPicker(destination: 'story');
         },
         onNativeApps: () {
           Navigator.of(sheetContext).pop();
@@ -491,7 +530,6 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
       ),
     );
   }
-
   void _openCommentSheet() {
     Get.to(() => EventCommentsScreen(
       eventId: widget.event.id,
