@@ -496,6 +496,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Changer",
       'community_settings_image_too_large': "L’image dépasse la taille maximale de 5 Mo.",
       'community_settings_image_compression_failed': "Impossible de préparer cette image. Essaie avec une autre photo.",
+      'community_rule_required': "La règle ne peut pas être vide.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -985,6 +986,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Change",
       'community_settings_image_too_large': "The image exceeds the 5 MB limit.",
       'community_settings_image_compression_failed': "Could not prepare this image. Try another photo.",
+      'community_rule_required': "The rule cannot be empty.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1391,6 +1393,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Cambiar",
       'community_settings_image_too_large': "La imagen supera el límite de 5 MB.",
       'community_settings_image_compression_failed': "No se pudo preparar esta imagen. Prueba con otra foto.",
+      'community_rule_required': "La regla no puede estar vacía.",
     },
     'de': {
       'status_online': 'Online',
@@ -1780,6 +1783,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Ändern",
       'community_settings_image_too_large': "Das Bild überschreitet die Grenze von 5 MB.",
       'community_settings_image_compression_failed': "Das Bild konnte nicht vorbereitet werden. Versuche ein anderes Foto.",
+      'community_rule_required': "Die Regel darf nicht leer sein.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2169,6 +2173,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Modifica",
       'community_settings_image_too_large': "L’immagine supera il limite di 5 MB.",
       'community_settings_image_compression_failed': "Impossibile preparare questa immagine. Prova con un’altra foto.",
+      'community_rule_required': "La regola non può essere vuota.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2558,6 +2563,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Alterar",
       'community_settings_image_too_large': "A imagem excede o limite de 5 MB.",
       'community_settings_image_compression_failed': "Não foi possível preparar esta imagem. Tente outra foto.",
+      'community_rule_required': "A regra não pode estar vazia.",
     },
     'zh': {
       'status_online': '在线',
@@ -2947,6 +2953,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "更改",
       'community_settings_image_too_large': "图片超过了 5 MB 的大小限制。",
       'community_settings_image_compression_failed': "无法处理此图片，请尝试其他照片。",
+      'community_rule_required': "规则不能为空。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3335,6 +3342,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "変更",
       'community_settings_image_too_large': "画像が5MBの上限を超えています。",
       'community_settings_image_compression_failed': "画像を処理できませんでした。別の写真をお試しください。",
+      'community_rule_required': "ルールを空にすることはできません。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3718,6 +3726,7 @@ class AppTranslationAdditions {
       'community_settings_change_photo': "Изменить",
       'community_settings_image_too_large': "Размер изображения превышает лимит 5 МБ.",
       'community_settings_image_compression_failed': "Не удалось подготовить изображение. Попробуйте другое фото.",
+      'community_rule_required': "Правило не может быть пустым.",
     },
   };
 
