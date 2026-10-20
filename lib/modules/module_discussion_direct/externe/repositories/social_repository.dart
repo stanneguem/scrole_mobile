@@ -385,12 +385,6 @@ class SocialRepository {
           final user = rawUser is Map ? Map<String, dynamic>.from(rawUser) : <String, dynamic>{};
           final otherId = (user['user_id'] ?? user['id'] ?? '').toString();
           if (otherId.isEmpty) continue;
-          final profile = <String, dynamic>{
-            ...user,
-            'user_id': otherId,
-            'username': user['username'] ?? user['pseudo'] ?? '',
-            'is_verified': user['is_certified'] ?? false,
-          };
           combined.add({
             'id': (item['request_id'] ?? '').toString(),
             'request_id': (item['request_id'] ?? '').toString(),
@@ -400,8 +394,6 @@ class SocialRepository {
             'created_at': item['created_at'],
             'next_retry_at': item['next_retry_at'],
           });
-          // Keep the identity payload local for any legacy widget still mounted.
-          unawaited(_dao.savePeople([profile]));
         }
       }
       appendItems(received, true);
