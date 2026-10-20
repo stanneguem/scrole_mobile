@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
+import '../../../module_discussion_direct/centre/services/follow_error_mapper.dart';
 
 class FollowRequestsScreen extends StatefulWidget {
   const FollowRequestsScreen({super.key});
@@ -117,7 +118,7 @@ class _FollowRequestsTabState extends State<_FollowRequestsTab> {
       await _load(reset: true);
     } catch (e, stack) {
       debugPrint('[FOLLOW] respond_follow_request request=$requestId exception=$e\\n$stack');
-      if (mounted) Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      if (mounted) Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
