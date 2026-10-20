@@ -87,45 +87,88 @@ class _EventCommentsSheetState extends State<EventCommentsSheet> {
           const SizedBox(height: 20),
 
           // Zone de saisie
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _commentController,
-                  decoration: InputDecoration(
-                    hintText: 'Écrire un commentaire...',
-                    hintStyle: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerLow,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.65)),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  margin: const EdgeInsets.only(right: 8, bottom: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.chat_bubble_outline_rounded, size: 17, color: AppColors.primary),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    minLines: 1,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    textInputAction: TextInputAction.newline,
+                    style: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurface, height: 1.35),
+                    decoration: InputDecoration(
+                      hintText: 'Écrire un commentaire...',
+                      hintStyle: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () {
-                  final text = _commentController.text.trim();
-                  if (text.isEmpty) return;
-                  _commentController.clear();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Envoi de commentaire en attente de l\'API backend.',
-                        style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
-                      ),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                const SizedBox(width: 8),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF3B82F6), AppColors.primary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.send_rounded, color: AppColors.primary),
-              ),
-            ],
+                  ),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Envoyer',
+                    onPressed: () {
+                      final text = _commentController.text.trim();
+                      if (text.isEmpty) return;
+                      _commentController.clear();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Envoi de commentaire en attente de l\'API backend.',
+                            style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
+                          ),
+                          backgroundColor: AppColors.primary,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
         ],
