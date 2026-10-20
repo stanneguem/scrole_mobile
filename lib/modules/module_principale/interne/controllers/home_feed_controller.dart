@@ -35,6 +35,7 @@ class HomeFeedController extends GetxController {
 
   final Map<String, DateTime> _sentViewAt = {};
   final List<String> _pendingViewIds = [];
+  final Map<String, String> _pendingViewKeys = {};
   Timer? _viewBatchTimer;
   Timer? _counterRefreshTimer;
 
@@ -42,12 +43,14 @@ class HomeFeedController extends GetxController {
     if (post.isPublishing) return;
     final myId = _authService.userId;
     if (myId == null || myId.isEmpty || post.authorId == myId) return;
-    final lastViewedAt = _sentViewAt[post.id];
+    final viewKey = '$myId:${post.id}';
+    final lastViewedAt = _sentViewAt[viewKey];
     if (lastViewedAt != null && DateTime.now().difference(lastViewedAt) < const Duration(minutes: 10)) return;
-    if (_pendingViewIds.contains(post.id)) return;
+    if (_pendingViewKeys.containsKey(post.id)) return;
 
     _pendingViewIds.add(post.id);
-    _sentViewAt[post.id] = DateTime.now();
+    _pendingViewKeys[post.id] = viewKey;
+    _sentViewAt[viewKey] = DateTime.now();
     _sentViewAt.removeWhere((_, time) => DateTime.now().difference(time) > const Duration(days: 1));
 
     if (_pendingViewIds.length >= 20) {
@@ -83,9 +86,14 @@ class HomeFeedController extends GetxController {
       if (counters.isNotEmpty) posts.refresh();
     } catch (e) {
       for (final id in batch) {
-        _sentViewAt.remove(id);
+        final key = _pendingViewKeys[id];
+        if (key != null) _sentViewAt.remove(key);
       }
       debugPrint('[POST_ACTIONS] Error recording view batch: $e');
+    } finally {
+      for (final id in batch) {
+        _pendingViewKeys.remove(id);
+      }
     }
   }
 
