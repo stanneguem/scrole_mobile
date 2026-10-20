@@ -1020,9 +1020,26 @@ class CommunityRepository {
             .toList();
       }
       throw const FormatException('Réponse invalide des centres d’intérêt de la communauté.');
-    } catch (e) {
-      debugPrint('[CommunityRepository] Error in getCommunityInterests: $e');
-      rethrow;
+    } catch (rpcError) {
+      // Older deployments expose the relation but do not have the optional read RPC.
+      try {
+        final response = await client
+            .from('community_interests')
+            .select('interests(id, name, category, icon_url)')
+            .eq('community_id', communityId);
+        return (response as List).map((entry) {
+          final item = Map<String, dynamic>.from(entry as Map);
+          final interest = item['interests'];
+          if (interest is! Map) {
+            throw const FormatException('Centre d’intérêt associé introuvable.');
+          }
+          return Map<String, dynamic>.from(interest);
+        }).toList();
+      } catch (fallbackError) {
+        debugPrint('[CommunityRepository] RPC getCommunityInterests failed: $rpcError');
+        debugPrint('[CommunityRepository] Relation fallback failed: $fallbackError');
+        rethrow;
+      }
     }
   }
 
