@@ -301,7 +301,7 @@ class CommunityFeedController extends GetxController {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     if (currentUserId == null) {
-      Get.snackbar('error'.tr, 'authentication_required'.tr, snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
       return;
     }
 
@@ -312,7 +312,7 @@ class CommunityFeedController extends GetxController {
       authorName: 'Moi',
       authorId: currentUserId!,
       authorColor: Colors.purple,
-      timeAgo: 'just_now'.tr,
+      timeAgo: 'time_ago_minutes'.trParams({'count': '0'}),
       content: trimmed,
     );
     commentsByPostId[postId] = [newComment, ...list];
@@ -349,7 +349,7 @@ class CommunityFeedController extends GetxController {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     if (currentUserId == null) {
-      Get.snackbar('error'.tr, 'authentication_required'.tr, snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
       return;
     }
 
@@ -360,7 +360,7 @@ class CommunityFeedController extends GetxController {
       authorName: 'Moi',
       authorId: currentUserId!,
       authorColor: Colors.purple,
-      timeAgo: 'just_now'.tr,
+      timeAgo: 'time_ago_minutes'.trParams({'count': '0'}),
       content: trimmed,
     );
     repliesByCommentId[commentId] = [...list, newReply];
