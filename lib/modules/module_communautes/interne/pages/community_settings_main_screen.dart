@@ -116,7 +116,20 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
         if (comm != null) {
           _communityName = comm.name;
           _avatarUrl = comm.avatarUrl;
-          _slogan = comm.description;
+          _slogan = widget.communitySlogan ?? comm.description;
+        }
+        if (_role == 'admin') {
+          try {
+            final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+            final community = snapshot['community'] is Map
+                ? Map<String, dynamic>.from(snapshot['community'] as Map)
+                : <String, dynamic>{};
+            _communityName = community['name']?.toString() ?? _communityName;
+            _avatarUrl = community['photo_profile']?.toString() ?? _avatarUrl;
+            _slogan = community['slogan']?.toString() ?? _slogan;
+          } catch (e) {
+            debugPrint('[CommunitySettingsMainScreen] Summary refresh failed: $e');
+          }
         }
       } catch (_) {}
     } catch (e) {
