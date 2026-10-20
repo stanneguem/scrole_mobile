@@ -130,7 +130,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Impossible d\'enregistrer votre note. Veuillez réessayer.',
+              _friendlyRatingError(e),
               style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
             ),
             backgroundColor: AppColors.error,
