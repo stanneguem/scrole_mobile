@@ -387,6 +387,23 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
 
   Future<void> _moderate(String postId, String action) async {
     if (_busyPostIds.contains(postId)) return;
+    if (action == 'reject') {
+      final confirmed = await Get.dialog<bool>(
+        AlertDialog(
+          title: Text('community_mod_reject_post_confirm_title'.tr),
+          content: Text('community_mod_reject_post_confirm_message'.tr),
+          actions: [
+            TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Get.back(result: true),
+              child: Text('community_mod_reject_post'.tr),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
     setState(() => _busyPostIds.add(postId));
     try {
       await _service.moderateCommunityPost(postId, action);
