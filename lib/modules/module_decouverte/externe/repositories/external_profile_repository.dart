@@ -247,8 +247,23 @@ class ExternalProfileRepository {
     await _socialRepo.unfollowUser(userId);
   }
 
-  Future<void> respondConnectionRequest(String requestId, bool accept, {required String targetUserId}) async {
-    await _socialRepo.respondFollowRequest(requestId, accept, targetUserId: targetUserId);
+  Future<void> respondConnectionRequest(String requestId, bool accept, {String? targetUserId}) async {
+    var target = targetUserId;
+    if (target == null || target.isEmpty) {
+      final requests = await _socialRepo.getMyFollowRequests(direction: 'received', limit: 100, offset: 0);
+      final items = requests['items'];
+      if (items is List) {
+        for (final item in items.whereType<Map>()) {
+          if ((item['request_id'] ?? '').toString() == requestId) {
+            final user = item['user'];
+            if (user is Map) target = (user['user_id'] ?? user['id'])?.toString();
+            break;
+          }
+        }
+      }
+    }
+    if (target == null || target.isEmpty) throw ArgumentError('Utilisateur cible introuvable');
+    await _socialRepo.respondFollowRequest(requestId, accept, targetUserId: target);
   }
 
   Future<bool> follow(String userId) async {
