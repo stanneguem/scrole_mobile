@@ -43,6 +43,7 @@ class AccountSuggestion {
   final String? bio;
   final bool isVerified;
   final int? friendCount;
+  final bool followsMe;
 
   const AccountSuggestion({
     required this.id,
@@ -52,6 +53,7 @@ class AccountSuggestion {
     this.bio,
     this.isVerified = false,
     this.friendCount,
+    this.followsMe = false,
   });
 }
 
