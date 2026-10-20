@@ -79,7 +79,7 @@ class SocialRepository {
     final uid = currentUserId;
     if (uid == null) throw StateError('Utilisateur non connecté');
     final params = {'p_request_id': requestId, 'p_accepted': accepted};
-    await _dao.enqueueOutbox(userId: uid, operation: 'respond_follow_request', payload: params);
+    await _dao.enqueueOutbox(userId: uid, operation: 'respond_follow_request', payload: {...params, 'target_user_id': targetUserId});
     debugPrint('[FOLLOW] RPC respond_follow_request params=$params');
     try {
       final response = await _client.rpc('respond_follow_request', params: params);
@@ -327,26 +327,35 @@ class SocialRepository {
     return localQr;
   }
 
-  /// Scanner le QR code d'un autre utilisateur (§5.2).
-  Future<Map<String, dynamic>?> scanQrCode(String qrId, String mode) async {
+  /// Scanner un QR personnel : une seule action crée la relation mutuelle.
+  Future<Map<String, dynamic>?> scanQrCode(String qrId, [String? mode]) async {
     final userId = currentUserId;
-    if (userId == null) throw 'Utilisateur non connecté';
-
+    if (userId == null) throw StateError('Utilisateur non connecté');
     await _dao.enqueueOutbox(
       userId: userId,
       operation: 'scan_qr_code',
-      payload: {'qr_id': qrId, 'mode': mode},
+      payload: {'qr_id': qrId},
     );
-
-    final res = await _client.rpc('scan_qr_code', params: {
-      'p_qr_id': qrId,
-      'p_mode': mode,
-    });
-
-    if (res is Map) {
-      return Map<String, dynamic>.from(res);
+    debugPrint('[FOLLOW] RPC scan_qr_code params={p_qr_id: $qrId, p_mode: null}');
+    try {
+      final res = await _client.rpc('scan_qr_code', params: {
+        'p_qr_id': qrId,
+        'p_mode': null,
+      });
+      if (res is Map) {
+        final result = Map<String, dynamic>.from(res);
+        final relation = result['relationship'];
+        if (relation is Map && relation['user_id'] != null) {
+          _relationshipCache[relation['user_id'].toString()] = Map<String, dynamic>.from(relation);
+        }
+        debugPrint('[FOLLOW] RPC scan_qr_code response=$result');
+        return result;
+      }
+      return null;
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] RPC scan_qr_code exception=$e\\n$stack');
+      rethrow;
     }
-    return null;
   }
 
   String generateLocalUuid() {
