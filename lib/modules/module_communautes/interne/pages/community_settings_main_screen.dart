@@ -346,7 +346,8 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
       _reports = reportsRes['items'] as List;
       _userReports = userReportsRes['items'] as List;
     } catch (e) {
-      _loadError = e.toString().replaceFirst('Exception: ', '').tr;
+      debugPrint('[CommunityReportsHubScreen] Failed to load reports: $e');
+      _loadError = 'community_reports_load_error'.tr;
     }
     if (mounted) setState(() => _isLoading = false);
   }
