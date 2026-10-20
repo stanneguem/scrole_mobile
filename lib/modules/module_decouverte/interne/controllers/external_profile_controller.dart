@@ -7,6 +7,7 @@ import 'package:scrole/app/routes/app_pages.dart';
 import '../../../module_discussion_direct/centre/services/chat_service.dart';
 import '../../centre/models/external_profile_model.dart';
 import '../../externe/repositories/external_profile_repository.dart';
+import '../../../module_discussion_direct/centre/services/follow_error_mapper.dart';
 
 enum ProfileScreenState {
   loading,
@@ -173,7 +174,7 @@ class ExternalProfileController extends GetxController {
       await _repository.updateCachedProfile(updated);
     } catch (e, stack) {
       debugPrint('[FOLLOW] follow_user exception=$e\\n$stack');
-      Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     } finally {
       isSendingRequest.value = false;
     }
