@@ -536,7 +536,7 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
       await _loadReports();
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -546,7 +546,7 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
       await _loadReports();
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -691,7 +691,7 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
       await _loadRequests();
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
@@ -1026,7 +1026,7 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       Get.back();
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1708,7 +1708,7 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
         setState(() {});
         Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       } catch (e) {
-        Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+        Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
       }
     }
   }
@@ -1732,7 +1732,7 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
         setState(() {});
         Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       } catch (e) {
-        Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+        Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
       }
     }
   }
