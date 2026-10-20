@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/text_styles.dart';
 import '../../modules/module_discussion_direct/externe/repositories/social_repository.dart';
+import '../../modules/module_discussion_direct/centre/services/follow_error_mapper.dart';
 
 class RelationButtonWidget extends StatefulWidget {
   final String targetUserId;
@@ -75,7 +76,7 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
       debugPrint('[FOLLOW] relation button action user=${widget.targetUserId} exception=$e\\n$stack');
       if (mounted) {
         setState(() => _isLoading = false);
-        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       }
     }
   }
