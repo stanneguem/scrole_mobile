@@ -1138,11 +1138,18 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
   }
 
   Future<void> _processImage({required bool isProfile, required ImageSource source}) async {
-    final file = await _mediaService.pickImage(source: source);
-    if (file == null) return;
+    final pickedFile = await _mediaService.pickImage(source: source);
+    if (pickedFile == null) return;
 
     setState(() => _isLoading = true);
     try {
+      final file = await _mediaService.compressImage(pickedFile, quality: 75);
+      if (file == null) {
+        throw Exception('community_settings_image_compression_failed');
+      }
+      if (await file.length() > 5 * 1024 * 1024) {
+        throw Exception('community_settings_image_too_large');
+      }
       final ext = p.extension(file.path);
       final path = 'communities/${widget.communityId}/${isProfile ? 'profile' : 'cover'}_${DateTime.now().millisecondsSinceEpoch}$ext';
       final url = await _storage.uploadFile(bucket: 'community-media', path: path, file: file);
@@ -1170,7 +1177,12 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       debugPrint('[CommunityImagesScreen] Upload failed: $e');
-      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      final rawError = e.toString().replaceFirst('Exception: ', '');
+      final userMessage = rawError == 'community_settings_image_too_large' ||
+              rawError == 'community_settings_image_compression_failed'
+          ? rawError.tr
+          : _service.localizedCommunityError(e);
+      Get.snackbar('community_save_error'.tr, userMessage, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
