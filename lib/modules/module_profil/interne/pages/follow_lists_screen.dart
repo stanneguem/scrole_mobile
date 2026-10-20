@@ -127,7 +127,9 @@ class _FollowListTabState extends State<_FollowListTab> {
     final id = (item['user_id'] ?? '').toString();
     if (id.isEmpty) return;
     try {
-      if (item['i_follow'] == true) {
+      if (item['request_sent'] == true) {
+        await _repository.cancelFollowRequest(id);
+      } else if (item['i_follow'] == true) {
         await _repository.unfollowUser(id);
       } else {
         await _repository.followUser(id);
