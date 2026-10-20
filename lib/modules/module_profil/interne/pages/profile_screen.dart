@@ -352,10 +352,7 @@ class ProfileScreen extends GetView<ProfileController> {
         runSpacing: 12,
         children: [
           _engagementStat(controller.postsCount.value.toString(), 'profile_stat_posts'.tr, colors),
-          _engagementStat(controller.totalLikesReceived.value.toString(), 'profile_stat_likes_received'.tr, colors),
           _engagementStat(controller.reputation.value.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
-          _engagementStat(controller.eventsAttendedCount.value.toString(), 'profile_stat_participated'.tr, colors),
-          _engagementStat(controller.eventsOrganizedCount.value.toString(), 'profile_stat_organized'.tr, colors),
         ],
       )),
     );
