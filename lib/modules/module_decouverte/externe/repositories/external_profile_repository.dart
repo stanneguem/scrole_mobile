@@ -239,6 +239,9 @@ class ExternalProfileRepository {
   Future<Map<String, dynamic>> getRelationship(String userId, {bool forceRefresh = false}) =>
       _socialRepo.getRelationship(userId, forceRefresh: forceRefresh);
 
+  Future<Map<String, dynamic>> getFollowStats({String? userId}) =>
+      _socialRepo.getFollowStats(userId: userId);
+
   Future<void> sendConnectionRequest(String userId) async {
     await _socialRepo.followUser(userId);
   }
