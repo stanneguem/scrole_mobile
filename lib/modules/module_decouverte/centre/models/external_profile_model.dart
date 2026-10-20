@@ -170,7 +170,7 @@ class ExternalProfileModel {
       connectionRequestSent: json['connection_request_sent'] == true,
       incomingConnectionRequest: json['incoming_connection_request'] == true,
       isFollowing: json['is_following'] == true,
-      isCertified: json['is_certified'] == true || json['is_verified'] == true,
+      isCertified: json['is_certified'] == true || json['is_verified'] == true || json['is_certified'] == 1 || json['is_verified'] == 1,
       canMessage: json['can_message'] == true,
       friendCount: (json['friend_count'] as num?)?.toInt() ?? 0,
       eventsParticipatedCount: (json['events_participated'] as num?)?.toInt() ?? (json['events_participated_count'] as num?)?.toInt() ?? 0,
