@@ -1088,11 +1088,23 @@ class _HeaderStats extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildStatCol(NumberFormatter.formatCount(profile.eventsParticipatedCount), 'Participations', colors),
-        const SizedBox(width: 14),
-        _buildStatCol(NumberFormatter.formatCount(profile.followersCount), 'Abonnés', colors),
-        const SizedBox(width: 14),
-        _buildStatCol(NumberFormatter.formatCount(profile.friendCount), 'Abonnements', colors),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => Get.toNamed(AppPages.followLists, arguments: {'userId': profile.userId, 'initialTab': 0}),
+          child: _buildStatCol(NumberFormatter.formatCount(profile.followersCount), 'follow_tab_followers'.tr, colors),
+        ),
+        const SizedBox(width: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => Get.toNamed(AppPages.followLists, arguments: {'userId': profile.userId, 'initialTab': 1}),
+          child: _buildStatCol(NumberFormatter.formatCount(profile.followingCount), 'follow_tab_following'.tr, colors),
+        ),
+        const SizedBox(width: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => Get.toNamed(AppPages.followLists, arguments: {'userId': profile.userId, 'initialTab': 2}),
+          child: _buildStatCol(NumberFormatter.formatCount(profile.friendsCount), 'follow_tab_friends'.tr, colors),
+        ),
       ],
     );
   }
