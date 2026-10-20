@@ -242,10 +242,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       try {
         final isStaff = await _repo.isCommunityStaffRpc(communityId);
         if (isStaff) {
-          // The current RPC only reports whether the user is staff, not the
-          // precise role. Keep existing UI compatibility while avoiding
-          // privilege escalation when the check fails.
-          return 'admin';
+          // Staff status alone does not distinguish an administrator from a
+          // moderator. Do not grant either privileged UI role without the
+          // exact role returned by the membership query above.
+          debugPrint('[CommunityService] User is staff but exact role is unavailable; using member permissions.');
         }
       } catch (e) {
         debugPrint('[CommunityService] Could not verify community staff role: $e');
