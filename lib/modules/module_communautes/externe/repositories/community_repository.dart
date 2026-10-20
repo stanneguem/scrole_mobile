@@ -762,19 +762,19 @@ class CommunityRepository {
 
   Future<void> updateCommunityFeatures({
     required String communityId,
-    required bool membersListVisible,
-    required bool allowReports,
-    required bool allowComments,
-    required bool allowReactions,
+    bool? membersListVisible,
+    bool? allowReports,
+    bool? allowComments,
+    bool? allowReactions,
   }) async {
+    final params = <String, dynamic>{'p_community_id': communityId};
+    if (membersListVisible != null) params['p_members_list_visible'] = membersListVisible;
+    if (allowReports != null) params['p_allow_reports'] = allowReports;
+    if (allowComments != null) params['p_allow_comments'] = allowComments;
+    if (allowReactions != null) params['p_allow_reactions'] = allowReactions;
+    if (params.length == 1) return;
     try {
-      await client.rpc('update_community_features', params: {
-        'p_community_id': communityId,
-        'p_members_list_visible': membersListVisible,
-        'p_allow_reports': allowReports,
-        'p_allow_comments': allowComments,
-        'p_allow_reactions': allowReactions,
-      });
+      await client.rpc('update_community_features', params: params);
     } catch (e) {
       debugPrint('[CommunityRepository] Error in updateCommunityFeatures: $e');
       rethrow;
