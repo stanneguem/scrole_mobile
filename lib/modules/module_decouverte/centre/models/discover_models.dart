@@ -7,6 +7,7 @@ class SearchResultItem {
   final String? photoUrl;
   final int? friendCount;
   final bool isCertified;
+  final bool followsMe;
 
   const SearchResultItem({
     required this.category,
@@ -16,6 +17,7 @@ class SearchResultItem {
     this.photoUrl,
     this.friendCount,
     this.isCertified = false,
+    this.followsMe = false,
   });
 
   factory SearchResultItem.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class SearchResultItem {
       photoUrl: json['photo_url']?.toString(),
       friendCount: (json['friend_count'] as num?)?.toInt(),
       isCertified: json['is_certified'] == true,
+      followsMe: json['follows_me'] == true,
     );
   }
 }
