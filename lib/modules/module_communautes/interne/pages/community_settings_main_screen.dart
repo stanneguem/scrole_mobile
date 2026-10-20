@@ -380,7 +380,11 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
         colorText: Colors.white,
       );
     } finally {
-      if (mounted) setState(() => _busyPostIds.remove(postId));
+      if (mounted) {
+        setState(() {
+          _busyPostIds.remove(postId);
+        });
+      }
     }
   }
 
@@ -1507,7 +1511,17 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                         title: Text('community_settings_countries_enabled'.tr),
                         subtitle: Text('community_settings_countries_help'.tr),
                         value: _countriesEnabled,
-                        onChanged: (val) => setState(() => _countriesEnabled = val),
+                        onChanged: (val) => setState(() {
+                          _countriesEnabled = val;
+                          if (val && _allowedCountries.isNotEmpty) {
+                            _allowedCities.removeWhere((cityId) {
+                              final matches = _cities.where((item) => item['id']?.toString() == cityId);
+                              final city = matches.isEmpty ? null : matches.first;
+                              final countryId = city?['country_id']?.toString();
+                              return countryId == null || !_allowedCountries.contains(countryId);
+                            });
+                          }
+                        }),
                       ),
                       ListTile(
                         enabled: _countriesEnabled,
