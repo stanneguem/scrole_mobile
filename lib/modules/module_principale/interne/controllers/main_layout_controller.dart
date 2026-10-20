@@ -111,8 +111,16 @@ class MainLayoutController extends GetxController
     }
   }
 
+  final RxInt eventSuggestionsNavigationRequest = 0.obs;
+
   void goToEventsTab() {
     closeAddMenu();
+    changeTab(3);
+  }
+
+  void goToEventSuggestionsTab() {
+    closeAddMenu();
+    eventSuggestionsNavigationRequest.value++;
     changeTab(3);
   }
 
