@@ -11,7 +11,6 @@ import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/user_identity_row.dart';
 import '../pages/create_story_screen.dart';
-import '../../../module_communautes/interne/pages/community_post_mentions_screen.dart';
 
 class CommunityCommentsSheet extends StatefulWidget {
   final CommunityPost post;
@@ -192,23 +191,6 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       debugPrint('[POST_ACTIONS] Error loading replies: $e');
       if (mounted) setState(() => _loadingReplies[commentId] = false);
     }
-  }
-
-  Future<void> _openCommentMentions() async {
-    final initialIds = _selectedMentions
-        .map((m) => (m['user_id'] ?? m['id'] ?? m['user_profiles']?['user_id'] ?? '').toString())
-        .where((id) => id.isNotEmpty)
-        .toList();
-    final result = await Get.to<List<Map<String, dynamic>>>(
-      () => const CommunityPostMentionsScreen(),
-      arguments: {'communityId': widget.post.communityId ?? '', 'initialSelected': initialIds},
-    );
-    if (result == null || !mounted) return;
-    setState(() {
-      _selectedMentions
-        ..clear()
-        ..addAll(result);
-    });
   }
 
   void _removeMentionOverlay() {
