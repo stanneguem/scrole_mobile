@@ -84,7 +84,11 @@ class ProfileController extends GetxController {
     _storageRepository = StorageRepository();
     
     _applyProfileOrDefaults(_appController.profile.value);
-    _profileWorker = ever(_appController.profile, (data) {\n      _applyProfileOrDefaults(data);\n      unawaited(_loadFollowStats());\n    });\n    unawaited(_loadFollowStats());
+    _profileWorker = ever(_appController.profile, (data) {
+      _applyProfileOrDefaults(data);
+      unawaited(_loadFollowStats());
+    });
+    unawaited(_loadFollowStats());
     _subscribeToRelationshipChanges();
 
     // Mock initial user posts & saved items
