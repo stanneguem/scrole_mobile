@@ -140,7 +140,7 @@ class _FollowListTabState extends State<_FollowListTab> {
       });
     } catch (e, stack) {
       debugPrint('[FOLLOW] get_${widget.kind} exception=$e\\n$stack');
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = FollowErrorMapper.keyFor(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -206,7 +206,7 @@ class _FollowListTabState extends State<_FollowListTab> {
     if (_error != null && _items.isEmpty && !_loading) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('follow_action_failed'.tr),
+          Text((_error ?? 'follow_action_impossible').tr),
           const SizedBox(height: 8),
           OutlinedButton(onPressed: () => _load(reset: true), child: Text('retry'.tr)),
         ]),
