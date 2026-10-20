@@ -70,6 +70,7 @@ class ExternalProfileController extends GetxController {
             profileState.value = ProfileScreenState.loaded;
             profile.value = result.profile;
             final relation = await _repository.getRelationship(userId, forceRefresh: true);
+            final stats = await _repository.getFollowStats(userId: userId);
             final relationState = (relation['state'] ?? 'none').toString();
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
@@ -79,7 +80,10 @@ class ExternalProfileController extends GetxController {
               relationshipState: relationState,
               requestId: relation['request_id']?.toString(),
               retryAt: relation['retry_at'] == null ? null : DateTime.tryParse(relation['retry_at'].toString()),
-              friendCount: (relation['friends_count'] as num?)?.toInt() ?? result.profile!.friendCount,
+              friendCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendCount,
+              followersCount: (stats['followers_count'] as num?)?.toInt() ?? result.profile!.followersCount,
+              followingCount: (stats['following_count'] as num?)?.toInt() ?? result.profile!.followingCount,
+              friendsCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendsCount,
             );
             profile.value = updated;
             isFollowing.value = updated.isFollowing;
