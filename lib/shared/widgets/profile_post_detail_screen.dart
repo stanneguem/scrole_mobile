@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
@@ -74,12 +75,30 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
             ]),
           ),
           if (post.timeAgo.isNotEmpty)
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Text(post.timeAgo, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant))),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined, size: 14, color: colors.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatPublicationDate(post.timeAgo),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
+}
+
+String _formatPublicationDate(String rawDate) {
+  final parsed = DateTime.tryParse(rawDate.trim());
+  if (parsed == null) return rawDate;
+  final localDate = parsed.toLocal();
+  return DateFormat('dd/MM/yyyy à HH:mm').format(localDate);
 }
 
 class _PostMediaPage extends StatefulWidget {
