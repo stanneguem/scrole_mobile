@@ -13,6 +13,43 @@ import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/user_identity_row.dart';
 import '../pages/create_story_screen.dart';
 
+class _MentionHighlightingController extends TextEditingController {
+  static final RegExp _mentionPattern = RegExp(r'@[A-Za-z0-9_.]+|[*~]\{[^}]+\}');
+
+  @override
+  TextSpan buildTextSpan({
+    required TextStyle style,
+    required bool withComposing,
+  }) {
+    final text = value.text;
+    final spans = <InlineSpan>[];
+    var lastEnd = 0;
+    for (final match in _mentionPattern.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: style.copyWith(color: Colors.black),
+        ));
+      }
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: style.copyWith(color: Colors.blue, fontWeight: FontWeight.w600),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: style.copyWith(color: Colors.black),
+      ));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: text, style: style.copyWith(color: Colors.black)));
+    }
+    return TextSpan(style: style.copyWith(color: Colors.black), children: spans);
+  }
+}
+
 class CommunityCommentsSheet extends StatefulWidget {
   final CommunityPost post;
   final dynamic controller;
@@ -29,7 +66,7 @@ class CommunityCommentsSheet extends StatefulWidget {
 
 class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   final HomeFeedRepository _repo = HomeFeedRepository();
-  final TextEditingController _commentController = TextEditingController();
+  final _MentionHighlightingController _commentController = _MentionHighlightingController();
   final FocusNode _commentFocusNode = FocusNode();
 
   bool _isLoading = true;
@@ -301,7 +338,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   void _insertMention(String type, Map<String, dynamic> item) {
     final id = (item[type == 'user' ? 'user_id' : 'id'] ?? '').toString();
     final token = type == 'user' ? '@${item['username'] ?? item['first_name'] ?? 'utilisateur'}'
-        : type == 'event' ? '*${item['name'] ?? 'événement'}' : '~${item['name'] ?? 'communauté'}';
+        : type == 'event' ? '*{${item['name'] ?? 'événement'}}' : '~{${item['name'] ?? 'communauté'}}';
     final text = _commentController.text;
     final cursor = _commentController.selection.baseOffset.clamp(0, text.length);
     final start = _mentionStart.clamp(0, cursor);
@@ -445,27 +482,31 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   }
 
   Widget _buildHighlightedContent(String content, ColorScheme colorScheme) {
-    if (!content.contains('@')) {
-      return Text(content, style: TextStyle(fontSize: 13.5, color: colorScheme.onSurface, height: 1.35));
-    }
-
-    final words = content.split(' ');
-    List<InlineSpan> spans = [];
-    for (int i = 0; i < words.length; i++) {
-      final word = words[i];
-      if (word.startsWith('@') && word.length > 1) {
+    final mentionPattern = RegExp(r'@[A-Za-z0-9_.]+|[*~]\{[^}]+\}');
+    final spans = <InlineSpan>[];
+    var lastEnd = 0;
+    for (final match in mentionPattern.allMatches(content)) {
+      if (match.start > lastEnd) {
         spans.add(TextSpan(
-          text: '$word ',
-          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: colorScheme.primary, height: 1.35),
-        ));
-      } else {
-        spans.add(TextSpan(
-          text: '$word ',
-          style: TextStyle(fontSize: 13.5, color: colorScheme.onSurface, height: 1.35),
+          text: content.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 13.5, color: Colors.black, height: 1.35),
         ));
       }
+      spans.add(TextSpan(
+        text: match.group(0),
+        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.blue, height: 1.35),
+      ));
+      lastEnd = match.end;
     }
-
+    if (lastEnd < content.length) {
+      spans.add(TextSpan(
+        text: content.substring(lastEnd),
+        style: const TextStyle(fontSize: 13.5, color: Colors.black, height: 1.35),
+      ));
+    }
+    if (spans.isEmpty) {
+      spans.add(TextSpan(text: content, style: const TextStyle(fontSize: 13.5, color: Colors.black, height: 1.35)));
+    }
     return RichText(text: TextSpan(children: spans));
   }
 
@@ -642,6 +683,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                         controller: _commentController,
                         onChanged: _onCommentChanged,
                         focusNode: _commentFocusNode,
+                        style: const TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           hintText: _replyingTo != null ? 'Écrire une réponse...' : 'Écrire un commentaire...',
                           border: InputBorder.none,
