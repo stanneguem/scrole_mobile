@@ -469,11 +469,17 @@ class CommunityFeedController extends GetxController {
     List<PostComment>? originalReplies;
     var replyIndex = -1;
     PostComment? removed;
+    List<PostComment>? originalThreadReplies;
 
     if (topIndex >= 0) {
       removed = topLevel[topIndex];
+      originalThreadReplies = repliesByCommentId[commentId] == null
+          ? null
+          : List<PostComment>.from(repliesByCommentId[commentId]!);
+      repliesByCommentId.remove(commentId);
       commentsByPostId[postId] = List<PostComment>.from(topLevel)..removeAt(topIndex);
       commentsByPostId.refresh();
+      repliesByCommentId.refresh();
     } else {
       for (final entry in repliesByCommentId.entries) {
         final index = entry.value.indexWhere((reply) => reply.id == commentId);
@@ -491,7 +497,8 @@ class CommunityFeedController extends GetxController {
 
     final deletedComment = removed;
     if (deletedComment == null) return;
-    _incrementCommentCount(postId, -1);
+    final deletedCount = topIndex >= 0 ? 1 + deletedComment.repliesCount : 1;
+    _incrementCommentCount(postId, -deletedCount);
 
     try {
       await _feedRepo.deleteCommunityComment(commentId);
@@ -503,6 +510,10 @@ class CommunityFeedController extends GetxController {
         }
         commentsByPostId[postId] = restored;
         commentsByPostId.refresh();
+        if (originalThreadReplies != null) {
+          repliesByCommentId[commentId] = originalThreadReplies;
+          repliesByCommentId.refresh();
+        }
       } else {
         final parentId = replyParentId;
         final repliesBeforeDelete = originalReplies;
@@ -516,7 +527,7 @@ class CommunityFeedController extends GetxController {
           _incrementReplyCount(postId, parentId, 1);
         }
       }
-      _incrementCommentCount(postId, 1);
+      _incrementCommentCount(postId, deletedCount);
       Get.snackbar(
         'error'.tr,
         e.toString().replaceFirst('Exception: ', '').tr,
