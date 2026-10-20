@@ -428,7 +428,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
     final details = <String>[
       'Découvre cet événement : ${event.name}',
       'Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(event.startsAt)}',
-      if ((event.city ?? '').trim().isNotEmpty) 'Lieu : ${event.city!.trim()}',
+      if ((event.city?.name ?? '').trim().isNotEmpty) 'Lieu : ${event.city!.name.trim()}',
     ];
     return details.join('\\n');
   }
