@@ -50,10 +50,11 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
         });
       }
     } catch (e) {
+      debugPrint('[ExcludedMembersScreen] Failed to load exclusions: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _loadError = e.toString().replaceFirst('Exception: ', '').tr;
+          _loadError = 'excluded_members_load_error'.tr;
         });
       }
     }
