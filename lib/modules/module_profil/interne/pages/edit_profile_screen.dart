@@ -270,6 +270,34 @@ class EditProfileScreen extends GetView<EditProfileController> {
   }) {
     return Obx(() {
       final canModify = isLocked.value;
+      if (!controller.lockMetadataLoaded.value) {
+        final colors = Theme.of(Get.context!).colorScheme;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
+                    const SizedBox(height: 5),
+                    Text('edit_profile_checking_lock'.tr, style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+            ],
+          ),
+        );
+      }
       if (!canModify && lockedValueBuilder != null) {
         return Container(
           width: double.infinity,
