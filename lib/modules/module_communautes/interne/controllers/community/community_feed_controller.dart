@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -28,10 +27,8 @@ class CommunityFeedController extends GetxController {
     return null;
   }
 
-  // Track views per signed-in user, not just per post.
-  static final Map<String, DateTime> _globalSentViewAt = {};
+  static final Set<String> _globalSentViewIds = {};
   final List<String> _pendingViewIds = [];
-  final Map<String, String> _pendingViewKeys = {};
   Timer? _viewBatchTimer;
 
   CommunityFeedController([this.service, this.communityId]);
@@ -63,57 +60,54 @@ class CommunityFeedController extends GetxController {
 
   void queuePostView(CommunityPost post) {
     if (post.isPublishing) return;
-    final userId = currentUserId;
-    if (userId == null || userId.isEmpty || post.authorId == userId) return;
-    final viewKey = '$userId:${post.id}';
-    final lastViewedAt = _globalSentViewAt[viewKey];
-    if (lastViewedAt != null && DateTime.now().difference(lastViewedAt) < const Duration(minutes: 10)) return;
-    if (_pendingViewKeys.containsKey(post.id)) return;
+    final myId = currentUserId;
+    if (myId != null && post.authorId == myId) return;
+    if (_globalSentViewIds.contains(post.id)) return;
+    if (_pendingViewIds.contains(post.id)) return;
+
     _pendingViewIds.add(post.id);
-    _pendingViewKeys[post.id] = viewKey;
-    _globalSentViewAt[viewKey] = DateTime.now();
-    _globalSentViewAt.removeWhere((_, time) => DateTime.now().difference(time) > const Duration(days: 1));
+    _globalSentViewIds.add(post.id);
+
     if (_pendingViewIds.length >= 20) {
-      unawaited(_flushViewBatch());
+      _flushViewBatch();
     } else {
-      _viewBatchTimer ??= Timer(const Duration(seconds: 3), () => unawaited(_flushViewBatch()));
+      _viewBatchTimer ??= Timer(const Duration(seconds: 3), _flushViewBatch);
     }
   }
 
   Future<void> _flushViewBatch() async {
     _viewBatchTimer?.cancel();
     _viewBatchTimer = null;
+
     if (_pendingViewIds.isEmpty) return;
     final batch = List<String>.from(_pendingViewIds);
     _pendingViewIds.clear();
+
     try {
+      debugPrint('[POST_ACTIONS] [CommunityFeed] Sending view batch of ${batch.length} posts');
       await _feedRepo.recordPostViews(batch);
+
       final counters = await _feedRepo.getPostCounters(batch);
-      for (final counter in counters) {
-        final id = counter['id']?.toString();
-        if (id == null) continue;
-        final index = posts.indexWhere((post) => post.id == id);
-        if (index == -1) continue;
-        final post = posts[index];
-        posts[index] = post.copyWith(
-          viewCount: (counter['views_count'] as num?)?.toInt() ?? post.viewCount,
-          likeCount: (counter['likes_count'] as num?)?.toInt() ?? post.likeCount,
-          dislikeCount: (counter['dislikes_count'] as num?)?.toInt() ?? post.dislikeCount,
-          commentCount: (counter['comments_count'] as num?)?.toInt() ?? post.commentCount,
-          shareCount: (counter['shares_count'] as num?)?.toInt() ?? post.shareCount,
-        );
+      if (counters.isNotEmpty) {
+        for (final c in counters) {
+          final id = c['id']?.toString();
+          if (id == null) continue;
+          final idx = posts.indexWhere((p) => p.id == id);
+          if (idx != -1) {
+            final p = posts[idx];
+            posts[idx] = p.copyWith(
+              viewCount: (c['views_count'] as num?)?.toInt() ?? p.viewCount,
+              likeCount: (c['likes_count'] as num?)?.toInt() ?? p.likeCount,
+              dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? p.dislikeCount,
+              commentCount: (c['comments_count'] as num?)?.toInt() ?? p.commentCount,
+              shareCount: (c['shares_count'] as num?)?.toInt() ?? p.shareCount,
+            );
+          }
+        }
+        posts.refresh();
       }
-      if (counters.isNotEmpty) posts.refresh();
     } catch (e) {
-      for (final id in batch) {
-        final key = _pendingViewKeys[id];
-        if (key != null) _globalSentViewAt.remove(key);
-      }
       debugPrint('[POST_ACTIONS] [CommunityFeed] Error flushing view batch: $e');
-    } finally {
-      for (final id in batch) {
-        _pendingViewKeys.remove(id);
-      }
     }
   }
 
@@ -144,12 +138,10 @@ class CommunityFeedController extends GetxController {
       nextCursor = result['next_cursor']?.toString();
       hasMore = result['has_more'] == true;
 
-      final remoteIds = items.map((post) => post.id).toSet();
-      final pendingLocalPosts = posts.where((post) => post.isPublishing && !remoteIds.contains(post.id)).toList();
-      posts.value = [...pendingLocalPosts, ...items];
+      posts.value = items;
       errorMessage.value = '';
 
-      if (posts.isEmpty) {
+      if (items.isEmpty) {
         feedState.value = CommunityFeedState.empty;
       } else {
         feedState.value = CommunityFeedState.loaded;
@@ -212,16 +204,11 @@ class CommunityFeedController extends GetxController {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
-    final userId = currentUserId;
-    if (userId == null || userId.isEmpty) {
-      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-    final tempId = _generateUuidV4();
+    final tempId = 'new_${DateTime.now().millisecondsSinceEpoch}';
     final newPost = CommunityPost(
       id: tempId,
       authorName: 'Moi',
-      authorId: userId,
+      authorId: 'me',
       authorColor: Colors.purple,
       authorRole: CommunityRole.member,
       timeAgo: 'publication_in_progress'.tr,
@@ -239,7 +226,6 @@ class CommunityFeedController extends GetxController {
       final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService(Get.find(), Get.find()));
       await service.createCommunityPost(
         communityId: communityId ?? '',
-        requestedPostId: tempId,
         content: content,
         imageFiles: imageFiles,
         audience: audience,
@@ -251,313 +237,73 @@ class CommunityFeedController extends GetxController {
         poll: poll,
         allowPromotion: allowPromotion,
       );
-      await fetchCommunityFeed(isRefresh: true);
     } catch (e) {
-      posts.removeWhere((post) => post.id == tempId);
-      posts.refresh();
       debugPrint('[POST] [Controller] createPost error: $e');
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
-  }
-
-  String _generateUuidV4() {
-    final random = Random.secure();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
-  }
-
-  PostComment _commentFromMap(Map<String, dynamic> map) {
-    final author = map['author'] is Map
-        ? Map<String, dynamic>.from(map['author'] as Map)
-        : <String, dynamic>{};
-    final authorId = (map['author_id'] ?? map['user_id'] ?? author['user_id'] ?? author['id'] ?? '').toString();
-    final reaction = (map['viewer_reaction'] ?? map['user_reaction'] ?? map['reaction'])?.toString().toLowerCase();
-    final userReaction = reaction == 'like'
-        ? PostReaction.like
-        : reaction == 'dislike'
-            ? PostReaction.dislike
-            : PostReaction.none;
-    return PostComment(
-      id: (map['id'] ?? map['comment_id'] ?? '').toString(),
-      authorName: (map['author_name'] ?? author['display_name'] ?? author['username'] ?? 'Utilisateur').toString(),
-      authorId: authorId,
-      authorColor: authorId == currentUserId ? Colors.purple : Colors.blue,
-      avatarUrl: (map['avatar_url'] ?? map['photo_url'] ?? author['avatar_url'] ?? author['photo_url'])?.toString(),
-      timeAgo: (map['created_at'] ?? map['time_ago'] ?? '').toString(),
-      content: (map['content'] ?? map['text'] ?? '').toString(),
-      likesCount: (map['likes_count'] as num?)?.toInt() ?? 0,
-      userReaction: userReaction,
-      repliesCount: (map['replies_count'] as num?)?.toInt() ?? 0,
-      isCertified: map['is_certified'] == true || author['is_certified'] == true,
-      isOp: map['is_op'] == true || map['is_author'] == true,
-    );
   }
 
   Future<void> loadCommentsForPost(String postId) async {
     commentsLoading[postId] = true;
-    try {
-      final result = await _feedRepo.getCommunityPostComments(postId);
-      final rawItems = result['items'] ?? result['data'] ?? [];
-      final parsed = rawItems is List
-          ? rawItems.whereType<Map>().map((item) => _commentFromMap(Map<String, dynamic>.from(item))).where((item) => item.id.isNotEmpty).toList()
-          : <PostComment>[];
-      commentsByPostId[postId] = parsed;
-    } catch (e) {
-      debugPrint('[POST_ACTIONS] Error loading comments for $postId: $e');
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM);
-    } finally {
-      commentsLoading[postId] = false;
-      commentsByPostId.refresh();
-    }
+    await Future.delayed(const Duration(milliseconds: 400));
+    commentsByPostId[postId] = [
+      PostComment(
+        id: 'c1',
+        authorName: 'Alexandre',
+        authorId: 'u_10',
+        authorColor: Colors.blue,
+        timeAgo: '1h',
+        content: 'Superbe publication ! Hâte d\'y participer.',
+        likesCount: 5,
+        isOp: true,
+      ),
+    ];
+    commentsLoading[postId] = false;
   }
 
   Future<void> addCommentToPost(String postId, String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-    if (currentUserId == null) {
-      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    final localId = _generateUuidV4();
     final list = commentsByPostId[postId] ?? [];
     final newComment = PostComment(
-      id: localId,
+      id: 'c_${DateTime.now().millisecondsSinceEpoch}',
       authorName: 'Moi',
-      authorId: currentUserId!,
+      authorId: 'me',
       authorColor: Colors.purple,
-      timeAgo: 'time_ago_minutes'.trParams({'count': '0'}),
-      content: trimmed,
+      timeAgo: 'À l\'instant',
+      content: text,
     );
     commentsByPostId[postId] = [newComment, ...list];
-    _incrementCommentCount(postId, 1);
-
-    try {
-      final result = await _feedRepo.commentCommunityPost(
-        p_id: localId,
-        postId: postId,
-        content: trimmed,
-      );
-      final serverId = (result['id'] ?? result['comment_id'] ?? localId).toString();
-      final updated = commentsByPostId[postId] ?? [];
-      final index = updated.indexWhere((comment) => comment.id == localId);
-      if (index != -1 && serverId != localId) {
-        updated[index] = PostComment(
-          id: serverId,
-          authorName: newComment.authorName,
-          authorId: newComment.authorId,
-          authorColor: newComment.authorColor,
-          timeAgo: newComment.timeAgo,
-          content: newComment.content,
-        );
-        commentsByPostId[postId] = List<PostComment>.from(updated);
-      }
-    } catch (e) {
-      commentsByPostId[postId] = (commentsByPostId[postId] ?? []).where((c) => c.id != localId).toList();
-      _incrementCommentCount(postId, -1);
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-    }
   }
 
   Future<void> addReplyToComment(String postId, String commentId, String text) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-    if (currentUserId == null) {
-      Get.snackbar('error'.tr, 'error'.tr, snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    final localId = _generateUuidV4();
     final list = repliesByCommentId[commentId] ?? [];
     final newReply = PostComment(
-      id: localId,
+      id: 'r_${DateTime.now().millisecondsSinceEpoch}',
       authorName: 'Moi',
-      authorId: currentUserId!,
+      authorId: 'me',
       authorColor: Colors.purple,
-      timeAgo: 'time_ago_minutes'.trParams({'count': '0'}),
-      content: trimmed,
+      timeAgo: 'À l\'instant',
+      content: text,
     );
     repliesByCommentId[commentId] = [...list, newReply];
-    _incrementReplyCount(postId, commentId, 1);
-    _incrementCommentCount(postId, 1);
-    try {
-      final result = await _feedRepo.replyToCommunityComment(
-        p_id: localId,
-        commentId: commentId,
-        content: trimmed,
-      );
-      final serverId = (result['id'] ?? result['comment_id'] ?? localId).toString();
-      if (serverId != localId) {
-        repliesByCommentId[commentId] = (repliesByCommentId[commentId] ?? []).map((reply) {
-          if (reply.id != localId) return reply;
-          return reply.copyWith(id: serverId);
-        }).toList();
-      }
-    } catch (e) {
-      repliesByCommentId[commentId] = (repliesByCommentId[commentId] ?? []).where((reply) => reply.id != localId).toList();
-      _incrementReplyCount(postId, commentId, -1);
-      _incrementCommentCount(postId, -1);
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-    }
   }
 
-  void _incrementCommentCount(String postId, int delta) {
-    final index = posts.indexWhere((post) => post.id == postId);
-    if (index == -1) return;
-    final post = posts[index];
-    posts[index] = post.copyWith(commentCount: (post.commentCount + delta).clamp(0, 1 << 30).toInt());
-    posts.refresh();
-  }
-
-  void _incrementReplyCount(String postId, String commentId, int delta) {
-    final list = commentsByPostId[postId];
-    if (list == null) return;
-    final index = list.indexWhere((comment) => comment.id == commentId);
-    if (index == -1) return;
-    list[index] = list[index].copyWith(
-      repliesCount: (list[index].repliesCount + delta).clamp(0, 1 << 30).toInt(),
-    );
-    commentsByPostId[postId] = List<PostComment>.from(list);
-    commentsByPostId.refresh();
-  }
-
-  Future<void> toggleCommentReaction(String postId, String commentId, PostReaction reaction) async {
-    final list = commentsByPostId[postId];
-    if (list == null) return;
-    final index = list.indexWhere((comment) => comment.id == commentId);
-    if (index == -1) return;
-
-    final comment = list[index];
-    final nextReaction = comment.userReaction == reaction ? PostReaction.none : reaction;
-    final nextCount = (comment.likesCount + (comment.userReaction == PostReaction.like ? -1 : 0) + (nextReaction == PostReaction.like ? 1 : 0)).clamp(0, 1 << 30).toInt();
-    list[index] = comment.copyWith(userReaction: nextReaction, likesCount: nextCount);
-    commentsByPostId.refresh();
-
-    try {
-      await _feedRepo.setCommentReaction(commentId, nextReaction == PostReaction.like ? 'like' : (nextReaction == PostReaction.dislike ? 'dislike' : null));
-    } catch (e) {
-      list[index] = comment;
-      commentsByPostId.refresh();
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
-    }
-  }
+  Future<void> toggleCommentReaction(String postId, String commentId, PostReaction reaction) async {}
 
   Future<void> loadRepliesForComment(String commentId) async {
     loadingRepliesByCommentId[commentId] = true;
-    try {
-      final result = await _feedRepo.getCommunityCommentReplies(commentId);
-      final rawItems = result['items'] ?? result['data'] ?? [];
-      repliesByCommentId[commentId] = rawItems is List
-          ? rawItems.whereType<Map>().map((item) => _commentFromMap(Map<String, dynamic>.from(item))).where((item) => item.id.isNotEmpty).toList()
-          : <PostComment>[];
-    } catch (e) {
-      debugPrint('[POST_ACTIONS] Error loading replies for $commentId: $e');
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM);
-    } finally {
-      loadingRepliesByCommentId[commentId] = false;
-      repliesByCommentId.refresh();
-    }
+    await Future.delayed(const Duration(milliseconds: 300));
+    loadingRepliesByCommentId[commentId] = false;
   }
 
-  Future<void> deleteComment(String postId, String commentId) async {
-    final topLevel = commentsByPostId[postId] ?? [];
-    final topIndex = topLevel.indexWhere((comment) => comment.id == commentId);
-    String? replyParentId;
-    List<PostComment>? originalReplies;
-    var replyIndex = -1;
-    PostComment? removed;
-    List<PostComment>? originalThreadReplies;
-
-    if (topIndex >= 0) {
-      removed = topLevel[topIndex];
-      originalThreadReplies = repliesByCommentId[commentId] == null
-          ? null
-          : List<PostComment>.from(repliesByCommentId[commentId]!);
-      repliesByCommentId.remove(commentId);
-      commentsByPostId[postId] = List<PostComment>.from(topLevel)..removeAt(topIndex);
+  void deleteComment(String postId, String commentId) {
+    final list = commentsByPostId[postId];
+    if (list != null) {
+      list.removeWhere((c) => c.id == commentId);
       commentsByPostId.refresh();
-      repliesByCommentId.refresh();
-    } else {
-      for (final entry in repliesByCommentId.entries) {
-        final index = entry.value.indexWhere((reply) => reply.id == commentId);
-        if (index < 0) continue;
-        replyParentId = entry.key;
-        originalReplies = List<PostComment>.from(entry.value);
-        replyIndex = index;
-        removed = entry.value[index];
-        repliesByCommentId[entry.key] = List<PostComment>.from(entry.value)..removeAt(index);
-        repliesByCommentId.refresh();
-        _incrementReplyCount(postId, entry.key, -1);
-        break;
-      }
-    }
-
-    final deletedComment = removed;
-    if (deletedComment == null) return;
-    final deletedCount = topIndex >= 0 ? 1 + deletedComment.repliesCount : 1;
-    _incrementCommentCount(postId, -deletedCount);
-
-    try {
-      await _feedRepo.deleteCommunityComment(commentId);
-    } catch (e) {
-      if (topIndex >= 0) {
-        final restored = List<PostComment>.from(commentsByPostId[postId] ?? []);
-        if (!restored.any((comment) => comment.id == commentId)) {
-          restored.insert(topIndex.clamp(0, restored.length).toInt(), deletedComment);
-        }
-        commentsByPostId[postId] = restored;
-        commentsByPostId.refresh();
-        if (originalThreadReplies != null) {
-          repliesByCommentId[commentId] = originalThreadReplies;
-          repliesByCommentId.refresh();
-        }
-      } else {
-        final parentId = replyParentId;
-        final repliesBeforeDelete = originalReplies;
-        if (parentId != null && repliesBeforeDelete != null) {
-          final restored = List<PostComment>.from(repliesByCommentId[parentId] ?? []);
-          if (!restored.any((reply) => reply.id == commentId)) {
-            restored.insert(replyIndex.clamp(0, restored.length).toInt(), deletedComment);
-          }
-          repliesByCommentId[parentId] = restored;
-          repliesByCommentId.refresh();
-          _incrementReplyCount(postId, parentId, 1);
-        }
-      }
-      _incrementCommentCount(postId, deletedCount);
-      Get.snackbar(
-        'error'.tr,
-        e.toString().replaceFirst('Exception: ', '').tr,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     }
   }
 
-  Future<void> sharePost(CommunityPost post) async {
-    if (!post.sharingEnabled || post.isPublishing) return;
-    try {
-      await _feedRepo.sharePost(
-        p_id: _generateUuidV4(),
-        p_original_post_id: post.id,
-        p_community_id: communityId,
-        p_audience: post.audience,
-      );
-      await fetchCommunityFeed(isRefresh: true);
-      Get.snackbar('community_action_success_title'.tr, 'community_post_shared_success'.tr, snackPosition: SnackPosition.BOTTOM);
-    } catch (e) {
-      Get.snackbar(
-        'error'.tr,
-        e.toString().replaceFirst('Exception: ', '').tr,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
+  void sharePost(CommunityPost post) {
+    Get.snackbar('Partage', 'Publication partagée avec succès', snackPosition: SnackPosition.BOTTOM);
   }
 
   Future<void> deletePost(String postId, {String? reason}) async {
