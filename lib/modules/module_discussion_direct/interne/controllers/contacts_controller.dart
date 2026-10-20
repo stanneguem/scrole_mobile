@@ -1,4 +1,3 @@
-import '../../centre/services/follow_error_mapper.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -25,42 +24,14 @@ class ContactModel {
   });
 }
 
-class FriendRequestModel {
-  final String id;
-  final String senderId;
-  final String receiverId;
-  final String status;
-  final String otherUserId;
-  final String otherName;
-  final String otherUsername;
-  final String? otherPhotoUrl;
-  final DateTime? nextRetryAt;
-  final DateTime createdAt;
-
-  FriendRequestModel({
-    required this.id,
-    required this.senderId,
-    required this.receiverId,
-    required this.status,
-    required this.otherUserId,
-    required this.otherName,
-    required this.otherUsername,
-    this.otherPhotoUrl,
-    this.nextRetryAt,
-    required this.createdAt,
-  });
-}
-
 class ContactsController extends GetxController {
   final SocialRepository _socialRepository = SocialRepository();
   final AppDatabase _db = Get.find<AppDatabase>();
   final SupabaseClient _client = Supabase.instance.client;
 
   final RxList<ContactModel> contacts = <ContactModel>[].obs;
-  final RxList<FriendRequestModel> friendRequests = <FriendRequestModel>[].obs;
   final RxString searchQuery = ''.obs;
   final RxBool isLoading = false.obs;
-  final RxBool isLoadingRequests = false.obs;
   final RxString error = ''.obs;
 
   String? get _userId => _client.auth.currentUser?.id;
@@ -69,7 +40,6 @@ class ContactsController extends GetxController {
   void onInit() {
     super.onInit();
     unawaited(loadContacts());
-    unawaited(loadFriendRequests());
   }
 
   Future<void> loadContacts() async {
@@ -88,112 +58,6 @@ class ContactsController extends GetxController {
     isLoading.value = true;
     await _refreshContactsInBackground(uid, showErrors: true);
     isLoading.value = false;
-  }
-
-  Future<void> loadFriendRequests() async {
-    final uid = _userId;
-    if (uid == null) return;
-
-    isLoadingRequests.value = true;
-    try {
-      final rawRequests = await _socialRepository.getMyFriendRequests();
-      final peopleMap = <String, Map<String, dynamic>>{};
-
-      final otherUserIds = rawRequests.map((r) {
-        final s = (r['sender_id'] ?? '').toString();
-        final rec = (r['receiver_id'] ?? '').toString();
-        return s == uid ? rec : s;
-      }).toSet().toList();
-
-      if (otherUserIds.isNotEmpty) {
-        final people = await _socialRepository.dao.getPeople(otherUserIds);
-        for (final p in people) {
-          peopleMap[p['user_id'].toString()] = p;
-        }
-      }
-
-      final parsed = rawRequests.map((r) {
-        final s = (r['sender_id'] ?? '').toString();
-        final rec = (r['receiver_id'] ?? '').toString();
-        final otherId = s == uid ? rec : s;
-        final profile = peopleMap[otherId];
-
-        String oName = 'Utilisateur';
-        String oUsername = '';
-        String? oPhoto;
-
-        if (profile != null) {
-          final first = (profile['first_name'] ?? '').toString();
-          final last = (profile['last_name'] ?? '').toString();
-          oUsername = (profile['username'] ?? '').toString();
-          oName = '$first $last'.trim();
-          if (oName.isEmpty) oName = oUsername.isNotEmpty ? oUsername : 'Utilisateur';
-          oPhoto = profile['photo_url']?.toString();
-        }
-
-        return FriendRequestModel(
-          id: (r['id'] ?? '').toString(),
-          senderId: s,
-          receiverId: rec,
-          status: (r['status'] ?? 'pending').toString(),
-          otherUserId: otherId,
-          otherName: oName,
-          otherUsername: oUsername,
-          otherPhotoUrl: oPhoto,
-          nextRetryAt: r['next_retry_at'] != null ? DateTime.tryParse(r['next_retry_at'].toString()) : null,
-          createdAt: r['created_at'] != null ? DateTime.tryParse(r['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
-        );
-      }).toList();
-
-      friendRequests.assignAll(parsed);
-    } catch (e) {
-      debugPrint('[Contacts] loadFriendRequests error: $e');
-    } finally {
-      isLoadingRequests.value = false;
-    }
-  }
-
-  Future<void> sendFriendRequest(String targetUserId) async {
-    try {
-      final relation = await _socialRepository.followUser(targetUserId);
-      final state = (relation['state'] ?? 'following').toString();
-      final key = state == 'requested' ? 'follow_state_requested' : state == 'friends' ? 'follow_state_friends' : 'follow_state_following';
-      Get.snackbar('follow_lists_title'.tr, key.tr);
-      await loadFriendRequests();
-    } catch (e) {
-      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
-    }
-  }
-
-  Future<void> respondFriendRequest(String requestId, bool accept, String senderId) async {
-    try {
-      await _socialRepository.respondFollowRequest(requestId, accept, targetUserId: senderId);
-      Get.snackbar('follow_request_received_title'.tr, accept ? 'follow_state_follow_back'.tr : 'follow_action_impossible'.tr);
-      await loadContacts();
-      await loadFriendRequests();
-    } catch (e) {
-      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
-    }
-  }
-
-  Future<void> cancelFriendRequest(String requestId) async {
-    try {
-      await _socialRepository.cancelFriendRequest(requestId);
-      friendRequests.removeWhere((r) => r.id == requestId);
-      Get.snackbar('follow_lists_title'.tr, 'follow_cancel_request_action'.tr);
-    } catch (e) {
-      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
-    }
-  }
-
-  Future<void> removeFriendship(String otherUserId) async {
-    try {
-      await _socialRepository.removeFriend(otherUserId);
-      contacts.removeWhere((c) => c.id == otherUserId);
-      Get.snackbar('follow_lists_title'.tr, 'follow_remove_friend_action'.tr);
-    } catch (e) {
-      Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
-    }
   }
 
   Future<List<ContactModel>> _restoreCachedContacts(String uid) async {
