@@ -361,10 +361,8 @@ class _Identity extends StatelessWidget {
             ],
           ),
         ),
-        if (!profile.isPrivate) ...[
-          const SizedBox(width: 10),
-          _HeaderStats(profile: profile),
-        ],
+        const SizedBox(width: 10),
+        _HeaderStats(profile: profile),
       ],
     );
   }
@@ -378,18 +376,20 @@ class _ProfileActions extends GetView<ExternalProfileController> {
     final colors = Theme.of(context).colorScheme;
     return Obx(() {
       final p = controller.profile.value!;
-      final pending = p.connectionRequestSent;
-      final connected = p.isConnected;
+      final relationState = p.relationshipState;
+      final pending = relationState == 'requested';
+      final connected = relationState == 'friends';
       final busy = controller.isSendingRequest.value;
       return Row(
         children: [
           Expanded(
             child: _ConnectionButton(
+              state: relationState,
               connected: connected,
               pending: pending,
               busy: busy,
               colors: colors,
-              onTap: busy ? null : controller.handleConnectionTap,
+              onTap: busy || (p.retryAt != null && p.retryAt!.isAfter(DateTime.now())) ? null : controller.handleConnectionTap,
             ),
           ),
           if (p.canMessage) ...[
@@ -423,36 +423,49 @@ class _ProfileActions extends GetView<ExternalProfileController> {
 
 class _ConnectionButton extends StatelessWidget {
   const _ConnectionButton({
+    required this.state,
     required this.connected,
     required this.pending,
     required this.busy,
     required this.colors,
     required this.onTap,
   });
+  final String state;
   final bool connected, pending, busy;
   final ColorScheme colors;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
-    final labeled = pending || connected;
-    final label = connected
-        ? 'profile_action_friends'.tr
-        : pending
-        ? 'profile_action_sent'.tr
-        : 'profile_action_add'.tr;
+    final isFollowed = state == 'following';
+    final isFollowBack = state == 'follow_back';
+    final isIncoming = state == 'request_received';
+    final isBlocked = state == 'blocked';
+    final labeled = pending || connected || isFollowed || isFollowBack || isIncoming || isBlocked;
+    final label = switch (state) {
+      'friends' => 'follow_state_friends'.tr,
+      'following' => 'follow_state_following'.tr,
+      'follow_back' => 'follow_state_follow_back'.tr,
+      'requested' => 'follow_state_requested'.tr,
+      'request_received' => 'follow_state_request_received'.tr,
+      'blocked' => 'follow_state_blocked'.tr,
+      'self' => 'follow_state_self'.tr,
+      _ => 'follow_state_follow'.tr,
+    };
     final icon = busy
         ? Icons.hourglass_top_rounded
-        : connected
-        ? Icons.check_rounded
-        : pending
-        ? Icons.hourglass_top_rounded
-        : Icons.person_add_alt_1_rounded;
+        : (connected || isFollowed)
+            ? Icons.check_rounded
+            : (pending || isIncoming)
+                ? Icons.hourglass_top_rounded
+                : isBlocked
+                    ? Icons.block_rounded
+                    : Icons.person_add_alt_1_rounded;
     return Material(
-      color: connected
+      color: (connected || isFollowed)
           ? colors.primary.withValues(alpha: .15)
-          : pending
-          ? colors.surfaceContainerHigh
-          : colors.primary,
+          : (pending || isIncoming || isBlocked)
+              ? colors.surfaceContainerHigh
+              : colors.primary,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
@@ -469,11 +482,11 @@ class _ConnectionButton extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: connected
+                color: (connected || isFollowed)
                     ? colors.primary
-                    : pending
-                    ? colors.onSurfaceVariant
-                    : colors.onPrimary,
+                    : (pending || isIncoming || isBlocked)
+                        ? colors.onSurfaceVariant
+                        : colors.onPrimary,
                 size: 16,
               ),
               const SizedBox(width: 6),
@@ -481,7 +494,7 @@ class _ConnectionButton extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: connected ? colors.primary : (pending ? colors.onSurfaceVariant : colors.onPrimary),
+                    color: (connected || isFollowed) ? colors.primary : ((pending || isIncoming || isBlocked) ? colors.onSurfaceVariant : colors.onPrimary),
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                   ),
