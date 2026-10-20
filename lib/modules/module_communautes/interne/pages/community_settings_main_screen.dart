@@ -317,6 +317,8 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
   late TabController _tabController;
 
   bool _isLoading = true;
+  String _role = 'member';
+  String? _loadError;
   List<dynamic> _reports = [];
   List<dynamic> _userReports = [];
 
@@ -328,14 +330,24 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
   }
 
   Future<void> _loadReports() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
+      _role = await _service.getCurrentUserRole(widget.communityId);
       final reportsRes = await _service.getCommunityReports(widget.communityId);
-      _reports = reportsRes['items'] is List ? reportsRes['items'] : [];
-
       final userReportsRes = await _service.getCommunityUserReports(widget.communityId);
-      _userReports = userReportsRes['items'] is List ? userReportsRes['items'] : [];
-    } catch (_) {}
+      if (reportsRes['items'] is! List || userReportsRes['items'] is! List) {
+        throw const FormatException('Réponse invalide lors du chargement des signalements.');
+      }
+      _reports = reportsRes['items'] as List;
+      _userReports = userReportsRes['items'] as List;
+    } catch (e) {
+      _loadError = e.toString().replaceFirst('Exception: ', '').tr;
+    }
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -374,7 +386,21 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
+          : _loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_loadError!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        OutlinedButton(onPressed: _loadReports, child: Text('excluded_members_retry'.tr)),
+                      ],
+                    ),
+                  ),
+                )
+              : TabBarView(
               controller: _tabController,
               children: [
                 // 1. Content Reports
@@ -412,7 +438,12 @@ class _CommunityReportsHubScreenState extends State<CommunityReportsHubScreen> w
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(icon: const Icon(Icons.close, color: Colors.grey), onPressed: () => _resolveUserReport(r['id'], 'dismiss')),
-                            IconButton(icon: const Icon(Icons.block, color: Colors.red), onPressed: () => _resolveUserReport(r['id'], 'exclude_member')),
+                            if (_role == 'admin')
+                              IconButton(
+                                tooltip: 'community_exclude_action'.tr,
+                                icon: const Icon(Icons.block, color: Colors.red),
+                                onPressed: () => _resolveUserReport(r['id'].toString(), 'exclude_member'),
+                              ),
                           ],
                         ),
                       ),
