@@ -158,16 +158,6 @@ class ProfileController extends GetxController {
     }
   }
 
-  @override
-  void onClose() {
-    _profileWorker?.dispose();
-    final channel = _relationshipChannel;
-    if (channel != null) {
-      unawaited(Supabase.instance.client.removeChannel(channel));
-    }
-    super.onClose();
-  }
-
   Future<void> _loadFollowStats() async {
     if (userId.value.isEmpty) return;
     try {
@@ -508,6 +498,10 @@ class ProfileController extends GetxController {
   @override
   void onClose() {
     _profileWorker?.dispose();
+    final channel = _relationshipChannel;
+    if (channel != null) {
+      unawaited(Supabase.instance.client.removeChannel(channel));
+    }
     super.onClose();
   }
 }
