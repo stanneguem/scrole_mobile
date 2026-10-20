@@ -1931,9 +1931,9 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
               value: _postPermission,
               decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
               items: const [
-                DropdownMenuItem(value: 'everyone', child: Text('Tout le monde')),
-                DropdownMenuItem(value: 'admins_and_moderators', child: Text('Admins et modérateurs')),
-                DropdownMenuItem(value: 'nobody', child: Text('Personne')),
+                DropdownMenuItem(value: 'everyone', child: Text('community_post_permission_everyone'.tr)),
+                DropdownMenuItem(value: 'admins_and_moderators', child: Text('community_post_permission_admins'.tr)),
+                DropdownMenuItem(value: 'nobody', child: Text('community_post_permission_nobody'.tr)),
               ],
               onChanged: (val) => setState(() => _postPermission = val ?? 'everyone'),
             ),
