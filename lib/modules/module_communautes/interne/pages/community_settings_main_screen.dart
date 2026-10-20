@@ -477,6 +477,7 @@ class CommunityJoinRequestsScreen extends StatefulWidget {
 class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  String? _loadError;
   List<dynamic> _joinRequests = [];
 
   @override
@@ -486,12 +487,24 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
   }
 
   Future<void> _loadRequests() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final reqsRes = await _service.getCommunityJoinRequests(widget.communityId);
-      _joinRequests = reqsRes['items'] is List ? reqsRes['items'] : [];
-    } catch (_) {}
-    if (mounted) setState(() => _isLoading = false);
+      if (reqsRes['items'] is! List) {
+        throw const FormatException('Réponse invalide des demandes d’adhésion.');
+      }
+      _joinRequests = reqsRes['items'] as List;
+    } catch (e) {
+      debugPrint('[CommunityJoinRequestsScreen] Failed to load requests: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _respondRequest(String requestId, bool accepted) async {
@@ -510,9 +523,18 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
       appBar: AppBar(title: Text('community_mod_section_requests'.tr)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _joinRequests.isEmpty
-              ? const Center(child: Text('Aucune demande en attente'))
-              : ListView.builder(
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadRequests, child: Text('retry'.tr)),
+                  ]),
+                ))
+              : _joinRequests.isEmpty
+                  ? Center(child: Text('community_requests_empty'.tr))
+                  : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _joinRequests.length,
                   itemBuilder: (context, index) {
@@ -787,6 +809,7 @@ class CommunityInterestsScreen extends StatefulWidget {
 class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  String? _loadError;
   List<Map<String, dynamic>> _allInterests = [];
   Set<String> _selectedIds = {};
 
@@ -797,14 +820,21 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
   }
 
   Future<void> _loadInterests() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final all = await _service.getAvailableInterests();
       final current = await _service.getCommunityInterests(widget.communityId);
       _allInterests = all;
       _selectedIds = current.map((i) => i['id']?.toString() ?? '').where((id) => id.isNotEmpty).toSet();
-    } catch (_) {}
-    if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('[CommunityInterestsScreen] Failed to load interests: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _save() async {
@@ -834,7 +864,16 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadInterests, child: Text('retry'.tr)),
+                  ]),
+                ))
+              : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _allInterests.length,
               itemBuilder: (context, index) {
