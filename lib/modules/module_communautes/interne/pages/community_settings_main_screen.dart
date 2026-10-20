@@ -1033,9 +1033,108 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   bool _requireManualApproval = false;
   bool _certificationRequired = false;
   bool _membersListVisible = true;
+  bool _countriesEnabled = false;
+  bool _citiesEnabled = false;
   String? _genderRestriction;
   int? _ageMin;
   int? _ageMax;
+  final TextEditingController _ageMinController = TextEditingController();
+  final TextEditingController _ageMaxController = TextEditingController();
+  List<Map<String, dynamic>> _countries = [];
+  List<Map<String, dynamic>> _cities = [];
+  Set<String> _allowedCountries = {};
+  Set<String> _allowedCities = {};
+
+  List<String> _toIdList(dynamic value) {
+    if (value is! List) return <String>[];
+    return value.map((item) => item.toString()).where((id) => id.isNotEmpty).toList();
+  }
+
+  Future<Set<String>?> _chooseLocations({
+    required String title,
+    required List<Map<String, dynamic>> items,
+    required Set<String> selected,
+  }) async {
+    final searchController = TextEditingController();
+    final draft = Set<String>.from(selected);
+    final result = await Get.dialog<Set<String>>(
+      StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final query = searchController.text.trim().toLowerCase();
+          final filtered = items.where((item) {
+            final name = item['nom']?.toString().toLowerCase() ?? '';
+            final code = item['code_iso']?.toString().toLowerCase() ?? '';
+            return query.isEmpty || name.contains(query) || code.contains(query);
+          }).toList();
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 420,
+              height: MediaQuery.of(dialogContext).size.height * 0.55,
+              child: Column(
+                children: [
+                  TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'community_settings_location_search'.tr,
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(child: Text('community_settings_no_locations'.tr))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final item = filtered[index];
+                              final id = item['id']?.toString() ?? '';
+                              final name = item['nom']?.toString() ?? '';
+                              if (id.isEmpty) return const SizedBox.shrink();
+                              return CheckboxListTile(
+                                dense: true,
+                                title: Text(name),
+                                subtitle: item['code_iso'] == null ? null : Text(item['code_iso'].toString()),
+                                value: draft.contains(id),
+                                onChanged: (checked) => setDialogState(() {
+                                  if (checked == true) {
+                                    draft.add(id);
+                                  } else {
+                                    draft.remove(id);
+                                  }
+                                }),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: Text('cancel'.tr),
+              ),
+              FilledButton(
+                onPressed: () => Get.back(result: draft),
+                child: Text('confirm'.tr),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    searchController.dispose();
+    return result;
+  }
+
+  @override
+  void dispose() {
+    _ageMinController.dispose();
+    _ageMaxController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -1065,9 +1164,17 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
       _requireManualApproval = community['require_manual_approval'] == true;
       _membersListVisible = settings['members_list_visible'] != false;
       _certificationRequired = access['certification_required'] == true;
+      _countriesEnabled = access['countries_enabled'] == true;
+      _citiesEnabled = access['cities_enabled'] == true;
+      _allowedCountries = _toIdList(access['allowed_countries']).toSet();
+      _allowedCities = _toIdList(access['allowed_cities']).toSet();
       _genderRestriction = access['gender_restriction']?.toString();
       _ageMin = (access['age_min'] as num?)?.toInt();
       _ageMax = (access['age_max'] as num?)?.toInt();
+      _ageMinController.text = _ageMin?.toString() ?? '';
+      _ageMaxController.text = _ageMax?.toString() ?? '';
+      _countries = await _service.getAvailableCountries();
+      _cities = await _service.getAvailableCities();
     } catch (e) {
       debugPrint('[CommunityAccessDetailsScreen] Failed to load settings: $e');
       _loadError = _service.localizedCommunityError(e);
@@ -1077,6 +1184,24 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   }
 
   Future<void> _save() async {
+    final parsedAgeMin = int.tryParse(_ageMinController.text.trim());
+    final parsedAgeMax = int.tryParse(_ageMaxController.text.trim());
+    if (_ageMinController.text.trim().isNotEmpty && parsedAgeMin == null ||
+        _ageMaxController.text.trim().isNotEmpty && parsedAgeMax == null) {
+      Get.snackbar('community_save_error'.tr, 'community_settings_age_invalid'.tr,
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    if (_countriesEnabled && _allowedCountries.isEmpty) {
+      Get.snackbar('community_save_error'.tr, 'community_settings_select_at_least_one_country'.tr,
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+    if (_citiesEnabled && _allowedCities.isEmpty) {
+      Get.snackbar('community_save_error'.tr, 'community_settings_select_at_least_one_city'.tr,
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       await _service.updateCommunityManagementSettings(
@@ -1085,9 +1210,16 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
         requireManualApproval: _requireManualApproval,
         membersListVisible: _membersListVisible,
         certificationRequired: _certificationRequired,
+        countriesEnabled: _countriesEnabled,
+        allowedCountries: _allowedCountries.toList(),
+        citiesEnabled: _citiesEnabled,
+        allowedCities: _allowedCities.toList(),
         genderRestriction: _genderRestriction,
-        ageMin: _ageMin,
-        ageMax: _ageMax,
+        ageMin: parsedAgeMin,
+        ageMax: parsedAgeMax,
+        clearAgeMin: _ageMinController.text.trim().isEmpty,
+        clearAgeMax: _ageMaxController.text.trim().isEmpty,
+        clearGender: _genderRestriction == null,
       );
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       Get.back();
@@ -1135,6 +1267,78 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                         title: Text('community_settings_members_visible'.tr),
                         value: _membersListVisible,
                         onChanged: (val) => setState(() => _membersListVisible = val),
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_countries_enabled'.tr),
+                        subtitle: Text('community_settings_countries_help'.tr),
+                        value: _countriesEnabled,
+                        onChanged: (val) => setState(() => _countriesEnabled = val),
+                      ),
+                      ListTile(
+                        enabled: _countriesEnabled,
+                        title: Text('community_settings_choose_countries'.tr),
+                        subtitle: Text('community_settings_selected_count'.trParams({'count': _allowedCountries.length.toString()})),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: !_countriesEnabled ? null : () async {
+                          final selected = await _chooseLocations(
+                            title: 'community_settings_choose_countries'.tr,
+                            items: _countries,
+                            selected: _allowedCountries,
+                          );
+                          if (selected != null && mounted) setState(() => _allowedCountries = selected);
+                        },
+                      ),
+                      SwitchListTile(
+                        title: Text('community_settings_cities_enabled'.tr),
+                        subtitle: Text('community_settings_cities_help'.tr),
+                        value: _citiesEnabled,
+                        onChanged: (val) => setState(() => _citiesEnabled = val),
+                      ),
+                      ListTile(
+                        enabled: _citiesEnabled,
+                        title: Text('community_settings_choose_cities'.tr),
+                        subtitle: Text('community_settings_selected_count'.trParams({'count': _allowedCities.length.toString()})),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: !_citiesEnabled ? null : () async {
+                          final selected = await _chooseLocations(
+                            title: 'community_settings_choose_cities'.tr,
+                            items: _cities,
+                            selected: _allowedCities,
+                          );
+                          if (selected != null && mounted) setState(() => _allowedCities = selected);
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _genderRestriction ?? 'none',
+                        decoration: InputDecoration(labelText: 'community_settings_gender_restriction'.tr),
+                        items: [
+                          DropdownMenuItem(value: 'none', child: Text('community_settings_no_gender_restriction'.tr)),
+                          DropdownMenuItem(value: 'homme', child: Text('community_settings_gender_male'.tr)),
+                          DropdownMenuItem(value: 'femme', child: Text('community_settings_gender_female'.tr)),
+                        ],
+                        onChanged: (value) => setState(() => _genderRestriction = value == null || value == 'none' ? null : value),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _ageMinController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(labelText: 'community_settings_age_min'.tr),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _ageMaxController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(labelText: 'community_settings_age_max'.tr),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
