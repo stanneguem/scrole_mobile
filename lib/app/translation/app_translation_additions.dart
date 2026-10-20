@@ -3047,6 +3047,10 @@ class AppTranslationAdditions {
       'community_info_sub_desc_desc': "Название, слоган и описание",
       'community_info_sub_interests_desc': "Темы и интересы",
       'community_info_sub_images_desc': "Фото профиля и обложка",
+
+      'community_mgmt_mod_sub': 'Жалобы, участники и заявки на вступление',
+      'community_mgmt_access_sub': 'Публикации, доступ и правила сообщества',
+      'community_mgmt_info_sub': 'Описание, интересы и изображения',
     },
   };
 
