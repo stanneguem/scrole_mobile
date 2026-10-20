@@ -521,13 +521,13 @@ class _SuggestedEventsCarousel extends GetView<HomeFeedController> {
                   onPressed: () {
                     try {
                       if (Get.isRegistered<MainLayoutController>()) {
-                        Get.find<MainLayoutController>().goToEventsTab();
+                        Get.find<MainLayoutController>().goToEventSuggestionsTab();
                       }
                     } catch (e) {
-                      debugPrint('[EVENTS] Error navigating to events: $e');
+                      debugPrint('[EVENTS] Error navigating to event suggestions: $e');
                     }
                   },
-                  child: Text('home_feed_see_more'.tr, style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.primary)),
+                  child: Text('see_more'.tr, style: TextStyle(fontWeight: FontWeight.w600, color: colorScheme.primary)),
                 ),
               ],
             ),
