@@ -268,7 +268,28 @@ class ProfileController extends GetxController {
       locationUpdatedAt.value = _parseDate(profileData['location_updated_at']);
       birthDateUpdatedAt.value = _parseDate(profileData['birth_date_updated_at']);
 
-      isVerified.value = profileData['account_status'] == 'active' && profileData['is_verified'] == true;
+      var hasActiveCertification = false;
+      if (profileData['account_status'] == 'active' && userId.value.isNotEmpty) {
+        try {
+          final certifications = await Supabase.instance.client
+              .from('user_certifications')
+              .select('issued_at, expires_at')
+              .eq('user_id', userId.value)
+              .eq('status', 'active');
+          final now = DateTime.now().toUtc();
+          hasActiveCertification = (certifications as List).any((row) {
+            final issuedAt = DateTime.tryParse((row['issued_at'] ?? '').toString())?.toUtc();
+            final expiresAt = DateTime.tryParse((row['expires_at'] ?? '').toString())?.toUtc();
+            return issuedAt != null &&
+                !issuedAt.isAfter(now) &&
+                (expiresAt == null || !expiresAt.isBefore(now));
+          });
+        } catch (e) {
+          debugPrint('[ProfileController] certification status lookup failed: $e');
+        }
+      }
+      isVerified.value = profileData['account_status'] == 'active' &&
+          (profileData['is_verified'] == true || hasActiveCertification);
       
       if (userId.value.isNotEmpty) {
         _loadUserInterests();
