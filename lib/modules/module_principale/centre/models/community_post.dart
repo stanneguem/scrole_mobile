@@ -164,13 +164,22 @@ class CommunityPost {
             : (map['video_thumbnail_url']).toString(),
       ));
     }
-    if (mediaList.isEmpty && map['videos'] is List) {
+    if (map['videos'] is List) {
       for (final entry in map['videos'] as List) {
+        late final PostMedia item;
         if (entry is Map) {
-          final item = PostMedia.fromJson(Map<String, dynamic>.from(entry));
-          if (item.url.isNotEmpty) mediaList.add(item.isVideo ? item : PostMedia(type: 'video', storage: item.storage, url: item.url, thumbnailUrl: item.thumbnailUrl));
+          final parsed = PostMedia.fromJson(Map<String, dynamic>.from(entry));
+          if (parsed.url.isEmpty) continue;
+          item = parsed.isVideo
+              ? parsed
+              : PostMedia(type: 'video', storage: parsed.storage, url: parsed.url, thumbnailUrl: parsed.thumbnailUrl);
         } else if (entry is String && entry.isNotEmpty) {
-          mediaList.add(PostMedia(type: 'video', url: entry));
+          item = PostMedia(type: 'video', url: entry);
+        } else {
+          continue;
+        }
+        if (!mediaList.any((existing) => existing.url == item.url)) {
+          mediaList.add(item);
         }
       }
     }
