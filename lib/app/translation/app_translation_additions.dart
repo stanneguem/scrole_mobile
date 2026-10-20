@@ -517,6 +517,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Personne signalée : @name",
       'community_report_exclude_confirm_title': "Exclure ce membre ?",
       'community_report_exclude_confirm_message': "Le membre sera exclu de cette communauté. Cette action ne supprime pas son compte.",
+      'community_settings_location_invalid': "Un des pays ou des villes sélectionnés n’est plus disponible.",
+      'community_settings_city_country_mismatch': "Chaque ville sélectionnée doit appartenir à l’un des pays sélectionnés.",
     },
     'en': {
       'story_comment_title': 'Comment on story',
@@ -1027,6 +1029,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Reported person: @name",
       'community_report_exclude_confirm_title': "Exclude this member?",
       'community_report_exclude_confirm_message': "The member will be excluded from this community. This does not delete their account.",
+      'community_settings_location_invalid': "One of the selected countries or cities is no longer available.",
+      'community_settings_city_country_mismatch': "Each selected city must belong to one of the selected countries.",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1454,6 +1458,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Persona denunciada: @name",
       'community_report_exclude_confirm_title': "¿Excluir a este miembro?",
       'community_report_exclude_confirm_message': "El miembro será excluido de esta comunidad. Esto no elimina su cuenta.",
+      'community_settings_location_invalid': "Uno de los países o ciudades seleccionados ya no está disponible.",
+      'community_settings_city_country_mismatch': "Cada ciudad seleccionada debe pertenecer a uno de los países seleccionados.",
     },
     'de': {
       'status_online': 'Online',
@@ -1864,6 +1870,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Gemeldete Person: @name",
       'community_report_exclude_confirm_title': "Dieses Mitglied ausschließen?",
       'community_report_exclude_confirm_message': "Das Mitglied wird aus dieser Community ausgeschlossen. Das Konto wird dadurch nicht gelöscht.",
+      'community_settings_location_invalid': "Eines der ausgewählten Länder oder Städte ist nicht mehr verfügbar.",
+      'community_settings_city_country_mismatch': "Jede ausgewählte Stadt muss zu einem ausgewählten Land gehören.",
     },
     'it': {
       'status_online': 'In linea',
@@ -2274,6 +2282,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Persona segnalata: @name",
       'community_report_exclude_confirm_title': "Escludere questo membro?",
       'community_report_exclude_confirm_message': "Il membro sarà escluso da questa community. L’account non verrà eliminato.",
+      'community_settings_location_invalid': "Uno dei paesi o delle città selezionati non è più disponibile.",
+      'community_settings_city_country_mismatch': "Ogni città selezionata deve appartenere a uno dei paesi selezionati.",
     },
     'pt': {
       'status_online': 'Online',
@@ -2684,6 +2694,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "Pessoa denunciada: @name",
       'community_report_exclude_confirm_title': "Excluir este membro?",
       'community_report_exclude_confirm_message': "O membro será excluído desta comunidade. A conta não será eliminada.",
+      'community_settings_location_invalid': "Um dos países ou cidades selecionados já não está disponível.",
+      'community_settings_city_country_mismatch': "Cada cidade selecionada deve pertencer a um dos países selecionados.",
     },
     'zh': {
       'status_online': '在线',
@@ -3094,6 +3106,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "被举报者：@name",
       'community_report_exclude_confirm_title': "排除此成员？",
       'community_report_exclude_confirm_message': "该成员将被排除在此社区之外，但其账户不会被删除。",
+      'community_settings_location_invalid': "所选国家/地区或城市中有一项已不可用。",
+      'community_settings_city_country_mismatch': "每个所选城市都必须属于所选国家/地区之一。",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3503,6 +3517,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "報告対象：@name",
       'community_report_exclude_confirm_title': "このメンバーを除外しますか？",
       'community_report_exclude_confirm_message': "このメンバーはコミュニティから除外されます。アカウント自体は削除されません。",
+      'community_settings_location_invalid': "選択した国または都市の一部が利用できなくなっています。",
+      'community_settings_city_country_mismatch': "選択した各都市は、選択した国のいずれかに属している必要があります。",
     },
     'ru': {
       'status_online': 'В сети',
@@ -3907,6 +3923,8 @@ class AppTranslationAdditions {
       'community_user_report_target': "На кого жалоба: @name",
       'community_report_exclude_confirm_title': "Исключить участника?",
       'community_report_exclude_confirm_message': "Участник будет исключён из сообщества. Его аккаунт не будет удалён.",
+      'community_settings_location_invalid': "Одна из выбранных стран или городов больше недоступна.",
+      'community_settings_city_country_mismatch': "Каждый выбранный город должен относиться к одной из выбранных стран.",
     },
   };
 
