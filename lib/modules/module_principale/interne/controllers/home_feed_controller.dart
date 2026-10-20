@@ -33,7 +33,7 @@ class HomeFeedController extends GetxController {
   final RxBool isLoadingMore = false.obs;
   final RxString nextCursor = ''.obs;
 
-  final Set<String> _sentViewIds = {};
+  final Map<String, DateTime> _sentViewAt = {};
   final List<String> _pendingViewIds = [];
   Timer? _viewBatchTimer;
   Timer? _counterRefreshTimer;
@@ -42,11 +42,13 @@ class HomeFeedController extends GetxController {
     if (post.isPublishing) return;
     final myId = _authService.userId;
     if (myId != null && post.authorId == myId) return;
-    if (_sentViewIds.contains(post.id)) return;
+    final lastViewedAt = _sentViewAt[post.id];
+    if (lastViewedAt != null && DateTime.now().difference(lastViewedAt) < const Duration(minutes: 10)) return;
     if (_pendingViewIds.contains(post.id)) return;
 
     _pendingViewIds.add(post.id);
-    _sentViewIds.add(post.id);
+    _sentViewAt[post.id] = DateTime.now();
+    _sentViewAt.removeWhere((_, time) => DateTime.now().difference(time) > const Duration(days: 1));
 
     if (_pendingViewIds.length >= 20) {
       _flushViewBatch();
@@ -80,7 +82,9 @@ class HomeFeedController extends GetxController {
       }
       if (counters.isNotEmpty) posts.refresh();
     } catch (e) {
-      _sentViewIds.removeAll(batch);
+      for (final id in batch) {
+        _sentViewAt.remove(id);
+      }
       debugPrint('[POST_ACTIONS] Error recording view batch: $e');
     }
   }
