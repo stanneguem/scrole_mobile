@@ -135,6 +135,23 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
           debugPrint('[EventPreviewScreen] getEventPreviewPublic error: $e. Falling back to getEventPreview...');
           preview = await repo.getEventPreview(_eventId!);
         }
+
+        // The public-preview RPC deliberately returns a restricted payload for
+        // event owners/co-creators/staff (rather than throwing). Retry with the
+        // matching privileged preview when the payload identifies that role.
+        final returnedRole = (preview.viewerRole ?? '').toLowerCase();
+        if (!preview.canViewPublicPreview &&
+            (returnedRole == 'owner' ||
+             returnedRole == 'creator' ||
+             returnedRole == 'fondateur' ||
+             returnedRole == 'cofounder' ||
+             returnedRole == 'co_founder' ||
+             returnedRole == 'co_createur' ||
+             returnedRole == 'co_creator')) {
+          preview = await repo.getEventPreviewOwner(_eventId!);
+        } else if (!preview.canViewPublicPreview && returnedRole == 'staff') {
+          preview = await repo.getEventPreviewStaff(_eventId!);
+        }
       }
 
       final role = preview.viewerRole ?? preview.event.userRole;
