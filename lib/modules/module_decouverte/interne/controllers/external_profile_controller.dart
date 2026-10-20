@@ -29,6 +29,10 @@ class ExternalProfileController extends GetxController {
   final RxBool isFollowing = false.obs;
   final RxString error = ''.obs;
   final RxInt selectedTab = 0.obs;
+  final RxMap<int, List<Map<String, dynamic>>> profileTabItems = <int, List<Map<String, dynamic>>>{}.obs;
+  final RxSet<int> loadingProfileTabs = <int>{}.obs;
+  final RxSet<int> loadedProfileTabs = <int>{}.obs;
+  final RxMap<int, String> profileTabErrors = <int, String>{}.obs;
   late final String userId;
   RealtimeChannel? _relationshipChannel;
 
@@ -44,7 +48,50 @@ class ExternalProfileController extends GetxController {
       return;
     }
     loadProfile();
+    loadProfileTab(0);
     _subscribeToRelationshipChanges();
+  }
+
+
+  String _profileTabRpcName(int index) {
+    switch (index) {
+      case 0:
+        return 'posts';
+      case 1:
+        return 'events';
+      case 2:
+        return 'liked';
+      default:
+        throw ArgumentError.value(index, 'index', 'Onglet de profil invalide');
+    }
+  }
+
+  Future<void> selectProfileTab(int index) async {
+    selectedTab.value = index;
+    await loadProfileTab(index);
+  }
+
+  Future<void> loadProfileTab(int index, {bool forceRefresh = false}) async {
+    if (userId.isEmpty || loadingProfileTabs.contains(index)) return;
+    if (!forceRefresh && loadedProfileTabs.contains(index)) return;
+
+    loadingProfileTabs.add(index);
+    profileTabErrors.remove(index);
+    try {
+      final items = await _repository.fetchProfileTab(
+        userId: userId,
+        tab: _profileTabRpcName(index),
+        limit: 24,
+        offset: 0,
+      );
+      profileTabItems[index] = items;
+      loadedProfileTabs.add(index);
+    } catch (e, stack) {
+      debugPrint('[ExternalProfileController] loadProfileTab($index) failed: $e\\n$stack');
+      profileTabErrors[index] = 'Impossible de charger ce contenu. Réessaie.';
+    } finally {
+      loadingProfileTabs.remove(index);
+    }
   }
 
   void _subscribeToRelationshipChanges() {
