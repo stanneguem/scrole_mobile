@@ -557,6 +557,46 @@ class CommunityRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getCommunityManagementSettings(String communityId) async {
+    final response = await client.rpc(
+      'get_community_management_settings',
+      params: {'p_community_id': communityId},
+    );
+    if (response is! Map) {
+      throw const FormatException('Réponse invalide des paramètres de communauté.');
+    }
+    return Map<String, dynamic>.from(response);
+  }
+
+  Future<Map<String, dynamic>> updateCommunityManagementSettings({
+    required String communityId,
+    String? visibility,
+    bool? requireManualApproval,
+    bool? membersListVisible,
+    bool? certificationRequired,
+    String? genderRestriction,
+    int? ageMin,
+    int? ageMax,
+    bool clearAge = false,
+    bool clearGender = false,
+  }) async {
+    final params = <String, dynamic>{'p_community_id': communityId};
+    if (visibility != null) params['p_visibility'] = visibility;
+    if (requireManualApproval != null) params['p_require_manual_approval'] = requireManualApproval;
+    if (membersListVisible != null) params['p_members_list_visible'] = membersListVisible;
+    if (certificationRequired != null) params['p_certification_required'] = certificationRequired;
+    if (genderRestriction != null) params['p_gender_restriction'] = genderRestriction;
+    if (ageMin != null) params['p_age_min'] = ageMin;
+    if (ageMax != null) params['p_age_max'] = ageMax;
+    params['p_clear_age'] = clearAge;
+    params['p_clear_gender'] = clearGender;
+    final response = await client.rpc('update_community_management_settings', params: params);
+    if (response is! Map) {
+      throw const FormatException('Réponse invalide après sauvegarde des paramètres de communauté.');
+    }
+    return Map<String, dynamic>.from(response);
+  }
+
   Future<void> updateCommunityAccessRules({
     required String p_id,
     bool? p_countries_enabled,
@@ -609,20 +649,17 @@ class CommunityRepository {
 
   Future<List<Map<String, dynamic>>> getCommunityRules(String communityId) async {
     try {
-      final response = await client.from('community_rule').select().eq('community_id', communityId).order('order_index');
-      if (response is List) {
-        return response.map((e) => Map<String, dynamic>.from(e)).toList();
-      }
-      return [];
+      final response = await client
+          .from('community_rules')
+          .select()
+          .eq('community_id', communityId)
+          .order('order_index');
+      return (response as List)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
     } catch (e) {
-      try {
-        final response = await client.from('community_rules').select().eq('community_id', communityId).order('order_index');
-        if (response is List) {
-          return response.map((e) => Map<String, dynamic>.from(e)).toList();
-        }
-      } catch (_) {}
       debugPrint('[CommunityRepository] Error in getCommunityRules: $e');
-      return [];
+      rethrow;
     }
   }
 
@@ -720,11 +757,19 @@ class CommunityRepository {
   Future<Map<String, dynamic>> getCommunityModerationCounts(String communityId) async {
     try {
       final response = await client.rpc('get_community_moderation_counts', params: {'p_community_id': communityId});
-      if (response is Map) return Map<String, dynamic>.from(response);
-      return {'pending_reports': 0, 'pending_posts': 0, 'pending_join_requests': 0};
+      if (response is! Map) {
+        throw const FormatException('Réponse invalide des compteurs de modération.');
+      }
+      final data = Map<String, dynamic>.from(response);
+      return {
+        ...data,
+        'pending_reports': (data['reports'] as num?)?.toInt() ?? 0,
+        'pending_join_requests': (data['join_requests'] as num?)?.toInt() ?? 0,
+        'pending_posts': (data['pending_posts'] as num?)?.toInt() ?? 0,
+      };
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getCommunityModerationCounts: $e');
-      return {'pending_reports': 0, 'pending_posts': 0, 'pending_join_requests': 0};
+      rethrow;
     }
   }
 
