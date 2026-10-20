@@ -395,7 +395,7 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                         icon: Icons.admin_panel_settings_outlined,
                         iconColor: Colors.deepOrange,
                         title: 'community_management_title'.tr,
-                        subtitle: 'Modération, accès, règles et informations',
+                        subtitle: 'community_management_subtitle'.tr,
                         onTap: () {
                           Get.to(() => CommunitySettingsMainScreen(
                                 communityId: widget.communityId,
@@ -410,8 +410,8 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                         _SettingsMenuTile(
                           icon: Icons.block_outlined,
                           iconColor: Colors.redAccent,
-                          title: 'Membres exclus',
-                          subtitle: 'Gérer les exclusions',
+                          title: 'excluded_members_title'.tr,
+                          subtitle: 'excluded_members_subtitle'.tr,
                           onTap: () {
                             Get.to(() => ExcludedMembersScreen(communityId: widget.communityId));
                           },
@@ -428,8 +428,8 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                     _SettingsMenuTile(
                       icon: Icons.group_outlined,
                       iconColor: colorScheme.primary,
-                      title: 'Membres de la communauté',
-                      subtitle: 'Voir les membres (si autorisé)',
+                      title: 'community_members_title'.tr,
+                      subtitle: 'community_members_subtitle'.tr,
                       onTap: () {
                         Get.to(() => CommunityMembersScreen(
                               communityId: widget.communityId,
