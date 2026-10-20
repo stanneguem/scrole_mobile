@@ -111,6 +111,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
 
   void _markCurrentViewed() {
     final story = _currentStory;
+    // Opening your own story is not a view: only other authenticated viewers
+    // should create a story_views row or increase the viewers counter.
+    if (_isOwnStory || story.id.isEmpty) return;
     if (!story.viewed && !_viewedStoryIds.contains(story.id)) {
       _viewedStoryIds.add(story.id);
       story.viewed = true;
@@ -132,6 +135,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
   EventStoryGroup get _currentGroup => widget.groups[_groupIndex];
   StoryItem get _currentStory => _currentGroup.stories[_storyIndex];
   bool get _isOwnStory => _currentGroup.relation == 'own';
+
+  String _formatStoryAge(DateTime createdAt) {
+    final elapsed = DateTime.now().difference(createdAt);
+    if (elapsed.isNegative || elapsed.inSeconds < 60) return 'À l’instant';
+    if (elapsed.inMinutes < 60) return 'Il y a ${elapsed.inMinutes} min';
+    if (elapsed.inHours < 24) return 'Il y a ${elapsed.inHours} h';
+    if (elapsed.inDays == 1) return 'Il y a 1 jour';
+    if (elapsed.inDays < 7) return 'Il y a ${elapsed.inDays} jours';
+    return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+  }
 
   void _nextStory() {
     if (_storyIndex < _currentGroup.stories.length - 1) {
@@ -474,14 +487,27 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: UserIdentityRow(
-                                    name: _currentGroup.author.displayName,
-                                    username: _currentGroup.author.username,
-                                    avatarUrl: _currentGroup.author.photoUrl,
-                                    isCertified: _currentGroup.author.isCertified,
-                                    avatarRadius: 18,
-                                    nameStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                    usernameStyle: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      UserIdentityRow(
+                                        name: _currentGroup.author.displayName,
+                                        username: _currentGroup.author.username,
+                                        avatarUrl: _currentGroup.author.photoUrl,
+                                        isCertified: _currentGroup.author.isCertified,
+                                        avatarRadius: 18,
+                                        nameStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                        usernameStyle: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 42),
+                                        child: Text(
+                                          _formatStoryAge(_currentStory.createdAt),
+                                          style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 IconButton(
@@ -1271,6 +1297,19 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
         ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim()
         : (author['username']?.toString() ?? 'Utilisateur');
     final avatarUrl = author['photo_url']?.toString() ?? author['avatar_url']?.toString();
+    final isCertified = author['is_certified'] == true || author['is_certified'] == 1 ||
+        author['is_verified'] == true || author['is_verified'] == 1;
+    final createdAt = DateTime.tryParse(comment['created_at']?.toString() ?? '');
+    String commentAge() {
+      if (createdAt == null) return '';
+      final elapsed = DateTime.now().difference(createdAt);
+      if (elapsed.inSeconds < 60) return 'À l’instant';
+      if (elapsed.inMinutes < 60) return 'Il y a ${elapsed.inMinutes} min';
+      if (elapsed.inHours < 24) return 'Il y a ${elapsed.inHours} h';
+      if (elapsed.inDays == 1) return 'Il y a 1 jour';
+      if (elapsed.inDays < 7) return 'Il y a ${elapsed.inDays} jours';
+      return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+    }
     final content = comment['content']?.toString() ?? '';
     final replies = comment['replies'] is List ? (comment['replies'] as List).map((r) => Map<String, dynamic>.from(r)).toList() : <Map<String, dynamic>>[];
 
@@ -1298,10 +1337,26 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        authorName,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
+                            ),
+                          ),
+                          if (isCertified) ...[
+                            const SizedBox(width: 5),
+                            const UserCertifiedBadge(size: 13),
+                          ],
+                        ],
                       ),
+                      if (commentAge().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(commentAge(), style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant)),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         content,
