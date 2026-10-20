@@ -7,7 +7,6 @@ import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_preview_model.dart';
-import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
 
 class EventShareCardDesign {
   final String name;
@@ -174,7 +173,7 @@ class EventShareCardArtwork extends StatelessWidget {
             ])
           : Column(children: [
               Expanded(flex: compact ? 6 : 7, child: details()),
-              Expanded(flex: compact ? 5 : 6, child: cover(height: 0)),
+              Expanded(flex: compact ? 5 : 6, child: cover()),
             ]),
     );
   }
