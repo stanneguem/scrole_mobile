@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import '../../centre/models/community_post.dart';
 import '../../externe/repositories/home_feed_repository.dart';
@@ -42,6 +44,16 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   final Map<String, bool> _repliesHasMore = {};
 
   Map<String, dynamic>? _replyingTo;
+  final List<Map<String, dynamic>> _selectedMentions = [];
+  final Set<String> _selectedCommunityIds = {};
+  final Set<String> _selectedEventIds = {};
+  final LayerLink _mentionLayerLink = LayerLink();
+  OverlayEntry? _mentionOverlay;
+  Timer? _mentionSearchDebounce;
+  List<Map<String, dynamic>> _mentionSuggestions = [];
+  String? _activeMentionType;
+  int _mentionStart = -1;
+  int _mentionRequest = 0;
 
   final Map<String, PostReaction> _commentReactions = {};
   final Map<String, int> _commentLikeCounts = {};
@@ -98,6 +110,8 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
 
   @override
   void dispose() {
+    _mentionOverlay?.remove();
+    _mentionSearchDebounce?.cancel();
     _commentController.dispose();
     _commentFocusNode.dispose();
     super.dispose();
@@ -180,6 +194,144 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     }
   }
 
+  void _removeMentionOverlay() {
+    _mentionOverlay?.remove();
+    _mentionOverlay = null;
+    _activeMentionType = null;
+    _mentionSuggestions = [];
+  }
+
+  void _onCommentChanged(String value) {
+    final cursor = _commentController.selection.baseOffset;
+    if (cursor < 0 || cursor > value.length) { _removeMentionOverlay(); return; }
+    final prefix = value.substring(0, cursor);
+    final match = RegExp(r'(^|\s)([@*~])([^\s@*~]*)$').firstMatch(prefix);
+    if (match == null) { _removeMentionOverlay(); return; }
+    final trigger = match.group(2)!;
+    _activeMentionType = trigger == '@' ? 'user' : trigger == '*' ? 'event' : 'community';
+    _mentionStart = cursor - trigger.length - (match.group(3) ?? '').length;
+    final query = match.group(3) ?? '';
+    _mentionSearchDebounce?.cancel();
+    _mentionSearchDebounce = Timer(const Duration(milliseconds: 180), () {
+      _searchMentionSuggestions(query, _activeMentionType!);
+    });
+  }
+
+  Future<void> _searchMentionSuggestions(String query, String type) async {
+    final request = ++_mentionRequest;
+    try {
+      final client = Supabase.instance.client;
+      List<Map<String, dynamic>> results = [];
+      if (type == 'user') {
+        final rows = await client.from('user_profiles').select('user_id, username, first_name, last_name, photo_url, is_verified')
+            .eq('account_status', 'active').isFilter('deleted_at', null)
+            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
+            .order('username').limit(7);
+        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      } else if (type == 'community') {
+        final rows = await client.from('communities').select('id, name, photo_profile, visibility')
+            .eq('status', 'active').ilike('name', '%$query%').order('name').limit(7);
+        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      } else {
+        final rows = await client.from('events').select('id, name, photo, starts_at, status')
+            .ilike('name', '%$query%').order('starts_at').limit(12);
+        results = rows.map((r) => Map<String, dynamic>.from(r))
+            .where((r) => !const {'deleted', 'cancelled', 'archived'}.contains((r['status'] ?? '').toString().toLowerCase()))
+            .take(7).toList();
+      }
+      if (!mounted || request != _mentionRequest || _activeMentionType != type) return;
+      setState(() => _mentionSuggestions = results);
+      _showMentionOverlay();
+    } catch (e) {
+      debugPrint('[MENTIONS] Suggestion search failed: $e');
+      if (request == _mentionRequest) _removeMentionOverlay();
+    }
+  }
+
+  void _showMentionOverlay() {
+    if (_mentionSuggestions.isEmpty || _activeMentionType == null) { _removeMentionOverlay(); return; }
+    _mentionOverlay ??= OverlayEntry(builder: (_) {
+      final type = _activeMentionType;
+      final items = List<Map<String, dynamic>>.from(_mentionSuggestions);
+      return Positioned(
+        width: MediaQuery.of(context).size.width - 56,
+        child: CompositedTransformFollower(
+          link: _mentionLayerLink, showWhenUnlinked: false,
+          targetAnchor: Alignment.topLeft, followerAnchor: Alignment.bottomLeft,
+          offset: const Offset(0, -8),
+          child: Material(
+            elevation: 12, color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 250),
+              child: ListView.separated(
+                padding: EdgeInsets.zero, shrinkWrap: true, itemCount: items.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: .35)),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final isUser = type == 'user';
+                  final title = isUser
+                      ? ((item['username'] ?? '').toString().isNotEmpty ? '@${item['username']}' : '${item['first_name'] ?? ''} ${item['last_name'] ?? ''}'.trim())
+                      : (item['name'] ?? '').toString();
+                  final subtitle = isUser ? '${item['first_name'] ?? ''} ${item['last_name'] ?? ''}'.trim()
+                      : type == 'event' ? (item['starts_at'] ?? '').toString().replaceFirst('T', ' ') : 'Communauté';
+                  final image = (item[isUser ? 'photo_url' : type == 'event' ? 'photo' : 'photo_profile'] ?? '').toString();
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      backgroundImage: image.startsWith('http') ? NetworkImage(image) : null,
+                      child: image.startsWith('http') ? null : Icon(isUser ? Icons.person_outline : type == 'event' ? Icons.event_outlined : Icons.groups_outlined, size: 19),
+                    ),
+                    title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                    onTap: () => _insertMention(type!, item),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+    final overlay = Overlay.of(context);
+    if (!_mentionOverlay!.mounted) overlay.insert(_mentionOverlay!);
+    else _mentionOverlay!.markNeedsBuild();
+  }
+
+  void _insertMention(String type, Map<String, dynamic> item) {
+    final id = (item[type == 'user' ? 'user_id' : 'id'] ?? '').toString();
+    final token = type == 'user' ? '@${item['username'] ?? item['first_name'] ?? 'utilisateur'}'
+        : type == 'event' ? '*${item['name'] ?? 'événement'}' : '~${item['name'] ?? 'communauté'}';
+    final text = _commentController.text;
+    final cursor = _commentController.selection.baseOffset.clamp(0, text.length);
+    final start = _mentionStart.clamp(0, cursor);
+    _commentController.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, '$token '),
+      selection: TextSelection.collapsed(offset: start + token.length + 1),
+    );
+    if (id.isNotEmpty) {
+      if (type == 'user') {
+        _selectedMentions.removeWhere((m) => (m['user_id'] ?? '').toString() == id);
+        _selectedMentions.add(item);
+      } else if (type == 'event') {
+        _selectedEventIds.add(id);
+      } else {
+        _selectedCommunityIds.add(id);
+      }
+    }
+    _removeMentionOverlay();
+    if (mounted) setState(() {});
+    _commentFocusNode.requestFocus();
+  }
+
+  Future<void> _saveEntityMentions(String commentId) async {
+    if (_selectedCommunityIds.isEmpty && _selectedEventIds.isEmpty) return;
+    await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+      'p_source_type': 'comment', 'p_source_id': commentId,
+      'p_community_ids': _selectedCommunityIds.toList(), 'p_event_ids': _selectedEventIds.toList(),
+    });
+  }
+
   Future<void> _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -188,6 +340,11 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId ?? 'me' : 'me';
 
     final targetReplyTo = _replyingTo;
+    final mentionIds = _selectedMentions
+        .map((m) => (m['user_id'] ?? m['id'] ?? m['user_profiles']?['user_id'] ?? '').toString())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
 
     final tempComment = {
       'id': pId,
@@ -225,8 +382,13 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
         p_id: pId,
         postId: widget.post.id,
         content: text,
+        mentions: mentionIds,
         parentCommentId: targetReplyTo != null ? targetReplyTo['id']?.toString() : null,
       );
+      try { await _saveEntityMentions(pId); } catch (e) { debugPrint('[MENTIONS] Entity mention save failed: $e'); }
+      if (mounted) setState(() {
+        _selectedMentions.clear(); _selectedCommunityIds.clear(); _selectedEventIds.clear();
+      });
       await _loadComments();
       if (targetReplyTo != null) {
         final parentId = targetReplyTo['id']?.toString();
@@ -435,6 +597,33 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                 ),
               ],
 
+              if (_selectedMentions.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: _selectedMentions.map((member) {
+                      final profile = member['user_profiles'] is Map
+                          ? Map<String, dynamic>.from(member['user_profiles'])
+                          : member;
+                      final username = (profile['username'] ?? member['username'] ?? 'membre').toString();
+                      final id = (profile['user_id'] ?? profile['id'] ?? member['user_id'] ?? member['id'] ?? '').toString();
+                      return InputChip(
+                        label: Text('@$username'),
+                        onDeleted: () => setState(() {
+                          _selectedMentions.removeWhere((item) {
+                            final nested = item['user_profiles'] is Map
+                                ? Map<String, dynamic>.from(item['user_profiles'])
+                                : item;
+                            return (nested['user_id'] ?? nested['id'] ?? item['user_id'] ?? item['id'] ?? '').toString() == id;
+                          });
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
               // Modern Input field at bottom
               const SizedBox(height: 6),
               Container(
@@ -447,8 +636,11 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: CompositedTransformTarget(
+                        link: _mentionLayerLink,
+                        child: TextField(
                         controller: _commentController,
+                        onChanged: _onCommentChanged,
                         focusNode: _commentFocusNode,
                         decoration: InputDecoration(
                           hintText: _replyingTo != null ? 'Écrire une réponse...' : 'Écrire un commentaire...',
@@ -458,8 +650,8 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                         ),
                         maxLines: null,
                       ),
+                      ),
                     ),
-                    const SizedBox(width: 8),
                     GestureDetector(
                       onTap: _submitComment,
                       child: Container(
