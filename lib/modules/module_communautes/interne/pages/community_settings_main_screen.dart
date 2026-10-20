@@ -54,7 +54,7 @@ class _CommunityHeaderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  communitySlogan ?? 'Vivre la technologie ensemble',
+                  communitySlogan ?? 'community_slogan_default'.tr,
                   style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1307,7 +1307,7 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                     title: Text('community_settings_cover_photo'.tr),
                     trailing: ElevatedButton(
                       onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: false),
-                      child: const Text('Changer'),
+                      child: Text('community_settings_change_photo'.tr),
                     ),
                   ),
                 ],
