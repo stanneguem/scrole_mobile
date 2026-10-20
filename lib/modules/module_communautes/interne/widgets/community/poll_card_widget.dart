@@ -1,118 +1,214 @@
 import 'package:flutter/material.dart';
-import 'package:scrole/app/theme/app_colors.dart';
+import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PollCardWidget extends StatefulWidget {
   final dynamic poll;
   final String postId;
   final dynamic controller;
-
-  const PollCardWidget({
-    super.key,
-    required this.poll,
-    required this.postId,
-    required this.controller,
-  });
-
+  const PollCardWidget({super.key, required this.poll, required this.postId, required this.controller});
   @override
   State<PollCardWidget> createState() => _PollCardWidgetState();
 }
 
 class _PollCardWidgetState extends State<PollCardWidget> {
-  List<String> _selectedOptionIds = [];
+  late Map<String, dynamic> _poll;
+  final Set<String> _selected = {};
+  bool _saving = false;
+
+  @override
+  void initState() { super.initState(); _poll = _map(widget.poll); _sync(); }
+
+  @override
+  void didUpdateWidget(covariant PollCardWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.poll != widget.poll) { _poll = _map(widget.poll); _sync(); }
+  }
+
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  List<Map<String, dynamic>> get _options {
+    final raw = _poll['options'];
+    return raw is List ? raw.whereType<Map>().map((v) => Map<String, dynamic>.from(v)).toList() : [];
+  }
+  String get _kind => (_poll['kind'] ?? 'single').toString();
+  bool get _multiple => _kind == 'multiple' || _poll['allow_multiple'] == true;
+  bool get _quiz => _kind == 'quiz';
+  bool get _closed => _poll['is_closed'] == true;
+  bool get _voted => _poll['has_voted'] == true;
+  bool get _results => _poll['results_visible'] == true || _closed;
+  bool get _canVote => !_closed && !_voted && !_saving;
+
+  void _sync() {
+    _selected
+      ..clear()
+      ..addAll((_poll['my_option_ids'] is List ? _poll['my_option_ids'] as List : const []).map((e) => e.toString()));
+    for (final option in _options) {
+      if (option['is_mine'] == true && option['id'] != null) _selected.add(option['id'].toString());
+    }
+  }
+
+  Future<void> _vote() async {
+    if (!_canVote) return;
+    if (_selected.isEmpty) {
+      Get.snackbar('Choisis une réponse', 'Sélectionne au moins une option avant de voter.');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final response = await Supabase.instance.client.rpc('vote_community_poll', params: {
+        'p_post_id': widget.postId,
+        'p_option_ids': _selected.toList(),
+      });
+      if (response is Map && mounted) {
+        setState(() { _poll = Map<String, dynamic>.from(response); _sync(); });
+      }
+    } catch (error) {
+      Get.snackbar('Vote non envoyé', 'Impossible d’enregistrer ta réponse. Réessaie.');
+      debugPrint('[PollCardWidget] vote error: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  String _kindLabel() {
+    switch (_kind) {
+      case 'multiple': return 'Choix multiples';
+      case 'quiz': return 'Quiz';
+      case 'this_or_that': return 'Tu préfères…';
+      default: return 'Sondage';
+    }
+  }
+
+  String _endLabel() {
+    final raw = _poll['ends_at'];
+    if (raw == null || raw.toString().isEmpty) return _quiz ? 'Quiz' : 'À toi de jouer';
+    final end = DateTime.tryParse(raw.toString())?.toLocal();
+    if (end == null) return 'À toi de jouer';
+    final d = end.difference(DateTime.now());
+    if (d.isNegative) return 'Terminé';
+    if (d.inDays > 0) return 'Se termine dans ${d.inDays} j';
+    if (d.inHours > 0) return 'Se termine dans ${d.inHours} h';
+    return 'Se termine dans ${d.inMinutes.clamp(1, 59)} min';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final pollMap = widget.poll is Map ? Map<String, dynamic>.from(widget.poll) : {};
-    final options = pollMap['options'] is List ? (pollMap['options'] as List) : [];
-    final kind = pollMap['kind']?.toString() ?? 'single';
-    final isMultiple = kind == 'multiple';
-
-    if (options.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final colors = Theme.of(context).colorScheme;
+    final options = _options;
+    if (options.isEmpty) return const SizedBox.shrink();
+    final voters = (_poll['voters_count'] as num?)?.toInt() ?? 0;
+    final correctId = _poll['correct_option_id']?.toString();
+    final explanation = (_poll['explanation'] ?? '').toString().trim();
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.poll_rounded, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Sondage (${isMultiple ? "Choix multiples" : "Choix unique"})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...options.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final opt = entry.value.toString();
-            final isSelected = _selectedOptionIds.contains(idx.toString()) || _selectedOptionIds.contains(opt);
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [colors.primary.withValues(alpha: .18), colors.tertiary.withValues(alpha: .14)]),
+              borderRadius: BorderRadius.circular(14)),
+            child: Icon(_quiz ? Icons.lightbulb_rounded : Icons.poll_rounded, color: colors.primary)),
+          const SizedBox(width: 11),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_kindLabel(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: colors.onSurface)),
+            const SizedBox(height: 3),
+            Text(_closed ? 'Sondage terminé' : _endLabel(), style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+          ])),
+          if (voters > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(30)),
+              child: Text('$voters vote${voters > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant))),
+        ]),
+        const SizedBox(height: 15),
+        ...options.map((option) {
+          final id = option['id']?.toString() ?? '';
+          final label = (option['label'] ?? option['text'] ?? '').toString();
+          final selected = _selected.contains(id) || option['is_mine'] == true;
+          final correct = _quiz && correctId != null && correctId == id;
+          final percent = (option['percent'] as num?)?.toDouble() ?? 0;
+          final showResult = _results && option['percent'] != null;
+          final votes = (option['votes'] as num?)?.toInt() ?? 0;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: Material(
+              color: Colors.transparent,
               child: InkWell(
-                onTap: () {
-                  setState(() {
-                    final key = idx.toString();
-                    if (isMultiple) {
-                      if (_selectedOptionIds.contains(key)) {
-                        _selectedOptionIds.remove(key);
-                      } else {
-                        _selectedOptionIds.add(key);
-                      }
-                    } else {
-                      _selectedOptionIds = [key];
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
+                onTap: _canVote && id.isNotEmpty ? () => setState(() {
+                  if (_multiple) {
+                    if (!_selected.add(id)) _selected.remove(id);
+                  } else {
+                    _selected..clear()..add(id);
+                  }
+                }) : null,
+                borderRadius: BorderRadius.circular(15),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected ? AppColors.primary : colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isSelected
-                            ? (isMultiple ? Icons.check_box_rounded : Icons.radio_button_checked_rounded)
-                            : (isMultiple ? Icons.check_box_outline_blank_rounded : Icons.radio_button_off_rounded),
-                        size: 18,
-                        color: isSelected ? AppColors.primary : colorScheme.outline,
-                      ),
+                    color: selected ? colors.primary.withValues(alpha: .08) : colors.surface,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: correct ? Colors.green : selected ? colors.primary : colors.outlineVariant, width: selected || correct ? 1.5 : 1)),
+                  child: Stack(children: [
+                    if (showResult)
+                      Positioned.fill(child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Align(alignment: Alignment.centerLeft, child: FractionallySizedBox(
+                          widthFactor: (percent / 100).clamp(0.0, 1.0),
+                          child: Container(color: (correct ? Colors.green : colors.primary).withValues(alpha: .12)))))),
+                    Row(children: [
+                      Icon(correct && showResult ? Icons.check_circle_rounded : selected
+                        ? (_multiple ? Icons.check_box_rounded : Icons.radio_button_checked_rounded)
+                        : (_multiple ? Icons.check_box_outline_blank_rounded : Icons.radio_button_off_rounded),
+                        size: 21, color: correct ? Colors.green : selected ? colors.primary : colors.outline),
                       const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          opt,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                      Expanded(child: Text(label, style: TextStyle(fontSize: 14, height: 1.25, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: colors.onSurface))),
+                      if (showResult) ...[
+                        const SizedBox(width: 8),
+                        Text('${percent.round()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: colors.onSurface)),
+                        if (voters > 0) Text(' ($votes)', style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                      ],
+                    ]),
+                  ]),
                 ),
               ),
-            );
-          }),
+            ),
+          );
+        }),
+        if (_quiz && _results && explanation.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: colors.tertiaryContainer.withValues(alpha: .45), borderRadius: BorderRadius.circular(14)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.info_outline_rounded, size: 18, color: colors.onTertiaryContainer),
+              const SizedBox(width: 8),
+              Expanded(child: Text(explanation, style: TextStyle(fontSize: 12, height: 1.4, color: colors.onTertiaryContainer))),
+            ])),
         ],
-      ),
+        if (!_closed && !_voted) ...[
+          const SizedBox(height: 4),
+          SizedBox(width: double.infinity, child: FilledButton(
+            onPressed: _saving ? null : _vote,
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: const StadiumBorder()),
+            child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(_quiz ? 'Valider ma réponse' : 'Voter'))),
+        ],
+        if (_voted && !_closed)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [
+            Icon(Icons.check_circle_rounded, size: 16, color: colors.primary),
+            const SizedBox(width: 6),
+            Text('Ta réponse a été enregistrée', style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+          ])),
+      ]),
     );
   }
 }
