@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/local_storage/structured/app_cache_database.dart';
+import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/service_global/supabse_service.dart';
 import '../../centre/persistence/social_local_dao.dart';
 
@@ -23,17 +25,38 @@ class SocialRepository {
   // Cache mémoire des relations : invalidé par les appels d'action et la reconnexion.
   static final Map<String, Map<String, dynamic>> _relationshipCache = <String, Map<String, dynamic>>{};
 
+  static String _relationshipCacheKey(String userId) => 'follow_relationship_$userId';
+
   static void invalidateRelationshipCache([String? userId]) {
     if (userId == null) {
       _relationshipCache.clear();
+      if (Get.isRegistered<FastCacheService>()) {
+        unawaited(Get.find<FastCacheService>().clearPattern('follow_relationship_'));
+      }
     } else {
       _relationshipCache.remove(userId);
+      if (Get.isRegistered<FastCacheService>()) {
+        unawaited(Get.find<FastCacheService>().remove(_relationshipCacheKey(userId)));
+      }
     }
   }
+
+  FastCacheService? get _fastCache =>
+      Get.isRegistered<FastCacheService>() ? Get.find<FastCacheService>() : null;
 
   Future<Map<String, dynamic>> getRelationship(String targetUserId, {bool forceRefresh = false}) async {
     if (!forceRefresh && _relationshipCache.containsKey(targetUserId)) {
       return Map<String, dynamic>.from(_relationshipCache[targetUserId]!);
+    }
+    if (!forceRefresh) {
+      final persisted = _fastCache?.get<Map<String, dynamic>>(
+        _relationshipCacheKey(targetUserId),
+        maxAge: const Duration(minutes: 5),
+      );
+      if (persisted != null && persisted.isNotEmpty) {
+        _relationshipCache[targetUserId] = persisted;
+        return Map<String, dynamic>.from(persisted);
+      }
     }
     debugPrint('[FOLLOW] RPC get_relationship params={p_user_id: $targetUserId}');
     try {
@@ -41,6 +64,7 @@ class SocialRepository {
       if (response is! Map) throw StateError('Réponse get_relationship invalide');
       final relation = Map<String, dynamic>.from(response);
       _relationshipCache[targetUserId] = relation;
+      await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC get_relationship response=$relation');
       return Map<String, dynamic>.from(relation);
     } catch (e, stack) {
@@ -55,7 +79,7 @@ class SocialRepository {
     Map<String, dynamic> params,
     String targetUserId,
   ) async {
-    _relationshipCache.remove(targetUserId);
+    invalidateRelationshipCache(targetUserId);
     final uid = currentUserId;
     if (uid == null) throw StateError('Utilisateur non connecté');
     await _dao.enqueueOutbox(userId: uid, operation: operation, payload: params);
@@ -65,6 +89,7 @@ class SocialRepository {
       if (response is! Map) throw StateError('Réponse $rpc invalide');
       final relation = Map<String, dynamic>.from(response);
       _relationshipCache[targetUserId] = relation;
+      await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC $rpc response=$relation');
       return relation;
     } catch (e, stack) {
@@ -83,7 +108,7 @@ class SocialRepository {
       _relationshipAction('cancel_follow_request', 'cancel_follow_request', {'p_user_id': targetUserId}, targetUserId);
 
   Future<Map<String, dynamic>> respondFollowRequest(String requestId, bool accepted, {required String targetUserId}) async {
-    _relationshipCache.remove(targetUserId);
+    invalidateRelationshipCache(targetUserId);
     final uid = currentUserId;
     if (uid == null) throw StateError('Utilisateur non connecté');
     final params = {'p_request_id': requestId, 'p_accepted': accepted};
@@ -96,6 +121,7 @@ class SocialRepository {
       final relationRaw = body['relationship'];
       final relation = relationRaw is Map ? Map<String, dynamic>.from(relationRaw) : body;
       _relationshipCache[targetUserId] = relation;
+      await _fastCache?.set(_relationshipCacheKey(targetUserId), relation);
       debugPrint('[FOLLOW] RPC respond_follow_request response=$body');
       return body;
     } catch (e, stack) {
