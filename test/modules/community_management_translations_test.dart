@@ -121,6 +121,9 @@ void main() {
       'community_settings_image_too_large',
       'community_settings_image_compression_failed',
       'community_rule_required',
+      'community_post_permission_everyone',
+      'community_post_permission_admins',
+      'community_post_permission_nobody',
       'community_settings_slogan_label',
     ];
 
