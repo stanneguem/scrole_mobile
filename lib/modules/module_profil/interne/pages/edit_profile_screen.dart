@@ -288,12 +288,20 @@ class EditProfileScreen extends GetView<EditProfileController> {
                   children: [
                     Text(label, style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
                     const SizedBox(height: 5),
-                    Text('edit_profile_checking_lock'.tr, style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant)),
+                    Text(
+                      controller.lockMetadataFailed.value
+                          ? 'edit_profile_lock_check_failed'.tr
+                          : 'edit_profile_checking_lock'.tr,
+                      style: AppTextStyles.caption.copyWith(color: colors.onSurfaceVariant),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              if (controller.lockMetadataFailed.value)
+                Icon(Icons.lock_outline, size: 18, color: colors.error)
+              else
+                const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
             ],
           ),
         );
