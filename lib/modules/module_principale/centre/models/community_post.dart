@@ -33,11 +33,13 @@ class CommunityPostMention {
   final String userId;
   final String username;
   final String? photoUrl;
+  final bool isCertified;
 
   const CommunityPostMention({
     required this.userId,
     required this.username,
     this.photoUrl,
+    this.isCertified = false,
   });
 }
 
@@ -202,12 +204,19 @@ class CommunityPost {
             if (entry is! Map) return null;
             final row = Map<String, dynamic>.from(entry);
             final userId = (row['user_id'] ?? row['id'] ?? row['profile_id'] ?? '').toString();
-            final username = (row['username'] ?? row['user_profiles']?['username'] ?? '').toString();
+            final profile = row['user_profiles'] is Map
+                ? Map<String, dynamic>.from(row['user_profiles'] as Map)
+                : <String, dynamic>{};
+            final username = (row['username'] ?? profile['username'] ?? '').toString();
             if (userId.isEmpty) return null;
             return CommunityPostMention(
               userId: userId,
               username: username,
-              photoUrl: (row['photo_url'] ?? row['user_profiles']?['photo_url'])?.toString(),
+              photoUrl: (row['photo_url'] ?? profile['photo_url'])?.toString(),
+              isCertified: row['is_certified'] == true || row['is_certified'] == 1 ||
+                  row['is_verified'] == true || row['is_verified'] == 1 ||
+                  profile['is_certified'] == true || profile['is_certified'] == 1 ||
+                  profile['is_verified'] == true || profile['is_verified'] == 1,
             );
           }).whereType<CommunityPostMention>().toList()
         : <CommunityPostMention>[];
