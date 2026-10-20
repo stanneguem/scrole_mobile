@@ -38,8 +38,6 @@ class ProfileScreen extends GetView<ProfileController> {
                     _buildNameAndUsername(colorScheme),
                     const SizedBox(height: 12),
                     _buildFollowStats(colorScheme),
-                    const SizedBox(height: 8),
-                    _buildEngagementStats(colorScheme),
                     const SizedBox(height: 12),
                     _buildBio(colorScheme),
                     const SizedBox(height: 20),
@@ -310,7 +308,7 @@ class ProfileScreen extends GetView<ProfileController> {
 
   Widget _buildFollowStats(ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Obx(() => Row(
         children: [
           Expanded(
@@ -337,6 +335,20 @@ class ProfileScreen extends GetView<ProfileController> {
               () => Get.toNamed(AppPages.followLists, arguments: {'userId': controller.userId.value, 'initialTab': 2}),
             ),
           ),
+          Expanded(
+            child: _engagementStat(
+              controller.postsCount.value.toString(),
+              'profile_stat_posts'.tr,
+              colorScheme,
+            ),
+          ),
+          Expanded(
+            child: _engagementStat(
+              controller.reputation.value.toStringAsFixed(1),
+              'profile_stat_reputation'.tr,
+              colorScheme,
+            ),
+          ),
         ],
       )),
     );
@@ -360,7 +372,6 @@ class ProfileScreen extends GetView<ProfileController> {
 
   Widget _engagementStat(String value, String label, ColorScheme colors) {
     return SizedBox(
-      width: 88,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -371,6 +382,7 @@ class ProfileScreen extends GetView<ProfileController> {
           const SizedBox(height: 2),
           Text(label, textAlign: TextAlign.center, style: AppTextStyles.bodySmall.copyWith(
             color: colors.onSurfaceVariant,
+            fontSize: 10,
           )),
         ],
       ),
