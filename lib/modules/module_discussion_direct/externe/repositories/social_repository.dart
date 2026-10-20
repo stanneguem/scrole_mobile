@@ -253,6 +253,37 @@ class SocialRepository {
     return profiles;
   }
 
+  /// Retourne le QR actif depuis le cache local ou en crée un à synchroniser via l'outbox.
+  Future<Map<String, dynamic>> getOrGenerateUserQrCode() async {
+    final userId = currentUserId;
+    if (userId == null || userId.isEmpty) {
+      throw StateError('Utilisateur non connecté');
+    }
+
+    final cached = await _dao.getActiveUserQrCode(userId);
+    if (cached != null && (cached['id'] ?? '').toString().isNotEmpty) {
+      debugPrint('[FOLLOW] QR active local cache user_id=$userId id=${cached['id']}');
+      return Map<String, dynamic>.from(cached);
+    }
+
+    final id = generateLocalUuid();
+    final qr = <String, dynamic>{
+      'id': id,
+      'user_id': userId,
+      'uses_remaining': 3,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'sync_status': 'pending_push',
+    };
+    await _dao.saveUserQrCodes([qr]);
+    await _dao.enqueueOutbox(
+      userId: userId,
+      operation: 'generate_user_qr_code',
+      payload: {'id': id},
+    );
+    debugPrint('[FOLLOW] queued generate_user_qr_code params={p_id: $id}');
+    return qr;
+  }
+
   /// Scanner un QR personnel : une seule action crée la relation mutuelle.
   Future<Map<String, dynamic>?> scanQrCode(String qrId, [String? mode]) async {
     final userId = currentUserId;
