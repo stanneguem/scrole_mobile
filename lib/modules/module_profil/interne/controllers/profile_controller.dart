@@ -86,9 +86,9 @@ class ProfileController extends GetxController {
     _interestService = Get.find<InterestService>();
     _storageRepository = StorageRepository();
     
-    _applyProfileOrDefaults(_appController.profile.value);
+    unawaited(_applyProfileOrDefaults(_appController.profile.value));
     _profileWorker = ever(_appController.profile, (data) {
-      _applyProfileOrDefaults(data);
+      unawaited(_applyProfileOrDefaults(data));
       unawaited(_loadFollowStats());
       unawaited(_loadProfileTab(selectedTab.value, forceRefresh: true));
     });
@@ -181,18 +181,18 @@ class ProfileController extends GetxController {
     }
   }
 
-  void _applyProfileOrDefaults(Map<String, dynamic>? data) {
+  Future<void> _applyProfileOrDefaults(Map<String, dynamic>? data) async {
     if (data == null) {
       _setDefaultValues();
       return;
     }
-    _updateUserData(data);
+    await _updateUserData(data);
   }
 
   /// Met à jour les données utilisateur.
   /// Gère à la fois un payload plat (ancien format) et le nouveau
   /// payload backend imbriqué `{ privacy: {...}, profile: {...} }`.
-  void _updateUserData(Map<String, dynamic> data) {
+  Future<void> _updateUserData(Map<String, dynamic> data) async {
     try {
       final Map<String, dynamic> profileData =
       (data['profile'] is Map) ? Map<String, dynamic>.from(data['profile'] as Map) : data;
