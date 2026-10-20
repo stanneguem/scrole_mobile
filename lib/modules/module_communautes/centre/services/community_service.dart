@@ -558,6 +558,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     int? ageMin,
     int? ageMax,
     bool clearAge = false,
+    bool clearAgeMin = false,
+    bool clearAgeMax = false,
     bool clearGender = false,
   }) {
     return _repo.updateCommunityManagementSettings(
@@ -574,6 +576,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       ageMin: ageMin,
       ageMax: ageMax,
       clearAge: clearAge,
+      clearAgeMin: clearAgeMin,
+      clearAgeMax: clearAgeMax,
       clearGender: clearGender,
     );
   }
