@@ -284,7 +284,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     if (result != null) {
       setState(() {
         _selectedMentions = result;
-        _selectedMentionIds = result.map((m) => (m['user_id'] ?? m['id'] ?? '').toString()).toList();
+        // Always send auth user UUIDs, never a nested profile row's primary key.
+        _selectedMentionIds = result
+            .map((m) => (m['user_id'] ?? m['userId'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList();
       });
     }
   }
