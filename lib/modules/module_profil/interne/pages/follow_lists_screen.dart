@@ -257,6 +257,9 @@ class _FollowListTabState extends State<_FollowListTab> {
                           final isFollowing = item['i_follow'] == true;
                           final label = _buttonLabel(item);
                           return ListTile(
+                            onTap: id.isEmpty || isCurrentUser
+                                ? null
+                                : () => Get.toNamed(AppPages.externalProfilePath(id)),
                             leading: CircleAvatar(
                               backgroundImage: photo != null && photo.isNotEmpty ? NetworkImage(photo) : null,
                               child: photo == null || photo.isEmpty
