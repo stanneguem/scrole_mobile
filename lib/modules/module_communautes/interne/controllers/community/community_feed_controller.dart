@@ -229,7 +229,7 @@ class CommunityFeedController extends GetxController {
       final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService(Get.find(), Get.find()));
       await service.createCommunityPost(
         communityId: communityId ?? '',
-        postId: tempId,
+        requestedPostId: tempId,
         content: content,
         imageFiles: imageFiles,
         audience: audience,
