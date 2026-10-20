@@ -906,7 +906,7 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
     try {
       final name = _nameController.text.trim();
       if (name.isEmpty) {
-        Get.snackbar('community_save_error'.tr, 'community_settings_name_label'.tr,
+        Get.snackbar('community_save_error'.tr, 'community_settings_name_required'.tr,
             snackPosition: SnackPosition.BOTTOM);
         return;
       }
@@ -1198,16 +1198,16 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.person),
-                    title: const Text('Photo de profil'),
+                    title: Text('community_settings_profile_photo'.tr),
                     trailing: ElevatedButton(
                       onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: true),
-                      child: const Text('Changer'),
+                      child: Text('community_settings_change_photo'.tr),
                     ),
                   ),
                   const Divider(),
                   ListTile(
                     leading: const Icon(Icons.image),
-                    title: const Text('Photo de couverture'),
+                    title: Text('community_settings_cover_photo'.tr),
                     trailing: ElevatedButton(
                       onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: false),
                       child: const Text('Changer'),
@@ -1608,8 +1608,8 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                         value: _visibility,
                         decoration: InputDecoration(labelText: 'community_settings_visibility_label'.tr),
                         items: const [
-                          DropdownMenuItem(value: 'public', child: Text('Publique')),
-                          DropdownMenuItem(value: 'prive', child: Text('Privée')),
+                          DropdownMenuItem(value: 'public', child: Text('community_settings_visibility_public'.tr)),
+                          DropdownMenuItem(value: 'prive', child: Text('community_settings_visibility_private'.tr)),
                         ],
                         onChanged: (val) => setState(() => _visibility = val ?? 'public'),
                       ),
