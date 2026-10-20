@@ -740,7 +740,7 @@ class CommunityRepository {
       return {'items': [], 'has_more': false};
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getCommunityReports: $e');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
@@ -882,7 +882,7 @@ class CommunityRepository {
       return {'items': [], 'has_more': false};
     } catch (e) {
       debugPrint('[CommunityRepository] Error in getCommunityUserReports: $e');
-      return {'items': [], 'has_more': false};
+      rethrow;
     }
   }
 
