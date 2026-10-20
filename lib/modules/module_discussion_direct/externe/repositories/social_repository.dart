@@ -21,7 +21,15 @@ class SocialRepository {
   String? get currentUserId => _client.auth.currentUser?.id;
 
   // Cache mémoire des relations : invalidé par les appels d'action et la reconnexion.
-  final Map<String, Map<String, dynamic>> _relationshipCache = <String, Map<String, dynamic>>{};
+  static final Map<String, Map<String, dynamic>> _relationshipCache = <String, Map<String, dynamic>>{};
+
+  static void invalidateRelationshipCache([String? userId]) {
+    if (userId == null) {
+      _relationshipCache.clear();
+    } else {
+      _relationshipCache.remove(userId);
+    }
+  }
 
   Future<Map<String, dynamic>> getRelationship(String targetUserId, {bool forceRefresh = false}) async {
     if (!forceRefresh && _relationshipCache.containsKey(targetUserId)) {
