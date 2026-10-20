@@ -300,7 +300,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
 
     final userName = (member['first_name'] != null && member['first_name'].toString().isNotEmpty)
         ? '${member['first_name']} ${member['last_name'] ?? ''}'.trim()
-        : (member['username']?.toString() ?? 'Membre');
+        : (member['username']?.toString() ?? 'excluded_members_unknown_user'.tr);
     final currentRole = member['role']?.toString() ?? 'member';
 
     Get.bottomSheet(
