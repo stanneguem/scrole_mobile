@@ -663,12 +663,34 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _sloganController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.communityName;
+    _loadCommunityInfo();
+  }
+
+  Future<void> _loadCommunityInfo() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final community = snapshot['community'] is Map
+          ? Map<String, dynamic>.from(snapshot['community'] as Map)
+          : <String, dynamic>{};
+      _nameController.text = community['name']?.toString() ?? widget.communityName;
+      _sloganController.text = community['slogan']?.toString() ?? '';
+      _descController.text = community['description']?.toString() ?? '';
+    } catch (e) {
+      debugPrint('[CommunityInfoSettingsScreen] Failed to load current values: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -682,16 +704,23 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
   Future<void> _save() async {
     setState(() => _isLoading = true);
     try {
+      final name = _nameController.text.trim();
+      if (name.isEmpty) {
+        Get.snackbar('community_save_error'.tr, 'community_settings_name_label'.tr,
+            snackPosition: SnackPosition.BOTTOM);
+        return;
+      }
       await _service.updateCommunityInfo(
         id: widget.communityId,
-        name: _nameController.text.trim(),
-        slogan: _sloganController.text.trim().isEmpty ? null : _sloganController.text.trim(),
+        name: name,
+        slogan: _sloganController.text.trim(),
         description: _descController.text.trim(),
       );
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       Get.back();
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      debugPrint('[CommunityInfoSettingsScreen] Save failed: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -701,7 +730,18 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('community_info_sub_desc'.tr)),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadCommunityInfo, child: Text('retry'.tr)),
+                  ]),
+                ))
+              : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -875,11 +915,15 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
       final path = 'communities/${widget.communityId}/${isProfile ? 'profile' : 'cover'}_${DateTime.now().millisecondsSinceEpoch}$ext';
       final url = await _storage.uploadFile(bucket: 'community-media', path: path, file: file);
 
-      final comm = await _service.getCommunityById(widget.communityId);
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final community = snapshot['community'] is Map
+          ? Map<String, dynamic>.from(snapshot['community'] as Map)
+          : <String, dynamic>{};
       await _service.updateCommunityInfo(
         id: widget.communityId,
-        name: comm?.name ?? '',
-        description: comm?.description ?? '',
+        name: community['name']?.toString() ?? '',
+        slogan: community['slogan']?.toString(),
+        description: community['description']?.toString() ?? '',
         photoProfile: isProfile ? url : _currentAvatarUrl,
         photoCover: !isProfile ? url : _currentCoverUrl,
       );
@@ -961,42 +1005,46 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   }
 
   Future<void> _loadRules() async {
-    setState(() {
-      _isLoading = true;
-      _loadError = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
-      final res = await _service.getCommunityAccessRules(widget.communityId);
-      _certificationRequired = res['certification_required'] == true;
-      _genderRestriction = res['gender_restriction']?.toString();
-      _ageMin = (res['age_min'] as num?)?.toInt();
-      _ageMax = (res['age_max'] as num?)?.toInt();
-      if (mounted) setState(() => _isLoading = false);
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final community = snapshot['community'] is Map
+          ? Map<String, dynamic>.from(snapshot['community'] as Map)
+          : <String, dynamic>{};
+      final access = snapshot['access_rules'] is Map
+          ? Map<String, dynamic>.from(snapshot['access_rules'] as Map)
+          : <String, dynamic>{};
+      final settings = snapshot['settings'] is Map
+          ? Map<String, dynamic>.from(snapshot['settings'] as Map)
+          : <String, dynamic>{};
+      _visibility = community['visibility']?.toString() ?? 'public';
+      _requireManualApproval = community['require_manual_approval'] == true;
+      _membersListVisible = settings['members_list_visible'] != false;
+      _certificationRequired = access['certification_required'] == true;
+      _genderRestriction = access['gender_restriction']?.toString();
+      _ageMin = (access['age_min'] as num?)?.toInt();
+      _ageMax = (access['age_max'] as num?)?.toInt();
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _loadError = e.toString();
-        });
-      }
+      debugPrint('[CommunityAccessDetailsScreen] Failed to load settings: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _save() async {
     setState(() => _isLoading = true);
     try {
-      await _service.updateCommunitySettings(
+      await _service.updateCommunityManagementSettings(
         communityId: widget.communityId,
         visibility: _visibility,
         requireManualApproval: _requireManualApproval,
-      );
-      await _service.updateCommunityMemberVisibility(widget.communityId, _membersListVisible);
-      await _service.updateCommunityAccessRules(
-        communityId: widget.communityId,
-        countriesEnabled: false,
-        allowedCountries: [],
-        citiesEnabled: false,
-        allowedCities: [],
+        membersListVisible: _membersListVisible,
         certificationRequired: _certificationRequired,
         genderRestriction: _genderRestriction,
         ageMin: _ageMin,
@@ -1005,7 +1053,9 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       Get.back();
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      debugPrint('[CommunityAccessDetailsScreen] Save failed: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1089,12 +1139,23 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
     _loadRules();
   }
 
+  String? _loadError;
+
   Future<void> _loadRules() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       _rules = await _service.getCommunityRules(widget.communityId);
-    } catch (_) {}
-    if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('[CommunityRulesScreen] Failed to load rules: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _showRuleDialog({Map<String, dynamic>? existingRule}) async {
@@ -1165,9 +1226,18 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
       appBar: AppBar(title: Text('community_access_sub_rules'.tr)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _rules.isEmpty
-              ? Center(child: Text('Aucune règle pour le moment', style: TextStyle(color: colorScheme.onSurfaceVariant)))
-              : ListView.builder(
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadRules, child: Text('retry'.tr)),
+                  ]),
+                ))
+              : _rules.isEmpty
+                  ? Center(child: Text('community_rules_empty'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant)))
+                  : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _rules.length,
                   itemBuilder: (context, index) {
@@ -1206,9 +1276,39 @@ class CommunityPostSettingsScreen extends StatefulWidget {
 
 class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScreen> {
   final CommunityService _service = Get.find<CommunityService>();
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _loadError;
   bool _postsRequireApproval = false;
-  String _postPermission = 'members';
+  String _postPermission = 'everyone';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPostSettings();
+  }
+
+  Future<void> _loadPostSettings() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
+      final settings = snapshot['settings'] is Map
+          ? Map<String, dynamic>.from(snapshot['settings'] as Map)
+          : <String, dynamic>{};
+      _postsRequireApproval = settings['posts_require_approval'] == true;
+      final permission = settings['post_permission']?.toString() ?? 'everyone';
+      _postPermission = const {'everyone', 'admins_and_moderators', 'nobody'}.contains(permission)
+          ? permission
+          : 'everyone';
+    } catch (e) {
+      debugPrint('[CommunityPostSettingsScreen] Failed to load settings: $e');
+      _loadError = _service.localizedCommunityError(e);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _save() async {
     setState(() => _isLoading = true);
@@ -1221,7 +1321,9 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       Get.back();
     } catch (e) {
-      Get.snackbar('community_save_error'.tr, e.toString(), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      debugPrint('[CommunityPostSettingsScreen] Save failed: $e');
+      Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1230,7 +1332,18 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('community_access_sub_posts'.tr)),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_loadError!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    OutlinedButton(onPressed: _loadPostSettings, child: Text('retry'.tr)),
+                  ]),
+                ))
+              : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -1245,11 +1358,10 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
               decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
               items: const [
                 DropdownMenuItem(value: 'everyone', child: Text('Tout le monde')),
-                DropdownMenuItem(value: 'members', child: Text('Membres')),
                 DropdownMenuItem(value: 'admins_and_moderators', child: Text('Admins et modérateurs')),
                 DropdownMenuItem(value: 'nobody', child: Text('Personne')),
               ],
-              onChanged: (val) => setState(() => _postPermission = val ?? 'members'),
+              onChanged: (val) => setState(() => _postPermission = val ?? 'everyone'),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
