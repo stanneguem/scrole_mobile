@@ -1520,7 +1520,18 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                             items: _countries,
                             selected: _allowedCountries,
                           );
-                          if (selected != null && mounted) setState(() => _allowedCountries = selected);
+                          if (selected != null && mounted) {
+                            setState(() {
+                              _allowedCountries = selected;
+                              if (_countriesEnabled) {
+                                _allowedCities.removeWhere((cityId) {
+                                  final city = _cities.where((item) => item['id']?.toString() == cityId).firstOrNull;
+                                  final countryId = city?['country_id']?.toString();
+                                  return countryId == null || !_allowedCountries.contains(countryId);
+                                });
+                              }
+                            });
+                          }
                         },
                       ),
                       SwitchListTile(
@@ -1537,7 +1548,9 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                         onTap: !_citiesEnabled ? null : () async {
                           final selected = await _chooseLocations(
                             title: 'community_settings_choose_cities'.tr,
-                            items: _cities,
+                            items: _countriesEnabled && _allowedCountries.isNotEmpty
+                                ? _cities.where((city) => _allowedCountries.contains(city['country_id']?.toString())).toList()
+                                : _cities,
                             selected: _allowedCities,
                           );
                           if (selected != null && mounted) setState(() => _allowedCities = selected);
