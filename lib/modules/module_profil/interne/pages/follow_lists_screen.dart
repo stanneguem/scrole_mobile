@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
+import '../../../module_discussion_direct/centre/services/follow_error_mapper.dart';
 
 class FollowListsScreen extends StatelessWidget {
   const FollowListsScreen({super.key});
@@ -159,7 +160,7 @@ class _FollowListTabState extends State<_FollowListTab> {
       await _load(reset: true);
     } catch (e, stack) {
       debugPrint('[FOLLOW] action user=$id exception=$e\\n$stack');
-      if (mounted) Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      if (mounted) Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
     }
   }
 
