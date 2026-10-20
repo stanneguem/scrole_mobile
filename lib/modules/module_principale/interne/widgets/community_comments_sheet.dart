@@ -31,7 +31,7 @@ class _MentionHighlightingController extends TextEditingController {
       if (match.start > lastEnd) {
         spans.add(TextSpan(
           text: text.substring(lastEnd, match.start),
-          style: baseStyle.copyWith(color: Colors.black),
+          style: baseStyle,
         ));
       }
       spans.add(TextSpan(
@@ -43,13 +43,13 @@ class _MentionHighlightingController extends TextEditingController {
     if (lastEnd < text.length) {
       spans.add(TextSpan(
         text: text.substring(lastEnd),
-        style: baseStyle.copyWith(color: Colors.black),
+        style: baseStyle,
       ));
     }
     if (spans.isEmpty) {
       spans.add(TextSpan(text: text, style: baseStyle.copyWith(color: Colors.black)));
     }
-    return TextSpan(style: baseStyle.copyWith(color: Colors.black), children: spans);
+    return TextSpan(style: baseStyle, children: spans);
   }
 }
 
@@ -492,19 +492,19 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       if (match.start > lastEnd) {
         spans.add(TextSpan(
           text: content.substring(lastEnd, match.start),
-          style: const TextStyle(fontSize: 13.5, color: Colors.black, height: 1.35),
+          style: TextStyle(fontSize: 13.5, color: colorScheme.onSurface, height: 1.35),
         ));
       }
       spans.add(TextSpan(
         text: match.group(0),
-        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.blue, height: 1.35),
+        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: colorScheme.primary, height: 1.35),
       ));
       lastEnd = match.end;
     }
     if (lastEnd < content.length) {
       spans.add(TextSpan(
         text: content.substring(lastEnd),
-        style: const TextStyle(fontSize: 13.5, color: Colors.black, height: 1.35),
+        style: TextStyle(fontSize: 13.5, color: colorScheme.onSurface, height: 1.35),
       ));
     }
     if (spans.isEmpty) {
@@ -709,7 +709,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                           controller: _commentController,
                           onChanged: _onCommentChanged,
                           focusNode: _commentFocusNode,
-                          style: const TextStyle(color: Colors.black, fontSize: 14.5, height: 1.35),
+                          style: TextStyle(color: colorScheme.onSurface, fontSize: 14.5, height: 1.35),
                           minLines: 1,
                           maxLines: 4,
                           textCapitalization: TextCapitalization.sentences,
