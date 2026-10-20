@@ -229,12 +229,14 @@ class ExternalProfileController extends GetxController {
           connectionRequestSent: false,
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
+          clearRequestId: relation['request_id'] == null,
+          clearRetryAt: relation['retry_at'] == null,
         );
         profile.value = updated;
         await _repository.updateCachedProfile(updated);
       } catch (e, stack) {
         debugPrint('[FOLLOW] cancel_follow_request exception=$e\\n$stack');
-        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+        Get.snackbar('error_title'.tr, FollowErrorMapper.keyFor(e).tr);
       } finally {
         isSendingRequest.value = false;
       }
@@ -263,6 +265,8 @@ class ExternalProfileController extends GetxController {
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
           retryAt: relation['retry_at'] == null ? null : DateTime.tryParse(relation['retry_at'].toString()),
+          clearRequestId: relation['request_id'] == null,
+          clearRetryAt: relation['retry_at'] == null,
         );
         profile.value = updated;
         isFollowing.value = updated.isFollowing;
