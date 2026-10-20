@@ -211,6 +211,35 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton(
+              onPressed: (_selectedScore == null || _isSaving || !_eventHasStarted)
+                  ? null
+                  : _submitRating,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                disabledForegroundColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: GoogleFonts.spaceGrotesk(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : Text(_myExistingRating != null ? 'Modifier ma note' : 'Valider ma note'),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -417,33 +446,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                     }),
                   ),
 
-                  const SizedBox(height: 36),
-
-                  // Bouton de validation
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (_selectedScore == null || _isSaving || !_eventHasStarted) ? null : _submitRating,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
-                        disabledForegroundColor: Colors.white70,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : Text(
-                              _myExistingRating != null ? 'Modifier ma note' : 'Valider ma note',
-                              style: GoogleFonts.spaceGrotesk(fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
