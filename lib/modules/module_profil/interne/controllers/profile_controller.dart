@@ -375,6 +375,8 @@ class ProfileController extends GetxController {
     await Future.wait([
       _appController.forceRefresh(),
       _loadUserInterests(),
+      _loadFollowStats(),
+      _loadEngagementStats(),
       _loadProfileTab(selectedTab.value, forceRefresh: true),
     ]);
     if (Get.isRegistered<ProfileController>()) {
