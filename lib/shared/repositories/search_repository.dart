@@ -24,7 +24,7 @@ class SearchRepository {
           displayName: fullName.isEmpty ? (json['pseudo'] ?? json['username'] ?? '').toString() : fullName,
           avatarUrl: json['photo_url']?.toString(),
           bio: json['bio']?.toString(),
-          isVerified: json['is_certified'] == true,
+          isVerified: json['is_certified'] == true || json['is_verified'] == true || json['is_certified'] == 1 || json['is_verified'] == 1,
           friendCount: (json['friends_count'] as num?)?.toInt() ?? (json['friend_count'] as num?)?.toInt(),
           followsMe: json['follows_me'] == true,
         );
