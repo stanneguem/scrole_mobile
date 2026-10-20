@@ -62,6 +62,9 @@ class ProfileController extends GetxController {
   final RxList<CommunityPost> userPosts = <CommunityPost>[].obs;
   final RxList<dynamic> userEvents = <dynamic>[].obs;
   final RxList<CommunityPost> savedPosts = <CommunityPost>[].obs;
+  final RxSet<int> loadingProfileTabs = <int>{}.obs;
+  final RxSet<int> loadedProfileTabs = <int>{}.obs;
+  final RxMap<int, String> profileTabErrors = <int, String>{}.obs;
 
   // ============================================
   // COVER & PROFILE IMAGE
@@ -87,61 +90,65 @@ class ProfileController extends GetxController {
     _profileWorker = ever(_appController.profile, (data) {
       _applyProfileOrDefaults(data);
       unawaited(_loadFollowStats());
+      unawaited(_loadProfileTab(selectedTab.value, forceRefresh: true));
     });
     unawaited(_loadFollowStats());
     _subscribeToRelationshipChanges();
 
-    // Mock initial user posts & saved items
-    userPosts.value = [
-      CommunityPost(
-        id: 'my_post_1',
-        authorName: 'Moi',
-        authorId: 'me',
-        authorColor: Colors.purple,
-        authorRole: CommunityRole.admin,
-        timeAgo: '1 j',
-        content: 'Superbe journée partagée avec la communauté ! 🚀',
-        likeCount: 45,
-        commentCount: 4,
-        shareCount: 2,
-        media: [
-          PostMedia(type: 'photo', url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop'),
-        ],
-      ),
-      CommunityPost(
-        id: 'my_post_2',
-        authorName: 'Moi',
-        authorId: 'me',
-        authorColor: Colors.purple,
-        authorRole: CommunityRole.admin,
-        timeAgo: '3 j',
-        content: 'Nouveau projet en cours de développement avec Flutter et Supabase. Restez connectés ! 💻',
-        likeCount: 92,
-        commentCount: 12,
-        shareCount: 7,
-        media: [
-          PostMedia(type: 'photo', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop'),
-        ],
-      ),
-    ];
+    unawaited(_loadProfileTab(0));
 
-    savedPosts.value = [
-      CommunityPost(
-        id: 'saved_1',
-        authorName: 'Sarah Koné',
-        authorId: 'u_2',
-        authorColor: Colors.blue,
-        authorRole: CommunityRole.member,
-        timeAgo: '5 j',
-        content: 'Atelier design system et composants réutilisables.',
-        likeCount: 150,
-        commentCount: 19,
-        media: [
-          PostMedia(type: 'photo', url: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop'),
-        ],
-      ),
-    ];
   }
+
+
+  Future<void> selectProfileTab(int index) async {
+    selectedTab.value = index;
+    await _loadProfileTab(index);
+  }
+
+  Future<void> _loadProfileTab(int index, {bool forceRefresh = false}) async {
+    final uid = userId.value;
+    if (uid.isEmpty || loadingProfileTabs.contains(index)) return;
+    if (!forceRefresh && loadedProfileTabs.contains(index)) return;
+
+    loadingProfileTabs.add(index);
+    profileTabErrors.remove(index);
+    try {
+      final tab = switch (index) {
+        0 => 'posts',
+        1 => 'events',
+        2 => 'liked',
+        _ => throw ArgumentError.value(index, 'index', 'Onglet de profil invalide'),
+      };
+      final response = await Supabase.instance.client.rpc(
+        'get_external_profile_tab',
+        params: {
+          'p_user_id': uid,
+          'p_tab': tab,
+          'p_limit': 24,
+          'p_offset': 0,
+        },
+      );
+      final rows = response is List
+          ? response.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
+          : <Map<String, dynamic>>[];
+
+      if (index == 0) {
+        userPosts.assignAll(rows.map(CommunityPost.fromMap));
+      } else if (index == 2) {
+        savedPosts.assignAll(rows.map(CommunityPost.fromMap));
+      } else {
+        userEvents.assignAll(rows);
+      }
+      loadedProfileTabs.add(index);
+    } catch (e, stack) {
+      debugPrint('[ProfileController] _loadProfileTab($index) failed: $e\\n$stack');
+      profileTabErrors[index] = 'Impossible de charger ce contenu. Réessaie.';
+    } finally {
+      loadingProfileTabs.remove(index);
+    }
+  }
+
+  Future<void> refreshProfileTab(int index) => _loadProfileTab(index, forceRefresh: true);
 
   void _subscribeToRelationshipChanges() {
     final uid = Supabase.instance.client.auth.currentUser?.id;
