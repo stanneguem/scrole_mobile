@@ -315,14 +315,14 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Gérer $userName',
+              'community_member_manage_title'.trParams({'name': userName}),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.person_outline_rounded),
-              title: const Text('Voir le profil'),
+              title: Text('community_member_view_profile'.tr),
               onTap: () {
                 Get.back();
                 Get.toNamed(AppPages.externalProfilePath(userId));
@@ -332,7 +332,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               if (currentRole != 'admin')
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings_outlined, color: Colors.purple),
-                  title: const Text('Promouvoir Administrateur'),
+                  title: Text('community_member_promote_admin'.tr),
                   onTap: () {
                     Get.back();
                     _changeRole(userId, userName, 'admin');
@@ -341,7 +341,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               if (currentRole != 'moderator')
                 ListTile(
                   leading: const Icon(Icons.security_rounded, color: Colors.orange),
-                  title: const Text('Promouvoir Modérateur'),
+                  title: Text('community_member_promote_moderator'.tr),
                   onTap: () {
                     Get.back();
                     _changeRole(userId, userName, 'moderator');
@@ -350,7 +350,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               if (currentRole != 'member')
                 ListTile(
                   leading: const Icon(Icons.person_rounded, color: Colors.blue),
-                  title: const Text('Rétrograder en Membre'),
+                  title: Text('community_member_demote'.tr),
                   onTap: () {
                     Get.back();
                     _changeRole(userId, userName, 'member');
@@ -382,7 +382,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
         backgroundColor: colorScheme.surface,
         elevation: 0,
         title: Text(
-          'Membres de la communauté',
+          'community_members_title'.tr,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
         ),
       ),
@@ -460,7 +460,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                             final lastName = member['last_name']?.toString() ?? '';
                             final fullName = '$firstName $lastName'.trim().isNotEmpty
                                 ? '$firstName $lastName'.trim()
-                                : (member['username']?.toString() ?? 'Utilisateur');
+                                : (member['username']?.toString() ?? 'excluded_members_unknown_user'.tr);
                             final username = member['username']?.toString() ?? '';
                             final avatar = member['photo_url']?.toString();
                             final isCertified = member['is_certified'] == true || member['is_certified'] == 1 || member['is_certified'] == 'true';
