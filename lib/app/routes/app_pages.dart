@@ -8,6 +8,7 @@ class AppPages {
   static const editmyprofil = "/editmyprofil";
   static const myContacts = "/user/contacts";
   static const followLists = "/user/follow-lists";
+  static const followRequests = "/user/follow-requests";
   static const userQrCode = "/user/qr";
   static const setting = "/setting";
   static const notification = "/notification";
