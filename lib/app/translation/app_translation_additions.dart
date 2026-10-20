@@ -5,6 +5,10 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'profile_stat_posts': 'Publications',
+      'profile_stat_likes_received': 'Likes reçus',
+      'profile_stat_reputation': 'Réputation',
+      'profile_stat_organized': 'Événements organisés',
       'search_hint': 'Rechercher des personnes, événements, communautés…',
       'filter_all': 'Tout',
       'filter_users': 'Personnes',
