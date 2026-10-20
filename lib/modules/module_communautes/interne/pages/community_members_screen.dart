@@ -409,7 +409,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                       controller: _searchController,
                       onChanged: _onSearchChanged,
                       decoration: InputDecoration(
-                        hintText: 'Rechercher un membre...',
+                        hintText: 'community_member_search_hint'.tr,
                         hintStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                         border: InputBorder.none,
                       ),
@@ -587,7 +587,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               ElevatedButton.icon(
                 onPressed: () => _loadMembers(refresh: true),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Réessayer'),
+                label: Text('excluded_members_retry'.tr),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
