@@ -1525,7 +1525,8 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                               _allowedCountries = selected;
                               if (_countriesEnabled) {
                                 _allowedCities.removeWhere((cityId) {
-                                  final city = _cities.where((item) => item['id']?.toString() == cityId).firstOrNull;
+                                  final matches = _cities.where((item) => item['id']?.toString() == cityId);
+                                  final city = matches.isEmpty ? null : matches.first;
                                   final countryId = city?['country_id']?.toString();
                                   return countryId == null || !_allowedCountries.contains(countryId);
                                 });
