@@ -122,12 +122,17 @@ class HomeFeedRepository {
   }
 
   Future<void> recordPostViews(List<String> postIds) async {
-    if (postIds.isEmpty) return;
+    final uniqueIds = postIds.where((id) => id.isNotEmpty).toSet().toList();
+    if (uniqueIds.isEmpty) return;
     try {
-      debugPrint('[POST_ACTIONS] Calling RPC record_post_views with ${postIds.length} IDs');
-      await client.rpc('record_post_views', params: {'p_post_ids': postIds});
+      debugPrint('[POST_ACTIONS] Calling RPC record_post_views with ${uniqueIds.length} IDs');
+      await client.rpc('record_post_views', params: {'p_post_ids': uniqueIds});
+    } on PostgrestException catch (e) {
+      debugPrint('[POST_ACTIONS] record_post_views failed: code=${e.code}, message=${e.message}');
+      rethrow;
     } catch (e, st) {
-      debugPrint('[POST_ACTIONS] Error in record_post_views (ignored): $e\n$st');
+      debugPrint('[POST_ACTIONS] Error in record_post_views: $e\n$st');
+      rethrow;
     }
   }
 
