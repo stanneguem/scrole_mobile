@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/text_styles.dart';
-import '../../modules/module_discussion_direct/centre/persistence/social_local_dao.dart';
 import '../../modules/module_discussion_direct/externe/repositories/social_repository.dart';
 
 class RelationButtonWidget extends StatefulWidget {
@@ -28,8 +28,15 @@ class RelationButtonWidget extends StatefulWidget {
 
 class _RelationButtonWidgetState extends State<RelationButtonWidget> {
   final SocialRepository _socialRepo = SocialRepository();
-  RelationState _state = RelationState.none;
+  Map<String, dynamic> _relationship = const {};
   bool _isLoading = true;
+
+  String get _state => (_relationship['state'] ?? 'none').toString();
+  String? get _requestId => (_relationship['request_id'] ?? widget.requestId)?.toString();
+  DateTime? get _retryAt {
+    final value = _relationship['retry_at'];
+    return value == null ? widget.nextRetryAt : DateTime.tryParse(value.toString());
+  }
 
   @override
   void initState() {
@@ -40,206 +47,154 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
   @override
   void didUpdateWidget(covariant RelationButtonWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.targetUserId != widget.targetUserId) {
-      _loadState();
-    }
+    if (oldWidget.targetUserId != widget.targetUserId) _loadState();
   }
 
   Future<void> _loadState() async {
-    setState(() => _isLoading = true);
+    if (mounted) setState(() => _isLoading = true);
     try {
-      final state = await _socialRepo.getRelationState(widget.targetUserId);
-      if (mounted) {
-        setState(() {
-          _state = state;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
+      final relation = await _socialRepo.getRelationship(widget.targetUserId, forceRefresh: true);
+      if (mounted) setState(() { _relationship = relation; _isLoading = false; });
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] get_relationship button user=${widget.targetUserId} exception=$e\\n$stack');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _sendRequest() async {
-    setState(() => _isLoading = true);
+  Future<void> _run(Future<dynamic> Function() action) async {
+    if (mounted) setState(() => _isLoading = true);
     try {
-      await _socialRepo.sendFriendRequest(widget.targetUserId);
+      final result = await action();
+      if (result is Map) {
+        final nested = result['relationship'];
+        _relationship = Map<String, dynamic>.from(nested is Map ? nested : result);
+      }
       await _loadState();
       widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] relation button action user=${widget.targetUserId} exception=$e\\n$stack');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+      }
     }
   }
 
-  Future<void> _respond(bool accept) async {
-    final reqId = widget.requestId;
-    if (reqId == null || reqId.isEmpty) return;
-
-    setState(() => _isLoading = true);
-    try {
-      await _socialRepo.respondFriendRequest(reqId, accept, senderId: widget.senderId ?? widget.targetUserId);
-      await _loadState();
-      widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
+  Future<void> _showMenu() async {
+    final action = await Get.bottomSheet<String>(
+      _RelationshipButtonMenu(isFriend: _state == 'friends'),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+    );
+    if (action == 'unfollow') {
+      await _run(() => _socialRepo.unfollowUser(widget.targetUserId));
+    } else if (action == 'remove_friend') {
+      await _run(() => _socialRepo.removeFriend(widget.targetUserId));
     }
   }
 
-  Future<void> _cancel() async {
-    final reqId = widget.requestId;
-    if (reqId == null || reqId.isEmpty) return;
-
-    setState(() => _isLoading = true);
-    try {
-      await _socialRepo.cancelFriendRequest(reqId);
-      await _loadState();
-      widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _removeFriend() async {
-    setState(() => _isLoading = true);
-    try {
-      await _socialRepo.removeFriendship(widget.targetUserId);
-      await _loadState();
-      widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _unblock() async {
-    setState(() => _isLoading = true);
-    try {
-      await _socialRepo.unblockUser(widget.targetUserId);
-      await _loadState();
-      widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _block() async {
-    setState(() => _isLoading = true);
-    try {
-      await _socialRepo.blockUser(widget.targetUserId);
-      await _loadState();
-      widget.onRelationChanged?.call();
-    } catch (e) {
-      Get.snackbar('Erreur', e.toString());
-      setState(() => _isLoading = false);
-    }
+  Future<void> _respond(bool accepted) async {
+    final id = _requestId;
+    if (id == null || id.isEmpty) return;
+    await _run(() => _socialRepo.respondFollowRequest(id, accepted, targetUserId: widget.targetUserId));
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      return const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_state == 'self' || _state == 'blocked') return const SizedBox.shrink();
+
+    final retryAt = _retryAt;
+    if (retryAt != null && retryAt.isAfter(DateTime.now())) {
+      final date = DateFormat('dd/MM/yyyy HH:mm').format(retryAt.toLocal());
+      return Tooltip(
+        message: 'follow_retry_at'.trParams({'date': date}),
+        child: OutlinedButton(
+          onPressed: null,
+          child: Text('follow_state_requested'.tr, style: AppTextStyles.bodySmall),
+        ),
       );
     }
 
-    switch (_state) {
-      case RelationState.self:
-        return const SizedBox.shrink();
-
-      case RelationState.friend:
-        return PopupMenuButton<String>(
-          onSelected: (val) {
-            if (val == 'remove') _removeFriend();
-            if (val == 'block') _block();
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'remove', child: Text('Retirer de mes amis')),
-            const PopupMenuItem(value: 'block', child: Text('Bloquer', style: TextStyle(color: AppColors.error))),
-          ],
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_rounded, color: Colors.green, size: 18),
-                const SizedBox(width: 6),
-                Text('Amis', style: AppTextStyles.bodySmall.copyWith(color: Colors.green, fontWeight: FontWeight.bold)),
-              ],
-            ),
+    if (_state == 'request_received') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'refuse'.tr,
+            onPressed: () => _respond(false),
+            icon: const Icon(Icons.close_rounded, color: AppColors.error),
           ),
-        );
-
-      case RelationState.requestSent:
-        return OutlinedButton.icon(
-          onPressed: _cancel,
-          icon: const Icon(Icons.close_rounded, size: 16),
-          label: const Text('Demande envoyée'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            textStyle: AppTextStyles.bodySmall,
+          IconButton(
+            tooltip: 'accept'.tr,
+            onPressed: () => _respond(true),
+            icon: const Icon(Icons.check_rounded, color: AppColors.success),
           ),
-        );
+        ],
+      );
+    }
 
-      case RelationState.requestReceived:
-        return Row(
+    if (_state == 'following' || _state == 'friends') {
+      return TextButton(
+        onPressed: _showMenu,
+        child: Text(
+          _state == 'friends' ? 'follow_state_friends'.tr : 'follow_state_following'.tr,
+          style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w700),
+        ),
+      );
+    }
+
+    final requested = _state == 'requested';
+    final followBack = _state == 'follow_back';
+    return ElevatedButton.icon(
+      onPressed: requested
+          ? () => _run(() => _socialRepo.cancelFollowRequest(widget.targetUserId))
+          : () => _run(() => _socialRepo.followUser(widget.targetUserId)),
+      icon: Icon(requested ? Icons.hourglass_top_rounded : Icons.person_add_alt_1_rounded, size: 16),
+      label: Text(
+        requested
+            ? 'follow_state_requested'.tr
+            : followBack
+                ? 'follow_state_follow_back'.tr
+                : 'follow_state_follow'.tr,
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: requested ? Theme.of(context).colorScheme.surfaceContainerHigh : AppColors.primary,
+        foregroundColor: requested ? Theme.of(context).colorScheme.onSurface : Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        textStyle: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class _RelationshipButtonMenu extends StatelessWidget {
+  const _RelationshipButtonMenu({required this.isFriend});
+  final bool isFriend;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget item(String value, String label, IconData icon) => ListTile(
+      leading: Icon(icon, color: scheme.error),
+      title: Text(label),
+      onTap: () => Navigator.of(context).pop(value),
+    );
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: scheme.surface, borderRadius: BorderRadius.circular(18)),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.close_rounded, color: AppColors.error),
-              onPressed: () => _respond(false),
-            ),
-            ElevatedButton(
-              onPressed: () => _respond(true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('Accepter'),
-            ),
+            item('unfollow', 'follow_unfollow_action'.tr, Icons.person_remove_alt_1_rounded),
+            if (isFriend) item('remove_friend', 'follow_remove_friend_action'.tr, Icons.person_off_outlined),
+            ListTile(leading: const Icon(Icons.close_rounded), title: Text('cancel'.tr), onTap: () => Navigator.of(context).pop()),
           ],
-        );
-
-      case RelationState.retryLater:
-        final dateStr = widget.nextRetryAt != null ? DateFormat('dd/MM').format(widget.nextRetryAt!) : '';
-        return Tooltip(
-          message: 'Disponible le $dateStr',
-          child: ElevatedButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.schedule_rounded, size: 16),
-            label: Text('Demande envoyée ($dateStr)'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              textStyle: AppTextStyles.bodySmall,
-            ),
-          ),
-        );
-
-      case RelationState.blockedByMe:
-        return OutlinedButton(
-          onPressed: _unblock,
-          style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
-          child: const Text('Débloquer'),
-        );
-
-      case RelationState.none:
-      default:
-        return ElevatedButton.icon(
-          onPressed: _sendRequest,
-          icon: const Icon(Icons.person_add_rounded, size: 16),
-          label: const Text('Ajouter'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            textStyle: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
-          ),
-        );
-    }
+        ),
+      ),
+    );
   }
 }
