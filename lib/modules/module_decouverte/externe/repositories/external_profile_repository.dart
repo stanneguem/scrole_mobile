@@ -242,6 +242,29 @@ class ExternalProfileRepository {
     return [];
   }
 
+
+  /// Loads one of the sections of an external profile through the server RPC.
+  Future<List<Map<String, dynamic>>> fetchProfileTab({
+    required String userId,
+    required String tab,
+    int limit = 24,
+    int offset = 0,
+  }) async {
+    final response = await _client.rpc('get_external_profile_tab', params: {
+      'p_user_id': userId,
+      'p_tab': tab,
+      'p_limit': limit,
+      'p_offset': offset,
+    });
+    if (response is List) {
+      return response
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+    }
+    return const <Map<String, dynamic>>[];
+  }
+
   Future<Map<String, dynamic>> getRelationship(String userId, {bool forceRefresh = false}) =>
       _socialRepo.getRelationship(userId, forceRefresh: forceRefresh);
 
