@@ -1707,6 +1707,18 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
       _ageMaxController.text = _ageMax?.toString() ?? '';
       _countries = await _service.getAvailableCountries();
       _cities = await _service.getAvailableCities();
+      final activeCountryIds = _countries.map((item) => item['id']?.toString() ?? '').toSet();
+      final activeCityIds = _cities.map((item) => item['id']?.toString() ?? '').toSet();
+      _allowedCountries.removeWhere((id) => !activeCountryIds.contains(id));
+      _allowedCities.removeWhere((id) => !activeCityIds.contains(id));
+      if (_countriesEnabled && _allowedCountries.isNotEmpty) {
+        _allowedCities.removeWhere((cityId) {
+          final matches = _cities.where((item) => item['id']?.toString() == cityId);
+          final city = matches.isEmpty ? null : matches.first;
+          final countryId = city?['country_id']?.toString();
+          return countryId == null || !_allowedCountries.contains(countryId);
+        });
+      }
     } catch (e) {
       debugPrint('[CommunityAccessDetailsScreen] Failed to load settings: $e');
       _loadError = _service.localizedCommunityError(e);
