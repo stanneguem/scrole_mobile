@@ -448,8 +448,8 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                     _SettingsMenuTile(
                       icon: Icons.flag_outlined,
                       iconColor: Colors.amber.shade800,
-                      title: 'Signaler cette communauté',
-                      subtitle: 'Signaler un problème',
+                      title: 'community_report_title'.tr,
+                      subtitle: 'community_report_community_subtitle'.tr,
                       onTap: () => _reportCommunity(),
                     ),
                   ],
@@ -462,7 +462,7 @@ class _CommunitySettingsScreenState extends State<CommunitySettingsScreen> {
                     onPressed: _showLeaveOptions,
                     icon: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent, size: 20),
                     label: const Text(
-                      'Quitter la communauté',
+                      'community_leave_only_action'.tr,
                       style: TextStyle(color: Colors.redAccent, fontSize: 15, fontWeight: FontWeight.bold),
                     ),
                   ),
