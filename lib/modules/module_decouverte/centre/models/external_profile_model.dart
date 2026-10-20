@@ -31,6 +31,11 @@ class ExternalProfileModel {
   final String? requestId;
   final DateTime? retryAt;
   final double rating;
+  final int postsCount;
+  final int totalLikesReceived;
+  final int totalDislikesReceived;
+  final int eventsOrganizedCount;
+  final int interactionsCount;
   final List<Interest> interests;
   final List<Map<String, dynamic>> activities;
 
@@ -65,6 +70,11 @@ class ExternalProfileModel {
     this.requestId,
     this.retryAt,
     this.rating = 0.0,
+    this.postsCount = 0,
+    this.totalLikesReceived = 0,
+    this.totalDislikesReceived = 0,
+    this.eventsOrganizedCount = 0,
+    this.interactionsCount = 0,
     this.interests = const <Interest>[],
     this.activities = const <Map<String, dynamic>>[],
   });
@@ -97,6 +107,11 @@ class ExternalProfileModel {
     bool clearRetryAt = false,
     bool? canMessage,
     double? rating,
+    int? postsCount,
+    int? totalLikesReceived,
+    int? totalDislikesReceived,
+    int? eventsOrganizedCount,
+    int? interactionsCount,
     List<Map<String, dynamic>>? activities,
   }) {
     return ExternalProfileModel(
@@ -130,6 +145,11 @@ class ExternalProfileModel {
       requestId: clearRequestId ? null : (requestId ?? this.requestId),
       retryAt: clearRetryAt ? null : (retryAt ?? this.retryAt),
       rating: rating ?? this.rating,
+      postsCount: postsCount ?? this.postsCount,
+      totalLikesReceived: totalLikesReceived ?? this.totalLikesReceived,
+      totalDislikesReceived: totalDislikesReceived ?? this.totalDislikesReceived,
+      eventsOrganizedCount: eventsOrganizedCount ?? this.eventsOrganizedCount,
+      interactionsCount: interactionsCount ?? this.interactionsCount,
       interests: interests,
       activities: activities ?? this.activities,
     );
@@ -182,7 +202,12 @@ class ExternalProfileModel {
       relationshipState: (json['relationship'] is Map ? (json['relationship']['state'] ?? 'none') : (json['state'] ?? 'none')).toString(),
       requestId: (json['relationship'] is Map ? json['relationship']['request_id'] : json['request_id'])?.toString(),
       retryAt: (json['relationship'] is Map ? json['relationship']['retry_at'] : json['retry_at']) == null ? null : DateTime.tryParse((json['relationship'] is Map ? json['relationship']['retry_at'] : json['retry_at']).toString()),
-      rating: (json['rating'] as num?)?.toDouble() ?? (json['profile_rating'] as num?)?.toDouble() ?? 0.0,
+      rating: (json['reputation'] as num?)?.toDouble() ?? (json['rating'] as num?)?.toDouble() ?? (json['profile_rating'] as num?)?.toDouble() ?? 0.0,
+      postsCount: (json['posts_count'] as num?)?.toInt() ?? 0,
+      totalLikesReceived: (json['total_likes_received'] as num?)?.toInt() ?? 0,
+      totalDislikesReceived: (json['total_dislikes_received'] as num?)?.toInt() ?? 0,
+      eventsOrganizedCount: (json['events_organized_count'] as num?)?.toInt() ?? 0,
+      interactionsCount: (json['interactions_count'] as num?)?.toInt() ?? 0,
       interests: interests,
       activities: activities,
     );
@@ -219,6 +244,12 @@ class ExternalProfileModel {
       'follows_me': followsMe,
       'relationship': {'state': relationshipState, 'request_id': requestId, 'retry_at': retryAt?.toIso8601String()},
       'rating': rating,
+      'reputation': rating,
+      'posts_count': postsCount,
+      'total_likes_received': totalLikesReceived,
+      'total_dislikes_received': totalDislikesReceived,
+      'events_organized_count': eventsOrganizedCount,
+      'interactions_count': interactionsCount,
     };
   }
 }
