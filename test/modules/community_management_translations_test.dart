@@ -126,6 +126,7 @@ void main() {
       'community_post_permission_nobody',
       'community_mod_reject_post_confirm_title',
       'community_mod_reject_post_confirm_message',
+      'community_slogan_default',
       'community_settings_slogan_label',
     ];
 
