@@ -1687,6 +1687,7 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
         content: TextField(
           controller: textController,
           maxLines: 3,
+          maxLength: 1000,
           decoration: InputDecoration(hintText: 'community_rule_hint'.tr),
         ),
         actions: [
@@ -1695,19 +1696,28 @@ class _CommunityRulesScreenState extends State<CommunityRulesScreen> {
         ],
       ),
     );
+    final ruleText = textController.text.trim();
+    textController.dispose();
 
-    if (confirmed == true && textController.text.trim().isNotEmpty) {
+    if (confirmed == true && ruleText.isEmpty) {
+      Get.snackbar('community_save_error'.tr, 'community_rule_required'.tr,
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    if (confirmed == true && ruleText.isNotEmpty) {
       try {
         await _service.setCommunityRule(
           p_id: ruleId,
           p_community_id: widget.communityId,
-          p_text: textController.text.trim(),
+          p_text: ruleText,
           p_order_index: orderIndex,
         );
         _rules = await _service.getCommunityRules(widget.communityId);
-        setState(() {});
+        if (mounted) setState(() {});
         Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
       } catch (e) {
+        debugPrint('[CommunityRulesScreen] Save rule failed: $e');
         Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e), snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
       }
     }
