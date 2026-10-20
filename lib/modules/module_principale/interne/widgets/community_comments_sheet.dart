@@ -242,7 +242,6 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       }
       _commentController.clear();
       _replyingTo = null;
-      _selectedMentions.clear();
     });
 
     try {
@@ -253,6 +252,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
         mentions: mentionIds,
         parentCommentId: targetReplyTo != null ? targetReplyTo['id']?.toString() : null,
       );
+      if (mounted) setState(() => _selectedMentions.clear());
       await _loadComments();
       if (targetReplyTo != null) {
         final parentId = targetReplyTo['id']?.toString();
