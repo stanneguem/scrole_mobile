@@ -16,6 +16,7 @@ class ExcludedMembersScreen extends StatefulWidget {
 class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  String? _loadError;
   List<ExcludedUser> _excluded = [];
 
   @override
@@ -25,23 +26,58 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
   }
 
   Future<void> _loadExclusions() async {
-    setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _loadError = null;
+      });
+    }
     try {
       final res = await _service.getCommunityExclusions(widget.communityId);
-      final rawItems = res['items'] is List ? res['items'] as List : [];
-      final parsed = rawItems.map((e) => ExcludedUser.fromJson(e is Map ? Map<String, dynamic>.from(e) : {})).toList();
+      final rawItems = res['items'];
+      if (rawItems is! List) {
+        throw const FormatException('Réponse invalide pour la liste des exclusions.');
+      }
+      final parsed = rawItems
+          .map((item) => ExcludedUser.fromJson(item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{}))
+          .where((user) => user.userId.isNotEmpty)
+          .toList();
       if (mounted) {
         setState(() {
           _excluded = parsed;
           _isLoading = false;
+          _loadError = null;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _loadError = e.toString().replaceFirst('Exception: ', '').tr;
+        });
+      }
     }
   }
 
   Future<void> _unexclude(String userId, String name) async {
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: Text('excluded_members_readmit_title'.tr),
+        content: Text('excluded_members_readmit_confirm'.tr),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text('cancel'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Get.back(result: true),
+            child: Text('excluded_members_readmit'.tr),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     try {
       await _service.unexcludeCommunityMember(widget.communityId, userId);
       Get.snackbar(
@@ -49,9 +85,15 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
         'excluded_members_readmit_msg'.trParams({'name': name}),
         snackPosition: SnackPosition.BOTTOM,
       );
-      _loadExclusions();
+      await _loadExclusions();
     } catch (e) {
-      Get.snackbar('error'.tr, e.toString().replaceFirst('Exception: ', '').tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        'community_save_error'.tr,
+        e.toString().replaceFirst('Exception: ', '').tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -68,11 +110,30 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _excluded.isEmpty
+          : _loadError != null
               ? Center(
-                  child: Text('excluded_members_empty'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.error_outline, size: 42, color: colorScheme.error),
+                        const SizedBox(height: 12),
+                        Text(_loadError!, textAlign: TextAlign.center, style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: _loadExclusions,
+                          child: Text('excluded_members_retry'.tr),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
-              : ListView.builder(
+              : _excluded.isEmpty
+                  ? Center(
+                      child: Text('excluded_members_empty'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16)),
+                    )
+                  : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _excluded.length,
                   itemBuilder: (context, index) {
