@@ -28,8 +28,10 @@ class CommunityFeedController extends GetxController {
     return null;
   }
 
+  // Track views per signed-in user, not just per post.
   static final Set<String> _globalSentViewIds = {};
   final List<String> _pendingViewIds = [];
+  final Map<String, String> _pendingViewKeys = {};
   Timer? _viewBatchTimer;
 
   CommunityFeedController([this.service, this.communityId]);
@@ -61,54 +63,54 @@ class CommunityFeedController extends GetxController {
 
   void queuePostView(CommunityPost post) {
     if (post.isPublishing) return;
-    final myId = currentUserId;
-    if (myId != null && post.authorId == myId) return;
-    if (_globalSentViewIds.contains(post.id)) return;
-    if (_pendingViewIds.contains(post.id)) return;
-
+    final userId = currentUserId;
+    if (userId == null || userId.isEmpty || post.authorId == userId) return;
+    final viewKey = '$userId:${post.id}';
+    if (_globalSentViewIds.contains(viewKey) || _pendingViewKeys.containsKey(post.id)) return;
     _pendingViewIds.add(post.id);
-    _globalSentViewIds.add(post.id);
-
+    _pendingViewKeys[post.id] = viewKey;
+    _globalSentViewIds.add(viewKey);
     if (_pendingViewIds.length >= 20) {
-      _flushViewBatch();
+      unawaited(_flushViewBatch());
     } else {
-      _viewBatchTimer ??= Timer(const Duration(seconds: 3), _flushViewBatch);
+      _viewBatchTimer ??= Timer(const Duration(seconds: 3), () => unawaited(_flushViewBatch()));
     }
   }
 
   Future<void> _flushViewBatch() async {
     _viewBatchTimer?.cancel();
     _viewBatchTimer = null;
-
     if (_pendingViewIds.isEmpty) return;
     final batch = List<String>.from(_pendingViewIds);
     _pendingViewIds.clear();
-
     try {
-      debugPrint('[POST_ACTIONS] [CommunityFeed] Sending view batch of ${batch.length} posts');
       await _feedRepo.recordPostViews(batch);
-
       final counters = await _feedRepo.getPostCounters(batch);
-      if (counters.isNotEmpty) {
-        for (final c in counters) {
-          final id = c['id']?.toString();
-          if (id == null) continue;
-          final idx = posts.indexWhere((p) => p.id == id);
-          if (idx != -1) {
-            final p = posts[idx];
-            posts[idx] = p.copyWith(
-              viewCount: (c['views_count'] as num?)?.toInt() ?? p.viewCount,
-              likeCount: (c['likes_count'] as num?)?.toInt() ?? p.likeCount,
-              dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? p.dislikeCount,
-              commentCount: (c['comments_count'] as num?)?.toInt() ?? p.commentCount,
-              shareCount: (c['shares_count'] as num?)?.toInt() ?? p.shareCount,
-            );
-          }
-        }
-        posts.refresh();
+      for (final counter in counters) {
+        final id = counter['id']?.toString();
+        if (id == null) continue;
+        final index = posts.indexWhere((post) => post.id == id);
+        if (index == -1) continue;
+        final post = posts[index];
+        posts[index] = post.copyWith(
+          viewCount: (counter['views_count'] as num?)?.toInt() ?? post.viewCount,
+          likeCount: (counter['likes_count'] as num?)?.toInt() ?? post.likeCount,
+          dislikeCount: (counter['dislikes_count'] as num?)?.toInt() ?? post.dislikeCount,
+          commentCount: (counter['comments_count'] as num?)?.toInt() ?? post.commentCount,
+          shareCount: (counter['shares_count'] as num?)?.toInt() ?? post.shareCount,
+        );
       }
+      if (counters.isNotEmpty) posts.refresh();
     } catch (e) {
+      for (final id in batch) {
+        final key = _pendingViewKeys[id];
+        if (key != null) _globalSentViewIds.remove(key);
+      }
       debugPrint('[POST_ACTIONS] [CommunityFeed] Error flushing view batch: $e');
+    } finally {
+      for (final id in batch) {
+        _pendingViewKeys.remove(id);
+      }
     }
   }
 
