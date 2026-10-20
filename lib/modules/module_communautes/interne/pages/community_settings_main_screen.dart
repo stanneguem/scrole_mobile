@@ -1080,6 +1080,9 @@ class CommunityJoinRequestsScreen extends StatefulWidget {
 class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = false;
+  String? _nextCursor;
   String? _loadError;
   List<dynamic> _joinRequests = [];
 
@@ -1089,24 +1092,51 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
     _loadRequests();
   }
 
-  Future<void> _loadRequests() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _loadError = null;
-      });
+  Future<void> _loadRequests({bool loadMore = false}) async {
+    if (loadMore) {
+      if (!_hasMore || _isLoadingMore || _isLoading) return;
+      if (mounted) setState(() => _isLoadingMore = true);
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _loadError = null;
+        });
+      }
+      _nextCursor = null;
     }
     try {
-      final reqsRes = await _service.getCommunityJoinRequests(widget.communityId);
+      final reqsRes = await _service.getCommunityJoinRequests(
+        widget.communityId,
+        limit: 20,
+        cursor: loadMore ? _nextCursor : null,
+      );
       if (reqsRes['items'] is! List) {
         throw const FormatException('Réponse invalide des demandes d’adhésion.');
       }
-      _joinRequests = reqsRes['items'] as List;
+      final items = reqsRes['items'] as List;
+      if (loadMore) {
+        _joinRequests.addAll(items);
+      } else {
+        _joinRequests = items;
+      }
+      _hasMore = reqsRes['has_more'] == true;
+      _nextCursor = reqsRes['next_cursor']?.toString();
     } catch (e) {
       debugPrint('[CommunityJoinRequestsScreen] Failed to load requests: $e');
-      _loadError = _service.localizedCommunityError(e);
+      if (loadMore) {
+        Get.snackbar('community_save_error'.tr, _service.localizedCommunityError(e),
+            snackPosition: SnackPosition.BOTTOM);
+      } else {
+        _loadError = _service.localizedCommunityError(e);
+      }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -1135,12 +1165,25 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
                     OutlinedButton(onPressed: _loadRequests, child: Text('retry'.tr)),
                   ]),
                 ))
-              : _joinRequests.isEmpty
+              : _joinRequests.isEmpty && !_hasMore
                   ? Center(child: Text('community_requests_empty'.tr))
                   : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _joinRequests.length,
+                  itemCount: _joinRequests.length + (_hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index >= _joinRequests.length) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: _isLoadingMore
+                              ? const CircularProgressIndicator()
+                              : TextButton(
+                                  onPressed: () => _loadRequests(loadMore: true),
+                                  child: Text('community_load_more'.tr),
+                                ),
+                        ),
+                      );
+                    }
                     final req = _joinRequests[index];
                     final user = req['user'] is Map ? req['user'] : {};
                     final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
