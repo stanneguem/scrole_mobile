@@ -73,7 +73,7 @@ class SocialOutboxProcessor extends GetxService {
             await _dao.removeFromOutbox(id);
           } else {
             await _dao.updateOutboxAttempts(id, attempts, msg);
-            if (attempts >= 3) {
+            if (attempts >= 3 && operation != 'generate_user_qr_code') {
               await _dao.removeFromOutbox(id);
             }
           }
@@ -81,7 +81,7 @@ class SocialOutboxProcessor extends GetxService {
           final errorMsg = e.toString();
           debugPrint('[SocialOutbox Error] Generic error on item $id ($operation): $errorMsg');
           await _dao.updateOutboxAttempts(id, attempts, errorMsg);
-          if (attempts >= 3) {
+          if (attempts >= 3 && operation != 'generate_user_qr_code') {
             await _dao.removeFromOutbox(id);
           }
         }
