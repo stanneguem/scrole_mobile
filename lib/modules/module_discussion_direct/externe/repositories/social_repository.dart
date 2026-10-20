@@ -386,7 +386,7 @@ class SocialRepository {
         final result = Map<String, dynamic>.from(res);
         final relation = result['relationship'];
         if (relation is Map && relation['user_id'] != null) {
-          _relationshipCache[relation['user_id'].toString()] = Map<String, dynamic>.from(relation);
+          _relationshipCache[_relationshipCacheKey(relation['user_id'].toString())] = Map<String, dynamic>.from(relation);
         }
         debugPrint('[FOLLOW] RPC scan_qr_code response=$result');
         return result;
