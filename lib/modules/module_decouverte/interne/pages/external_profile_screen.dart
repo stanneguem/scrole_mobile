@@ -7,6 +7,8 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/models/interest_model.dart';
 import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
+import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import '../controllers/external_profile_controller.dart';
 
@@ -706,7 +708,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
           final item = items[index];
           final imageUrl = _profilePostImage(item);
           return GestureDetector(
-            onTap: imageUrl == null || imageUrl.isEmpty ? null : () => _showProfilePostImage(context, imageUrl),
+            onTap: () => _openProfilePost(context, item),
             child: Stack(fit: StackFit.expand, children: [
               if (imageUrl != null && imageUrl.isNotEmpty)
                 AppCachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
@@ -721,8 +723,10 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                     size: 30,
                   ),
                 ),
+              if (_profilePostMediaCount(item) > 1)
+                const Positioned(right: 6, top: 6, child: Icon(Icons.collections_rounded, color: Colors.white, size: 18, shadows: [Shadow(blurRadius: 5)])),
               if ((item['video_url'] ?? '').toString().isNotEmpty)
-                const Positioned(right: 6, top: 6, child: Icon(Icons.play_arrow_rounded, color: Colors.white, shadows: [Shadow(blurRadius: 5)])),
+                const Positioned(left: 6, top: 6, child: Icon(Icons.play_arrow_rounded, color: Colors.white, shadows: [Shadow(blurRadius: 5)])),
               if (tabIndex == 2)
                 const Positioned(right: 6, bottom: 6, child: Icon(Icons.favorite_rounded, color: Colors.white, size: 17, shadows: [Shadow(blurRadius: 5)])),
             ]),
@@ -730,6 +734,28 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
         },
       );
     });
+  }
+
+  int _profilePostMediaCount(Map<String, dynamic> item) {
+    final media = item['media'];
+    if (media is List && media.isNotEmpty) return media.length;
+    final photos = item['photos'];
+    if (photos is List && photos.isNotEmpty) return photos.length;
+    return (item['photo'] ?? '').toString().isNotEmpty ? 1 : 0;
+  }
+
+  void _openProfilePost(BuildContext context, Map<String, dynamic> item) {
+    final normalized = Map<String, dynamic>.from(item);
+    if (normalized['media'] is! List || (normalized['media'] as List).isEmpty) {
+      final photos = normalized['photos'];
+      if (photos is List && photos.isNotEmpty) {
+        normalized['media'] = photos.map((value) => {'type': 'photo', 'url': value.toString()}).toList();
+      } else {
+        final photo = (normalized['photo'] ?? normalized['video_thumbnail_url'] ?? '').toString();
+        if (photo.isNotEmpty) normalized['media'] = [{'type': 'photo', 'url': photo}];
+      }
+    }
+    Get.to(() => ProfilePostDetailScreen(post: CommunityPost.fromMap(normalized)));
   }
 
   String? _profilePostImage(Map<String, dynamic> item) {
@@ -808,7 +834,12 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
           final date = start == null ? '' : '${start.day.toString().padLeft(2, '0')}/${start.month.toString().padLeft(2, '0')}/${start.year}';
           final location = [event['city'], event['country']].where((value) => value != null && value.toString().trim().isNotEmpty).join(', ');
           final role = (event['role'] ?? '').toString().replaceAll('_', ' ');
-          return Container(
+          return GestureDetector(
+            onTap: () {
+              final eventId = (event['id'] ?? '').toString();
+              if (eventId.isNotEmpty) Get.toNamed(AppPages.eventPreviewPath(eventId));
+            },
+            child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.55),
@@ -854,6 +885,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                 ]),
               ),
             ]),
+            ),
           );
         },
       );
