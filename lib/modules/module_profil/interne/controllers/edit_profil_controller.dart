@@ -245,12 +245,12 @@ class EditProfileController extends GetxController {
     isSaving.value = true;
     try {
       final Map<String, dynamic> payload = {
-        'username': usernameController.text.trim(),
         'last_name': nomController.text.trim(),
         'first_name': prenomController.text.trim(),
         'bio': bioController.text.trim(),
-        if (selectedGender.value != null) 'gender': selectedGender.value,
-        if (selectedBirthDate.value != null)
+        if (canChangeUsername.value) 'username': usernameController.text.trim(),
+        if (canChangeGender.value && selectedGender.value != null) 'gender': selectedGender.value,
+        if (canChangeBirthDate.value && selectedBirthDate.value != null)
           'birth_date': _formatDate(selectedBirthDate.value!),
       };
 
