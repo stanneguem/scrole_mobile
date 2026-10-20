@@ -1137,6 +1137,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "This list is reserved for this profile’s approved followers",
       'follow_error_direction': "Invalid direction",
       'follow_lists_title': "My connections",
+      'follow_requests_title': "Follow requests",
+      'follow_requests_received': "Received",
+      'follow_requests_sent': "Sent",
+      'follow_retry_at': "Try again on @date",
     },
     'es': {
       'select_participation_days': 'Seleccionar días',
@@ -1617,6 +1621,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Esta lista está reservada a los seguidores aprobados de este perfil",
       'follow_error_direction': "Dirección no válida",
       'follow_lists_title': "Mis relaciones",
+      'follow_requests_title': "Solicitudes de seguimiento",
+      'follow_requests_received': "Recibidas",
+      'follow_requests_sent': "Enviadas",
+      'follow_retry_at': "Volver a intentarlo el @date",
     },
     'de': {
       'status_online': 'Online',
@@ -2080,6 +2088,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Diese Liste ist nur für bestätigte Follower dieses Profils sichtbar",
       'follow_error_direction': "Ungültige Richtung",
       'follow_lists_title': "Meine Kontakte",
+      'follow_requests_title': "Folgeanfragen",
+      'follow_requests_received': "Erhalten",
+      'follow_requests_sent': "Gesendet",
+      'follow_retry_at': "Erneut versuchen am @date",
     },
     'it': {
       'status_online': 'In linea',
@@ -2543,6 +2555,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Elenco riservato ai follower approvati di questo profilo",
       'follow_error_direction': "Direzione non valida",
       'follow_lists_title': "Le mie relazioni",
+      'follow_requests_title': "Richieste di follow",
+      'follow_requests_received': "Ricevute",
+      'follow_requests_sent': "Inviate",
+      'follow_retry_at': "Riprova il @date",
     },
     'pt': {
       'status_online': 'Online',
@@ -3006,6 +3022,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Esta lista é reservada aos seguidores aprovados deste perfil",
       'follow_error_direction': "Direção inválida",
       'follow_lists_title': "As minhas relações",
+      'follow_requests_title': "Pedidos para seguir",
+      'follow_requests_received': "Recebidos",
+      'follow_requests_sent': "Enviados",
+      'follow_retry_at': "Tentar novamente em @date",
     },
     'zh': {
       'status_online': '在线',
@@ -3469,6 +3489,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "此列表仅对该资料获准的关注者开放",
       'follow_error_direction': "方向无效",
       'follow_lists_title': "我的关系",
+      'follow_requests_title': "关注请求",
+      'follow_requests_received': "收到的",
+      'follow_requests_sent': "已发送",
+      'follow_retry_at': "请于 @date 重试",
     },
     'ja': {
       'status_online': 'オンライン',
@@ -3931,6 +3955,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "このリストはプロフィールの承認済みフォロワーのみ表示できます",
       'follow_error_direction': "無効な方向です",
       'follow_lists_title': "つながり",
+      'follow_requests_title': "フォローリクエスト",
+      'follow_requests_received': "受信",
+      'follow_requests_sent': "送信",
+      'follow_retry_at': "@date に再試行",
     },
     'ru': {
       'status_online': 'В сети',
@@ -4388,6 +4416,10 @@ class AppTranslationAdditions {
       'follow_error_private_list': "Список доступен только одобренным подписчикам профиля",
       'follow_error_direction': "Неверное направление",
       'follow_lists_title': "Мои связи",
+      'follow_requests_title': "Запросы на подписку",
+      'follow_requests_received': "Входящие",
+      'follow_requests_sent': "Отправленные",
+      'follow_retry_at': "Повторить @date",
     },
   };
 
