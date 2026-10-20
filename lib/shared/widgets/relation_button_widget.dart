@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/text_styles.dart';
@@ -32,6 +33,7 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
   Map<String, dynamic> _relationship = const {};
   bool _isLoading = true;
   bool _isSaving = false;
+  RealtimeChannel? _relationshipChannel;
 
   String get _state => (_relationship['state'] ?? 'none').toString();
   String? get _requestId => (_relationship['request_id'] ?? widget.requestId)?.toString();
@@ -44,12 +46,43 @@ class _RelationButtonWidgetState extends State<RelationButtonWidget> {
   void initState() {
     super.initState();
     _loadState();
+    _subscribeToRelationshipChanges();
   }
 
   @override
   void didUpdateWidget(covariant RelationButtonWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.targetUserId != widget.targetUserId) _loadState();
+  }
+
+  void _subscribeToRelationshipChanges() {
+    final uid = Supabase.instance.client.auth.currentUser?.id;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      _relationshipChannel = Supabase.instance.client
+          .channel('user:$uid', opts: const RealtimeChannelConfig(private: true))
+          .onBroadcast(
+            event: 'relationship_changed',
+            callback: (payload) {
+              if (payload['user_id']?.toString() == widget.targetUserId) {
+                debugPrint('[FOLLOW] relationship_changed button user=${widget.targetUserId}');
+                _loadState();
+              }
+            },
+          )
+          ..subscribe();
+    } catch (e, stack) {
+      debugPrint('[FOLLOW] button realtime subscription exception=$e\\n$stack');
+    }
+  }
+
+  @override
+  void dispose() {
+    final channel = _relationshipChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
+    super.dispose();
   }
 
   Future<void> _loadState() async {
