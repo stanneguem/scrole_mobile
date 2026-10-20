@@ -97,6 +97,13 @@ void main() {
       'community_settings_age_invalid',
       'community_settings_select_at_least_one_country',
       'community_settings_select_at_least_one_city',
+      'community_mod_pending_posts_title',
+      'community_mod_pending_posts_subtitle',
+      'community_mod_pending_posts_empty',
+      'community_mod_post_approved',
+      'community_mod_post_rejected',
+      'community_mod_reject_post',
+      'community_mod_approve_post',
       'community_settings_slogan_label',
     ];
 
