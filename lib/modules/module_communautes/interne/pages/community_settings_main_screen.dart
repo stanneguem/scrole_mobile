@@ -1184,18 +1184,22 @@ class _CommunityJoinRequestsScreenState extends State<CommunityJoinRequestsScree
                         ),
                       );
                     }
-                    final req = _joinRequests[index];
-                    final user = req['user'] is Map ? req['user'] : {};
+                    final req = Map<String, dynamic>.from(_joinRequests[index] as Map);
+                    final user = req['user'] is Map
+                        ? Map<String, dynamic>.from(req['user'] as Map)
+                        : req;
                     final name = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                    final username = user['username']?.toString();
+                    final requestId = req['id']?.toString() ?? '';
                     return Card(
                       child: ListTile(
-                        title: Text(name.isEmpty ? (user['username'] ?? 'Utilisateur') : name),
-                        subtitle: Text(user['username'] != null ? '@${user['username']}' : ''),
+                        title: Text(name.isEmpty ? (username == null ? 'excluded_members_unknown_user'.tr : '@$username') : name),
+                        subtitle: Text(username != null ? '@$username' : ''),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: () => _respondRequest(req['id'], true)),
-                            IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => _respondRequest(req['id'], false)),
+                            IconButton(icon: const Icon(Icons.check, color: Colors.green), onPressed: requestId.isEmpty ? null : () => _respondRequest(requestId, true)),
+                            IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: requestId.isEmpty ? null : () => _respondRequest(requestId, false)),
                           ],
                         ),
                       ),
