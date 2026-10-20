@@ -112,6 +112,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
+    if (_pollData != null && content.isEmpty) {
+      Get.snackbar('Question manquante', 'Écris la question du sondage ou du quiz avant de publier.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+
     if (filesToPublish.length > 4) {
       Get.snackbar('Limite dépassée', 'Maximum 4 photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
@@ -484,10 +489,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                               ),
                               const SizedBox(height: 12),
                               ...((_pollData!['options'] as List).asMap().entries.map((entry) {
-                                final option = entry.value is Map
-                                    ? (entry.value['label'] ?? '').toString()
-                                    : entry.value.toString();
-                                final isCorrect = _pollData!['kind'] == 'quiz' && entry.value is Map && entry.value['is_correct'] == true;
+                                final rawOption = entry.value;
+                                final option = rawOption is Map
+                                    ? (rawOption['label'] ?? '').toString()
+                                    : rawOption.toString();
+                                final isCorrect = _pollData!['kind'] == 'quiz' &&
+                                    rawOption is Map && rawOption['is_correct'] == true;
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 7),
                                   child: Container(
