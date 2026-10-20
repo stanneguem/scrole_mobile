@@ -38,6 +38,8 @@ class ProfileScreen extends GetView<ProfileController> {
                     _buildNameAndUsername(colorScheme),
                     const SizedBox(height: 12),
                     _buildFollowStats(colorScheme),
+                    const SizedBox(height: 8),
+                    _buildEngagementStats(colorScheme),
                     const SizedBox(height: 12),
                     _buildBio(colorScheme),
                     const SizedBox(height: 20),
@@ -337,6 +339,44 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
         ],
       )),
+    );
+  }
+
+  Widget _buildEngagementStats(ColorScheme colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Obx(() => Wrap(
+        alignment: WrapAlignment.spaceAround,
+        runAlignment: WrapAlignment.center,
+        spacing: 18,
+        runSpacing: 12,
+        children: [
+          _engagementStat(controller.postsCount.value.toString(), 'profile_stat_posts'.tr, colors),
+          _engagementStat(controller.totalLikesReceived.value.toString(), 'profile_stat_likes_received'.tr, colors),
+          _engagementStat(controller.reputation.value.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
+          _engagementStat(controller.eventsAttendedCount.value.toString(), 'profile_stat_participated'.tr, colors),
+          _engagementStat(controller.eventsOrganizedCount.value.toString(), 'profile_stat_organized'.tr, colors),
+        ],
+      )),
+    );
+  }
+
+  Widget _engagementStat(String value, String label, ColorScheme colors) {
+    return SizedBox(
+      width: 88,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: AppTextStyles.bodyLarge.copyWith(
+            color: colors.onSurface,
+            fontWeight: FontWeight.w800,
+          )),
+          const SizedBox(height: 2),
+          Text(label, textAlign: TextAlign.center, style: AppTextStyles.bodySmall.copyWith(
+            color: colors.onSurfaceVariant,
+          )),
+        ],
+      ),
     );
   }
 
