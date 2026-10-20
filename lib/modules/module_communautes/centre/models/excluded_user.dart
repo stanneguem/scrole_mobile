@@ -42,6 +42,6 @@ class ExcludedUser {
 
   String get displayName {
     final name = '$firstName $lastName'.trim();
-    return name.isEmpty ? (username.isNotEmpty ? username : 'Utilisateur') : name;
+    return name.isEmpty ? (username.isNotEmpty ? username : 'excluded_members_unknown_user'.tr) : name;
   }
 }
