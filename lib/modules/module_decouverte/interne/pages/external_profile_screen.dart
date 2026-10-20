@@ -1024,36 +1024,24 @@ class _ProfileStats extends StatelessWidget {
         runSpacing: 12,
         children: [
           _StatItem(
-            value: NumberFormatter.formatCount(profile.postsCount),
-            label: 'profile_stat_posts'.tr,
+            value: NumberFormatter.formatCount(profile.followersCount),
+            label: 'profile_stat_followers'.tr,
           ),
           _StatItem(
-            value: NumberFormatter.formatCount(profile.totalLikesReceived),
-            label: 'profile_stat_likes_received'.tr,
-          ),
-          _StatItem(
-            value: profile.rating.toStringAsFixed(1),
-            label: 'profile_stat_reputation'.tr,
-          ),
-          _StatItem(
-            value: NumberFormatter.formatCount(profile.eventsParticipatedCount),
-            label: 'profile_stat_participated'.tr,
-          ),
-          _StatItem(
-            value: NumberFormatter.formatCount(profile.eventsOrganizedCount),
-            label: 'profile_stat_organized'.tr,
+            value: NumberFormatter.formatCount(profile.followingCount),
+            label: 'profile_stat_following'.tr,
           ),
           _StatItem(
             value: NumberFormatter.formatCount(profile.friendCount),
             label: 'profile_action_friends'.tr,
           ),
           _StatItem(
-            value: NumberFormatter.formatCount(profile.followersCount),
-            label: 'profile_stat_followers'.tr,
+            value: NumberFormatter.formatCount(profile.postsCount),
+            label: 'profile_stat_posts'.tr,
           ),
           _StatItem(
-            value: NumberFormatter.formatCount(profile.eventsInAgendaCount),
-            label: 'profile_stat_agenda'.tr,
+            value: profile.rating.toStringAsFixed(1),
+            label: 'profile_stat_reputation'.tr,
           ),
         ],
       ),
