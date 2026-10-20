@@ -200,69 +200,66 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     );
   }
 
-  /// Resolves the user's role *inside this community*.
-  ///
-  /// The platform-wide staff role is deliberately not consulted here. Community
-  /// creator/owner metadata and the community's own membership/staff RPCs are
-  /// the only sources used to decide which community-management UI to expose.
+  /// Resolves the user's role inside this specific community, not the platform.
   Future<String> getCurrentUserRole(String communityId) async {
     final userId = _authService.userId;
     if (userId == null || userId.trim().isEmpty) return 'member';
 
     String normalizeRole(dynamic value) {
       final role = value?.toString().trim().toLowerCase() ?? '';
-      if (role.isEmpty) return '';
-      if (role == 'owner' ||
-          role == 'creator' ||
-          role == 'founder' ||
-          role == 'créateur' ||
-          role == 'createur' ||
-          role == 'fondateur' ||
-          role == 'propriétaire' ||
-          role == 'proprietaire' ||
-          role == 'admin' ||
-          role == 'administrator' ||
-          role == 'administrateur' ||
-          role == 'community_admin' ||
-          role == 'community_owner') {
+      if ([
+        'admin',
+        'administrator',
+        'administrateur',
+        'owner',
+        'community_owner',
+        'community_admin',
+        'creator',
+        'founder',
+        'créateur',
+        'createur',
+        'fondateur',
+        'propriétaire',
+        'proprietaire',
+      ].contains(role)) {
         return 'admin';
       }
-      if (role == 'moderator' ||
-          role == 'modérateur' ||
-          role == 'moderateur' ||
-          role == 'community_moderator' ||
-          role == 'staff') {
+      if ([
+        'moderator',
+        'modérateur',
+        'moderateur',
+        'community_moderator',
+        'staff',
+      ].contains(role)) {
         return 'moderator';
       }
       return 'member';
     }
 
-    bool isTrue(dynamic value) =>
-        value == true || value == 1 || value?.toString().toLowerCase() == 'true';
+    try {
+      // Source of truth: this community's creator_id and membership role.
+      // Do not use platform-wide staff permissions for community settings.
+      final communityRole = await _repo.getCurrentUserCommunityRole(communityId);
+      if (communityRole != null && communityRole.trim().isNotEmpty) {
+        return normalizeRole(communityRole);
+      }
+    } catch (e) {
+      debugPrint('[CommunityService] Direct community role lookup failed: $e');
+    }
 
-    String roleFromRecord(Map<String, dynamic> record) {
-      final nested = record['community'] is Map
-          ? Map<String, dynamic>.from(record['community'] as Map)
-          : <String, dynamic>{};
-      final candidates = <Map<String, dynamic>>[record, nested];
+    // Compatibility fallback for installations where direct table reads are
+    // restricted by RLS or where the role is exposed by a community RPC.
+    try {
+      final myCommunities = await _repo.getMyCommunities();
+      for (final community in myCommunities) {
+        final id = (community['id'] ?? community['community_id'])?.toString();
+        if (id != communityId) continue;
 
-      for (final item in candidates) {
-        final id = (item['id'] ?? item['community_id'] ?? item['p_community_id'])?.toString();
-        if (id != null && id != communityId) continue;
-
-        final creatorId = (item['created_by'] ??
-                item['creator_id'] ??
-                item['created_by_user_id'] ??
-                item['owner_id'] ??
-                item['user_created_id'] ??
-                item['founder_id'])
+        final creatorId = (community['creator_id'] ??
+                community['created_by'] ??
+                community['owner_id'])
             ?.toString();
-        if (creatorId == userId ||
-            isTrue(item['is_creator']) ||
-            isTrue(item['is_owner']) ||
-            isTrue(item['is_community_creator'])) {
-          return 'admin';
-        }
+        if (creatorId == userId) return 'admin';
 
         for (final key in [
           'role',
@@ -271,78 +268,43 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
           'community_role',
           'staff_role',
           'role_name',
-          'role_id',
         ]) {
-          final normalized = normalizeRole(item[key]);
-          if (normalized == 'admin' || normalized == 'moderator') return normalized;
-          if (normalized == 'member') {
-            // Continue checking flags: some RPC payloads contain a generic
-            // membership role alongside explicit creator/admin flags.
-            continue;
+          final value = community[key];
+          if (value != null && value.toString().trim().isNotEmpty) {
+            return normalizeRole(value);
           }
         }
-
-        if (isTrue(item['is_admin']) || isTrue(item['is_community_admin'])) {
-          return 'admin';
-        }
-        if (isTrue(item['is_moderator']) || isTrue(item['is_community_moderator'])) {
-          return 'moderator';
-        }
-        if (isTrue(item['is_staff']) || isTrue(item['is_community_staff'])) {
-          return 'moderator';
-        }
       }
-      return '';
+    } catch (e) {
+      debugPrint('[CommunityService] get_my_communities role lookup failed: $e');
     }
 
     try {
-      // First use the authenticated user's own community listing, which can
-      // include owner/creator fields not represented in the local cache model.
-      try {
-        final myCommunities = await _repo.getMyCommunities();
-        for (final community in myCommunities) {
-          final id = (community['id'] ?? community['community_id'])?.toString();
-          if (id != communityId) continue;
-          final role = roleFromRecord(community);
-          if (role.isNotEmpty) return role;
-        }
-      } catch (e) {
-        debugPrint('[CommunityService] get_my_communities role lookup failed: $e');
-      }
+      final response = await _repo.getCommunityMembersRpc(communityId: communityId);
+      final rawItems = response['items'] ?? response['members'] ?? response['data'] ?? [];
+      if (rawItems is List) {
+        for (final item in rawItems.whereType<Map>()) {
+          final member = Map<String, dynamic>.from(item);
+          final memberId = (member['user_id'] ?? member['profile_id'])?.toString();
+          if (memberId != userId) continue;
 
-      // Query this community's member/staff list next; never infer a role from
-      // platform-wide staff privileges.
-      try {
-        final response = await _repo.getCommunityMembersRpc(communityId: communityId);
-        final rawItems = response['items'] ?? response['members'] ?? response['data'] ?? [];
-        if (rawItems is List) {
-          for (final item in rawItems.whereType<Map>()) {
-            final member = Map<String, dynamic>.from(item);
-            final memberId = (member['user_id'] ??
-                    member['profile_id'] ??
-                    member['member_id'] ??
-                    member['id'])
-                ?.toString();
-            if (memberId != userId) continue;
-            final role = roleFromRecord(member);
-            if (role.isNotEmpty) return role;
-          }
+          final role = member['role'] ?? member['community_role'] ?? member['role_name'];
+          if (role != null) return normalizeRole(role);
+          if (member['is_admin'] == true || member['is_creator'] == true) return 'admin';
+          if (member['is_moderator'] == true || member['is_staff'] == true) return 'moderator';
         }
-      } catch (e) {
-        debugPrint('[CommunityService] Community member role lookup failed: $e');
-      }
-
-      // This RPC is scoped to the requested community. It is a useful signal
-      // that the user is community staff, but it does not distinguish owner,
-      // administrator and moderator. Use moderator as the least-privileged
-      // staff fallback; exact creator/admin status must come from role metadata.
-      try {
-        if (await _repo.isCommunityStaffRpc(communityId)) return 'moderator';
-      } catch (e) {
-        debugPrint('[CommunityService] Community staff check failed: $e');
       }
     } catch (e) {
-      debugPrint('[CommunityService] getCurrentUserRole error: $e');
+      debugPrint('[CommunityService] Community member role lookup failed: $e');
+    }
+
+    // is_community_staff is scoped to this community. It does not distinguish
+    // admin from moderator, so use the least-privileged staff role only if the
+    // exact role could not be retrieved.
+    try {
+      if (await _repo.isCommunityStaffRpc(communityId)) return 'moderator';
+    } catch (e) {
+      debugPrint('[CommunityService] Community staff check failed: $e');
     }
 
     return 'member';
