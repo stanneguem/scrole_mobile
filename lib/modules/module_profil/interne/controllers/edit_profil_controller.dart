@@ -48,6 +48,7 @@ class EditProfileController extends GetxController {
   final RxBool canChangeLocation = false.obs;
   final RxBool canChangeBirthDate = false.obs;
   final RxBool lockMetadataLoaded = false.obs;
+  final RxBool lockMetadataFailed = false.obs;
 
   final RxInt usernameDaysLeft = 0.obs;
   final RxInt genderDaysLeft = 0.obs;
@@ -137,6 +138,7 @@ class EditProfileController extends GetxController {
   }
 
   Future<void> _refreshLockMetadata() async {
+    lockMetadataFailed.value = false;
     try {
       // Le cache local peut précéder l'ajout des horodatages au payload.
       // Cette lecture récupère les restrictions actuelles depuis la source de vérité.
@@ -158,6 +160,7 @@ class EditProfileController extends GetxController {
       // Le backend reste l'autorité : le trigger continuera de refuser toute
       // modification prématurée même si cette lecture informative échoue.
       debugPrint('[EditProfile] Impossible de rafraîchir les verrous: $e');
+      lockMetadataFailed.value = true;
       lockMetadataLoaded.value = false;
     }
   }
