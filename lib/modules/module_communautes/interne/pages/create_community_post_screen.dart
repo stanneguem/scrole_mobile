@@ -732,9 +732,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                         ),
-                          ),
                       ),
-                    ),
 
                     // Champ de texte
                     Padding(
@@ -760,6 +758,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           counterText: '',
                         ),
                         onChanged: _onPostTextChanged,
+                        ),
                       ),
                     ),
                     _buildLiveSuggestions(colorScheme),
