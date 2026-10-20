@@ -91,7 +91,7 @@ class EventShareOptionsSheet extends StatelessWidget {
                       Text(
                         [
                           MaterialLocalizations.of(context).formatMediumDate(event.startsAt),
-                          if ((event.city ?? '').trim().isNotEmpty) event.city!.trim(),
+                          if ((event.city?.name ?? '').trim().isNotEmpty) event.city!.name.trim(),
                         ].join(' · '),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
