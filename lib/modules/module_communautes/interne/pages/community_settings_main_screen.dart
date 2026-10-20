@@ -1144,9 +1144,16 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
                   title: Text(name),
                   value: isSelected,
                   onChanged: (val) {
+                    if (val == true && !_selectedIds.contains(id) && _selectedIds.length >= 10) {
+                      Get.snackbar(
+                        'error'.tr,
+                        'community_max_interests_error'.tr,
+                        snackPosition: SnackPosition.BOTTOM,
+                      );
+                      return;
+                    }
                     setState(() {
                       if (val == true) {
-                        if (_selectedIds.length >= 10) return;
                         _selectedIds.add(id);
                       } else {
                         _selectedIds.remove(id);
