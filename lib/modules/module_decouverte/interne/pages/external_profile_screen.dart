@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/models/interest_model.dart';
@@ -380,39 +381,51 @@ class _ProfileActions extends GetView<ExternalProfileController> {
       final pending = relationState == 'requested';
       final connected = relationState == 'friends';
       final busy = controller.isSendingRequest.value;
-      return Row(
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _ConnectionButton(
-              state: relationState,
-              connected: connected,
-              pending: pending,
-              busy: busy,
-              colors: colors,
-              onTap: busy || (p.retryAt != null && p.retryAt!.isAfter(DateTime.now())) ? null : controller.handleConnectionTap,
-            ),
-          ),
-          if (p.canMessage) ...[
-            const SizedBox(width: 10),
-            Expanded(
-              child: _CompactActionButton(
-                iconWidget: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/svg_icons/chat-round-svgrepo-com.svg',
-                      width: 18,
-                      height: 18,
-                      colorFilter: ColorFilter.mode(colors.onSurface, BlendMode.srcIn),
-                    ),
-                    const SizedBox(width: 6),
-                    Text('Message', style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13.5)),
-                  ],
+          Row(
+            children: [
+              Expanded(
+                child: _ConnectionButton(
+                  state: relationState,
+                  connected: connected,
+                  pending: pending,
+                  busy: busy,
+                  colors: colors,
+                  onTap: busy || (p.retryAt != null && p.retryAt!.isAfter(DateTime.now())) ? null : controller.handleConnectionTap,
                 ),
-                foreground: colors.onSurface,
-                background: colors.surfaceContainerHigh,
-                onTap: controller.openConversation,
               ),
+              if (p.canMessage) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _CompactActionButton(
+                    iconWidget: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/svg_icons/chat-round-svgrepo-com.svg',
+                          width: 18,
+                          height: 18,
+                          colorFilter: ColorFilter.mode(colors.onSurface, BlendMode.srcIn),
+                        ),
+                        const SizedBox(width: 6),
+                        Text('Message', style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w600, fontSize: 13.5)),
+                      ],
+                    ),
+                    foreground: colors.onSurface,
+                    background: colors.surfaceContainerHigh,
+                    onTap: controller.openConversation,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (p.retryAt != null && p.retryAt!.isAfter(DateTime.now())) ...[
+            const SizedBox(height: 6),
+            Text(
+              'follow_retry_at'.trParams({'date': p.retryAt!.toLocal().toString().substring(0, 16)}),
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
           ],
         ],
