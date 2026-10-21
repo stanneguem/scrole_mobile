@@ -146,7 +146,7 @@ class _CommunityPollComposerScreenState extends State<CommunityPollComposerScree
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+              padding: const EdgeInsets.fromLTRB(22, 8, 22, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -156,7 +156,7 @@ class _CommunityPollComposerScreenState extends State<CommunityPollComposerScree
                         Expanded(
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 220),
-                            height: 5,
+                            height: 4,
                             decoration: BoxDecoration(
                               color: i <= _step ? colors.primary : colors.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(8),
@@ -179,9 +179,9 @@ class _CommunityPollComposerScreenState extends State<CommunityPollComposerScree
                 duration: const Duration(milliseconds: 220),
                 child: ListView(
                   key: ValueKey(_step),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
                   children: [
-                    Text(_stepTitle, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -.4)),
+                    Text(_stepTitle, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.65, height: 1.12)),
                     const SizedBox(height: 6),
                     Text(_stepDescription, style: theme.textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.4)),
                     const SizedBox(height: 22),
@@ -406,16 +406,17 @@ class _CommunityPollComposerScreenState extends State<CommunityPollComposerScree
               ),
             ),
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
               decoration: BoxDecoration(
                 color: colors.surface,
-                border: Border(top: BorderSide(color: colors.outlineVariant.withValues(alpha: .55))),
+                border: Border(top: BorderSide(color: colors.outlineVariant.withValues(alpha: .45))),
+                boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, -4))],
               ),
               child: Row(children: [
                 if (_step > 0) ...[
                   Expanded(child: OutlinedButton(
                     onPressed: _saving ? null : _previous,
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52), shape: const StadiumBorder()),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), shape: const StadiumBorder(), elevation: 0),
                     child: const Text('Retour'),
                   )),
                   const SizedBox(width: 10),
@@ -477,7 +478,7 @@ class _KindTile extends StatelessWidget {
             padding: const EdgeInsets.all(15),
             child: Row(children: [
               Container(
-                width: 48, height: 48,
+                width: 50, height: 50,
                 decoration: BoxDecoration(
                   color: selected ? accent.withValues(alpha: .14) : colors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(15),
