@@ -875,7 +875,6 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
                           style: GoogleFonts.spaceGrotesk(fontSize: 26, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      const SizedBox(width: 0),
                       EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
                     ],
                   ),
