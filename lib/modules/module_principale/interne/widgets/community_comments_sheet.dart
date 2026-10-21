@@ -804,6 +804,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                 username: username,
                 avatarUrl: avatar,
                 isCertified: isCertified,
+                userId: author['user_id']?.toString() ?? comment['author_id']?.toString(),
                 avatarRadius: isReply ? 15 : 18,
                 subtitle: '· ${_formatTime(comment['created_at']?.toString() ?? '')}',
                 nameStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: isReply ? 13 : 14, color: colorScheme.onSurface),
