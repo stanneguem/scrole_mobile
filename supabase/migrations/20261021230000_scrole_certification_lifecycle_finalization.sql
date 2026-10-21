@@ -124,7 +124,7 @@ begin
         and status='active' and (valid_until is null or valid_until > now())
         and event_id <> p_entity_id;
 
-    if v_existing_id is not null and v_status='active' then
+    if v_existing_id is not null and v_status='active' and exists (select 1 from public.event_certifications where id=v_existing_id and (valid_until is null or valid_until > now())) then
       return jsonb_build_object('entity_type',p_entity_type,'entity_id',p_entity_id,'status','active','already_active',true);
     end if;
     if v_active_count >= coalesce(v_quota,0) then raise exception 'included_event_certification_quota_exceeded' using errcode = '22023'; end if;
@@ -150,7 +150,7 @@ begin
         and status='active' and (valid_until is null or valid_until > now())
         and community_id <> p_entity_id;
 
-    if v_existing_id is not null and v_status='active' then
+    if v_existing_id is not null and v_status='active' and exists (select 1 from public.community_certifications where id=v_existing_id and (valid_until is null or valid_until > now())) then
       return jsonb_build_object('entity_type',p_entity_type,'entity_id',p_entity_id,'status','active','already_active',true);
     end if;
     if v_active_count >= coalesce(v_quota,0) then raise exception 'included_community_certification_quota_exceeded' using errcode = '22023'; end if;
