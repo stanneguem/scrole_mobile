@@ -358,6 +358,9 @@ class NotificationService {
     if (token != null) await _registerToken(token);
   }
 
+  /// Enregistre l'appareil courant sans forcer une rotation du token FCM.
+  Future<void> ensureCurrentDeviceRegistered() => _registerCurrentDeviceToken();
+
   Future<void> _registerToken(String token) async {
     if (Get.find<AuthService>().userId == null) return;
     try {
