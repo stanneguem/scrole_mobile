@@ -5,6 +5,10 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'community_member_count_loading': "Membres…",
+      'community_member_count_one': "1 membre",
+      'community_member_count_many': "{count} membres",
+
       'community_creation_pending_message': "La communauté est en cours de création sur le serveur.",
       'community_feed_loading': "Chargement des publications…",
       'community_feed_error_msg': "Impossible de charger les publications de cette communauté.",
@@ -654,6 +658,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Vérification des restrictions…",
     },
     'en': {
+      'community_member_count_loading': "Members…",
+      'community_member_count_one': "1 member",
+      'community_member_count_many': "{count} members",
+
       'community_creation_pending_message': "The community is still being created on the server.",
       'community_feed_loading': "Loading posts…",
       'community_feed_error_msg': "Could not load posts for this community.",
@@ -1299,6 +1307,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Checking field restrictions…",
     },
     'es': {
+      'community_member_count_loading': "Miembros…",
+      'community_member_count_one': "1 miembro",
+      'community_member_count_many': "{count} miembros",
+
       'community_creation_pending_message': "La comunidad todavía se está creando en el servidor.",
       'community_feed_loading': "Cargando publicaciones…",
       'community_feed_error_msg': "No se pudieron cargar las publicaciones de esta comunidad.",
@@ -1861,6 +1873,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Comprobando las restricciones…",
     },
     'de': {
+      'community_member_count_loading': "Mitglieder…",
+      'community_member_count_one': "1 Mitglied",
+      'community_member_count_many': "{count} Mitglieder",
+
       'community_creation_pending_message': "Die Community wird noch auf dem Server erstellt.",
       'community_feed_loading': "Beiträge werden geladen…",
       'community_feed_error_msg': "Die Beiträge dieser Community konnten nicht geladen werden.",
@@ -2406,6 +2422,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Feldbeschränkungen werden geprüft…",
     },
     'it': {
+      'community_member_count_loading': "Membri…",
+      'community_member_count_one': "1 membro",
+      'community_member_count_many': "{count} membri",
+
       'community_creation_pending_message': "La community è ancora in fase di creazione sul server.",
       'community_feed_loading': "Caricamento dei post…",
       'community_feed_error_msg': "Impossibile caricare i post di questa community.",
@@ -2951,6 +2971,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Verifica delle restrizioni…",
     },
     'pt': {
+      'community_member_count_loading': "Membros…",
+      'community_member_count_one': "1 membro",
+      'community_member_count_many': "{count} membros",
+
       'community_creation_pending_message': "A comunidade ainda está sendo criada no servidor.",
       'community_feed_loading': "Carregando publicações…",
       'community_feed_error_msg': "Não foi possível carregar as publicações desta comunidade.",
@@ -3496,6 +3520,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "A verificar as restrições…",
     },
     'zh': {
+      'community_member_count_loading': "成员…",
+      'community_member_count_one': "1 位成员",
+      'community_member_count_many': "{count} 位成员",
+
       'community_creation_pending_message': "社群仍在服务器上创建中。",
       'community_feed_loading': "正在加载帖子…",
       'community_feed_error_msg': "无法加载此社群的帖子。",
@@ -4041,6 +4069,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "正在检查字段限制…",
     },
     'ja': {
+      'community_member_count_loading': "メンバー…",
+      'community_member_count_one': "メンバー 1 人",
+      'community_member_count_many': "メンバー {count} 人",
+
       'community_creation_pending_message': "コミュニティはサーバー上で作成中です。",
       'community_feed_loading': "投稿を読み込み中…",
       'community_feed_error_msg': "このコミュニティの投稿を読み込めませんでした。",
@@ -4585,6 +4617,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "項目の制限を確認中…",
     },
     'ru': {
+      'community_member_count_loading': "Участники…",
+      'community_member_count_one': "1 участник",
+      'community_member_count_many': "Участников: {count}",
+
       'community_creation_pending_message': "Сообщество ещё создаётся на сервере.",
       'community_feed_loading': "Загрузка публикаций…",
       'community_feed_error_msg': "Не удалось загрузить публикации этого сообщества.",
