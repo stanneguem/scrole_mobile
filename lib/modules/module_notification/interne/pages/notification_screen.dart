@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../centre/services/notification_db_service.dart';
 import '../../../module_communautes/interne/pages/community_feed_screen.dart';
-import '../../../module_evenement/centre/repositories/event_repository.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationScreen extends GetView<NotificationController> {
