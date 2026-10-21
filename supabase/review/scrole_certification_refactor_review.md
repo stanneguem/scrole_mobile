@@ -10,6 +10,8 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 5. `20261021150748_scrole_event_feature_gate_hardening.sql`
 6. `20261021151426_scrole_profile_subscription_entitlements.sql`
 7. `20261021151918_scrole_certified_event_creation.sql`
+8. `20261021152116_scrole_certified_community_capabilities.sql`
+7. `20261021151918_scrole_certified_event_creation.sql`
 
 ## Objets et fonctions
 - `scrole_subscriptions` : registre des abonnements Pro/Premium.
@@ -40,7 +42,8 @@ Ces valeurs sont des lignes en base et sont modifiables via l'interface d'admini
 - Les attributions/renouvellements d'avantages inclus sont réservés à `service_role`; ils ne doivent être appelés qu'après validation côté serveur du paiement ou de l'abonnement.
 - Les certifications achetées séparément ne sont pas rattachées aux entitlements inclus et ne sont pas suspendues avec l'abonnement.
 - La certification du profil ou d'une communauté ne certifie pas automatiquement les événements.
-- Les statistiques d'événement, les invitations Guest, les sponsors et la billetterie nécessitent une certification d'événement active.
+- Les statistiques d'événement, les invitations Guest et les sponsors nécessitent une certification d'événement active. La billetterie est autorisée par une certification d'événement ou de la communauté liée.
+- Le propriétaire d'une communauté certifiée peut consulter les statistiques agrégées et relier un événement à cette communauté.
 
 ## Points encore nécessaires avant production complète
 - Raccorder les RPC de création/attribution/renouvellement au véritable prestataire de paiement et tester ses webhooks.
