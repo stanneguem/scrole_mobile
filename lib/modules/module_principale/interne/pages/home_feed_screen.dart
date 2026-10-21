@@ -272,7 +272,7 @@ class _StoriesRow extends GetView<StoriesController> {
 
         return ListView.builder(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: otherGroups.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
@@ -328,7 +328,7 @@ class _StoriesRow extends GetView<StoriesController> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      const Text('Ta story', style: TextStyle(fontSize: 11)),
+                      const Text('Ma story', style: TextStyle(fontSize: 11)),
                     ],
                   ),
                 ),
@@ -369,7 +369,7 @@ class _StoriesRow extends GetView<StoriesController> {
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      width: 76,
+                      width: 64,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
