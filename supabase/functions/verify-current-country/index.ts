@@ -77,12 +77,18 @@ Deno.serve(async (req: Request) => {
     const url = new URL(geocodeUrl);
     url.searchParams.set("lat", String(latitude));
     url.searchParams.set("lon", String(longitude));
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (geocodeToken) headers.Authorization = `Bearer ${geocodeToken}`;
-    const geoResponse = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    // Geoapify uses an apiKey query parameter. Keep this key server-side in Edge Function secrets.
+    if (geocodeToken) url.searchParams.set("apiKey", geocodeToken);
+    const geoResponse = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+    });
     if (!geoResponse.ok) return reply(502, { error: "geolocation_provider_failed" });
     const geo = await geoResponse.json();
-    const rawCode = geo?.address?.country_code ?? geo?.country_code ?? geo?.countryCode;
+    // Geoapify returns GeoJSON: features[0].properties.country_code.
+    // Keep compatible with providers returning address.country_code or country_code at the root.
+    const rawCode = geo?.features?.[0]?.properties?.country_code ??
+      geo?.address?.country_code ?? geo?.country_code ?? geo?.countryCode;
     countryCode = typeof rawCode === "string" ? rawCode.toUpperCase() : "";
   } catch {
     return reply(502, { error: "geolocation_provider_unavailable" });
