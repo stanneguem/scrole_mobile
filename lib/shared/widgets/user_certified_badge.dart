@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum CertificationBadgeType { basic, pro, premium, event, community }
+enum CertificationBadgeType { none, basic, pro, premium, event, community }
 
 extension CertificationBadgeTypeStyle on CertificationBadgeType {
   Color get color => switch (this) {
+        CertificationBadgeType.none => Colors.transparent,
         CertificationBadgeType.basic => const Color(0xFF1877F2),
         CertificationBadgeType.pro => const Color(0xFF805AD5),
         CertificationBadgeType.premium => const Color(0xFFD4A017),
@@ -44,7 +45,7 @@ class _CertificationLevelResolver {
         'premium' => CertificationBadgeType.premium,
         'pro' => CertificationBadgeType.pro,
         'basique' => CertificationBadgeType.basic,
-        _ => CertificationBadgeType.basic,
+        _ => CertificationBadgeType.none,
       };
     } catch (_) {
       // Le type fourni par l'écran reste le fallback en cas d'indisponibilité.
@@ -72,9 +73,10 @@ class UserCertifiedBadge extends StatelessWidget {
     if (userId == null || userId!.isEmpty) return _buildBadge(type);
     return FutureBuilder<CertificationBadgeType>(
       future: _CertificationLevelResolver.resolve(userId!),
-      builder: (context, snapshot) => _buildBadge(
-        snapshot.data ?? type,
-      ),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data == CertificationBadgeType.none) return const SizedBox.shrink();
+        return _buildBadge(snapshot.data ?? type);
+      },
     );
   }
 
