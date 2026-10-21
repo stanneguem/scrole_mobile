@@ -124,7 +124,7 @@ class CommunityScreen extends StatelessWidget {
                         ? () {
                             Get.snackbar(
                               'community_creation_in_progress'.tr,
-                              'La communauté est en cours de création sur le serveur.',
+                              'community_creation_pending_message'.tr,
                               snackPosition: SnackPosition.BOTTOM,
                             );
                           }
