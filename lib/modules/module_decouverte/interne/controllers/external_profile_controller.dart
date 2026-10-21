@@ -311,6 +311,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
+          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
           connectionRequestSent: false,
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
@@ -394,6 +395,7 @@ class ExternalProfileController extends GetxController {
       try {
         await _repository.respondConnectionRequest(requestId, true, targetUserId: current.userId);
         final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final refreshedProfile = await _repository.getProfileResult(current.userId);
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
