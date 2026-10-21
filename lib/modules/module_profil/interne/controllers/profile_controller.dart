@@ -47,6 +47,7 @@ class ProfileController extends GetxController {
   final RxString createdAt = ''.obs;
   final RxString lastSignInAt = ''.obs;
   final RxBool isVerified = false.obs;
+  final RxString certificationLevel = 'none'.obs;
   final RxBool isLoading = false.obs;
   final RxInt followersCount = 0.obs;
   final RxInt followingCount = 0.obs;
@@ -275,28 +276,90 @@ class ProfileController extends GetxController {
       locationUpdatedAt.value = _parseDate(profileData['location_updated_at']);
       birthDateUpdatedAt.value = _parseDate(profileData['birth_date_updated_at']);
 
-      var hasActiveCertification = false;
+      var activeCertificationLevel = 'none';
+      var activeSubscriptionLevel = 'none';
+      final now = DateTime.now().toUtc();
+
       if (profileData['account_status'] == 'active' && userId.value.isNotEmpty) {
         try {
-          final certifications = await Supabase.instance.client
+          final client = Supabase.instance.client;
+          final certifications = await client
               .from('user_certifications')
-              .select('issued_at, expires_at')
+              .select('issued_at, expires_at, certification_type_id')
               .eq('user_id', userId.value)
               .eq('status', 'active');
-          final now = DateTime.now().toUtc();
-          hasActiveCertification = (certifications as List).any((row) {
+
+          final activeTypeIds = <String>{};
+          for (final raw in certifications as List) {
+            final row = Map<String, dynamic>.from(raw as Map);
             final issuedAt = DateTime.tryParse((row['issued_at'] ?? '').toString())?.toUtc();
             final expiresAt = DateTime.tryParse((row['expires_at'] ?? '').toString())?.toUtc();
-            return issuedAt != null &&
+            final isCurrent = issuedAt != null &&
                 !issuedAt.isAfter(now) &&
                 (expiresAt == null || !expiresAt.isBefore(now));
-          });
+            final typeId = row['certification_type_id']?.toString();
+            if (isCurrent && typeId != null && typeId.isNotEmpty) {
+              activeTypeIds.add(typeId);
+            }
+          }
+
+          if (activeTypeIds.isNotEmpty) {
+            final types = await client
+                .from('certification_type')
+                .select('id, code')
+                .inFilter('id', activeTypeIds.toList());
+            for (final raw in types as List) {
+              final row = Map<String, dynamic>.from(raw as Map);
+              final code = (row['code'] ?? '').toString().toLowerCase();
+              if (code == 'premium' ||
+                  (code == 'pro' && activeCertificationLevel != 'premium') ||
+                  (code == 'basique' && activeCertificationLevel == 'none')) {
+                activeCertificationLevel = code;
+              }
+            }
+          }
+
+          final subscriptions = await client
+              .from('scrole_subscriptions')
+              .select('plan_code, starts_at, ends_at')
+              .eq('user_id', userId.value)
+              .eq('status', 'active');
+
+          for (final raw in subscriptions as List) {
+            final row = Map<String, dynamic>.from(raw as Map);
+            final startsAt = DateTime.tryParse((row['starts_at'] ?? '').toString())?.toUtc();
+            final endsAt = DateTime.tryParse((row['ends_at'] ?? '').toString())?.toUtc();
+            if ((startsAt != null && startsAt.isAfter(now)) ||
+                (endsAt != null && endsAt.isBefore(now))) {
+              continue;
+            }
+            final code = (row['plan_code'] ?? '').toString().toLowerCase();
+            if (code == 'premium') {
+              activeSubscriptionLevel = 'premium';
+              break;
+            }
+            if (code == 'pro') activeSubscriptionLevel = 'pro';
+          }
         } catch (e) {
-          debugPrint('[ProfileController] certification status lookup failed: $e');
+          debugPrint('[ProfileController] certification level lookup failed: $e');
         }
       }
-      isVerified.value = profileData['account_status'] == 'active' &&
-          (profileData['is_verified'] == true || hasActiveCertification);
+
+      final legacyVerified = profileData['is_verified'] == true;
+      final isActiveAccount = profileData['account_status'] == 'active';
+      if (activeSubscriptionLevel == 'premium' ||
+          activeCertificationLevel == 'premium') {
+        certificationLevel.value = 'premium';
+      } else if (activeSubscriptionLevel == 'pro' ||
+          activeCertificationLevel == 'pro') {
+        certificationLevel.value = 'pro';
+      } else if (activeCertificationLevel == 'basique' || legacyVerified) {
+        certificationLevel.value = 'basique';
+      } else {
+        certificationLevel.value = 'none';
+      }
+      isVerified.value = isActiveAccount && certificationLevel.value != 'none';
+      if (!isActiveAccount) certificationLevel.value = 'none';
       
       if (userId.value.isNotEmpty) {
         _loadUserInterests();
@@ -363,6 +426,7 @@ class ProfileController extends GetxController {
     lastSignInAt.value = '';
     ageValue.value = 0;
     isVerified.value = false;
+    certificationLevel.value = 'none';
     accountStatus.value = 'active';
   }
 
