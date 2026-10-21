@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -1229,35 +1230,238 @@ class _PrivateProfile extends StatelessWidget {
 
 class _ProfileMenuSheet extends StatelessWidget {
   const _ProfileMenuSheet();
+
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surface,
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.share_rounded),
-            title: const Text('Partager le profil'),
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: share profile
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.flag_rounded, color: Colors.red),
-            title: const Text('Signaler le profil', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: report profile
-            },
-          ),
-        ],
+  Widget build(BuildContext context) {
+    final profile = Get.find<ExternalProfileController>().profile.value;
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: .45)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 24, offset: const Offset(0, -5))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38, height: 4,
+              decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .35), borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(height: 18),
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(color: colors.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.manage_accounts_rounded, color: colors.primary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('profile_actions_title'.tr, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.onSurface)),
+                Text('profile_actions_subtitle'.tr, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+              ])),
+              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+            ]),
+            const SizedBox(height: 18),
+            _ProfileMenuAction(
+              icon: Icons.share_rounded,
+              title: 'profile_share_action'.tr,
+              subtitle: 'profile_share_description'.tr,
+              color: colors.primary,
+              onTap: () async {
+                Navigator.pop(context);
+                if (profile == null) return;
+                final link = 'scrole://user-profile/${profile.userId}';
+                await SharePlus.instance.share(ShareParams(
+                  text: 'profile_share_message'.trParams({'name': profile.displayName, 'link': link}),
+                  subject: 'profile_share_subject'.trParams({'name': profile.displayName}),
+                ));
+              },
+            ),
+            const SizedBox(height: 10),
+            _ProfileMenuAction(
+              icon: Icons.flag_rounded,
+              title: 'profile_report_action'.tr,
+              subtitle: 'profile_report_description'.tr,
+              color: colors.error,
+              onTap: () {
+                Navigator.pop(context);
+                if (profile != null) {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    backgroundColor: Colors.transparent,
+                    barrierColor: Colors.black.withValues(alpha: .48),
+                    builder: (_) => _ProfileReportSheet(profile: profile),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _ProfileMenuAction extends StatelessWidget {
+  const _ProfileMenuAction({
+    required this.icon, required this.title, required this.subtitle,
+    required this.color, required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 13),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 3),
+              Text(subtitle, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ])),
+            Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileReportSheet extends StatefulWidget {
+  const _ProfileReportSheet({required this.profile});
+  final dynamic profile;
+
+  @override
+  State<_ProfileReportSheet> createState() => _ProfileReportSheetState();
+}
+
+class _ProfileReportSheetState extends State<_ProfileReportSheet> {
+  String? _reason;
+  final TextEditingController _details = TextEditingController();
+  bool _sending = false;
+
+  static const _reasons = <(String, String, IconData)>[
+    ('spam', 'report_reason_spam', Icons.campaign_outlined),
+    ('fake_profile', 'report_reason_fake_profile', Icons.person_off_outlined),
+    ('harassment', 'report_reason_harassment', Icons.mood_bad_outlined),
+    ('inappropriate', 'report_reason_inappropriate', Icons.visibility_off_outlined),
+    ('other', 'report_reason_other', Icons.more_horiz_rounded),
+  ];
+
+  @override
+  void dispose() {
+    _details.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12, 12, 12, 12 + MediaQuery.viewInsetsOf(context).bottom),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .82),
+          decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(28)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .35), borderRadius: BorderRadius.circular(4)))),
+              const SizedBox(height: 20),
+              Row(children: [
+                Container(width: 46, height: 46, decoration: BoxDecoration(color: colors.error.withValues(alpha: .12), borderRadius: BorderRadius.circular(15)), child: Icon(Icons.flag_rounded, color: colors.error)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('profile_report_title'.tr, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: colors.onSurface)),
+                  Text(widget.profile.displayName, style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)),
+                ])),
+              ]),
+              const SizedBox(height: 8),
+              Text('profile_report_hint'.tr, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13)),
+              const SizedBox(height: 18),
+              ..._reasons.map((entry) {
+                final selected = _reason == entry.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: selected ? colors.error.withValues(alpha: .08) : colors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: () => setState(() => _reason = entry.$1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                        child: Row(children: [
+                          Icon(entry.$3, color: selected ? colors.error : colors.onSurfaceVariant, size: 21),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(entry.$2.tr, style: TextStyle(color: colors.onSurface, fontWeight: selected ? FontWeight.w700 : FontWeight.w500))),
+                          Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: selected ? colors.error : colors.onSurfaceVariant),
+                        ]),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (_reason == 'other') ...[
+                const SizedBox(height: 4),
+                TextField(controller: _details, maxLines: 3, decoration: InputDecoration(hintText: 'profile_report_details_hint'.tr, filled: true, fillColor: colors.surfaceContainerLow, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, height: 50, child: FilledButton(
+                onPressed: _reason == null || _sending ? null : _submit,
+                style: FilledButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                child: _sending ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text('profile_report_submit'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
+              )),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (_reason == null || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.rpc('report_user_profile', params: {
+        'p_reported_user_id': widget.profile.userId,
+        'p_reason': _reason,
+        'p_details': _details.text.trim().isEmpty ? null : _details.text.trim(),
+      });
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      Get.snackbar('success_title'.tr, 'profile_report_success'.tr, snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      Get.snackbar('error_title'.tr, 'profile_report_error'.tr, snackPosition: SnackPosition.BOTTOM);
+    }
+  }
 }
 
 class _HeaderStats extends StatelessWidget {
