@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import '../controllers/profile_controller.dart';
@@ -34,32 +33,6 @@ class _ShareProfileScreenState extends State<ShareProfileScreen> {
       }),
       subject: 'share_profile_subject'.trParams({'name': _profile.displayName}),
     ));
-  }
-
-  Future<void> _shareQrCode() async {
-    if (_sharing) return;
-    setState(() => _sharing = true);
-    try {
-      final painter = QrPainter(
-        data: 'scrole_user:${_profile.userId.value}',
-        version: QrVersions.auto,
-        gapless: true,
-      );
-      final bytes = await painter.toImageData(3, format: ui.ImageByteFormat.png);
-      if (bytes == null) throw StateError('Could not render profile QR code');
-      final directory = await Directory.systemTemp.createTemp('scrole_profile_qr_');
-      final file = File('${directory.path}/scrole_profile_qr.png');
-      await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
-      await SharePlus.instance.share(ShareParams(
-        files: [XFile(file.path, mimeType: 'image/png')],
-        text: 'share_profile_qr_message'.trParams({'name': _profile.displayName, 'link': _profileLink}),
-        subject: 'share_profile_subject'.trParams({'name': _profile.displayName}),
-      ));
-    } catch (e) {
-      if (mounted) Get.snackbar('error_title'.tr, 'share_profile_error'.tr, snackPosition: SnackPosition.BOTTOM);
-    } finally {
-      if (mounted) setState(() => _sharing = false);
-    }
   }
 
   Future<void> _shareProfileCard() async {
@@ -109,13 +82,6 @@ class _ShareProfileScreenState extends State<ShareProfileScreen> {
               child: _ProfileShareCard(profile: _profile, link: _profileLink),
             ),
             const SizedBox(height: 24),
-            _ShareOptionTile(
-              icon: Icons.qr_code_2_rounded,
-              title: 'share_profile_qr_title'.tr,
-              subtitle: 'share_profile_qr_subtitle'.tr,
-              onTap: _shareQrCode,
-            ),
-            const SizedBox(height: 10),
             _ShareOptionTile(
               icon: Icons.link_rounded,
               title: 'share_profile_link_title'.tr,
@@ -181,15 +147,35 @@ class _ProfileShareCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 15),
-          Center(child: Text(profile.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: Text(profile.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
+                if (profile.isVerified.value) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.verified_rounded, color: Color(0xFF72C7FF), size: 21),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 4),
           Center(child: Text('@${profile.username.value}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .78), fontSize: 14))),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _ProfileMetric(value: profile.followersCount.value.toString(), label: 'share_profile_followers'.tr),
+              Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 22), color: Colors.white.withValues(alpha: .3)),
+              _ProfileMetric(value: profile.reputation.value.toStringAsFixed(1), label: 'share_profile_reputation'.tr),
+            ],
+          ),
           const SizedBox(height: 24),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('share_profile_card_caption'.tr, style: TextStyle(color: Colors.white.withValues(alpha: .86), fontSize: 12)),
               const SizedBox(height: 5),
-              Text('scrole.app', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
+              Text('SCROLE', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: 1.6)),
             ])),
             Container(
               padding: const EdgeInsets.all(7),
@@ -201,6 +187,22 @@ class _ProfileShareCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfileMetric extends StatelessWidget {
+  const _ProfileMetric({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+      const SizedBox(height: 3),
+      Text(label, style: TextStyle(color: Colors.white.withValues(alpha: .78), fontSize: 11)),
+    ],
+  );
 }
 
 class _ShareOptionTile extends StatelessWidget {
