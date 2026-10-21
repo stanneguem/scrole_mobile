@@ -1,5 +1,5 @@
 -- Scrole certification refactor: additive foundation only.
--- This migration is prepared for review and MUST NOT be applied until approved.
+-- Applied to the active Supabase project; retained as the versioned source of truth.
 -- It intentionally does not alter existing profile-certification tables or RPC signatures.
 
 create table if not exists public.scrole_subscriptions (
