@@ -254,9 +254,11 @@ AppError mapSupabaseError(dynamic error) {
     );
   }
 
+  // Unknown exceptions are logged by the caller in debug mode; never show
+  // raw PostgreSQL, SQL, stack traces, hostnames or internal implementation.
   return AppError(
     title: 'Une erreur est survenue',
-    message: error.toString().replaceFirst('Exception: ', '').replaceFirst('PostgrestException: ', ''),
+    message: 'Une erreur inattendue est survenue. Réessaie dans quelques instants. Si le problème persiste, contacte le support Scrole.',
     icon: Icons.error_outline_rounded,
   );
 }
