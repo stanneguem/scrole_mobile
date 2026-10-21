@@ -21,6 +21,110 @@ class AppError {
 AppError mapSupabaseError(dynamic error) {
   final raw = error.toString().toLowerCase();
 
+  // Network/DNS/offline failures must never expose raw technical exceptions.
+  if (_isNetworkError(raw)) {
+    return AppError(
+      title: 'Pas de connexion Internet',
+      message: 'Vérifie ta connexion Internet, puis réessaie. Tes données ne sont pas perdues.',
+      icon: Icons.wifi_off_rounded,
+    );
+  }
+  if (raw.contains('timeout') || raw.contains('timed out') || raw.contains('deadline exceeded')) {
+    return AppError(
+      title: 'Délai dépassé',
+      message: 'Le serveur met trop de temps à répondre. Vérifie ta connexion et réessaie.',
+      icon: Icons.hourglass_disabled_rounded,
+    );
+  }
+  if (raw.contains('socketexception') ||
+      raw.contains('failed host lookup') ||
+      raw.contains('connection refused') ||
+      raw.contains('connection reset') ||
+      raw.contains('network is unreachable') ||
+      raw.contains('no address associated with hostname') ||
+      raw.contains('websocketchannel')) {
+    return AppError(
+      title: 'Connexion au serveur impossible',
+      message: 'Scrole ne parvient pas à joindre le serveur. Vérifie Internet et réessaie.',
+      icon: Icons.cloud_off_rounded,
+    );
+  }
+  if (raw.contains('invalid login credentials') || raw.contains('invalid_credentials')) {
+    return AppError(
+      title: 'Identifiants incorrects',
+      message: 'Les informations de connexion sont incorrectes. Vérifie-les et réessaie.',
+      icon: Icons.lock_outline_rounded,
+    );
+  }
+  if (raw.contains('email not confirmed') || raw.contains('email_not_confirmed')) {
+    return AppError(
+      title: 'Adresse e-mail non confirmée',
+      message: 'Confirme ton adresse e-mail avant de te connecter.',
+      icon: Icons.mark_email_unread_outlined,
+    );
+  }
+  if (raw.contains('user already registered') || raw.contains('already registered')) {
+    return AppError(
+      title: 'Compte déjà existant',
+      message: 'Un compte existe déjà avec ces informations. Essaie de te connecter.',
+      icon: Icons.person_outline_rounded,
+    );
+  }
+  if (raw.contains('jwt expired') || raw.contains('token is expired') || raw.contains('refresh_token_not_found')) {
+    return AppError(
+      title: 'Session expirée',
+      message: 'Ta session a expiré. Reconnecte-toi pour continuer.',
+      icon: Icons.lock_clock_outlined,
+    );
+  }
+  if (raw.contains('permission denied') || raw.contains('row-level security') ||
+      raw.contains('violates row-level security') || raw.contains('42501')) {
+    return AppError(
+      title: 'Action non autorisée',
+      message: 'Tu n’as pas les autorisations nécessaires pour effectuer cette action.',
+      icon: Icons.lock_outline_rounded,
+    );
+  }
+  if (raw.contains('duplicate key') || raw.contains('23505') || raw.contains('already exists')) {
+    return AppError(
+      title: 'Élément déjà existant',
+      message: 'Cette information existe déjà. Vérifie les données saisies.',
+      icon: Icons.content_copy_rounded,
+    );
+  }
+  if (raw.contains('foreign key') || raw.contains('23503')) {
+    return AppError(
+      title: 'Action impossible',
+      message: 'Un élément nécessaire est introuvable ou n’est plus disponible. Actualise la page et réessaie.',
+      icon: Icons.link_off_rounded,
+    );
+  }
+  if (raw.contains('not-null constraint') || raw.contains('23502') ||
+      raw.contains('check constraint') || raw.contains('23514') ||
+      raw.contains('invalid input syntax') || raw.contains('22p02')) {
+    return AppError(
+      title: 'Données invalides',
+      message: 'Certaines informations sont manquantes ou incorrectes. Vérifie les champs et réessaie.',
+      icon: Icons.rule_rounded,
+    );
+  }
+  if (raw.contains('too many requests') || raw.contains('429') || raw.contains('rate limit')) {
+    return AppError(
+      title: 'Trop de tentatives',
+      message: 'Tu as effectué trop de demandes en peu de temps. Patiente un instant avant de réessayer.',
+      icon: Icons.timer_rounded,
+    );
+  }
+  if (raw.contains('500') || raw.contains('502') || raw.contains('503') ||
+      raw.contains('504') || raw.contains('internal server error') ||
+      raw.contains('service unavailable') || raw.contains('bad gateway')) {
+    return AppError(
+      title: 'Service temporairement indisponible',
+      message: 'Le serveur rencontre un problème temporaire. Réessaie dans quelques instants.',
+      icon: Icons.cloud_off_rounded,
+    );
+  }
+
   if (raw.contains('rate limit') || raw.contains('5 posts') || raw.contains('10 min')) {
     return AppError(title: 'Erreur', message: 'post_error_rate_limit'.tr, icon: Icons.timer_rounded);
   }
@@ -155,6 +259,22 @@ AppError mapSupabaseError(dynamic error) {
     message: error.toString().replaceFirst('Exception: ', '').replaceFirst('PostgrestException: ', ''),
     icon: Icons.error_outline_rounded,
   );
+}
+
+bool _isNetworkError(String raw) {
+  return raw.contains('socketexception') ||
+      raw.contains('failed host lookup') ||
+      raw.contains('no address associated with hostname') ||
+      raw.contains('network is unreachable') ||
+      raw.contains('connection refused') ||
+      raw.contains('connection reset') ||
+      raw.contains('network request failed') ||
+      raw.contains('websocketchannel') ||
+      raw.contains('clientexception') ||
+      raw.contains('xmlhttprequest error') ||
+      raw.contains('failed to fetch') ||
+      raw.contains('errno = 7') ||
+      raw.contains('errno 7');
 }
 
 void showAppErrorDialog(BuildContext context, dynamic error) {
