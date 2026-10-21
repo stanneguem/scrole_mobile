@@ -569,10 +569,18 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
   @override
   Widget build(BuildContext context) => Obx(() {
     final p = controller.profile.value!;
-    if (p.isPrivate)
-      return _PrivateProfile(
-        message: 'profile_private_msg'.tr,
+    if (p.isPrivate) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PrivateProfile(message: 'profile_private_msg'.tr),
+          const SizedBox(height: 14),
+          // Keep relationship/message actions available according to the
+          // recipient's server-calculated privacy settings.
+          _ProfileActions(controller: controller),
+        ],
       );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
