@@ -4,19 +4,16 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../service_global/notification_service.dart';
+import 'notification_service.dart';
 
-/// Confirme le pays de présence via GPS et une Edge Function côté serveur.
-/// Les coordonnées ne sont jamais écrites dans les tables de profil.
+/// Détecte le pays de présence via GPS et une Edge Function côté serveur.
+/// Cette détection ne modifie jamais le pays ou la ville déclarés sur le profil.
 class CurrentCountryVerificationService {
   CurrentCountryVerificationService(this._client);
 
   final SupabaseClient _client;
 
-  Future<Map<String, dynamic>> verify({
-    required String expectedCountryId,
-    String? cityId,
-  }) async {
+  Future<Map<String, dynamic>> verify() async {
     final user = _client.auth.currentUser;
     if (user == null) throw StateError('Authentification requise.');
 
@@ -67,8 +64,6 @@ class CurrentCountryVerificationService {
         'captured_at': position.timestamp.toUtc().toIso8601String(),
         'device_id': deviceId,
         'request_id': _newUuidV4(),
-        'expected_country_id': expectedCountryId,
-        if (cityId != null && cityId.isNotEmpty) 'city_id': cityId,
       },
     );
 
@@ -91,8 +86,6 @@ class CurrentCountryVerificationService {
     switch (code) {
       case 'country_verification_not_configured':
         return 'La vérification du pays n’est pas encore configurée sur le serveur.';
-      case 'selected_country_does_not_match_gps':
-        return 'Le pays choisi ne correspond pas à ta position GPS actuelle.';
       case 'gps_accuracy_insufficient':
         return 'La précision GPS est insuffisante. Réessaie dans un endroit dégagé.';
       case 'gps_fix_too_old':
