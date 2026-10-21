@@ -5,6 +5,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../centre/models/event_model.dart';
 import '../../centre/repositories/event_repository.dart';
+import 'event_itinerary_screen.dart';
 
 /// Read-only view of the user's itinerary. Editing belongs to EventItineraryScreen.
 class EventItineraryOverviewScreen extends StatefulWidget {
@@ -74,6 +75,17 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
       appBar: AppBar(
         title: Text('Mon planning', style: AppTextStyles.h4.copyWith(fontSize: 18)),
         actions: [
+          IconButton(
+            tooltip: 'Organiser mon planning',
+            onPressed: () async {
+              await Get.to(() => EventItineraryScreen(event: widget.event));
+              if (mounted) {
+                setState(() { _loading = true; _error = null; });
+                await _load();
+              }
+            },
+            icon: const Icon(Icons.edit_calendar_rounded),
+          ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: () {
