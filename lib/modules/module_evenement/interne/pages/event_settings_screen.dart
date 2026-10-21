@@ -25,8 +25,9 @@ class EventSettingsScreen extends StatelessWidget {
     final EventModel event = Get.arguments is Map ? Get.arguments['event'] : Get.arguments;
     final controller = Get.put(EventManagementController(event: event), tag: event.id);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isCreator = (event.creatorId == currentUserId || event.userRole == 'fondateur' || event.userRole == 'owner') &&
-        (event.userRole != 'co_createur');
+    // La propriété repose sur l'identifiant du créateur, pas sur le rôle d'affichage.
+    // L'accès à la certification est en plus confirmé par le RPC serveur.
+    final isCreator = event.creatorId == currentUserId;
 
     return Scaffold(
       appBar: AppBar(
@@ -81,6 +82,42 @@ class EventSettingsScreen extends StatelessWidget {
             }
             return const SizedBox.shrink();
           }),
+
+          // --- CERTIFICATION (source de vérité : backend) ---
+          FutureBuilder<dynamic>(
+            future: Supabase.instance.client.rpc(
+              'scrole_get_entity_certification_status',
+              params: {'p_entity_type': 'event', 'p_entity_id': event.id},
+            ),
+            builder: (context, snapshot) {
+              final status = snapshot.data is Map
+                  ? Map<String, dynamic>.from(snapshot.data as Map)
+                  : <String, dynamic>{};
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  status['is_owner'] != true) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: ScroleBottomSheetGroup(
+                  children: [
+                    ScroleBottomSheetAction(
+                      icon: Icons.verified_user_outlined,
+                      label: 'Certifier l’événement',
+                      subtitle: status['entity_certified'] == true
+                          ? 'Certification active · gérer les droits'
+                          : 'Consulter vos droits inclus ou acheter une certification',
+                      onTap: () => Get.to(() => EntityCertificationManagementScreen(
+                        entityType: 'event',
+                        entityId: event.id,
+                        entityName: event.name,
+                      )),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
 
           // --- SECTION ÉVÉNEMENT ---
           Text(
@@ -229,21 +266,6 @@ class EventSettingsScreen extends StatelessWidget {
 
           // --- SECTION PROPRIÉTÉ (Réservée au créateur) ---
           if (isCreator) ...[
-            ScroleBottomSheetGroup(
-              children: [
-                ScroleBottomSheetAction(
-                  icon: Icons.verified_user_outlined,
-                  label: 'Certifier l’événement',
-                  subtitle: 'Consulter vos droits inclus et certifier cet événement',
-                  onTap: () => Get.to(() => EntityCertificationManagementScreen(
-                    entityType: 'event',
-                    entityId: event.id,
-                    entityName: event.name,
-                  )),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
             Text(
               'Propriété',
               style: AppTextStyles.labelSmall.copyWith(color: Theme.of(context).colorScheme.primary, letterSpacing: 1.2),
