@@ -148,6 +148,20 @@ class StoriesRepository {
     }
   }
 
+  Future<String?> setStoryCommentReaction(String commentId, String? reaction) async {
+    try {
+      final normalized = reaction == null || reaction == 'none' ? 'none' : reaction;
+      final response = await client.rpc('set_story_comment_reaction', params: {
+        'p_comment_id': commentId,
+        'p_reaction': normalized,
+      });
+      return response?.toString();
+    } catch (e, st) {
+      debugPrint('[STORY] Error setting story comment reaction: $e\n$st');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> createStoryComment({
     required String p_id,
     required String p_story_id,
