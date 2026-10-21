@@ -42,7 +42,8 @@ class _ExpandableTextWidgetState extends State<ExpandableTextWidget> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final defaultStyle = widget.style ??
+    final defaultStyle =
+        widget.style ??
         TextStyle(fontSize: 14, color: colorScheme.onSurface, height: 1.4);
 
     return LayoutBuilder(
@@ -69,7 +70,9 @@ class _ExpandableTextWidgetState extends State<ExpandableTextWidget> {
               child: Text(
                 widget.text,
                 maxLines: _isExpanded ? null : widget.maxLines,
-                overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                overflow: _isExpanded
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
                 style: defaultStyle,
               ),
             ),
@@ -131,8 +134,10 @@ class FeedPostCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final username = post.authorObj?.username ?? '';
-    final hasCommunity = post.communityId != null && post.communityId!.isNotEmpty;
-    final isInsideOwnCommunityFeed = currentCommunityId != null && currentCommunityId == post.communityId;
+    final hasCommunity =
+        post.communityId != null && post.communityId!.isNotEmpty;
+    final isInsideOwnCommunityFeed =
+        currentCommunityId != null && currentCommunityId == post.communityId;
     final showCommunityHeader = hasCommunity && !isInsideOwnCommunityFeed;
 
     return Opacity(
@@ -154,16 +159,29 @@ class FeedPostCard extends StatelessWidget {
                   child: Row(
                     children: [
                       ClipOval(
-                        child: post.communityLogoUrl != null && post.communityLogoUrl!.isNotEmpty
-                            ? AppCachedImage(imageUrl: post.communityLogoUrl!, width: 22, height: 22, fit: BoxFit.cover)
+                        child:
+                            post.communityLogoUrl != null &&
+                                post.communityLogoUrl!.isNotEmpty
+                            ? AppCachedImage(
+                                imageUrl: post.communityLogoUrl!,
+                                width: 22,
+                                height: 22,
+                                fit: BoxFit.cover,
+                              )
                             : Container(
                                 width: 22,
                                 height: 22,
                                 decoration: BoxDecoration(
-                                  color: colorScheme.primary.withValues(alpha: 0.15),
+                                  color: colorScheme.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(Icons.groups_rounded, size: 14, color: colorScheme.primary),
+                                child: Icon(
+                                  Icons.groups_rounded,
+                                  size: 14,
+                                  color: colorScheme.primary,
+                                ),
                               ),
                       ),
                       const SizedBox(width: 8),
@@ -179,7 +197,11 @@ class FeedPostCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ],
                   ),
                 ),
@@ -196,16 +218,29 @@ class FeedPostCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () => _onAuthorTap(post),
                   child: ClipOval(
-                    child: (post.authorObj?.photoUrl != null && post.authorObj!.photoUrl!.isNotEmpty)
-                        ? AppCachedImage(imageUrl: post.authorObj!.photoUrl!, width: 40, height: 40, fit: BoxFit.cover)
+                    child:
+                        (post.authorObj?.photoUrl != null &&
+                            post.authorObj!.photoUrl!.isNotEmpty)
+                        ? AppCachedImage(
+                            imageUrl: post.authorObj!.photoUrl!,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                          )
                         : Container(
                             width: 40,
                             height: 40,
                             color: post.authorColor.withValues(alpha: 0.2),
                             alignment: Alignment.center,
                             child: Text(
-                              post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : '?',
-                              style: TextStyle(color: post.authorColor, fontWeight: FontWeight.bold, fontSize: 16),
+                              post.authorName.isNotEmpty
+                                  ? post.authorName[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: post.authorColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                   ),
@@ -263,7 +298,10 @@ class FeedPostCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           InkWell(
                             borderRadius: BorderRadius.circular(20),
-                            onTap: post.isPublishing ? null : (onMoreTap ?? () => _showPostOptions(context, post)),
+                            onTap: post.isPublishing
+                                ? null
+                                : (onMoreTap ??
+                                      () => _showPostOptions(context, post)),
                             child: Padding(
                               padding: const EdgeInsets.all(4),
                               child: Icon(
@@ -276,173 +314,213 @@ class FeedPostCard extends StatelessWidget {
                         ],
                       ),
 
-                  // --- Suggéré badge & Rejoindre button si isSuggested ---
-                  if (post.isSuggested) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'home_feed_suggested'.tr,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
-                          ),
-                        ),
-                        if (hasCommunity) ...[
-                          const Spacer(),
-                          TextButton.icon(
-                            onPressed: onJoinCommunity ?? () {
-                              _onCommunityTap(post.communityId!);
-                            },
-                            icon: const Icon(Icons.group_add_rounded, size: 16),
-                            label: Text('home_feed_join_community'.tr),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                              foregroundColor: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-
-                  // --- Texte de la publication ---
-                  if (post.content.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    ExpandableTextWidget(
-                      text: post.content,
-                      maxLines: 2,
-                      style: textTheme.bodyMedium?.copyWith(
-                        fontSize: 14.5,
-                        height: 1.45,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-
-                  // --- Hashtags en bleu ---
-                  if (post.hashtags.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: post.hashtags
-                          .map(
-                            (h) => Text(
-                              '#${h.name}',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.primary,
+                      // --- Suggéré badge & Rejoindre button si isSuggested ---
+                      if (post.isSuggested) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
                               ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-
-                  // --- Zone Médias avec indicateur 1/3 et badge influenceurs ---
-                  if (post.media.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: PostMediaSlider(
-                            heroTagPrefix: 'post_${post.id}',
-                            media: post.media,
-                            likesCount: post.likeCount,
-                            dislikesCount: post.dislikeCount,
-                            viewsCount: post.viewCount,
-                            commentsCount: post.commentCount,
-                            sharesCount: post.shareCount,
-                          ),
-                        ),
-                        if (post.influencerReactions != null && post.influencerReactions!.isNotEmpty)
-                          Positioned(
-                            bottom: 10,
-                            left: 10,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.75),
-                                borderRadius: BorderRadius.circular(20),
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: _OverlappingAvatars(
-                                users: post.influencerReactions!,
-                                onTap: () => _showUsersListBottomSheet(context, 'Personnes ayant réagi', post.influencerReactions!),
-                                size: 22,
+                              child: Text(
+                                'home_feed_suggested'.tr,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.primary,
+                                ),
                               ),
                             ),
-                          ),
+                            if (hasCommunity) ...[
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed:
+                                    onJoinCommunity ??
+                                    () {
+                                      _onCommunityTap(post.communityId!);
+                                    },
+                                icon: const Icon(
+                                  Icons.group_add_rounded,
+                                  size: 16,
+                                ),
+                                label: Text('home_feed_join_community'.tr),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  foregroundColor: colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
-                    ),
-                  ],
 
-                  // --- Personnes mentionnées avant les boutons de réaction ---
-                  if (post.mentionedUsers != null && post.mentionedUsers!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => _showUsersListBottomSheet(context, 'Personnes mentionnées', post.mentionedUsers!),
-                      child: Row(
-                        children: [
-                          _OverlappingAvatars(
-                            users: post.mentionedUsers!,
-                            onTap: () => _showUsersListBottomSheet(context, 'Personnes mentionnées', post.mentionedUsers!),
-                            size: 24,
+                      // --- Texte de la publication ---
+                      if (post.content.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        ExpandableTextWidget(
+                          text: post.content,
+                          maxLines: 2,
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 14.5,
+                            height: 1.45,
+                            color: colorScheme.onSurface,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Avec ${post.mentionedUsers!.map((m) => '@${m.username}').join(', ')}',
-                              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+
+                      // --- Hashtags en bleu ---
+                      if (post.hashtags.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: post.hashtags
+                              .map(
+                                (h) => Text(
+                                  '#${h.name}',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+
+                      // --- Zone Médias avec indicateur 1/3 et badge influenceurs ---
+                      if (post.media.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: PostMediaSlider(
+                                heroTagPrefix: 'post_${post.id}',
+                                media: post.media,
+                                likesCount: post.likeCount,
+                                dislikesCount: post.dislikeCount,
+                                viewsCount: post.viewCount,
+                                commentsCount: post.commentCount,
+                                sharesCount: post.shareCount,
+                              ),
                             ),
+                            if (post.influencerReactions != null &&
+                                post.influencerReactions!.isNotEmpty)
+                              Positioned(
+                                bottom: 10,
+                                left: 10,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.75),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: _OverlappingAvatars(
+                                    users: post.influencerReactions!,
+                                    onTap: () => _showUsersListBottomSheet(
+                                      context,
+                                      'Personnes ayant réagi',
+                                      post.influencerReactions!,
+                                    ),
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+
+                      // --- Personnes mentionnées avant les boutons de réaction ---
+                      if (post.mentionedUsers != null &&
+                          post.mentionedUsers!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showUsersListBottomSheet(
+                            context,
+                            'Personnes mentionnées',
+                            post.mentionedUsers!,
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              _OverlappingAvatars(
+                                users: post.mentionedUsers!,
+                                onTap: () => _showUsersListBottomSheet(
+                                  context,
+                                  'Personnes mentionnées',
+                                  post.mentionedUsers!,
+                                ),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Avec ${post.mentionedUsers!.map((m) => '@${m.username}').join(', ')}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      // --- Zone Poll / Sondage ---
+                      if (post.poll != null) ...[
+                        const SizedBox(height: 10),
+                        PollCardWidget(
+                          poll: post.poll!,
+                          postId: post.id,
+                          controller: null,
+                        ),
+                      ],
+
+                      const SizedBox(height: 12),
+
+                      // --- Barre de boutons d'action / interactions ---
+                      _ReactionButtonsBar(
+                        post: post,
+                        onReactionTap: onReactionTap,
+                        onCommentTap: onCommentTap,
+                        onShareTap:
+                            onShareTap ?? () => _showShareSheet(context, post),
                       ),
-                    ),
-                  ],
-
-                  // --- Zone Poll / Sondage ---
-                  if (post.poll != null) ...[
-                    const SizedBox(height: 10),
-                    PollCardWidget(
-                      poll: post.poll!,
-                      postId: post.id,
-                      controller: null,
-                    ),
-                  ],
-
-                  const SizedBox(height: 12),
-
-                  // --- Barre de boutons d'action / interactions ---
-                  _ReactionButtonsBar(
-                    post: post,
-                    onReactionTap: onReactionTap,
-                    onCommentTap: onCommentTap,
-                    onShareTap: onShareTap ?? () => _showShareSheet(context, post),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
 
   void _showPostOptions(BuildContext context, CommunityPost post) {
-    debugPrint('[COMMUNITY_POST_DELETE][UI] Options menu opened for post=${post.id}');
-    final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null;
-    final isAuthor = currentUserId != null && currentUserId == post.authorObj?.userId;
+    debugPrint(
+      '[COMMUNITY_POST_DELETE][UI] Options menu opened for post=${post.id}',
+    );
+    final currentUserId = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().userId
+        : null;
+    final isAuthor =
+        currentUserId != null && currentUserId == post.authorObj?.userId;
 
     showModalBottomSheet(
       context: context,
@@ -473,7 +551,9 @@ class FeedPostCard extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Merci, votre signalement a été transmis.')),
+                  const SnackBar(
+                    content: Text('Merci, votre signalement a été transmis.'),
+                  ),
                 );
               },
             ),
@@ -487,7 +567,10 @@ class FeedPostCard extends StatelessWidget {
             if (isAuthor)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Supprimer la publication', style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Supprimer la publication',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
                   _confirmDeletePost(context, post);
@@ -504,7 +587,9 @@ class FeedPostCard extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer la publication'),
-        content: const Text('Êtes-vous sûr de vouloir supprimer cette publication ?'),
+        content: const Text(
+          'Êtes-vous sûr de vouloir supprimer cette publication ?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -521,7 +606,9 @@ class FeedPostCard extends StatelessWidget {
                 } else {
                   CommunityFeedController? commCtrl;
                   try {
-                    commCtrl = Get.find<CommunityFeedController>(tag: post.communityId);
+                    commCtrl = Get.find<CommunityFeedController>(
+                      tag: post.communityId,
+                    );
                   } catch (_) {
                     commCtrl = Get.find<CommunityFeedController>();
                   }
@@ -541,7 +628,9 @@ class FeedPostCard extends StatelessWidget {
   void _onAuthorTap(CommunityPost post) {
     final authorUserId = post.authorObj?.userId;
     if (authorUserId == null || authorUserId.isEmpty) return;
-    final currentUserId = Get.isRegistered<AuthService>() ? Get.find<AuthService>().userId : null;
+    final currentUserId = Get.isRegistered<AuthService>()
+        ? Get.find<AuthService>().userId
+        : null;
     if (authorUserId != currentUserId) {
       Get.toNamed(AppPages.externalProfilePath(authorUserId));
     }
@@ -555,7 +644,11 @@ class FeedPostCard extends StatelessWidget {
 
   void _showShareSheet(BuildContext context, CommunityPost post) {
     if (!post.sharingEnabled) {
-      Get.snackbar('Partage', 'Le partage est désactivé sur ce post', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Partage',
+        'Le partage est désactivé sur ce post',
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return;
     }
 
@@ -569,7 +662,11 @@ class FeedPostCard extends StatelessWidget {
     );
   }
 
-  void _showUsersListBottomSheet(BuildContext context, String title, List<CommunityPostMention> users) {
+  void _showUsersListBottomSheet(
+    BuildContext context,
+    String title,
+    List<CommunityPostMention> users,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
@@ -598,7 +695,11 @@ class FeedPostCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               title,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             const Divider(height: 1),
@@ -611,13 +712,26 @@ class FeedPostCard extends StatelessWidget {
                   return ListTile(
                     leading: ClipOval(
                       child: u.photoUrl != null && u.photoUrl!.isNotEmpty
-                          ? AppCachedImage(imageUrl: u.photoUrl!, width: 44, height: 44, fit: BoxFit.cover)
+                          ? AppCachedImage(
+                              imageUrl: u.photoUrl!,
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                            )
                           : Container(
                               width: 44,
                               height: 44,
                               color: colorScheme.primary.withValues(alpha: 0.2),
                               alignment: Alignment.center,
-                              child: Text(u.username.isNotEmpty ? u.username[0].toUpperCase() : '?', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                u.username.isNotEmpty
+                                    ? u.username[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                     ),
                     title: Row(
@@ -627,7 +741,10 @@ class FeedPostCard extends StatelessWidget {
                             '@${u.username}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
                         if (u.isCertified) ...[
@@ -636,7 +753,11 @@ class FeedPostCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: colorScheme.onSurfaceVariant),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     onTap: () {
                       Navigator.of(context).pop();
                       if (u.userId.isNotEmpty) {
@@ -694,11 +815,25 @@ class _OverlappingAvatars extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       child: u.photoUrl != null && u.photoUrl!.isNotEmpty
-                          ? AppCachedImage(imageUrl: u.photoUrl!, width: size, height: size, fit: BoxFit.cover)
+                          ? AppCachedImage(
+                              imageUrl: u.photoUrl!,
+                              width: size,
+                              height: size,
+                              fit: BoxFit.cover,
+                            )
                           : Container(
                               color: Colors.grey,
                               alignment: Alignment.center,
-                              child: Text(u.username.isNotEmpty ? u.username[0].toUpperCase() : '?', style: TextStyle(fontSize: size * 0.4, color: Colors.white, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                u.username.isNotEmpty
+                                    ? u.username[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  fontSize: size * 0.4,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                     ),
                   ),
@@ -710,7 +845,11 @@ class _OverlappingAvatars extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               '+$extraCount',
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ],
@@ -803,7 +942,9 @@ class _ReactionButtonsBarState extends State<_ReactionButtonsBar> {
           children: [
             // 1. Upvote / Like
             InkWell(
-              onTap: widget.post.isPublishing ? null : () => _handleReaction(PostReaction.like),
+              onTap: widget.post.isPublishing
+                  ? null
+                  : () => _handleReaction(PostReaction.like),
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -840,7 +981,9 @@ class _ReactionButtonsBarState extends State<_ReactionButtonsBar> {
 
             // 2. Downvote / Dislike
             InkWell(
-              onTap: widget.post.isPublishing ? null : () => _handleReaction(PostReaction.dislike),
+              onTap: widget.post.isPublishing
+                  ? null
+                  : () => _handleReaction(PostReaction.dislike),
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -993,7 +1136,9 @@ String _formatShortTime(String raw) {
     } else if (difference.inHours < 24) {
       return 'il y a ${difference.inHours}h';
     } else if (difference.inDays < 7) {
-      return difference.inDays == 1 ? 'il y a 1 jour' : 'il y a ${difference.inDays} jours';
+      return difference.inDays == 1
+          ? 'il y a 1 jour'
+          : 'il y a ${difference.inDays} jours';
     } else if (difference.inDays < 30) {
       final weeks = (difference.inDays / 7).floor();
       return weeks == 1 ? 'il y a 1 sem' : 'il y a $weeks sem';
@@ -1003,20 +1148,28 @@ String _formatShortTime(String raw) {
   }
 
   final lower = raw.toLowerCase().trim();
-  if (lower.contains('instant') || lower.contains('maintenant') || lower.contains('now') || lower.contains('just')) {
+  if (lower.contains('instant') ||
+      lower.contains('maintenant') ||
+      lower.contains('now') ||
+      lower.contains('just')) {
     return 'à l\'instant';
   }
-  
+
   final digits = lower.replaceAll(RegExp(r'[^0-9]'), '');
   if (digits.isNotEmpty) {
     final val = int.tryParse(digits) ?? 1;
-    if (lower.contains('min') || (lower.contains('m') && !lower.contains('mo') && !lower.contains('mai'))) {
+    if (lower.contains('min') ||
+        (lower.contains('m') &&
+            !lower.contains('mo') &&
+            !lower.contains('mai'))) {
       return 'il y a ${val}min';
     }
     if (lower.contains('heure') || lower.contains('h')) {
       return val == 1 ? 'il y a 1h' : 'il y a ${val}h';
     }
-    if (lower.contains('jour') || lower.contains('j') || lower.contains('day')) {
+    if (lower.contains('jour') ||
+        lower.contains('j') ||
+        lower.contains('day')) {
       return val == 1 ? 'il y a 1 jour' : 'il y a $val jours';
     }
     if (lower.contains('semaine') || lower.contains('week')) {
@@ -1025,7 +1178,9 @@ String _formatShortTime(String raw) {
     if (lower.contains('mois') || lower.contains('month')) {
       return val == 1 ? 'il y a 1 mois' : 'il y a $val mois';
     }
-    if (lower.contains('an') || lower.contains('year') || lower.contains('ans')) {
+    if (lower.contains('an') ||
+        lower.contains('year') ||
+        lower.contains('ans')) {
       return val == 1 ? 'il y a 1 an' : 'il y a $val ans';
     }
   }
@@ -1042,7 +1197,12 @@ class _ShareSheetWidget extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).padding.bottom + 24,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1062,34 +1222,58 @@ class _ShareSheetWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Partager la publication', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          const Text(
+            'Partager la publication',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 16),
 
           // Compact Post Preview
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.35,
+              ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
                 if (post.media.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: AppCachedImage(imageUrl: post.media.first.url ?? '', width: 44, height: 44, fit: BoxFit.cover),
+                    child: AppCachedImage(
+                      imageUrl: post.media.first.url ?? '',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 if (post.media.isNotEmpty) const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(post.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      Text(
+                        post.authorName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
-                        post.content.isNotEmpty ? post.content : 'Publication multimédia',
-                        style: TextStyle(fontSize: 12.5, color: colorScheme.onSurfaceVariant),
+                        post.content.isNotEmpty
+                            ? post.content
+                            : 'Publication multimédia',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1100,7 +1284,15 @@ class _ShareSheetWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Destinations', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey), textAlign: TextAlign.left),
+          const Text(
+            'Destinations',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.left,
+          ),
           const SizedBox(height: 14),
 
           // Horizontal Share Options Row
@@ -1167,7 +1359,9 @@ class _ShareSheetWidget extends StatelessWidget {
                   onTap: () async {
                     Navigator.of(context).pop();
                     final url = 'https://scrole.app/posts/${post.id}';
-                    await Share.share('Regardez cette publication sur Scrole : $url');
+                    await Share.share(
+                      'Regardez cette publication sur Scrole : $url',
+                    );
                   },
                 ),
               ],
@@ -1212,7 +1406,10 @@ class _ShareOptionItem extends StatelessWidget {
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
-                border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               alignment: Alignment.center,
               child: svgAsset != null
@@ -1272,7 +1469,9 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
         originalPostId: widget.post.sharedPostId ?? widget.post.id,
         communityId: null,
         audience: _audience,
-        comment: _commentController.text.trim().isNotEmpty ? _commentController.text.trim() : null,
+        comment: _commentController.text.trim().isNotEmpty
+            ? _commentController.text.trim()
+            : null,
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -1287,7 +1486,12 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1299,8 +1503,14 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Republier sur mon fil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(context).pop()),
+              const Text(
+                'Republier sur mon fil',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ],
           ),
           const Divider(height: 1),
@@ -1309,8 +1519,13 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
             controller: _commentController,
             decoration: InputDecoration(
               hintText: 'Ajoute un commentaire (facultatif)...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             maxLength: 5000,
             maxLines: 3,
@@ -1320,8 +1535,13 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
             value: _audience,
             decoration: InputDecoration(
               labelText: 'Audience',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             items: const [
               DropdownMenuItem(value: 'public', child: Text('Public')),
@@ -1337,12 +1557,23 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isPublishing
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Publier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          ),
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Publier',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
           ),
         ],
       ),
@@ -1355,7 +1586,8 @@ class _CommunityShareListSheet extends StatefulWidget {
   const _CommunityShareListSheet({required this.post});
 
   @override
-  State<_CommunityShareListSheet> createState() => _CommunityShareListSheetState();
+  State<_CommunityShareListSheet> createState() =>
+      _CommunityShareListSheetState();
 }
 
 class _CommunityShareListSheetState extends State<_CommunityShareListSheet> {
@@ -1375,7 +1607,9 @@ class _CommunityShareListSheetState extends State<_CommunityShareListSheet> {
       final comms = await repo.getMyCommunities();
       if (mounted) {
         setState(() {
-          _communities = comms.where((c) => c['id']?.toString() != widget.post.communityId).toList();
+          _communities = comms
+              .where((c) => c['id']?.toString() != widget.post.communityId)
+              .toList();
           _isLoading = false;
         });
       }
@@ -1393,8 +1627,15 @@ class _CommunityShareListSheetState extends State<_CommunityShareListSheet> {
     }).toList();
 
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).padding.bottom + 20,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1406,8 +1647,14 @@ class _CommunityShareListSheetState extends State<_CommunityShareListSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Partager dans une communauté', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(context).pop()),
+              const Text(
+                'Partager dans une communauté',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ],
           ),
           const Divider(height: 1),
@@ -1417,64 +1664,91 @@ class _CommunityShareListSheetState extends State<_CommunityShareListSheet> {
             decoration: InputDecoration(
               hintText: 'Rechercher une communauté...',
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 16,
+              ),
             ),
           ),
           const SizedBox(height: 12),
           _isLoading
-              ? const SizedBox(height: 150, child: Center(child: CircularProgressIndicator()))
+              ? const SizedBox(
+                  height: 150,
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : filtered.isEmpty
-                  ? SizedBox(
-                      height: 180,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text('Tu n\'as pas encore de communauté où partager', style: TextStyle(fontSize: 14)),
-                            const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Découvrir des communautés'),
-                            ),
-                          ],
+              ? SizedBox(
+                  height: 180,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Tu n\'as pas encore de communauté où partager',
+                          style: TextStyle(fontSize: 14),
                         ),
-                      ),
-                    )
-                  : Flexible(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final c = filtered[index];
-                          final name = c['name']?.toString() ?? 'Communauté';
-                          final avatar = c['photo_profile']?.toString() ?? c['avatar_url']?.toString();
-                          final communityId = c['id']?.toString() ?? '';
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text('Découvrir des communautés'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final c = filtered[index];
+                      final name = c['name']?.toString() ?? 'Communauté';
+                      final avatar =
+                          c['photo_profile']?.toString() ??
+                          c['avatar_url']?.toString();
+                      final communityId = c['id']?.toString() ?? '';
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              radius: 22,
-                              backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                              child: avatar == null || avatar.isEmpty ? Text(name[0].toUpperCase()) : null,
+                      return ListTile(
+                        leading: CircleAvatar(
+                          radius: 22,
+                          backgroundImage: avatar != null && avatar.isNotEmpty
+                              ? NetworkImage(avatar)
+                              : null,
+                          child: avatar == null || avatar.isEmpty
+                              ? Text(name[0].toUpperCase())
+                              : null,
+                        ),
+                        title: Text(
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 16,
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => _CommunityPublishSheet(
+                              post: widget.post,
+                              communityId: communityId,
+                              communityName: name,
                             ),
-                            title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (_) => _CommunityPublishSheet(post: widget.post, communityId: communityId, communityName: name),
-                              );
-                            },
                           );
                         },
-                      ),
-                    ),
+                      );
+                    },
+                  ),
+                ),
         ],
       ),
     );
@@ -1516,7 +1790,9 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
         originalPostId: widget.post.sharedPostId ?? widget.post.id,
         communityId: widget.communityId,
         audience: 'public',
-        comment: _commentController.text.trim().isNotEmpty ? _commentController.text.trim() : null,
+        comment: _commentController.text.trim().isNotEmpty
+            ? _commentController.text.trim()
+            : null,
       );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -1531,7 +1807,12 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1543,8 +1824,17 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Partager dans ${widget.communityName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(context).pop()),
+              Text(
+                'Partager dans ${widget.communityName}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ],
           ),
           const Divider(height: 1),
@@ -1553,8 +1843,13 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
             controller: _commentController,
             decoration: InputDecoration(
               hintText: 'Ajoute un commentaire (facultatif)...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             maxLength: 5000,
             maxLines: 3,
@@ -1566,11 +1861,23 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isPublishing
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Publier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Publier',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
           ),
         ],
       ),
@@ -1601,7 +1908,8 @@ class _RepublicationPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final hasCommunity = post.communityId != null && post.communityId!.isNotEmpty;
+    final hasCommunity =
+        post.communityId != null && post.communityId!.isNotEmpty;
     final shared = post.sharedPost;
     final hasSharedPost = post.sharedPostId != null;
     final username = post.authorObj?.username ?? '';
@@ -1624,262 +1932,446 @@ class _RepublicationPostCard extends StatelessWidget {
             ),
           ),
           Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipOval(
-            child: post.authorObj?.photoUrl != null && post.authorObj!.photoUrl!.isNotEmpty
-                ? AppCachedImage(imageUrl: post.authorObj!.photoUrl!, width: 40, height: 40, fit: BoxFit.cover)
-                : Container(
-                    width: 40,
-                    height: 40,
-                    color: post.authorColor.withValues(alpha: 0.2),
-                    alignment: Alignment.center,
-                    child: Text(
-                      post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : '?',
-                      style: TextStyle(color: post.authorColor, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipOval(
+                child:
+                    post.authorObj?.photoUrl != null &&
+                        post.authorObj!.photoUrl!.isNotEmpty
+                    ? AppCachedImage(
+                        imageUrl: post.authorObj!.photoUrl!,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        color: post.authorColor.withValues(alpha: 0.2),
+                        alignment: Alignment.center,
+                        child: Text(
+                          post.authorName.isNotEmpty
+                              ? post.authorName[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: post.authorColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Wrap(
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 4,
-                        children: [
-                          Text(
-                            post.authorName,
-                            style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 14.5, color: colorScheme.onSurface),
-                          ),
-                          if (username.isNotEmpty)
-                            Text(
-                              '@$username',
-                              style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
-                            ),
-                          if (isCertified)
-                            const UserCertifiedBadge(size: 14),
-                          const Icon(Icons.repeat_rounded, size: 14, color: Colors.green),
-                          Text(
-                            hasCommunity ? 'a republié dans ${post.communityName ?? "une communauté"}' : 'a republié',
-                            style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
-                          ),
-                          Text(
-                            '· ${_formatShortTime(post.timeAgo)}',
-                            style: TextStyle(fontSize: 12.5, color: colorScheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: onMoreTap ?? () => FeedPostCard(post: post, onReactionTap: onReactionTap, onCommentTap: onCommentTap)._showPostOptions(context, post),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(Icons.more_horiz_rounded, size: 20, color: colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ],
-                ),
-                if (post.content.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  ExpandableTextWidget(
-                    text: post.content,
-                    maxLines: 3,
-                    style: textTheme.bodyMedium?.copyWith(fontSize: 14.5, height: 1.45, color: colorScheme.onSurface),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: hasSharedPost && shared != null ? () => _openOriginalPost(context, post.sharedPostId!) : null,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: (!hasSharedPost || shared == null)
-                        ? Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Center(
-                              child: Text(
-                                'Cette publication n\'est plus disponible',
-                                style: TextStyle(color: colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
-                              ),
-                            ),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 4,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundImage: shared.authorObj?.photoUrl != null && shared.authorObj!.photoUrl!.isNotEmpty
-                                        ? NetworkImage(shared.authorObj!.photoUrl!)
-                                        : null,
-                                    child: shared.authorObj?.photoUrl == null || shared.authorObj!.photoUrl!.isEmpty
-                                        ? Text(shared.authorName.isNotEmpty ? shared.authorName[0].toUpperCase() : 'U', style: const TextStyle(fontSize: 12))
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Wrap(
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      spacing: 4,
-                                      children: [
-                                        Text(
-                                          shared.authorName,
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: colorScheme.onSurface),
-                                        ),
-                                        if (shared.authorObj?.username != null && shared.authorObj!.username.isNotEmpty)
-                                          Text(
-                                            '@${shared.authorObj!.username}',
-                                            style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
-                                          ),
-                                        if (shared.authorObj?.isCertified == true)
-                                          const UserCertifiedBadge(size: 13),
-                                        Text(
-                                          '· ${_formatShortTime(shared.timeAgo)}',
-                                          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                                    color: colorScheme.onSurfaceVariant,
-                                    tooltip: 'Voir la publication originale',
-                                    onPressed: () => _openOriginalPost(context, shared.id),
-                                    constraints: const BoxConstraints(),
-                                    padding: const EdgeInsets.all(6),
-                                  ),
-                                ],
+                              Text(
+                                post.authorName,
+                                style: textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.5,
+                                  color: colorScheme.onSurface,
+                                ),
                               ),
-                              const SizedBox(height: 8),
-                              if (shared.content.isNotEmpty) ...[
-                                ExpandableTextWidget(
-                                  text: shared.content,
-                                  maxLines: 6,
-                                  style: TextStyle(fontSize: 13.5, color: colorScheme.onSurface, height: 1.35),
-                                ),
-                                const SizedBox(height: 8),
-                              ],
-                              if (shared.media.isNotEmpty) ...[
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: PostMediaSlider(
-                                    heroTagPrefix: 'shared_${shared.id}_${post.id}',
-                                    media: shared.media,
-                                    likesCount: shared.likeCount,
-                                    dislikesCount: shared.dislikeCount,
-                                    viewsCount: shared.viewCount,
-                                    commentsCount: shared.commentCount,
-                                    sharesCount: shared.shareCount,
+                              if (username.isNotEmpty)
+                                Text(
+                                  '@$username',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                              ],
-                              if (shared.poll != null) ...[
-                                PollCardWidget(
-                                  poll: shared.poll!,
-                                  postId: shared.id,
-                                  controller: null,
+                              if (isCertified)
+                                const UserCertifiedBadge(size: 14),
+                              const Icon(
+                                Icons.repeat_rounded,
+                                size: 14,
+                                color: Colors.green,
+                              ),
+                              Text(
+                                hasCommunity
+                                    ? 'a republié dans ${post.communityName ?? "une communauté"}'
+                                    : 'a republié',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
-                                const SizedBox(height: 8),
-                              ],
-                              // Read-only stats bar of original post
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.north_rounded, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text('${shared.likeCount}', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.south_rounded, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text('${shared.dislikeCount}', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.bar_chart_outlined, size: 16, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text(NumberFormatter.formatCount(shared.viewCount), style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.chat_bubble_outline_rounded, size: 15, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text('${shared.commentCount}', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.ios_share_rounded, size: 15, color: Colors.grey),
-                                          const SizedBox(width: 3),
-                                          Text('${shared.shareCount}', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                              ),
+                              Text(
+                                '· ${_formatShortTime(post.timeAgo)}',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
-                  ),
+                        ),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap:
+                              onMoreTap ??
+                              () => FeedPostCard(
+                                post: post,
+                                onReactionTap: onReactionTap,
+                                onCommentTap: onCommentTap,
+                              )._showPostOptions(context, post),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.more_horiz_rounded,
+                              size: 20,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (post.content.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      ExpandableTextWidget(
+                        text: post.content,
+                        maxLines: 3,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: hasSharedPost && shared != null
+                          ? () => _openOriginalPost(context, post.sharedPostId!)
+                          : null,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest.withValues(
+                            alpha: 0.22,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: (!hasSharedPost || shared == null)
+                            ? Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Center(
+                                  child: Text(
+                                    'Cette publication n\'est plus disponible',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurfaceVariant,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 16,
+                                        backgroundImage:
+                                            shared.authorObj?.photoUrl !=
+                                                    null &&
+                                                shared
+                                                    .authorObj!
+                                                    .photoUrl!
+                                                    .isNotEmpty
+                                            ? NetworkImage(
+                                                shared.authorObj!.photoUrl!,
+                                              )
+                                            : null,
+                                        child:
+                                            shared.authorObj?.photoUrl ==
+                                                    null ||
+                                                shared
+                                                    .authorObj!
+                                                    .photoUrl!
+                                                    .isEmpty
+                                            ? Text(
+                                                shared.authorName.isNotEmpty
+                                                    ? shared.authorName[0]
+                                                          .toUpperCase()
+                                                    : 'U',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Wrap(
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          spacing: 4,
+                                          children: [
+                                            Text(
+                                              shared.authorName,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13.5,
+                                                color: colorScheme.onSurface,
+                                              ),
+                                            ),
+                                            if (shared.authorObj?.username !=
+                                                    null &&
+                                                shared
+                                                    .authorObj!
+                                                    .username
+                                                    .isNotEmpty)
+                                              Text(
+                                                '@${shared.authorObj!.username}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            if (shared.authorObj?.isCertified ==
+                                                true)
+                                              const UserCertifiedBadge(
+                                                size: 13,
+                                              ),
+                                            Text(
+                                              '· ${_formatShortTime(shared.timeAgo)}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.open_in_new_rounded,
+                                          size: 18,
+                                        ),
+                                        color: colorScheme.onSurfaceVariant,
+                                        tooltip:
+                                            'Voir la publication originale',
+                                        onPressed: () => _openOriginalPost(
+                                          context,
+                                          shared.id,
+                                        ),
+                                        constraints: const BoxConstraints(),
+                                        padding: const EdgeInsets.all(6),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (shared.content.isNotEmpty) ...[
+                                    ExpandableTextWidget(
+                                      text: shared.content,
+                                      maxLines: 6,
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        color: colorScheme.onSurface,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  if (shared.media.isNotEmpty) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: PostMediaSlider(
+                                        heroTagPrefix:
+                                            'shared_${shared.id}_${post.id}',
+                                        media: shared.media,
+                                        likesCount: shared.likeCount,
+                                        dislikesCount: shared.dislikeCount,
+                                        viewsCount: shared.viewCount,
+                                        commentsCount: shared.commentCount,
+                                        sharesCount: shared.shareCount,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  if (shared.poll != null) ...[
+                                    PollCardWidget(
+                                      poll: shared.poll!,
+                                      postId: shared.id,
+                                      controller: null,
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  // Read-only stats bar of original post
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.north_rounded,
+                                                size: 16,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '${shared.likeCount}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.south_rounded,
+                                                size: 16,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '${shared.dislikeCount}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.bar_chart_outlined,
+                                                size: 16,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                NumberFormatter.formatCount(
+                                                  shared.viewCount,
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons
+                                                    .chat_bubble_outline_rounded,
+                                                size: 15,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '${shared.commentCount}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.ios_share_rounded,
+                                                size: 15,
+                                                color: Colors.grey,
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                '${shared.shareCount}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _ReactionButtonsBar(
+                      post: post,
+                      onReactionTap: onReactionTap,
+                      onCommentTap: onCommentTap,
+                      onShareTap:
+                          onShareTap ??
+                          () => FeedPostCard(
+                            post: post,
+                            onReactionTap: onReactionTap,
+                            onCommentTap: onCommentTap,
+                          )._showShareSheet(context, post),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _ReactionButtonsBar(
-                  post: post,
-                  onReactionTap: onReactionTap,
-                  onCommentTap: onCommentTap,
-                  onShareTap: onShareTap ?? () => FeedPostCard(post: post, onReactionTap: onReactionTap, onCommentTap: onCommentTap)._showShareSheet(context, post),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Future<void> _openOriginalPost(BuildContext context, String originalPostId) async {
+  Future<void> _openOriginalPost(
+    BuildContext context,
+    String originalPostId,
+  ) async {
     try {
       final repo = HomeFeedRepository();
       final originalPost = await repo.getPost(originalPostId);
-      Get.to(() => Scaffold(
-        appBar: AppBar(title: const Text('Publication originale')),
-        body: SingleChildScrollView(
-          child: FeedPostCard(
-            post: originalPost,
-            onReactionTap: (r) {},
-            onCommentTap: () {},
+      Get.to(
+        () => Scaffold(
+          appBar: AppBar(title: const Text('Publication originale')),
+          body: SingleChildScrollView(
+            child: FeedPostCard(
+              post: originalPost,
+              onReactionTap: (r) {},
+              onCommentTap: () {},
+            ),
           ),
         ),
-      ));
+      );
     } catch (e) {
-      Get.snackbar('Erreur', 'Publication indisponible', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Erreur',
+        'Publication indisponible',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 }
@@ -1916,13 +2408,19 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
       await repo.sharePostToStory(
         p_id: pId,
         p_original_post_id: originalPostId,
-        p_caption: _captionController.text.trim().isNotEmpty ? _captionController.text.trim() : null,
+        p_caption: _captionController.text.trim().isNotEmpty
+            ? _captionController.text.trim()
+            : null,
         p_background: _background,
         p_audience: _audience,
       );
       if (mounted) {
         Navigator.of(context).pop();
-        Get.snackbar('Succès', 'Publication ajoutée à votre story avec succès !', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Succès',
+          'Publication ajoutée à votre story avec succès !',
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } catch (e) {
       debugPrint('[STORY] sharePostToStory error: $e');
@@ -1930,13 +2428,21 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
       if (e is PostgrestException) {
         msg = e.message;
       } else {
-        msg = msg.replaceFirst('Exception: ', '').replaceFirst('PostgrestException: ', '');
+        msg = msg
+            .replaceFirst('Exception: ', '')
+            .replaceFirst('PostgrestException: ', '');
         final match = RegExp(r'message:\s*([^,)]+)').firstMatch(msg);
         if (match != null && match.group(1) != null) {
           msg = match.group(1)!.trim();
         }
       }
-      Get.snackbar('Erreur', msg, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        'Erreur',
+        msg,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
       if (mounted) setState(() => _isPublishing = false);
     }
@@ -1947,8 +2453,15 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1960,8 +2473,14 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Ajouter à ma story', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.of(context).pop()),
+              const Text(
+                'Ajouter à ma story',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ],
           ),
           const Divider(height: 1),
@@ -1970,8 +2489,13 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
             controller: _captionController,
             decoration: InputDecoration(
               hintText: 'Ajoute une légende (500 max)...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             maxLength: 500,
             maxLines: 2,
@@ -1981,11 +2505,19 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
             value: _background,
             decoration: InputDecoration(
               labelText: 'Fond',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
             ),
             items: const [
-              DropdownMenuItem(value: 'sunset', child: Text('Coucher de soleil')),
+              DropdownMenuItem(
+                value: 'sunset',
+                child: Text('Coucher de soleil'),
+              ),
               DropdownMenuItem(value: 'ocean', child: Text('Océan')),
               DropdownMenuItem(value: 'forest', child: Text('Forêt')),
               DropdownMenuItem(value: 'dark', child: Text('Sombre')),
@@ -1997,8 +2529,13 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
             value: _audience,
             decoration: InputDecoration(
               labelText: 'Audience',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
             ),
             items: const [
               DropdownMenuItem(value: 'public', child: Text('Public')),
@@ -2014,11 +2551,23 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
               backgroundColor: colorScheme.primary,
               foregroundColor: colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isPublishing
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Partager', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Partager',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
           ),
         ],
       ),
