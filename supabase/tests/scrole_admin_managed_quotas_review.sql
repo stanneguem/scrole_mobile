@@ -1,26 +1,43 @@
--- Checklist / smoke tests for scrole_admin_managed_quotas.
--- Run only on a disposable Supabase project after applying the migrations in order.
+-- Read-only smoke checks for the Scrole certification/quotas migrations.
+-- Run the admin RPC section only through an authenticated admin session in a test project.
+-- Do not run mutating test steps against production.
 
-select quota_key, value, category, min_value, max_value
-from public.admin_get_scrole_quotas()
-order by category, quota_key;
+-- 1) Migration objects and safe mobile payload.
+select to_regclass('public.scrole_subscriptions') as subscriptions,
+       to_regclass('public.event_certifications') as event_certifications,
+       to_regclass('public.community_certifications') as community_certifications,
+       to_regclass('public.profile_certification_entitlements') as profile_entitlements,
+       to_regclass('public.scrole_quota_settings') as quota_settings;
 
+select public.get_scrole_public_quota_settings() as mobile_quotas;
 select public.scrole_subscription_quotas('pro') as pro,
        public.scrole_subscription_quotas('premium') as premium;
 
--- Through an authenticated administrator session:
+select jobname, schedule, active
+from cron.job
+where jobname = 'scrole-expire-subscription-certifications';
+
+-- 2) Authenticated admin session only (the SQL editor has no auth.uid() and should be denied):
+-- select quota_key, value, category, min_value, max_value
+-- from public.admin_get_scrole_quotas() order by category, quota_key;
 -- select public.admin_update_scrole_quota('noncert_agenda_max_events', 3);
 -- select * from public.admin_get_scrole_quotas()
 -- where quota_key = 'noncert_agenda_max_events';
 -- Expected: value=3 and a quota_updated row in public.scrole_certification_audit.
 -- Restore the original value after the test.
 
--- Functional tests with test fixtures:
--- 1. Uncertified profile cannot add a third distinct event to event_calendar.
--- 2. Uncertified profile cannot add an event beyond the configured agenda horizon.
--- 3. A profile with active user_certifications can add more agenda events.
--- 4. Uncertified event cannot exceed configured duration/horizon.
--- 5. Uncertified event cannot exceed agenda audience / cofounder / staff limits.
--- 6. Active event/community certification exempts the event from applicable event limits.
--- 7. Unauthenticated users and authenticated non-admin users cannot read/update quota table.
--- 8. Authenticated user without certifications.manage cannot call quota mutation RPC.
+-- 3) Functional tests with disposable user/event/subscription fixtures:
+-- a. Uncertified profile cannot add a third distinct event to event_calendar.
+-- b. Uncertified profile cannot add an event or selected participation day beyond configured horizon.
+-- c. A profile with an active user_certifications row can add more agenda events.
+-- d. Non-certified event cannot exceed configured start horizon or exact elapsed duration.
+-- e. Certified event can be scheduled within certified_event_horizon_months but not beyond it.
+-- f. Non-certified event cannot exceed audience/cofounder/staff quotas.
+-- g. Guest/sponsor/ticket insert, update and delete are denied without event-level certification.
+-- h. Event financial/day-attendance/staff statistics are denied without event-level certification.
+-- i. Premium -> Pro selection respects current quotas and suspends all unselected included certifications.
+-- j. Expiration suspends included profile/event/community certifications without deleting rows.
+-- k. Renewal reactivates only selected included event/community entitlements and included profile tier.
+-- l. Purchased/admin-granted certifications remain independent.
+-- m. Anonymous users and authenticated users without certifications.manage cannot change quotas.
+-- n. Trusted grant/renewal/expiry functions cannot be executed by anon/authenticated.
