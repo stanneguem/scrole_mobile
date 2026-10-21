@@ -165,6 +165,7 @@ class PrivacyDataScreen extends StatelessWidget {
                   afficherPays: p.afficherPays,
                   afficherVille: p.afficherVille,
                   afficherDerniereConnexion: p.afficherDerniereConnexion,
+                  eventItineraryVisibility: p.eventItineraryVisibility,
                 ));
               },
               textPrimary: textPrimary,
