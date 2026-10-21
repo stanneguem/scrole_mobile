@@ -91,7 +91,7 @@ class PrivacyDataScreen extends StatelessWidget {
                   value: const {'only_me', 'friends', 'followers', 'everyone'}.contains(p.eventItineraryVisibility)
                       ? p.eventItineraryVisibility
                       : 'only_me',
-                  items: const [
+                  items: [
                     DropdownMenuItem(value: 'only_me', child: Text('event_itinerary_visibility_only_me'.tr)),
                     DropdownMenuItem(value: 'friends', child: Text('event_itinerary_visibility_friends'.tr)),
                     DropdownMenuItem(value: 'followers', child: Text('event_itinerary_visibility_followers'.tr)),
