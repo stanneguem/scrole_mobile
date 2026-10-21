@@ -2988,7 +2988,7 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
                 child: Icon(_isEvent ? Icons.event_available_rounded : Icons.groups_rounded, color: colors.onPrimaryContainer, size: 28),
               ),
               const SizedBox(height: 18),
-              Text(widget.widget.entityName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.5)),
+              Text(widget.entityName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.5)),
               const SizedBox(height: 8),
               Text('entity_cert_individual_label'.trParams({'kind': kind}),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.primary, fontWeight: FontWeight.w700)),
