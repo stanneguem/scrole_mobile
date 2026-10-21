@@ -901,19 +901,32 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
     final db = await Get.find<AppDatabase>().database;
     final now = DateTime.now().toIso8601String();
+
+    // Some installed app_local.db versions have a NOT NULL operation_type
+    // column in post_outbox, while older versions do not. Inspect the actual
+    // local schema so publishing works on both without forcing data deletion.
+    final postOutboxColumns = await db.rawQuery('PRAGMA table_info(post_outbox)');
+    final hasOperationType = postOutboxColumns.any(
+      (column) => column['name']?.toString() == 'operation_type',
+    );
+    final outboxRow = <String, Object?>{
+      'operation_id': operationId,
+      'user_id': userId,
+      'community_id': communityId.isEmpty ? null : communityId,
+      'payload': jsonEncode(payload),
+      'status': 'pending',
+      'attempt_count': 0,
+      'next_retry_at': 0,
+      'created_at': now,
+      'updated_at': now,
+    };
+    if (hasOperationType) {
+      outboxRow['operation_type'] = 'create';
+    }
+
     await db.insert(
       'post_outbox',
-      {
-        'operation_id': operationId,
-        'user_id': userId,
-        'community_id': communityId.isEmpty ? null : communityId,
-        'payload': jsonEncode(payload),
-        'status': 'pending',
-        'attempt_count': 0,
-        'next_retry_at': 0,
-        'created_at': now,
-        'updated_at': now,
-      },
+      outboxRow,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
