@@ -1777,38 +1777,24 @@ class EventRepository {
   }
 
   Future<EventStatisticsModel> getEventStatistics(String eventId, {bool forceRefresh = false}) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
-    final cacheKey = 'event_statistics_${userId}_$eventId';
-
-    if (!forceRefresh) {
-      final cached = await _dao.getDiscoveryCache(cacheKey);
-      if (cached != null) {
-        final (payload, cachedAt) = cached;
-        final age = DateTime.now().difference(cachedAt);
-        if (age < const Duration(minutes: 30)) {
-          final Map<String, dynamic> json = jsonDecode(payload);
-          return EventStatisticsModel.fromJson(json);
-        }
-      }
-    }
-
+    // Les statistiques sont une fonctionnalité protégée par la certification active.
+    // Ne jamais servir un cache local avant la validation serveur : la certification
+    // peut avoir expiré ou avoir été suspendue depuis le dernier affichage.
     try {
       final data = await _remote.getEventStatistics(eventId: eventId);
       if (data.isNotEmpty) {
+        final userId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
+        final cacheKey = 'event_statistics_${userId}_$eventId';
         await _dao.saveDiscoveryCache(cacheKey, jsonEncode(data));
         return EventStatisticsModel.fromJson(data);
       }
+      throw Exception('Aucune statistique disponible pour cet événement.');
     } catch (e) {
-      debugPrint('[Error] getEventStatistics RPC failed for $eventId: $e');
+      debugPrint('[Error] getEventStatistics refused or unavailable for $eventId: $e');
+      // Pas de repli vers le cache : il pourrait révéler des statistiques après
+      // expiration/suspension de la certification ou changement des droits.
+      rethrow;
     }
-
-    final cached = await _dao.getDiscoveryCache(cacheKey);
-    if (cached != null) {
-      final Map<String, dynamic> json = jsonDecode(cached.$1);
-      return EventStatisticsModel.fromJson(json);
-    }
-
-    throw Exception('Impossible de charger les statistiques de l\'événement.');
   }
 
   Future<void> updateEventPricing({required String eventId, required bool isFree}) async {
