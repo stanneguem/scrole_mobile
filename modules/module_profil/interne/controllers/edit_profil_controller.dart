@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:scrole/app/repository_global/location_repository.dart';
@@ -8,7 +9,6 @@ import 'package:scrole/app/service_global/centre_interrets_service.dart';
 import 'package:scrole/shared/models/interest_model.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/app/routes/app_pages.dart';
-import 'profile_controller.dart';
 
 class EditProfileController extends GetxController {
   late final ProfileController _profileController;

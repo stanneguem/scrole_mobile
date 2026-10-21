@@ -2,9 +2,8 @@ import 'dart:math';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:scrole/app/service_global/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-import 'notification_service.dart';
 
 /// Détecte le pays de présence via GPS et une Edge Function côté serveur.
 /// Cette détection ne modifie jamais le pays ou la ville déclarés sur le profil.
@@ -29,7 +28,9 @@ class CurrentCountryVerificationService {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever ||
         permission == LocationPermission.unableToDetermine) {
-      throw StateError('La permission GPS est nécessaire pour vérifier le pays.');
+      throw StateError(
+        'La permission GPS est nécessaire pour vérifier le pays.',
+      );
     }
 
     final position = await Geolocator.getCurrentPosition(
@@ -41,7 +42,9 @@ class CurrentCountryVerificationService {
 
     final deviceToken = await NotificationService.instance.getDeviceToken();
     if (deviceToken == null || deviceToken.isEmpty) {
-      throw StateError('Cet appareil doit être enregistré avant la vérification.');
+      throw StateError(
+        'Cet appareil doit être enregistré avant la vérification.',
+      );
     }
 
     final device = await _client
@@ -52,7 +55,9 @@ class CurrentCountryVerificationService {
         .maybeSingle();
     final deviceId = device?['id']?.toString();
     if (deviceId == null || deviceId.isEmpty) {
-      throw StateError('Appareil introuvable. Réessaie après la synchronisation.');
+      throw StateError(
+        'Appareil introuvable. Réessaie après la synchronisation.',
+      );
     }
 
     final response = await _client.functions.invoke(
