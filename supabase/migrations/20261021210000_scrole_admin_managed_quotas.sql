@@ -175,7 +175,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select jsonb_build_object(
     'noncert_agenda_max_events', (select value from public.scrole_quota_settings where quota_key = 'noncert_agenda_max_events'),
     'noncert_agenda_horizon_months', (select value from public.scrole_quota_settings where quota_key = 'noncert_agenda_horizon_months'),
@@ -183,7 +183,7 @@ as $
     'noncert_event_max_duration_days', (select value from public.scrole_quota_settings where quota_key = 'noncert_event_max_duration_days'),
     'noncert_event_agenda_max_people', (select value from public.scrole_quota_settings where quota_key = 'noncert_event_agenda_max_people')
   );
-$;
+$$;
 
 revoke all on function public.get_scrole_public_quota_settings() from public;
 grant execute on function public.get_scrole_public_quota_settings() to anon, authenticated;
@@ -334,7 +334,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_is_profile_certified boolean;
   v_horizon integer;
@@ -361,7 +361,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists scrole_calendar_day_horizon on public.event_calendar_days;
 create trigger scrole_calendar_day_horizon
