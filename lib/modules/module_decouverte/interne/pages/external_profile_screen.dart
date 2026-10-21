@@ -372,17 +372,23 @@ class _Identity extends StatelessWidget {
                   ],
                 ),
               ],
-              if (profile.lastSeenAt != null) ...[
+              if (profile.isOnline) ...[
+                const SizedBox(height: 4),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(color: Color(0xFF34C759), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 5),
+                  Text('profile_online'.tr, style: TextStyle(
+                    color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w600)),
+                ]),
+              ] else if (profile.lastSeenAt != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'profile_last_seen'.trParams({
-                    'date': _formatLastSeen(profile.lastSeenAt!),
-                  }),
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  'profile_last_seen'.trParams({'date': _formatLastSeen(profile.lastSeenAt!)}),
+                  style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
             ],
