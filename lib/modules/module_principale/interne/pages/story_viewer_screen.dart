@@ -511,10 +511,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      UserIdentityRow(
+                                      Expanded(
+                                        child: UserIdentityRow(
                                         name: _currentGroup.author.displayName,
                                         username: _currentGroup.author.username,
                                         avatarUrl: _currentGroup.author.photoUrl,
@@ -537,10 +538,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                                 IconButton(
                                   icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 24),
                                   onPressed: _showStoryMenu,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white, size: 24),
-                                  onPressed: () => Navigator.of(context).pop(),
                                 ),
                               ],
                             ),
@@ -1382,6 +1379,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
         ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim()
         : (author['username']?.toString() ?? 'Utilisateur');
     final avatarUrl = author['photo_url']?.toString() ?? author['avatar_url']?.toString();
+    final username = author['username']?.toString() ?? '';
     final isCertified = author['is_certified'] == true || author['is_certified'] == 1 ||
         author['is_verified'] == true || author['is_verified'] == 1;
     final createdAt = DateTime.tryParse(comment['created_at']?.toString() ?? '');
@@ -1427,7 +1425,8 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                     children: [
                       Row(
                         children: [
-                          Expanded(
+                          Flexible(
+                            fit: FlexFit.loose,
                             child: Text(
                               authorName,
                               maxLines: 1,
@@ -1435,16 +1434,36 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
                             ),
                           ),
+                          if (username.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: Text(
+                                '@$username',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                              ),
+                            ),
+                          ],
                           if (isCertified) ...[
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 4),
                             const UserCertifiedBadge(size: 13),
+                          ],
+                          if (commentAge().isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                commentAge(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant),
+                              ),
+                            ),
                           ],
                         ],
                       ),
-                      if (commentAge().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(commentAge(), style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant)),
-                      ],
                       const SizedBox(height: 4),
                       Text(
                         content,
