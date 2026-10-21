@@ -344,9 +344,7 @@ class _DatesStep extends GetView<CreateEventController> {
           Obx(() => Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
-              controller.isProfileCertified.value
-                  ? 'Votre compte certifié permet de planifier cet événement sans la limite de durée du compte non certifié.'
-                  : 'Compte non certifié : événement à planifier dans les ${controller.noncertEventHorizonMonths.value} prochains mois, durée maximale ${controller.noncertEventMaxDurationDays.value} jours.',
+              'Limites applicables à un événement non certifié : planification dans les ${controller.noncertEventHorizonMonths.value} prochains mois, durée maximale ${controller.noncertEventMaxDurationDays.value} jours.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           )),
