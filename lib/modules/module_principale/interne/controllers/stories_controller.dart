@@ -246,6 +246,21 @@ class StoriesController extends GetxController {
     }
   }
 
+  void refreshGroupViewedState(EventStoryGroup group) {
+    group.hasUnseen = group.stories.any((story) => !story.viewed);
+    if (ownGroup.value?.author.userId == group.author.userId) {
+      ownGroup.refresh();
+      return;
+    }
+    if (followingGroups.any((item) => item.author.userId == group.author.userId)) {
+      followingGroups.refresh();
+      return;
+    }
+    if (suggestedGroups.any((item) => item.author.userId == group.author.userId)) {
+      suggestedGroups.refresh();
+    }
+  }
+
   Future<void> markStoriesViewed(List<String> storyIds) async {
     if (storyIds.isEmpty) return;
     try {
