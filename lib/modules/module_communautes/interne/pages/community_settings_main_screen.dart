@@ -2191,6 +2191,9 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                           ),
                         ],
                       ),
+                      _SettingsSectionCard(
+                        title: 'community_settings_countries_enabled'.tr,
+                        children: [
                       _IosSwitchTile(
                         title: Text('community_settings_countries_enabled'.tr),
                         subtitle: Text('community_settings_countries_help'.tr),
@@ -2255,6 +2258,9 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                           if (selected != null && mounted) setState(() => _allowedCities = selected);
                         },
                       ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
                         value: _genderRestriction ?? 'none',
                         decoration: InputDecoration(labelText: 'community_settings_gender_restriction'.tr),
