@@ -1,13 +1,13 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
-import 'package:image_picker/image_picker.dart';
 import '../../centre/services/community_service.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
-import '../../../../shared/widgets/image_source_sheet.dart';
+import '../../../../shared/widgets/media_gallery_sheet.dart';
 
 // --- Header Widget for Community Hubs ---
 class _CommunityHeaderCard extends StatelessWidget {
@@ -69,6 +69,87 @@ class _CommunityHeaderCard extends StatelessWidget {
 }
 
 // --- Écran B : Gestion de la communauté (3 entrées principales) ---
+class _IosSwitchTile extends StatelessWidget {
+  final Widget title;
+  final Widget? subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  const _IosSwitchTile({required this.title, this.subtitle, required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          DefaultTextStyle(style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: colors.onSurface), child: title),
+          if (subtitle != null) ...[
+            const SizedBox(height: 3),
+            DefaultTextStyle(style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant), child: subtitle!),
+          ],
+        ])),
+        const SizedBox(width: 12),
+        CupertinoSwitch(value: value, onChanged: onChanged, activeTrackColor: colors.primary),
+      ]),
+    );
+  }
+}
+
+class _CommunityImageEditCard extends StatelessWidget {
+  final String title;
+  final String? imageUrl;
+  final bool isProfile;
+  final bool isLoading;
+  final VoidCallback onChange;
+
+  const _CommunityImageEditCard({required this.title, required this.imageUrl, required this.isProfile, required this.isLoading, required this.onChange});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(isProfile ? 100 : 14),
+          child: SizedBox(
+            width: isProfile ? 112 : double.infinity,
+            height: isProfile ? 112 : 150,
+            child: hasImage
+                ? Image.network(imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder(colors))
+                : _placeholder(colors),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.tonalIcon(
+            onPressed: isLoading ? null : onChange,
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+            label: Text('community_settings_change_photo'.tr),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _placeholder(ColorScheme colors) => Container(
+    color: colors.surfaceContainerHighest,
+    alignment: Alignment.center,
+    child: Icon(isProfile ? Icons.groups_rounded : Icons.image_outlined, size: 34, color: colors.onSurfaceVariant),
+  );
+}
+
 class CommunitySettingsMainScreen extends StatefulWidget {
   final String communityId;
   final String communityName;
@@ -1438,7 +1519,7 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('community_info_sub_desc'.tr)),
+      appBar: AppBar(title: Text('community_info_sub_desc'.tr), actions: [IconButton(tooltip: 'community_save'.tr, onPressed: _isLoading ? null : _save, icon: const Icon(Icons.check_rounded)), const SizedBox(width: 4)]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -1452,7 +1533,16 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
                 ))
               : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Theme(
+          data: Theme.of(context).copyWith(inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.22),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.4)),
+          )),
+          child: Column(
           children: [
             TextField(
               controller: _nameController,
@@ -1470,14 +1560,10 @@ class _CommunityInfoSettingsScreenState extends State<CommunityInfoSettingsScree
               controller: _descController,
               maxLength: 500,
               maxLines: 4,
-              decoration: InputDecoration(labelText: 'community_settings_desc_label'.tr),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _save,
-              child: _isLoading ? const CircularProgressIndicator() : Text('community_save'.tr),
+              decoration: InputDecoration(labelText: 'community_settings_desc_label'.tr, alignLabelWithHint: true),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -1646,17 +1732,23 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
   }
 
   Future<void> _pickAndUploadImage({required bool isProfile}) async {
-    showImageSourceSheet(
-      context,
-      onCamera: () => _processImage(isProfile: isProfile, source: ImageSource.camera),
-      onGallery: () => _processImage(isProfile: isProfile, source: ImageSource.gallery),
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MediaGallerySheet(
+        maxSelection: 1,
+        onSelected: (files) {
+          if (files.isNotEmpty) {
+            _processImageFile(isProfile: isProfile, pickedFile: File(files.first.path));
+          }
+        },
+      ),
     );
   }
 
-  Future<void> _processImage({required bool isProfile, required ImageSource source}) async {
-    final pickedFile = await _mediaService.pickImage(source: source);
-    if (pickedFile == null) return;
-
+  Future<void> _processImageFile({required bool isProfile, required File pickedFile}) async {
     setState(() => _isLoading = true);
     try {
       final file = await _mediaService.compressImage(pickedFile, quality: 75);
@@ -1724,52 +1816,25 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
                     OutlinedButton(onPressed: _loadImages, child: Text('retry'.tr)),
                   ]),
                 ))
-          : Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: CircleAvatar(
-                      radius: 20,
-                      backgroundImage: _currentAvatarUrl != null && _currentAvatarUrl!.isNotEmpty
-                          ? NetworkImage(_currentAvatarUrl!)
-                          : null,
-                      child: _currentAvatarUrl == null || _currentAvatarUrl!.isEmpty
-                          ? const Icon(Icons.person)
-                          : null,
-                    ),
-                    title: Text('community_settings_profile_photo'.tr),
-                    trailing: ElevatedButton(
-                      onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: true),
-                      child: Text('community_settings_change_photo'.tr),
-                    ),
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: _currentCoverUrl != null && _currentCoverUrl!.isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.network(
-                              _currentCoverUrl!,
-                              width: 48,
-                              height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.image),
-                            ),
-                          )
-                        : const SizedBox(
-                            width: 48,
-                            height: 36,
-                            child: Icon(Icons.image),
-                          ),
-                    title: Text('community_settings_cover_photo'.tr),
-                    trailing: ElevatedButton(
-                      onPressed: _isLoading ? null : () => _pickAndUploadImage(isProfile: false),
-                      child: Text('community_settings_change_photo'.tr),
-                    ),
-                  ),
-                ],
-              ),
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                _CommunityImageEditCard(
+                  title: 'community_settings_profile_photo'.tr,
+                  imageUrl: _currentAvatarUrl,
+                  isProfile: true,
+                  isLoading: _isLoading,
+                  onChange: () => _pickAndUploadImage(isProfile: true),
+                ),
+                const SizedBox(height: 18),
+                _CommunityImageEditCard(
+                  title: 'community_settings_cover_photo'.tr,
+                  imageUrl: _currentCoverUrl,
+                  isProfile: false,
+                  isLoading: _isLoading,
+                  onChange: () => _pickAndUploadImage(isProfile: false),
+                ),
+              ],
             ),
     );
   }
@@ -2021,7 +2086,7 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text('community_access_sub_access'.tr)),
+      appBar: AppBar(title: Text('community_access_sub_access'.tr), actions: [IconButton(tooltip: 'community_save'.tr, onPressed: _isLoading ? null : _save, icon: const Icon(Icons.check_rounded)), const SizedBox(width: 4)]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -2039,42 +2104,42 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_manual_approval'.tr),
                         value: _requireManualApproval,
                         onChanged: (val) => setState(() => _requireManualApproval = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_certification'.tr),
                         value: _certificationRequired,
                         onChanged: (val) => setState(() => _certificationRequired = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_members_visible'.tr),
                         value: _membersListVisible,
                         onChanged: (val) => setState(() => _membersListVisible = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_allow_reports'.tr),
                         value: _allowReports,
                         onChanged: (val) => setState(() => _allowReports = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_allow_comments'.tr),
                         value: _allowComments,
                         onChanged: (val) => setState(() => _allowComments = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_allow_reactions'.tr),
                         value: _allowReactions,
                         onChanged: (val) => setState(() => _allowReactions = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_allow_post_promotion'.tr),
                         value: _allowPostPromotion,
                         onChanged: (val) => setState(() => _allowPostPromotion = val),
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_countries_enabled'.tr),
                         subtitle: Text('community_settings_countries_help'.tr),
                         value: _countriesEnabled,
@@ -2116,7 +2181,7 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                           }
                         },
                       ),
-                      SwitchListTile(
+                      _IosSwitchTile(
                         title: Text('community_settings_cities_enabled'.tr),
                         subtitle: Text('community_settings_cities_help'.tr),
                         value: _citiesEnabled,
@@ -2179,11 +2244,6 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                           DropdownMenuItem(value: 'prive', child: Text('community_settings_visibility_private'.tr)),
                         ],
                         onChanged: (val) => setState(() => _visibility = val ?? 'public'),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _save,
-                        child: Text('community_save'.tr),
                       ),
                     ],
                   ),
@@ -2414,7 +2474,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('community_access_sub_posts'.tr)),
+      appBar: AppBar(title: Text('community_access_sub_posts'.tr), actions: [IconButton(tooltip: 'community_save'.tr, onPressed: _isLoading ? null : _save, icon: const Icon(Icons.check_rounded)), const SizedBox(width: 4)]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -2430,7 +2490,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            SwitchListTile(
+            _IosSwitchTile(
               title: Text('community_settings_posts_approval'.tr),
               value: _postsRequireApproval,
               onChanged: (val) => setState(() => _postsRequireApproval = val),
@@ -2445,11 +2505,6 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
                 DropdownMenuItem(value: 'nobody', child: Text('community_post_permission_nobody'.tr)),
               ],
               onChanged: (val) => setState(() => _postPermission = val ?? 'everyone'),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _save,
-              child: _isLoading ? const CircularProgressIndicator() : Text('community_save'.tr),
             ),
           ],
         ),
