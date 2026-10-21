@@ -127,8 +127,8 @@ class _PollCardWidgetState extends State<PollCardWidget> {
           if (voters > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(30)),
-              child: Text('$voters vote${voters > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant))),
+              decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .75), borderRadius: BorderRadius.circular(30)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.people_alt_outlined, size: 13, color: colors.onSurfaceVariant), const SizedBox(width: 5), Text('$voters vote${voters > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant))])),
         ]),
         const SizedBox(height: 15),
         ...options.map((option) {
