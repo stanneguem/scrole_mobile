@@ -70,7 +70,7 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final days = _plans.keys.toList()..sort();
+    final days = _plans.keys.where((key) => key.isNotEmpty).toList()..sort();
     return Scaffold(
       appBar: AppBar(
         title: Text('Mon planning', style: AppTextStyles.h4.copyWith(fontSize: 18)),
@@ -110,7 +110,7 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
                       children: [
                         const Icon(Icons.cloud_off_rounded, size: 44),
                         const SizedBox(height: 12),
-                        Text(_error!, textAlign: TextAlign.center),
+                        Text(_error ?? 'Une erreur inattendue est survenue.', textAlign: TextAlign.center),
                         const SizedBox(height: 12),
                         FilledButton(onPressed: _load, child: const Text('Réessayer')),
                       ],
@@ -166,7 +166,7 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
                             ),
                           ],
                           const SizedBox(height: 20),
-                          ...days.map((key) => _buildDay(context, key, _plans[key] ?? <String, dynamic>{})),
+                          ...days.map((key) => _buildDay(context, key, Map<String, dynamic>.from(_plans[key] ?? const <String, dynamic>{}))),
                         ],
                       ),
                     ),
