@@ -1369,7 +1369,6 @@ class _CommunityInfoHubScreenState extends State<CommunityInfoHubScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _CommunityHeaderCard(communityName: _communityName, communityAvatar: _communityAvatar),
           _buildHubTile(context, title: 'community_info_sub_desc'.tr, subtitle: 'community_info_sub_desc_desc'.tr, icon: Icons.info_outline_rounded, iconColor: Colors.orange, onTap: () => _openSubpage(CommunityInfoSettingsScreen(communityId: widget.communityId, communityName: _communityName))),
           const SizedBox(height: 12),
           _buildHubTile(context, title: 'community_info_sub_interests'.tr, subtitle: 'community_info_sub_interests_desc'.tr, icon: Icons.favorite_border_rounded, iconColor: Colors.pink, onTap: () => _openSubpage(CommunityInterestsScreen(communityId: widget.communityId))),
