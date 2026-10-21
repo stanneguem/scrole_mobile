@@ -37,27 +37,17 @@ class ExternalProfileRepository {
   FastCacheService? get _cache =>
       Get.isRegistered<FastCacheService>() ? Get.find<FastCacheService>() : null;
 
-  static const Duration _cacheTtl = Duration(minutes: 5);
 
   Future<ExternalProfileResult> getProfileResult(String userId) async {
     final cacheKey = FastCacheKey.externalProfile(userId);
 
-    // 1. Check if a valid (< 5 min) cached profile exists
-    final cachedMap = _cache?.get<Map<String, dynamic>>(cacheKey, maxAge: _cacheTtl);
-    if (cachedMap != null && cachedMap.isNotEmpty) {
-      debugPrint('[ExternalProfileRepository] Returning valid 5-min cache for $userId');
-      return ExternalProfileResult(
-        status: ProfileResultStatus.loaded,
-        profile: ExternalProfileModel.fromJson(cachedMap),
-      );
-    }
-
-    // 2. Request fresh data from backend RPC get_external_profile
+    // Privacy and relationship fields depend on the current viewer and can change
+    // immediately. Never serve a cached external profile before rechecking the RPC.
     Map<String, dynamic>? rawJson;
     ProfileResultStatus? explicitStatus;
 
     try {
-      final response = await _client.rpc('get_external_profile_legacy', params: {'p_user_id': userId});
+      final response = await _client.rpc('get_external_profile', params: {'p_user_id': userId});
 
       if (response is Map) {
         final errStr = (response['error'] ?? response['code'] ?? response['message'] ?? '').toString().toLowerCase();
@@ -152,80 +142,8 @@ class ExternalProfileRepository {
       );
     }
 
-    // 5. Fallback query on user_profiles ONLY if RPC did NOT report deleted, suspended, banned or not_found
-    try {
-      final row = await _client
-          .from('user_profiles')
-          .select('user_id, username, first_name, last_name, photo_url, cover_url, bio, slogan, is_verified')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      if (row != null) {
-        RelationState relationState = RelationState.none;
-        try {
-          relationState = await _socialRepo.getRelationState(userId);
-        } catch (_) {}
-
-        var hasActiveCertification = false;
-        try {
-          final certifications = await _client
-              .from('user_certifications')
-              .select('issued_at, expires_at')
-              .eq('user_id', userId)
-              .eq('status', 'active');
-          final now = DateTime.now().toUtc();
-          hasActiveCertification = (certifications as List).any((item) {
-            final issuedAt = DateTime.tryParse((item['issued_at'] ?? '').toString())?.toUtc();
-            final expiresAt = DateTime.tryParse((item['expires_at'] ?? '').toString())?.toUtc();
-            return issuedAt != null &&
-                !issuedAt.isAfter(now) &&
-                (expiresAt == null || !expiresAt.isBefore(now));
-          });
-        } catch (e) {
-          debugPrint('[ExternalProfileRepository] certification fallback failed: $e');
-        }
-
-        final isCertified = row['is_verified'] == true || hasActiveCertification;
-        rawJson = {
-          'user_id': userId,
-          'username': row['username'] ?? '',
-          'first_name': row['first_name'] ?? '',
-          'last_name': row['last_name'] ?? '',
-          'photo_url': row['photo_url'],
-          'cover_url': row['cover_url'],
-          'bio': row['bio'],
-          'slogan': row['slogan'],
-          'is_private': false,
-          'is_blocked': relationState == RelationState.blockedByMe,
-          'is_connected': relationState == RelationState.friend,
-          'connection_request_sent': relationState == RelationState.requestSent,
-          'incoming_connection_request': relationState == RelationState.requestReceived,
-          'is_following': false,
-          'is_certified': isCertified,
-          'is_verified': row['is_verified'] == true,
-          'can_message': relationState == RelationState.friend,
-          'friend_count': 0,
-          'interests': [],
-        };
-
-        final model = ExternalProfileModel.fromJson(rawJson);
-        await _cache?.set(cacheKey, rawJson);
-        return ExternalProfileResult(status: ProfileResultStatus.loaded, profile: model);
-      }
-    } catch (e) {
-      debugPrint('[ExternalProfileRepository] Fallback query error for $userId: $e');
-    }
-
-    // 6. Network/RPC failed and fallback found nothing: Return stale cache if available
-    final staleMap = _cache?.get<Map<String, dynamic>>(cacheKey);
-    if (staleMap != null && staleMap.isNotEmpty) {
-      debugPrint('[ExternalProfileRepository] Network failed for $userId, returning stale cache');
-      return ExternalProfileResult(
-        status: ProfileResultStatus.loaded,
-        profile: ExternalProfileModel.fromJson(staleMap),
-      );
-    }
-
+    // Do not fall back to a direct user_profiles query or stale cache here:
+    // that could bypass profile privacy after an RPC/network failure.
     return const ExternalProfileResult(
       status: ProfileResultStatus.error,
       errorMessage: 'Impossible de charger ce profil.',
