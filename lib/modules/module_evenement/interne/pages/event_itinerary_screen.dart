@@ -107,7 +107,7 @@ class _EventItineraryScreenState extends State<EventItineraryScreen> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Organiser mon parcours', style: AppTextStyles.h4.copyWith(fontSize: 18)),
+        title: Text('Organiser mon planning', style: AppTextStyles.h4.copyWith(fontSize: 18)),
         actions: [
           TextButton(
             onPressed: _loading || _saving || _days.isEmpty ? null : _save,
