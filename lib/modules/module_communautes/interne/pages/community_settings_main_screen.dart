@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -2905,14 +2906,66 @@ class EntityCertificationPurchaseScreen extends StatelessWidget {
 
   bool get _isEvent => entityType == 'event';
 
+  bool _loadingPrice = true;
+  String? _countryName;
+  String? _priceError;
+  double? _amount;
+  String _currency = '';
+  String _pricingGroup = '';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_loadingPrice && _amount == null && _priceError == null) _loadRegionalPrice();
+  }
+
+  Future<void> _loadRegionalPrice() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user == null) throw Exception('entity_cert_price_auth'.tr);
+      final profile = await client.from('user_profiles').select('country_id').eq('user_id', user.id).maybeSingle();
+      final countryId = profile?['country_id']?.toString();
+      if (countryId == null || countryId.isEmpty) throw Exception('entity_cert_price_country_missing'.tr);
+      final country = await client.from('countries').select('nom').eq('id', countryId).maybeSingle();
+      final countryName = country?['nom']?.toString();
+      final mapping = await client.from('certification_prix_group_pays').select('prix_groupe').eq('pays_id', countryId).maybeSingle();
+      final groupId = mapping?['prix_groupe']?.toString();
+      String? groupName;
+      if (groupId != null) {
+        final group = await client.from('certification_prix_groupe').select('nom').eq('id', groupId).maybeSingle();
+        groupName = group?['nom']?.toString();
+      }
+      final regionalGroup = (groupName ?? '').toLowerCase();
+      final priceGroup = regionalGroup.contains('central') ? 'Afrique centrale'
+          : (regionalGroup.contains('afrique') ? 'Afrique' : 'Hors Afrique');
+      final price = await client.from('scrole_entity_certification_prices')
+          .select('amount,currency,pricing_group').eq('pricing_group', priceGroup).eq('active', true).maybeSingle();
+      if (price == null) throw Exception('entity_cert_price_unavailable'.tr);
+      if (!mounted) return;
+      setState(() {
+        _countryName = countryName;
+        _amount = (price['amount'] as num).toDouble();
+        _currency = price['currency'].toString();
+        _pricingGroup = price['pricing_group'].toString();
+        _loadingPrice = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _priceError = e.toString().replaceFirst('Exception: ', ''); _loadingPrice = false; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final kind = _isEvent ? 'événement' : 'communauté';
+    final kind = _isEvent ? 'entity_cert_event_label'.tr : 'entity_cert_community_label'.tr;
+    final locale = Localizations.localeOf(context).toString();
+    final formattedPrice = _amount == null ? '' : NumberFormat.currency(
+      locale: locale, name: _currency, decimalDigits: _currency == 'XAF' ? 0 : 2,
+    ).format(_amount);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEvent ? 'Certification de l’événement' : 'Certification de la communauté'),
-      ),
+      appBar: AppBar(title: Text(_isEvent ? 'entity_cert_event_title'.tr : 'entity_cert_community_title'.tr)),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -2923,73 +2976,57 @@ class EntityCertificationPurchaseScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: colors.outlineVariant.withValues(alpha: .6)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: colors.primaryContainer,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    _isEvent ? Icons.event_available_rounded : Icons.groups_rounded,
-                    color: colors.onPrimaryContainer,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  entityName,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Certification individuelle de $kind',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Cette offre concerne uniquement ce $kind, pas la certification de votre profil personnel.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55),
-                ),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 54, height: 54,
+                decoration: BoxDecoration(color: colors.primaryContainer, borderRadius: BorderRadius.circular(18)),
+                child: Icon(_isEvent ? Icons.event_available_rounded : Icons.groups_rounded, color: colors.onPrimaryContainer, size: 28),
+              ),
+              const SizedBox(height: 18),
+              Text(entityName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -.5)),
+              const SizedBox(height: 8),
+              Text('entity_cert_individual_label'.trParams({'kind': kind}),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.primary, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+              Text('entity_cert_individual_desc'.trParams({'kind': kind}),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55)),
+            ]),
           ),
           const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: colors.outlineVariant.withValues(alpha: .6)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded, color: colors.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Les tarifs et le paiement sécurisé propres aux certifications d’événements et de communautés ne sont pas encore exposés par le backend actuel. Aucun paiement ne sera lancé et les offres de profil ne seront pas affichées ici.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
-                  ),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: colors.outlineVariant.withValues(alpha: .6))),
+            child: _loadingPrice
+              ? const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator()))
+              : _priceError != null
+                ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('entity_cert_price_unavailable_title'.tr, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(_priceError!, style: Theme.of(context).textTheme.bodyMedium),
+                    TextButton.icon(onPressed: () { setState(() { _loadingPrice = true; _priceError = null; }); _loadRegionalPrice(); }, icon: const Icon(Icons.refresh), label: Text('retry'.tr)),
+                  ])
+                : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('entity_cert_price_title'.tr, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('entity_cert_price_region'.trParams({'region': _pricingGroup, 'country': _countryName ?? ''}), style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 14),
+                    Text(formattedPrice, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: colors.primary)),
+                    const SizedBox(height: 8),
+                    Text('entity_cert_one_price'.tr, style: Theme.of(context).textTheme.bodyMedium),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(Icons.info_outline, color: colors.primary),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text('entity_cert_payment_not_ready'.tr, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45))),
+                      ]),
+                    ),
+                  ]),
           ),
           const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: () => Get.back(),
-            icon: const Icon(Icons.arrow_back_rounded),
-            label: const Text('Retour à la certification'),
-          ),
+          OutlinedButton.icon(onPressed: () => Get.back(), icon: const Icon(Icons.arrow_back_rounded), label: Text('entity_cert_back'.tr)),
         ],
       ),
     );
