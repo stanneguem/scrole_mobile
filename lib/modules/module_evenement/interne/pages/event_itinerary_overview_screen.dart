@@ -146,7 +146,7 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
                             ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: Image.network(
-                                widget.event.coverImageUrl!,
+                                widget.event.coverImageUrl ?? '',
                                 height: 150,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
@@ -161,12 +161,12 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
                               children: [
                                 Icon(Icons.location_on_outlined, size: 16, color: colors.onSurfaceVariant),
                                 const SizedBox(width: 4),
-                                Expanded(child: Text(widget.event.address!, style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant))),
+                                Expanded(child: Text(widget.event.address ?? '', style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant))),
                               ],
                             ),
                           ],
                           const SizedBox(height: 20),
-                          ...days.map((key) => _buildDay(context, key, _plans[key]!)),
+                          ...days.map((key) => _buildDay(context, key, _plans[key] ?? <String, dynamic>{})),
                         ],
                       ),
                     ),
