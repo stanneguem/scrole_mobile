@@ -1343,6 +1343,7 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Text('Publier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
+          ),
         ],
       ),
     );
@@ -1609,13 +1610,20 @@ class _RepublicationPostCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.25), width: 1),
-        ),
-      ),
-      child: Row(
+      color: colorScheme.surface,
+      child: Stack(
+        children: [
+          // Thread line in the avatar gutter, inspired by Twitter's timeline.
+          Positioned(
+            left: 19,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 2,
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipOval(
