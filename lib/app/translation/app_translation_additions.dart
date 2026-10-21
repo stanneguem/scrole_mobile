@@ -5,6 +5,14 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'community_feed_loading': "Chargement des publications…",
+      'community_feed_error_msg': "Impossible de charger les publications de cette communauté.",
+      'community_feed_empty_title': "Aucune publication pour le moment",
+      'community_feed_empty_subtitle': "L’espace est encore calme. Lancez la conversation avec la première publication.",
+      'community_feed_create_first_post': "Créer la première publication",
+      'community_feed_create_post_tooltip': "Créer une publication",
+      'community_creation_in_progress': "Création de la communauté en cours…",
+
       'certification_screen_title': 'Certifications Scrole',
       'certification_intro_title': 'Choisissez votre niveau',
       'certification_intro_body': 'Renforcez la confiance autour de votre compte et débloquez progressivement des outils adaptés à votre activité.',
@@ -645,6 +653,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Vérification des restrictions…",
     },
     'en': {
+      'community_feed_loading': "Loading posts…",
+      'community_feed_error_msg': "Could not load posts for this community.",
+      'community_feed_empty_title': "No posts yet",
+      'community_feed_empty_subtitle': "It’s quiet here for now. Start the conversation with the first post.",
+      'community_feed_create_first_post': "Create the first post",
+      'community_feed_create_post_tooltip': "Create a post",
+      'community_creation_in_progress': "Community creation in progress…",
+
       'certification_screen_title': 'Scrole certifications',
       'certification_intro_title': 'Choose your level',
       'certification_intro_body': 'Build trust around your account and unlock tools tailored to your activity.',
@@ -1281,6 +1297,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Checking field restrictions…",
     },
     'es': {
+      'community_feed_loading': "Cargando publicaciones…",
+      'community_feed_error_msg': "No se pudieron cargar las publicaciones de esta comunidad.",
+      'community_feed_empty_title': "Todavía no hay publicaciones",
+      'community_feed_empty_subtitle': "Este espacio está tranquilo por ahora. Inicia la conversación con la primera publicación.",
+      'community_feed_create_first_post': "Crear la primera publicación",
+      'community_feed_create_post_tooltip': "Crear una publicación",
+      'community_creation_in_progress': "Creación de la comunidad en curso…",
+
       'certification_screen_title': 'Certificaciones de Scrole',
       'certification_intro_title': 'Elige tu nivel',
       'certification_intro_body': 'Refuerza la confianza en tu cuenta y accede a herramientas adaptadas a tu actividad.',
@@ -1834,6 +1858,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Comprobando las restricciones…",
     },
     'de': {
+      'community_feed_loading': "Beiträge werden geladen…",
+      'community_feed_error_msg': "Die Beiträge dieser Community konnten nicht geladen werden.",
+      'community_feed_empty_title': "Noch keine Beiträge",
+      'community_feed_empty_subtitle': "Hier ist es noch ruhig. Starte das Gespräch mit dem ersten Beitrag.",
+      'community_feed_create_first_post': "Ersten Beitrag erstellen",
+      'community_feed_create_post_tooltip': "Beitrag erstellen",
+      'community_creation_in_progress': "Community wird erstellt…",
+
       'certification_screen_title': 'Scrole-Zertifizierungen',
       'certification_intro_title': 'Wähle deine Stufe',
       'certification_intro_body': 'Stärke das Vertrauen in dein Konto und erhalte passende Werkzeuge für deine Aktivitäten.',
@@ -2370,6 +2402,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Feldbeschränkungen werden geprüft…",
     },
     'it': {
+      'community_feed_loading': "Caricamento dei post…",
+      'community_feed_error_msg': "Impossibile caricare i post di questa community.",
+      'community_feed_empty_title': "Ancora nessun post",
+      'community_feed_empty_subtitle': "Qui è ancora tutto tranquillo. Avvia la conversazione con il primo post.",
+      'community_feed_create_first_post': "Crea il primo post",
+      'community_feed_create_post_tooltip': "Crea un post",
+      'community_creation_in_progress': "Creazione della community in corso…",
+
       'certification_screen_title': 'Certificazioni Scrole',
       'certification_intro_title': 'Scegli il tuo livello',
       'certification_intro_body': 'Rafforza la fiducia nel tuo account e sblocca strumenti adatti alla tua attività.',
@@ -2906,6 +2946,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Verifica delle restrizioni…",
     },
     'pt': {
+      'community_feed_loading': "Carregando publicações…",
+      'community_feed_error_msg': "Não foi possível carregar as publicações desta comunidade.",
+      'community_feed_empty_title': "Ainda não há publicações",
+      'community_feed_empty_subtitle': "O espaço está tranquilo por enquanto. Comece a conversa com a primeira publicação.",
+      'community_feed_create_first_post': "Criar a primeira publicação",
+      'community_feed_create_post_tooltip': "Criar publicação",
+      'community_creation_in_progress': "Criação da comunidade em andamento…",
+
       'certification_screen_title': 'Certificações Scrole',
       'certification_intro_title': 'Escolha seu nível',
       'certification_intro_body': 'Reforce a confiança na sua conta e desbloqueie ferramentas adequadas à sua atividade.',
@@ -3442,6 +3490,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "A verificar as restrições…",
     },
     'zh': {
+      'community_feed_loading': "正在加载帖子…",
+      'community_feed_error_msg': "无法加载此社群的帖子。",
+      'community_feed_empty_title': "暂时还没有帖子",
+      'community_feed_empty_subtitle': "这里暂时很安静。发布第一条内容，开启交流吧。",
+      'community_feed_create_first_post': "发布第一条内容",
+      'community_feed_create_post_tooltip': "创建帖子",
+      'community_creation_in_progress': "社群正在创建…",
+
       'certification_screen_title': 'Scrole 认证',
       'certification_intro_title': '选择你的等级',
       'certification_intro_body': '增强账户可信度，并逐步获得适合你活动的工具。',
@@ -3978,6 +4034,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "正在检查字段限制…",
     },
     'ja': {
+      'community_feed_loading': "投稿を読み込み中…",
+      'community_feed_error_msg': "このコミュニティの投稿を読み込めませんでした。",
+      'community_feed_empty_title': "まだ投稿はありません",
+      'community_feed_empty_subtitle': "ここはまだ静かです。最初の投稿で会話を始めましょう。",
+      'community_feed_create_first_post': "最初の投稿を作成",
+      'community_feed_create_post_tooltip': "投稿を作成",
+      'community_creation_in_progress': "コミュニティを作成中…",
+
       'certification_screen_title': 'Scrole認証',
       'certification_intro_title': '認証レベルを選択',
       'certification_intro_body': 'アカウントの信頼性を高め、活動に合った機能を利用できます。',
@@ -4513,6 +4577,14 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "項目の制限を確認中…",
     },
     'ru': {
+      'community_feed_loading': "Загрузка публикаций…",
+      'community_feed_error_msg': "Не удалось загрузить публикации этого сообщества.",
+      'community_feed_empty_title': "Пока нет публикаций",
+      'community_feed_empty_subtitle': "Здесь пока тихо. Начните общение с первой публикации.",
+      'community_feed_create_first_post': "Создать первую публикацию",
+      'community_feed_create_post_tooltip': "Создать публикацию",
+      'community_creation_in_progress': "Сообщество создаётся…",
+
       'certification_screen_title': 'Сертификации Scrole',
       'certification_intro_title': 'Выберите свой уровень',
       'certification_intro_body': 'Повышайте доверие к аккаунту и получайте инструменты для своей деятельности.',
