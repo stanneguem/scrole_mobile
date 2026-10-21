@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../module_evenement/centre/models/event_model.dart';
 
 class EventListTile extends StatelessWidget {
@@ -87,14 +88,22 @@ class EventListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    event.name,
-                    style: AppTextStyles.labelLarge.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event.name,
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(
