@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app_controller.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../pages/bug_report_screen.dart';
+import '../pages/certification_plans_screen.dart';
 import '../pages/connected_devices_screen.dart';
 import '../pages/credits_screen.dart';
 import '../pages/help_center_screen.dart';
@@ -57,7 +58,7 @@ class SettingsController extends GetxController {
   void openMyActivities() => Get.toNamed(AppPages.myActivities);
   void openLanguageScreen() => Get.to(() => const LanguageScreen());
   void toggleTheme() => _themeService.toggleTheme();
-  void openPremium() {}
+  void openPremium() => Get.to(() => const CertificationPlansScreen());
   void openMyAccount() {}
   void openPrivacyData() => Get.to(() => const PrivacyDataScreen());
   void openConnectedDevices() => Get.to(() => const ConnectedDevicesScreen());
