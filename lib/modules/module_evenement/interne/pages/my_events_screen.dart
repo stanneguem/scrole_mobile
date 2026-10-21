@@ -126,7 +126,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                     )
                   : Icon(Icons.event_outlined, color: colors.outline, size: 30),
             ),
-            title: Row(children: [Expanded(child: Text(event.name, style: AppTextStyles.h4, maxLines: 1, overflow: TextOverflow.ellipsis)), const SizedBox(width: 0), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 17)]),
+            title: Row(children: [Expanded(child: Text(event.name, style: AppTextStyles.h4, maxLines: 1, overflow: TextOverflow.ellipsis)), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 17)]),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
