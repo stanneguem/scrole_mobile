@@ -506,11 +506,13 @@ class SupabaseEventService {
 
 
   Future<List<Map<String, dynamic>>> getMyEventItineraryPlans(String eventId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Vous devez être connecté pour consulter votre planning.');
     final response = await _client
         .from('event_itinerary_plans')
         .select('planned_date, plan')
         .eq('event_id', eventId)
-        .eq('user_id', _client.auth.currentUser!.id)
+        .eq('user_id', user.id)
         .order('planned_date');
     return List<Map<String, dynamic>>.from(response);
   }
