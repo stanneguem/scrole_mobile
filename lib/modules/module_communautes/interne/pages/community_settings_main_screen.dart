@@ -2929,16 +2929,16 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user == null) throw Exception('entity_cert_price_auth'.tr);
-      final profile = await client.from('user_profiles').select('country_id').eq('user_id', user.id).maybeSingle();
+      final profile = await client.from('user_profiles').select('country_id').eq('user_id', user.id).limit(1).maybeSingle();
       final countryId = profile?['country_id']?.toString();
       if (countryId == null || countryId.isEmpty) throw Exception('entity_cert_price_country_missing'.tr);
-      final country = await client.from('countries').select('nom').eq('id', countryId).maybeSingle();
+      final country = await client.from('countries').select('nom').eq('id', countryId).limit(1).maybeSingle();
       final countryName = country?['nom']?.toString();
-      final mapping = await client.from('certification_prix_group_pays').select('prix_groupe').eq('pays_id', countryId).maybeSingle();
+      final mapping = await client.from('certification_prix_group_pays').select('prix_groupe').eq('pays_id', countryId).limit(1).maybeSingle();
       final groupId = mapping?['prix_groupe']?.toString();
       String? groupName;
       if (groupId != null) {
-        final group = await client.from('certification_prix_groupe').select('nom').eq('id', groupId).maybeSingle();
+        final group = await client.from('certification_prix_groupe').select('nom').eq('id', groupId).limit(1).maybeSingle();
         groupName = group?['nom']?.toString();
       }
       final regionalGroup = (groupName ?? '').toLowerCase();
