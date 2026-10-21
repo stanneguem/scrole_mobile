@@ -278,6 +278,7 @@ class _CommunityPreviewSheetState extends State<CommunityPreviewSheet> {
                                   ),
                                 ),
                               ),
+                              EntityCertifiedBadge(entityType: 'community', entityId: widget.result.id ?? '', size: 18),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
