@@ -706,6 +706,34 @@ class EventRepository {
     }
   }
 
+
+  Future<Map<String, Map<String, dynamic>>> getMyEventItineraryPlans(String eventId) async {
+    try {
+      final rows = await _remote.getMyEventItineraryPlans(eventId);
+      return {
+        for (final row in rows)
+          (row['planned_date'] ?? '').toString(): Map<String, dynamic>.from(
+            row['plan'] is Map ? row['plan'] as Map : <String, dynamic>{},
+          ),
+      };
+    } catch (e) {
+      debugPrint('[EventRepository] getMyEventItineraryPlans error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> saveMyEventItineraryPlan({
+    required String eventId,
+    required String plannedDate,
+    required Map<String, dynamic> plan,
+  }) async {
+    await _remote.saveMyEventItineraryPlan(
+      eventId: eventId,
+      plannedDate: plannedDate,
+      plan: plan,
+    );
+  }
+
   Future<List<EventDayAttendance>> getEventDayAttendance(String eventId) async {
     try {
       final rawList = await _remote.getEventDayAttendance(eventId);
