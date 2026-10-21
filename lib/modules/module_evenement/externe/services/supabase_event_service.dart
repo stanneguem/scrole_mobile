@@ -517,6 +517,18 @@ class SupabaseEventService {
     return List<Map<String, dynamic>>.from(response);
   }
 
+  Future<Map<String, dynamic>> getExternalEventItinerary({
+    required String userId,
+    required String eventId,
+  }) async {
+    final response = await _client.rpc('get_external_event_itinerary', params: {
+      'p_user_id': userId,
+      'p_event_id': eventId,
+    });
+    if (response is Map) return Map<String, dynamic>.from(response);
+    throw StateError('Réponse de planning invalide.');
+  }
+
   Future<void> saveMyEventItineraryPlan({
     required String eventId,
     required String plannedDate,
