@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/community_comments_sheet.dart';
 import 'create_community_post_screen.dart';
@@ -29,28 +30,51 @@ class CommunityFeedScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: colorScheme.surface,
         elevation: 0,
-        title: GestureDetector(
-          onTap: () {
-            Get.to(() => CommunitySettingsScreen(
-                  communityId: communityId,
-                  communityName: communityName,
-                ));
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                communityName,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
+        title: FutureBuilder(
+          future: Get.find<CommunityService>().getCommunityById(communityId),
+          builder: (context, snapshot) {
+            final memberCount = snapshot.data?.memberCount;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Get.to(() => CommunitySettingsScreen(
+                      communityId: communityId,
+                      communityName: communityName,
+                    ));
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    communityName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 17,
+                      height: 1.15,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    memberCount == null
+                        ? 'community_member_count_loading'.tr
+                        : (memberCount == 1
+                            ? 'community_member_count_one'.trParams({'count': '$memberCount'})
+                            : 'community_member_count_many'.trParams({'count': '$memberCount'})),
+                    style: TextStyle(
+                      fontSize: 11,
+                      height: 1.1,
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: colorScheme.onSurfaceVariant),
-            ],
-          ),
+            );
+          },
         ),
         actions: [
           IconButton(
