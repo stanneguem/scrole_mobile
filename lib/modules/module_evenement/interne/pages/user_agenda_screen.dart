@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../controllers/user_agenda_controller.dart';
 import '../../centre/models/event_model.dart';
 import 'user_pass_screen.dart';
@@ -141,7 +142,11 @@ class UserAgendaScreen extends GetView<UserAgendaController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(event.name, style: AppTextStyles.h3.copyWith(color: Colors.white)),
+                Row(children: [
+                  Expanded(child: Text(event.name, style: AppTextStyles.h3.copyWith(color: Colors.white))),
+                  const SizedBox(width: 5),
+                  EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 18),
+                ]),
                 const SizedBox(height: 4),
                 Text(event.address ?? '', style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.8))),
               ],
@@ -242,7 +247,13 @@ class _AgendaItem extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(event.name, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                Row(
+                                  children: [
+                                    Expanded(child: Text(event.name, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                                    const SizedBox(width: 5),
+                                    EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 17),
+                                  ],
+                                ),
                                 const SizedBox(height: 4),
                                 Text(
                                   '${event.startsAt.hour.toString().padLeft(2, '0')}:${event.startsAt.minute.toString().padLeft(2, '0')}',
