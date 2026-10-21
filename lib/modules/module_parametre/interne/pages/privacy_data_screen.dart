@@ -158,9 +158,9 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
             _sectionLabel('privacy_policies_disclosures'.tr, colors),
             const SizedBox(height: 8),
             _group([
-              _actionTile(icon: CupertinoIcons.doc_plaintext, title: 'terms'.tr,
+              _actionTile(icon: CupertinoIcons.doc_text, title: 'terms'.tr,
                 subtitle: 'privacy_link_unavailable'.tr, colors: colors, enabled: false),
-              _actionTile(icon: CupertinoIcons.hand_raised, title: 'privacy_policy'.tr,
+              _actionTile(icon: CupertinoIcons.info, title: 'privacy_policy'.tr,
                 subtitle: 'privacy_link_unavailable'.tr, colors: colors, enabled: false),
             ], colors),
             const SizedBox(height: 20),
