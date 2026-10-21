@@ -101,6 +101,9 @@ revoke all on public.scrole_subscriptions from anon, authenticated;
 revoke all on public.event_certifications from anon, authenticated;
 revoke all on public.community_certifications from anon, authenticated;
 revoke all on public.scrole_certification_audit from anon, authenticated;
+grant select on public.scrole_subscriptions to authenticated;
+grant select on public.event_certifications to authenticated;
+grant select on public.community_certifications to authenticated;
 
 drop policy if exists scrole_subscriptions_select_own on public.scrole_subscriptions;
 create policy scrole_subscriptions_select_own on public.scrole_subscriptions
@@ -179,6 +182,9 @@ begin
   if v_sub.status <> 'active' then
     raise exception 'subscription_not_active' using errcode = '22023';
   end if;
+  if v_sub.plan_code <> 'premium' or p_new_plan <> 'pro' then
+    raise exception 'only_premium_to_pro_downgrade_supported' using errcode = '22023';
+  end if;
 
   select count(*) into v_event_count
   from public.event_certifications ec
@@ -216,13 +222,6 @@ begin
         and cc.status in ('active', 'suspended')
     ) then
       raise exception 'selected_community_certification_not_eligible' using errcode = '22023';
-    end if;
-  else
-    -- Premium's quota permits up to four included certifications per entity type.
-    -- This RPC supports one explicitly selected item for downgrade handling; callers
-    -- must not use it to reduce an already-Premium selection.
-    if v_sub.plan_code = 'premium' and p_new_plan = 'premium' then
-      raise exception 'subscription_plan_unchanged' using errcode = '22023';
     end if;
   end if;
 
