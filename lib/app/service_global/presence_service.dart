@@ -17,6 +17,7 @@ class PresenceService extends GetxService with WidgetsBindingObserver {
   Worker? _authWorker;
   bool _isForeground = true;
   bool _sendingHeartbeat = false;
+  bool _activatingPresence = false;
 
   static const Duration _heartbeatInterval = Duration(seconds: 45);
 
@@ -31,15 +32,13 @@ class PresenceService extends GetxService with WidgetsBindingObserver {
           _heartbeatTimer?.cancel();
           _heartbeatTimer = null;
         } else if (_isForeground) {
-          unawaited(_sendHeartbeat());
-          _startTimer();
+          unawaited(_activatePresence());
         }
       },
     );
 
     if (_client.auth.currentUser != null) {
-      unawaited(_sendHeartbeat());
-      _startTimer();
+      unawaited(_activatePresence());
     }
   }
 
@@ -54,11 +53,28 @@ class PresenceService extends GetxService with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _isForeground = state == AppLifecycleState.resumed;
     if (_isForeground && _client.auth.currentUser != null) {
-      unawaited(_sendHeartbeat());
-      _startTimer();
+      unawaited(_activatePresence());
     } else {
       _heartbeatTimer?.cancel();
       _heartbeatTimer = null;
+    }
+  }
+
+  Future<void> _activatePresence() async {
+    if (_activatingPresence || !_isForeground || _client.auth.currentUser == null) {
+      return;
+    }
+    _activatingPresence = true;
+    try {
+      await NotificationService.instance.ensureCurrentDeviceRegistered();
+      if (_isForeground && _client.auth.currentUser != null) {
+        await _sendHeartbeat();
+        _startTimer();
+      }
+    } catch (error) {
+      Get.log('[Presence] Activation impossible: $error');
+    } finally {
+      _activatingPresence = false;
     }
   }
 
