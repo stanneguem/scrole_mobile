@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../centre/repositories/event_repository.dart';
 
 class ExternalEventItineraryScreen extends StatefulWidget {
@@ -94,7 +95,13 @@ class _ExternalEventItineraryScreenState extends State<ExternalEventItineraryScr
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        Text(widget.eventName, style: AppTextStyles.h3),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: Text(widget.eventName, style: AppTextStyles.h3, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                            EntityCertifiedBadge(entityType: 'event', entityId: widget.eventId, size: 18),
+                          ],
+                        ),
                         const SizedBox(height: 16),
                         ..._days.map((day) => _buildDay(context, day)),
                       ],
