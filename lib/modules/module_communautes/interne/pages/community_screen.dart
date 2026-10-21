@@ -223,7 +223,7 @@ class _MyCommunityTile extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 0),
                                 EntityCertifiedBadge(entityType: 'community', entityId: community.id, size: 20),
                               ],
                             ),
