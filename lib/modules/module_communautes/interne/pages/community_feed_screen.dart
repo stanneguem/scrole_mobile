@@ -8,6 +8,7 @@ import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.
 import 'package:scrole/modules/module_principale/interne/widgets/community_comments_sheet.dart';
 import 'create_community_post_screen.dart';
 import 'community_settings_screen.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 
 class CommunityFeedScreen extends StatelessWidget {
   final String communityId;
@@ -46,16 +47,24 @@ class CommunityFeedScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    communityName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 17,
-                      height: 1.15,
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onSurface,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          communityName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            height: 1.15,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      EntityCertifiedBadge(entityType: 'community', entityId: communityId, size: 17),
+                    ],
                   ),
                   const SizedBox(height: 3),
                   Text(
