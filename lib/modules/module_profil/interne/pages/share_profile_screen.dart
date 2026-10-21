@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
 import '../controllers/profile_controller.dart';
 
