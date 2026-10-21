@@ -23,6 +23,7 @@ import '../../centre/models/event_day_models.dart';
 import '../enums/event_enum.dart';
 import '../widgets/add_to_calendar_dialog.dart';
 import 'event_days_selector_screen.dart';
+import 'event_itinerary_screen.dart';
 import 'event_comments_screen.dart';
 import 'event_rating_screen.dart';
 import '../widgets/event_share_options_sheet.dart';
@@ -1024,22 +1025,51 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                     Row(
                       children: [
                         Expanded(
+                          flex: _isEventAdded ? 5 : 1,
                           child: ElevatedButton.icon(
                             onPressed: _isCalendarLoading ? null : _handleCalendarAction,
                             icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
                             label: Text(
                               _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
                               style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
                               foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
                           ),
                         ),
+                        if (_isEventAdded) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 5,
+                            child: ElevatedButton.icon(
+                              onPressed: () => Get.to(
+                                () => EventItineraryScreen(event: widget.event),
+                                transition: Transition.rightToLeft,
+                              ),
+                              icon: const Icon(Icons.route_rounded, size: 18),
+                              label: const Text(
+                                'Organiser mon parcours',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 10),
