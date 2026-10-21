@@ -201,6 +201,8 @@ class ProfileController extends GetxController {
   /// Gère à la fois un payload plat (ancien format) et le nouveau
   /// payload backend imbriqué `{ privacy: {...}, profile: {...} }`.
   Future<void> _updateUserData(Map<String, dynamic> data) async {
+    certificationLevel.value = 'none';
+    isVerified.value = false;
     try {
       final Map<String, dynamic> profileData =
       (data['profile'] is Map) ? Map<String, dynamic>.from(data['profile'] as Map) : data;
