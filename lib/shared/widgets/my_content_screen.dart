@@ -64,16 +64,7 @@ class MyContentScreen extends StatelessWidget {
                           textSecondary: textSecondary,
                           onTap: () => Get.toNamed(AppPages.myEvents),
                         ),
-                        Divider(height: 1, thickness: 1, color: border.withValues(alpha: .6)),
-                        _ContentTile(
-                          icon: Icons.local_activity_rounded,
-                          iconBg: AppColors.secondary,
-                          title: 'settings_my_activities'.tr,
-                          subtitle: 'Gérez vos activités et ateliers',
-                          textPrimary: textPrimary,
-                          textSecondary: textSecondary,
-                          onTap: () => Get.toNamed(AppPages.myActivities),
-                        ),
+
                       ],
                     ),
                   ),
