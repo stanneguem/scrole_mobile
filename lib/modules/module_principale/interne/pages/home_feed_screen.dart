@@ -114,7 +114,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
                     const _StoriesRow(),
-                    const Divider(height: 1, thickness: 0.5),
                     const _SuggestedProfilesCarousel(),
                     const _SuggestedEventsCarousel(),
                     SizedBox(
@@ -153,7 +152,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const _StoriesRow(),
-                        Divider(height: 1, thickness: 0.5, color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
                       ],
                     );
                   }
