@@ -1685,8 +1685,17 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
                 final id = item['id']?.toString() ?? '';
                 final name = item['nom']?.toString() ?? item['name']?.toString() ?? '';
                 final isSelected = _selectedIds.contains(id);
-                return CheckboxListTile(
-                  title: Text(name),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                  ),
+                  child: CheckboxListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  controlAffinity: ListTileControlAffinity.trailing,
+                  title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                   value: isSelected,
                   onChanged: (val) {
                     if (val == true && !_selectedIds.contains(id) && _selectedIds.length >= 10) {
@@ -1705,6 +1714,7 @@ class _CommunityInterestsScreenState extends State<CommunityInterestsScreen> {
                       }
                     });
                   },
+                  ),
                 );
               },
             ),
@@ -2532,21 +2542,28 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _IosSwitchTile(
-              title: Text('community_settings_posts_approval'.tr),
-              value: _postsRequireApproval,
-              onChanged: (val) => setState(() => _postsRequireApproval = val),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _postPermission,
-              decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
-              items: [
-                DropdownMenuItem(value: 'everyone', child: Text('community_post_permission_everyone'.tr)),
-                DropdownMenuItem(value: 'admins_and_moderators', child: Text('community_post_permission_admins'.tr)),
-                DropdownMenuItem(value: 'nobody', child: Text('community_post_permission_nobody'.tr)),
+            _SettingsSectionCard(
+              title: 'community_access_sub_posts'.tr,
+              children: [
+                _IosSwitchTile(
+                  title: Text('community_settings_posts_approval'.tr),
+                  value: _postsRequireApproval,
+                  onChanged: (val) => setState(() => _postsRequireApproval = val),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: DropdownButtonFormField<String>(
+                    value: _postPermission,
+                    decoration: InputDecoration(labelText: 'community_post_permissions_label'.tr),
+                    items: [
+                      DropdownMenuItem(value: 'everyone', child: Text('community_post_permission_everyone'.tr)),
+                      DropdownMenuItem(value: 'admins_and_moderators', child: Text('community_post_permission_admins'.tr)),
+                      DropdownMenuItem(value: 'nobody', child: Text('community_post_permission_nobody'.tr)),
+                    ],
+                    onChanged: (val) => setState(() => _postPermission = val ?? 'everyone'),
+                  ),
+                ),
               ],
-              onChanged: (val) => setState(() => _postPermission = val ?? 'everyone'),
             ),
           ],
         ),
