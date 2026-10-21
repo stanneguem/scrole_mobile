@@ -444,7 +444,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
   }
 
-  void _publish() {
+  Future<void> _publish() async {
     if (!_canPublish) return;
 
     List<File> filesToPublish = List.from(_selectedFiles);
@@ -469,7 +469,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    Get.back();
+    if (_isPublishing) return;
+    setState(() => _isPublishing = true);
 
     CommunityFeedController? feedController;
     try {
@@ -507,30 +508,53 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
-    unawaited(() async {
-      try {
-        await service.createCommunityPost(
-      requestedPostId: postId,
-      communityId: cId,
-      content: postContent,
-      imageFiles: filesToPublish,
-      audience: isCommunity ? 'public' : _audience,
-      commentsEnabled: _commentsEnabled,
-      sharingEnabled: _sharingEnabled,
-      reactionsEnabled: _reactionsEnabled,
-      hashtags: hashtagsList,
-      mentions: mentionsList,
-      poll: _pollData,
-      allowPromotion: isCommunity ? _allowPromotion : true,
+    try {
+      await service.createCommunityPost(
+        requestedPostId: postId,
+        communityId: cId,
+        content: postContent,
+        imageFiles: filesToPublish,
+        audience: isCommunity ? 'public' : _audience,
+        commentsEnabled: _commentsEnabled,
+        sharingEnabled: _sharingEnabled,
+        reactionsEnabled: _reactionsEnabled,
+        hashtags: hashtagsList,
+        mentions: mentionsList,
+        poll: _pollData,
+        allowPromotion: isCommunity ? _allowPromotion : true,
+      );
+      if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
+        await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+          'p_source_type': 'post',
+          'p_source_id': postId,
+          'p_community_ids': _selectedCommunityIds.toList(),
+          'p_event_ids': _selectedEventIds.toList(),
+        });
+      }
+      if (!mounted) return;
+      Get.back();
+      if (feedController != null) {
+        await feedController.fetchCommunityFeed(isRefresh: true);
+      }
+      Get.snackbar(
+        'Publication envoyée',
+        'La publication a été transmise au serveur.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+      if (mounted) {
+        setState(() => _isPublishing = false);
+        Get.snackbar(
+          'Publication non confirmée',
+          e.toString().replaceFirst('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 6),
         );
-        if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
-          await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
-            'p_source_type': 'post', 'p_source_id': postId,
-            'p_community_ids': _selectedCommunityIds.toList(), 'p_event_ids': _selectedEventIds.toList(),
-          });
-        }
-      } catch (e) { debugPrint('[MENTIONS] Post publish/entity mention error: $e'); }
-    }());
+      }
+    }
   }
 
   Future<void> _openGallery() async {
