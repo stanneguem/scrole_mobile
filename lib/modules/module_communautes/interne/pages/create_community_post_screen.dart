@@ -805,18 +805,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.primary.withValues(alpha: 0.09),
-                                colorScheme.tertiary.withValues(alpha: 0.06),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.28)),
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: .55)),
+                            boxShadow: [BoxShadow(color: colorScheme.shadow.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .08 : .04), blurRadius: 22, offset: const Offset(0, 7))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,7 +872,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: colorScheme.surface.withValues(alpha: 0.9),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(15),
                                       border: Border.all(
                                         color: isCorrect ? Colors.green.withValues(alpha: 0.7) : colorScheme.outlineVariant.withValues(alpha: 0.55),
                                       ),
