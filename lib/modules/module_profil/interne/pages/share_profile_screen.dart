@@ -37,10 +37,29 @@ class _ShareProfileScreenState extends State<ShareProfileScreen> {
   }
 
   Future<void> _shareQrCode() async {
-    await SharePlus.instance.share(ShareParams(
-      text: 'share_profile_qr_message'.trParams({'name': _profile.displayName, 'link': _profileLink}),
-      subject: 'share_profile_subject'.trParams({'name': _profile.displayName}),
-    ));
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      final painter = QrPainter(
+        data: 'scrole_user:${_profile.userId.value}',
+        version: QrVersions.auto,
+        gapless: true,
+      );
+      final bytes = await painter.toImageData(3, format: ui.ImageByteFormat.png);
+      if (bytes == null) throw StateError('Could not render profile QR code');
+      final directory = await Directory.systemTemp.createTemp('scrole_profile_qr_');
+      final file = File('${directory.path}/scrole_profile_qr.png');
+      await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'image/png')],
+        text: 'share_profile_qr_message'.trParams({'name': _profile.displayName, 'link': _profileLink}),
+        subject: 'share_profile_subject'.trParams({'name': _profile.displayName}),
+      ));
+    } catch (e) {
+      if (mounted) Get.snackbar('error_title'.tr, 'share_profile_error'.tr, snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 
   Future<void> _shareProfileCard() async {
