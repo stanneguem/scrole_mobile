@@ -7,6 +7,7 @@ import 'package:lottie/lottie.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../shared/widgets/expandable_text_widget.dart';
 import 'package:scrole/modules/module_evenement/interne/pages/report_event_sheet.dart';
 import '../../../../../app_controller.dart';
@@ -712,7 +713,13 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                         ),
                         const SizedBox(height: 16),
 
-                        Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface)),
+                        Row(
+                          children: [
+                            Expanded(child: Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface))),
+                            const SizedBox(width: 6),
+                            EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
+                          ],
+                        ),
                         Text(
                           '@${event.slug}',
                           style: AppTextStyles.body.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
