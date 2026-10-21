@@ -341,10 +341,27 @@ class _DatesStep extends GetView<CreateEventController> {
         children: [
           Text('event_create_dates'.tr, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 24),
+          Obx(() => controller.canUseIncludedCertification.value
+              ? CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: controller.useIncludedCertification.value,
+                  onChanged: (value) {
+                    if (value != null) controller.setUseIncludedCertification(value);
+                  },
+                  title: const Text('Utiliser une certification d’événement incluse'),
+                  subtitle: Text(
+                    '${controller.remainingIncludedEvents.value} certification(s) incluse(s) restante(s). '
+                    'Horizon : ${controller.certifiedEventHorizonMonths.value} mois.',
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                )
+              : const SizedBox.shrink()),
           Obx(() => Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(
-              'Limites applicables à un événement non certifié : planification dans les ${controller.noncertEventHorizonMonths.value} prochains mois, durée maximale ${controller.noncertEventMaxDurationDays.value} jours.',
+              controller.useIncludedCertification.value
+                  ? 'Événement certifié : la certification incluse sera consommée lors de la création. Horizon maximal ${controller.certifiedEventHorizonMonths.value} mois.'
+                  : 'Événement non certifié : planification dans les ${controller.noncertEventHorizonMonths.value} prochains mois, durée maximale ${controller.noncertEventMaxDurationDays.value} jours.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           )),
