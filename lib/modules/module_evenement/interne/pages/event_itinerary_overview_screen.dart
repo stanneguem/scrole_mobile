@@ -241,7 +241,7 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
               final statusIcon = isPast ? Icons.close_rounded : isFuture ? Icons.schedule_rounded : Icons.radio_button_unchecked_rounded;
               final statusColor = isPast ? colors.error : AppColors.primary;
               return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
                     width: 48,
@@ -258,7 +258,12 @@ class _EventItineraryOverviewScreenState extends State<EventItineraryOverviewScr
                           child: Icon(statusIcon, size: 19, color: statusColor),
                         ),
                         if (index != activities.length - 1)
-                          Expanded(child: Container(width: 2, color: colors.outlineVariant, margin: const EdgeInsets.symmetric(vertical: 4))),
+                          Container(
+                            width: 2,
+                            height: 28,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            color: colors.outlineVariant,
+                          ),
                       ],
                     ),
                   ),
