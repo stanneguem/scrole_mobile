@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/services/community_service.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
@@ -143,6 +144,7 @@ class CommunitySettingsMainScreen extends StatefulWidget {
 class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
+  bool _communityStatsAvailable = false;
   String _role = 'member';
   Map<String, dynamic> _modCounts = {};
   String? _communityName;
@@ -162,6 +164,16 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
         Get.back();
         Get.snackbar('error'.tr, 'community_access_denied'.tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
         return;
+      }
+      try {
+        final stats = await Supabase.instance.client.rpc(
+          'get_community_certification_stats',
+          params: {'p_community_id': widget.communityId},
+        );
+        _communityStatsAvailable = stats is Map;
+      } catch (_) {
+        // L'API n'autorise les statistiques qu'au propriétaire d'une communauté certifiée.
+        _communityStatsAvailable = false;
       }
       try {
         _modCounts = await _service.getCommunityModerationCounts(widget.communityId);
@@ -231,6 +243,19 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
             badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
             onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
           ),
+          if (_communityStatsAvailable) ...[
+            const SizedBox(height: 12),
+            _buildTile(
+              icon: Icons.query_stats_rounded,
+              iconColor: Colors.teal,
+              title: 'community_cert_stats_title'.tr,
+              subtitle: 'community_cert_stats_subtitle'.tr,
+              onTap: () => Get.to(() => CommunityCertificationStatsScreen(
+                communityId: widget.communityId,
+                communityName: _communityName ?? widget.communityName,
+              )),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // 2. Accès et règles -> Écran E (Admin only)
@@ -302,6 +327,133 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
           ],
         ),
       ),
+    );
+  }
+}
+
+class CommunityCertificationStatsScreen extends StatefulWidget {
+  final String communityId;
+  final String communityName;
+
+  const CommunityCertificationStatsScreen({
+    super.key,
+    required this.communityId,
+    required this.communityName,
+  });
+
+  @override
+  State<CommunityCertificationStatsScreen> createState() => _CommunityCertificationStatsScreenState();
+}
+
+class _CommunityCertificationStatsScreenState extends State<CommunityCertificationStatsScreen> {
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic> _stats = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_community_certification_stats',
+        params: {'p_community_id': widget.communityId},
+      );
+      if (response is! Map) throw Exception('community_cert_stats_load_error'.tr);
+      if (!mounted) return;
+      setState(() { _stats = Map<String, dynamic>.from(response); _loading = false; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() { _error = 'community_cert_stats_load_error'.tr; _loading = false; });
+    }
+  }
+
+  int _value(String key) => (_stats[key] as num?)?.toInt() ?? 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final items = <(String, String, IconData)>[
+      ('community_cert_stats_members', 'members_count', Icons.groups_rounded),
+      ('community_cert_stats_new_members', 'new_members_30d', Icons.person_add_alt_1_rounded),
+      ('community_cert_stats_posts', 'active_posts_count', Icons.article_outlined),
+      ('community_cert_stats_new_posts', 'new_posts_30d', Icons.post_add_rounded),
+      ('community_cert_stats_comments', 'comments_count', Icons.mode_comment_outlined),
+      ('community_cert_stats_reactions', 'reactions_count', Icons.favorite_border_rounded),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: Text('community_cert_stats_title'.tr)),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.workspace_premium_outlined, size: 42, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 12),
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      OutlinedButton(onPressed: _loadStats, child: Text('retry'.tr)),
+                    ]),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadStats,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Text(widget.communityName, style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 6),
+                      Text('community_cert_stats_subtitle'.tr,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 18),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: items.length,
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.35,
+                        ),
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          return Card(
+                            elevation: 0,
+                            color: colorScheme.surfaceContainerLow,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: .35)),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Icon(item.$3, color: colorScheme.primary, size: 22),
+                                  Text('${_value(item.$2)}',
+                                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                                  Text(item.$1.tr,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
     );
   }
 }
