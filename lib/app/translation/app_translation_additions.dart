@@ -732,7 +732,7 @@ class AppTranslationAdditions {
     },
     'en': {
       'profile_online': "Online",
-      'profile_last_seen': "Last seen: @date",'profile_last_seen': "Last seen: @date",
+      'profile_last_seen': "Last seen: @date",,
 'profile_last_seen_label': "Last seen:",
       'privacy_show_country': "Show my country",
       'privacy_show_country_desc': "Allow your country to appear on your profile.",
@@ -1454,7 +1454,7 @@ class AppTranslationAdditions {
     },
     'es': {
       'profile_online': "En línea",
-      'profile_last_seen': "Última conexión: @date",'profile_last_seen': "Última conexión: @date",
+      'profile_last_seen': "Última conexión: @date",,
 'profile_last_seen_label': "Última conexión:",
       'privacy_show_country': "Mostrar mi país",
       'privacy_show_country_desc': "Permitir que tu país aparezca en tu perfil.",
@@ -2093,7 +2093,7 @@ class AppTranslationAdditions {
     },
     'de': {
       'profile_online': "Online",
-      'profile_last_seen': "Zuletzt online: @date",'profile_last_seen': "Zuletzt online: @date",
+      'profile_last_seen': "Zuletzt online: @date",,
 'profile_last_seen_label': "Zuletzt online:",
       'privacy_show_country': "Mein Land anzeigen",
       'privacy_show_country_desc': "Erlaube, dass dein Land in deinem Profil angezeigt wird.",
@@ -2715,7 +2715,7 @@ class AppTranslationAdditions {
     },
     'it': {
       'profile_online': "Online",
-      'profile_last_seen': "Ultimo accesso: @date",'profile_last_seen': "Ultimo accesso: @date",
+      'profile_last_seen': "Ultimo accesso: @date",,
 'profile_last_seen_label': "Ultimo accesso:",
       'privacy_show_country': "Mostra il mio paese",
       'privacy_show_country_desc': "Consenti di mostrare il tuo paese sul profilo.",
@@ -3337,7 +3337,7 @@ class AppTranslationAdditions {
     },
     'pt': {
       'profile_online': "Online",
-      'profile_last_seen': "Última vez online: @date",'profile_last_seen': "Última vez online: @date",
+      'profile_last_seen': "Última vez online: @date",,
 'profile_last_seen_label': "Última vez online:",
       'privacy_show_country': "Mostrar meu país",
       'privacy_show_country_desc': "Permitir que seu país apareça no perfil.",
@@ -3959,7 +3959,7 @@ class AppTranslationAdditions {
     },
     'zh': {
       'profile_online': "在线",
-      'profile_last_seen': "最近上线：@date",'profile_last_seen': "最近上线：@date",
+      'profile_last_seen': "最近上线：@date",,
 'profile_last_seen_label': "最近上线：",
       'privacy_show_country': "显示我的国家",
       'privacy_show_country_desc': "允许在个人资料中显示你的国家。",
@@ -4581,7 +4581,7 @@ class AppTranslationAdditions {
     },
     'ja': {
       'profile_online': "オンライン",
-      'profile_last_seen': "最終オンライン：@date",'profile_last_seen': "最終オンライン：@date",
+      'profile_last_seen': "最終オンライン：@date",,
 'profile_last_seen_label': "最終オンライン：",
       'privacy_show_country': "国を表示",
       'privacy_show_country_desc': "プロフィールに国を表示することを許可します。",
@@ -5202,7 +5202,7 @@ class AppTranslationAdditions {
     },
     'ru': {
       'profile_online': "В сети",
-      'profile_last_seen': "Последний раз в сети: @date",'profile_last_seen': "Последний раз в сети: @date",
+      'profile_last_seen': "Последний раз в сети: @date",,
 'profile_last_seen_label': "Последний раз в сети:",
       'privacy_show_country': "Показывать мою страну",
       'privacy_show_country_desc': "Разрешить отображение страны в профиле.",
