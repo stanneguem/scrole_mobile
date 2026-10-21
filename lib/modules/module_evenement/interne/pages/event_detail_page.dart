@@ -716,7 +716,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                         Row(
                           children: [
                             Expanded(child: Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface))),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 0),
                             EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
                           ],
                         ),
@@ -1256,7 +1256,7 @@ class _RestrictedPreviewView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint'),
+        title: Row(children: [Expanded(child: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint', maxLines: 1, overflow: TextOverflow.ellipsis)), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 18)]),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Get.back(),
