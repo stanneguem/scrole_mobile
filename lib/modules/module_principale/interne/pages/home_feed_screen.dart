@@ -14,6 +14,7 @@ import 'story_viewer_screen.dart';
 import 'create_story_screen.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/user_certified_badge.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -254,14 +255,18 @@ class _StoriesRow extends GetView<StoriesController> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return SizedBox(
-      height: 108,
+      height: 116,
       child: Obx(() {
         final own = controller.ownGroup.value;
         final hasOwnStory = own != null && own.stories.isNotEmpty;
-        final otherGroups = [
+        // Unseen stories first, then most recently active authors.
+        final otherGroups = <EventStoryGroup>[
           ...controller.followingGroups,
           ...controller.suggestedGroups,
-        ];
+        ]..sort((a, b) {
+            if (a.hasUnseen != b.hasUnseen) return a.hasUnseen ? -1 : 1;
+            return b.latestAt.compareTo(a.latestAt);
+          });
         final allGroupsForViewer = [
           if (hasOwnStory) own,
           ...otherGroups,
@@ -293,7 +298,7 @@ class _StoriesRow extends GetView<StoriesController> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: hasOwnStory
-                                  ? Border.all(color: own.hasUnseen ? colorScheme.primary : colorScheme.outlineVariant, width: 2.5)
+                                  ? Border.all(color: own.hasUnseen ? Colors.blue : Colors.grey.shade500, width: 2.5)
                                   : null,
                             ),
                             child: CircleAvatar(
@@ -351,7 +356,7 @@ class _StoriesRow extends GetView<StoriesController> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: hasUnviewed ? colorScheme.primary : colorScheme.outlineVariant,
+                          color: hasUnviewed ? Colors.blue : Colors.grey.shade500,
                           width: 2.5,
                         ),
                       ),
@@ -367,13 +372,29 @@ class _StoriesRow extends GetView<StoriesController> {
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      width: 64,
-                      child: Text(
-                        group.author.displayName,
-                        style: const TextStyle(fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                      width: 76,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              group.author.displayName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: hasUnviewed ? FontWeight.w700 : FontWeight.w400,
+                                color: colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          if (group.author.isCertified) ...[
+                            const SizedBox(width: 3),
+                            const UserCertifiedBadge(size: 11, showTooltip: false),
+                          ],
+                        ],
                       ),
                     ),
                   ],
