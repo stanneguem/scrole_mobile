@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:scrole/modules/module_parametre/interne/pages/certification_plans_screen.dart';
 import '../../centre/services/community_service.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
@@ -145,6 +146,8 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
   final CommunityService _service = Get.find<CommunityService>();
   bool _isLoading = true;
   bool _communityStatsAvailable = false;
+  bool _isCommunityOwner = false;
+  bool _communityCertified = false;
   String _role = 'member';
   Map<String, dynamic> _modCounts = {};
   String? _communityName;
@@ -160,6 +163,18 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
   Future<void> _loadRoleAndCounts() async {
     try {
       _role = await _service.getCurrentUserRole(widget.communityId);
+      try {
+        final certification = await Supabase.instance.client.rpc(
+          'scrole_get_entity_certification_status',
+          params: {'p_entity_type': 'community', 'p_entity_id': widget.communityId},
+        );
+        if (certification is Map) {
+          _isCommunityOwner = certification['is_owner'] == true;
+          _communityCertified = certification['entity_certified'] == true;
+        }
+      } catch (e) {
+        debugPrint('[CommunitySettingsMainScreen] Certification status unavailable: $e');
+      }
       if (_role != 'admin' && _role != 'moderator') {
         Get.back();
         Get.snackbar('error'.tr, 'community_access_denied'.tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
@@ -243,6 +258,25 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
             badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
             onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
           ),
+          if (_isCommunityOwner) ...[
+            _buildTile(
+              icon: Icons.verified_rounded,
+              iconColor: _communityCertified ? Colors.green : Colors.deepPurple,
+              title: 'Certifier la communauté',
+              subtitle: _communityCertified
+                  ? 'Certification active'
+                  : 'Utiliser un droit inclus dans votre abonnement',
+              onTap: () async {
+                await Get.to(() => EntityCertificationManagementScreen(
+                  entityType: 'community',
+                  entityId: widget.communityId,
+                  entityName: _communityName ?? widget.communityName,
+                ));
+                if (mounted) await _loadRoleAndCounts();
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_communityStatsAvailable) ...[
             const SizedBox(height: 12),
             _buildTile(
@@ -2659,6 +2693,193 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
           ],
         ),
       ),
+    );
+  }
+}
+
+
+class EntityCertificationManagementScreen extends StatefulWidget {
+  final String entityType;
+  final String entityId;
+  final String entityName;
+
+  const EntityCertificationManagementScreen({
+    super.key,
+    required this.entityType,
+    required this.entityId,
+    required this.entityName,
+  });
+
+  @override
+  State<EntityCertificationManagementScreen> createState() => _EntityCertificationManagementScreenState();
+}
+
+class _EntityCertificationManagementScreenState extends State<EntityCertificationManagementScreen> {
+  bool _loading = true;
+  bool _busy = false;
+  String? _error;
+  Map<String, dynamic> _status = {};
+  Map<String, dynamic> _entitlements = {};
+
+  bool get _isEvent => widget.entityType == 'event';
+  bool get _isCertified => _status['entity_certified'] == true;
+  int _int(String key) => (_entitlements[key] as num?)?.toInt() ?? 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) setState(() { _loading = true; _error = null; });
+    try {
+      final client = Supabase.instance.client;
+      final status = await client.rpc('scrole_get_entity_certification_status', params: {
+        'p_entity_type': widget.entityType,
+        'p_entity_id': widget.entityId,
+      });
+      final entitlements = await client.rpc('scrole_get_my_subscription_entitlements');
+      if (status is! Map || entitlements is! Map) throw Exception('Réponse de certification invalide.');
+      if (status['is_owner'] != true) throw Exception('Seul le propriétaire peut certifier ce contenu.');
+      if (!mounted) return;
+      setState(() {
+        _status = Map<String, dynamic>.from(status);
+        _entitlements = Map<String, dynamic>.from(entitlements);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _error = e.toString().replaceFirst('Exception: ', ''); _loading = false; });
+    }
+  }
+
+  Future<void> _activateIncluded() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = Supabase.instance.client;
+      await client.rpc('scrole_certify_owned_entity_with_subscription', params: {
+        'p_entity_type': widget.entityType,
+        'p_entity_id': widget.entityId,
+      });
+      if (!mounted) return;
+      Get.snackbar('Certification activée', '${widget.entityName} est maintenant certifié.',
+        snackPosition: SnackPosition.BOTTOM);
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString();
+      Get.snackbar('Certification impossible', _friendlyError(message),
+        snackPosition: SnackPosition.BOTTOM, backgroundColor: Theme.of(context).colorScheme.error,
+        colorText: Theme.of(context).colorScheme.onError);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _friendlyError(String message) {
+    if (message.contains('active_profile_certification_required')) return 'Une certification de profil active est nécessaire.';
+    if (message.contains('active_pro_or_premium_subscription_required')) return 'Un abonnement Pro ou Premium actif est nécessaire pour utiliser les certifications incluses.';
+    if (message.contains('quota_exceeded')) return 'Tous vos droits de certification inclus sont déjà utilisés.';
+    if (message.contains('entity_not_owned_by_current_user')) return 'Seul le propriétaire peut certifier ce contenu.';
+    return message.replaceFirst('Exception: ', '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final remainingKey = _isEvent ? 'event_remaining' : 'community_remaining';
+    final quotaKey = _isEvent ? 'event_quota' : 'community_quota';
+    final usedKey = _isEvent ? 'event_used' : 'community_used';
+    final remaining = _int(remainingKey);
+    final quota = _int(quotaKey);
+    final used = _int(usedKey);
+    return Scaffold(
+      appBar: AppBar(title: Text(_isEvent ? 'Certifier l’événement' : 'Certifier la communauté')),
+      body: _loading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+          ? Center(child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.shield_outlined, size: 42),
+                const SizedBox(height: 12),
+                Text(_error!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(onPressed: _load, child: const Text('Réessayer')),
+              ]),
+            ))
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(padding: const EdgeInsets.all(20), children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: _isCertified ? colors.primaryContainer : colors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colors.outlineVariant),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(_isCertified ? Icons.verified_rounded : Icons.workspace_premium_outlined,
+                      size: 36, color: _isCertified ? colors.primary : colors.onSurfaceVariant),
+                    const SizedBox(height: 12),
+                    Text(widget.entityName, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(_isCertified ? 'Certification active' : 'Ce contenu n’est pas certifié.',
+                      style: Theme.of(context).textTheme.bodyLarge),
+                    if (_status['source'] != null) ...[
+                      const SizedBox(height: 6),
+                      Text('Origine : ${_status['source']}', style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ]),
+                ),
+                const SizedBox(height: 18),
+                Text('Vos droits inclus', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text((_entitlements['active'] == true)
+                        ? 'Abonnement ${(_entitlements['plan_code'] ?? '').toString().toUpperCase()} actif'
+                        : 'Aucun abonnement Pro/Premium actif'),
+                      const SizedBox(height: 10),
+                      Text('$used sur $quota utilisé(s) · $remaining restant(s)'.replaceFirst('$used', '$used').replaceFirst('$quota', '$quota')),
+                      Text('${used} / ${quota} utilisés · ${remaining} disponible(s)'),
+                      if (_entitlements['ends_at'] != null) ...[
+                        const SizedBox(height: 6),
+                        Text('Fin de l’abonnement : ${_entitlements['ends_at']}', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                      const SizedBox(height: 14),
+                      SizedBox(width: double.infinity, child: FilledButton.icon(
+                        onPressed: (_isCertified || remaining <= 0 || _entitlements['active'] != true || _busy) ? null : _activateIncluded,
+                        icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.verified_user_outlined),
+                        label: Text(_isCertified ? 'Déjà certifié' : 'Utiliser une certification incluse'),
+                      )),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Icon(Icons.shopping_bag_outlined, size: 30),
+                      const SizedBox(height: 8),
+                      Text('Acheter une certification', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      const Text('Les achats de certification individuelle nécessitent encore le branchement du paiement sécurisé. Aucun paiement ne sera lancé depuis cet écran pour le moment.'),
+                      const SizedBox(height: 12),
+                      SizedBox(width: double.infinity, child: OutlinedButton(
+                        onPressed: () => Get.to(() => const CertificationPlansScreen()),
+                        child: const Text('Consulter les offres de certification'),
+                      )),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
     );
   }
 }
