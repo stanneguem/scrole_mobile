@@ -230,7 +230,7 @@ class _EventItineraryScreenState extends State<EventItineraryScreen> {
     final plan = _currentPlan();
     final selected = plan.activities.containsKey(activity.activityId.isNotEmpty ? activity.activityId : activity.id);
     final key = activity.activityId.isNotEmpty ? activity.activityId : activity.id;
-    final activityPlan = plan.activities.putIfAbsent(key, () => _ActivityPlan());
+    final activityPlan = plan.activities[key] ?? _ActivityPlan();
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
