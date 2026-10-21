@@ -1043,6 +1043,17 @@ class SupabaseEventService {
     });
   }
 
+  Future<Map<String, dynamic>> createCertifiedEvent(Map<String, dynamic> params) async {
+    final response = await _client.rpc('create_certified_event_with_subscription', params: params);
+    if (response == null) {
+      throw Exception('Erreur lors de la création de l’événement certifié');
+    }
+    if (response is List && response.isNotEmpty) {
+      return Map<String, dynamic>.from(response.first as Map);
+    }
+    return Map<String, dynamic>.from(response as Map);
+  }
+
   Future<Map<String, dynamic>> createEvent(Map<String, dynamic> params) async {
     final response = await _client.rpc('create_event', params: params);
     if (response == null) throw Exception('Erreur lors de la création de l\'événement');
