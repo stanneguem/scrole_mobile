@@ -145,7 +145,6 @@ class FeedPostCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         margin: EdgeInsets.zero,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         color: colorScheme.surface,
         child: Stack(
           children: [
@@ -159,7 +158,9 @@ class FeedPostCard extends StatelessWidget {
                 color: colorScheme.outlineVariant.withValues(alpha: 0.45),
               ),
             ),
-            Column(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. En-tête de la communauté si présente et hors du fil propre de cette communauté
@@ -519,6 +520,7 @@ class FeedPostCard extends StatelessWidget {
               ],
             ),
           ],
+              ),
             ),
           ],
         ),
@@ -1588,6 +1590,7 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
                     'Publier',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+            ),
           ),
         ],
       ),
@@ -1931,7 +1934,6 @@ class _RepublicationPostCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: colorScheme.surface,
       child: Stack(
         children: [
