@@ -148,14 +148,17 @@ class FeedPostCard extends StatelessWidget {
         color: colorScheme.surface,
         child: Stack(
           children: [
-            // Connector begins at the bottom of the avatar and continues to the next avatar.
+            // Draw the connector below the author avatar, keeping it behind the
+            // card content and aligned to the shared avatar center (x = 36).
             Positioned(
               left: 35,
               top: showCommunityHeader ? 58 : 64,
               bottom: 0,
-              child: Container(
-                width: 2,
-                color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+              child: IgnorePointer(
+                child: Container(
+                  width: 2,
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.18),
+                ),
               ),
             ),
             Padding(
@@ -1951,14 +1954,16 @@ class _RepublicationPostCard extends StatelessWidget {
       color: colorScheme.surface,
       child: Stack(
         children: [
-          // Connector starts below the current avatar and continues toward the next.
+          // Keep the repost avatar on the same x-axis as ordinary post avatars.
           Positioned(
             left: 35,
             top: 52,
             bottom: 0,
-            child: Container(
-              width: 2,
-              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            child: IgnorePointer(
+              child: Container(
+                width: 2,
+                color: colorScheme.outlineVariant.withValues(alpha: 0.18),
+              ),
             ),
           ),
           Row(
