@@ -6,7 +6,7 @@ class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
       'profile_online': "En ligne",
-      'profile_last_seen': "Dernière connexion : @date",'profile_last_seen': "Dernière connexion : @date",
+      'profile_last_seen': "Dernière connexion : @date",
 'profile_last_seen_label': "Dernière connexion :",
       'privacy_show_country': "Afficher mon pays",
       'privacy_show_country_desc': "Autoriser l’affichage du pays sur mon profil.",
