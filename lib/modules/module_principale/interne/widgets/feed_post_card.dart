@@ -147,7 +147,19 @@ class FeedPostCard extends StatelessWidget {
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         color: colorScheme.surface,
-        child: Column(
+        child: Stack(
+          children: [
+            // Continuous timeline aligned with the author avatar.
+            Positioned(
+              left: 19,
+              top: showCommunityHeader ? 58 : 0,
+              bottom: 0,
+              child: Container(
+                width: 2,
+                color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. En-tête de la communauté si présente et hors du fil propre de cette communauté
@@ -505,6 +517,8 @@ class FeedPostCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
             ),
           ],
         ),
