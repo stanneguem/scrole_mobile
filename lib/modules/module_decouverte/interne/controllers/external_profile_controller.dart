@@ -237,6 +237,7 @@ class ExternalProfileController extends GetxController {
       if (state == 'blocked' || state == 'self') return;
       final result = await _repository.follow(current.userId);
       final freshRelation = await _repository.getRelationship(current.userId, forceRefresh: true);
+      final refreshedProfile = await _repository.getProfileResult(current.userId);
       final nextState = (freshRelation['state'] ?? (result ? 'following' : state)).toString();
       final updated = current.copyWith(
         isFollowing: freshRelation['is_following'] == true || nextState == 'following' || nextState == 'friends',
@@ -248,7 +249,7 @@ class ExternalProfileController extends GetxController {
           clearRequestId: freshRelation['request_id'] == null,
         retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
           clearRetryAt: freshRelation['retry_at'] == null,
-        canMessage: current.canMessage,
+        canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
       );
       profile.value = updated;
       isFollowing.value = updated.isFollowing;
@@ -306,6 +307,7 @@ class ExternalProfileController extends GetxController {
         await _repository.getRelationship(current.userId, forceRefresh: true);
         await _repository.cancelConnection(current.userId);
         final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final refreshedProfile = await _repository.getProfileResult(current.userId);
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
@@ -395,7 +397,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: relation['is_friend'] == true,
+          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
