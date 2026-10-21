@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
 import '../controllers/profile_controller.dart';
 
 class ShareProfileScreen extends StatefulWidget {
@@ -20,8 +21,35 @@ class ShareProfileScreen extends StatefulWidget {
 class _ShareProfileScreenState extends State<ShareProfileScreen> {
   final GlobalKey _cardKey = GlobalKey();
   bool _sharing = false;
+  bool _loadingQr = true;
+  String? _personalQrData;
 
   ProfileController get _profile => Get.find<ProfileController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonalQrCode();
+  }
+
+  Future<void> _loadPersonalQrCode() async {
+    try {
+      final qr = await SocialRepository().getOrGenerateUserQrCode();
+      final id = (qr['id'] ?? '').toString();
+      if (id.isEmpty) throw StateError('Personal QR identifier is missing');
+      if (!mounted) return;
+      setState(() {
+        _personalQrData = 'scrole_qr:$id';
+        _loadingQr = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _personalQrData = null;
+        _loadingQr = false;
+      });
+    }
+  }
 
   String get _profileLink => 'scrole://user-profile/${_profile.userId.value}';
 
@@ -79,7 +107,7 @@ class _ShareProfileScreenState extends State<ShareProfileScreen> {
             const SizedBox(height: 22),
             RepaintBoundary(
               key: _cardKey,
-              child: _ProfileShareCard(profile: _profile, link: _profileLink),
+              child: _ProfileShareCard(profile: _profile, link: _profileLink, personalQrData: _personalQrData, loadingQr: _loadingQr),
             ),
             const SizedBox(height: 24),
             _ShareOptionTile(
@@ -104,9 +132,11 @@ class _ShareProfileScreenState extends State<ShareProfileScreen> {
 }
 
 class _ProfileShareCard extends StatelessWidget {
-  const _ProfileShareCard({required this.profile, required this.link});
+  const _ProfileShareCard({required this.profile, required this.link, required this.personalQrData, required this.loadingQr});
   final ProfileController profile;
   final String link;
+  final String? personalQrData;
+  final bool loadingQr;
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +156,10 @@ class _ProfileShareCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Container(width: 30, height: 30, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.bubble_chart_rounded, color: Colors.white, size: 20)),
+            Container(width: 34, height: 34, padding: const EdgeInsets.all(3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)), child: Image.asset('assets/logos/img.png', fit: BoxFit.contain)),
             const SizedBox(width: 9),
             const Text('SCROLE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 13)),
             const Spacer(),
-            const Icon(Icons.person_add_alt_1_rounded, color: Colors.white70, size: 20),
           ]),
           const SizedBox(height: 28),
           Center(
@@ -166,7 +195,9 @@ class _ProfileShareCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _ProfileMetric(value: profile.followersCount.value.toString(), label: 'share_profile_followers'.tr),
-              Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 22), color: Colors.white.withValues(alpha: .3)),
+              Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 14), color: Colors.white.withValues(alpha: .3)),
+              _ProfileMetric(value: profile.followingCount.value.toString(), label: 'share_profile_following'.tr),
+              Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 14), color: Colors.white.withValues(alpha: .3)),
               _ProfileMetric(value: profile.reputation.value.toStringAsFixed(1), label: 'share_profile_reputation'.tr),
             ],
           ),
@@ -175,12 +206,16 @@ class _ProfileShareCard extends StatelessWidget {
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('share_profile_card_caption'.tr, style: TextStyle(color: Colors.white.withValues(alpha: .86), fontSize: 12)),
               const SizedBox(height: 5),
-              Text('SCROLE', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: 1.6)),
+              Text('Scrole', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
             ])),
             Container(
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-              child: QrImageView(data: 'scrole_user:${profile.userId.value}', size: 70, backgroundColor: Colors.white),
+              child: loadingQr
+                  ? const SizedBox(width: 70, height: 70, child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator(strokeWidth: 2)))
+                  : personalQrData == null
+                      ? const SizedBox(width: 70, height: 70, child: Icon(Icons.qr_code_2_rounded, size: 48, color: Colors.black54))
+                      : QrImageView(data: personalQrData!, size: 70, backgroundColor: Colors.white),
             ),
           ]),
         ],
