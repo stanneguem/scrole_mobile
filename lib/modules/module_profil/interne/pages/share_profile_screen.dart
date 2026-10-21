@@ -183,7 +183,7 @@ class _ProfileShareCard extends StatelessWidget {
                 Flexible(child: Text(profile.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
                 if (profile.isVerified.value) ...[
                   const SizedBox(width: 6),
-                  const Icon(Icons.verified_rounded, color: Color(0xFF72C7FF), size: 21),
+                  UserCertifiedBadge(size: 21, userId: controller.userId.value),
                 ],
               ],
             ),
