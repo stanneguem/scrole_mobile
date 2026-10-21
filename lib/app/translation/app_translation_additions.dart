@@ -746,7 +746,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Abonnés",
       'share_profile_following': "Abonnements",
       'share_profile_reputation': "Réputation",
-    },
+          'event_add_to_calendar': "Ajouter à l’agenda",
+      'event_added_to_calendar': "Ajouté à l’agenda",
+},
     'en': {
       'profile_online': "Online",
       'profile_last_seen': "Last seen: @date",
@@ -1485,7 +1487,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Followers",
       'share_profile_following': "Following",
       'share_profile_reputation': "Reputation",
-    },
+          'event_add_to_calendar': "Add to calendar",
+      'event_added_to_calendar': "Added to calendar",
+},
     'es': {
       'profile_online': "En línea",
       'profile_last_seen': "Última conexión: @date",
@@ -2141,7 +2145,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Seguidores",
       'share_profile_following': "Siguiendo",
       'share_profile_reputation': "Reputación",
-    },
+          'event_add_to_calendar': "Añadir al calendario",
+      'event_added_to_calendar': "Añadido al calendario",
+},
     'de': {
       'profile_online': "Online",
       'profile_last_seen': "Zuletzt online: @date",
@@ -2780,7 +2786,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Follower",
       'share_profile_following': "Folgt",
       'share_profile_reputation': "Ruf",
-    },
+          'event_add_to_calendar': "Zum Kalender hinzufügen",
+      'event_added_to_calendar': "Zum Kalender hinzugefügt",
+},
     'it': {
       'profile_online': "Online",
       'profile_last_seen': "Ultimo accesso: @date",
@@ -3419,7 +3427,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Follower",
       'share_profile_following': "Seguiti",
       'share_profile_reputation': "Reputazione",
-    },
+          'event_add_to_calendar': "Aggiungi al calendario",
+      'event_added_to_calendar': "Aggiunto al calendario",
+},
     'pt': {
       'profile_online': "Online",
       'profile_last_seen': "Última vez online: @date",
@@ -4058,7 +4068,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Seguidores",
       'share_profile_following': "A seguir",
       'share_profile_reputation': "Reputação",
-    },
+          'event_add_to_calendar': "Adicionar ao calendário",
+      'event_added_to_calendar': "Adicionado ao calendário",
+},
     'zh': {
       'profile_online': "在线",
       'profile_last_seen': "最近上线：@date",
@@ -4697,7 +4709,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "关注者",
       'share_profile_following': "正在关注",
       'share_profile_reputation': "声誉",
-    },
+          'event_add_to_calendar': "添加到日程",
+      'event_added_to_calendar': "已添加到日程",
+},
     'ja': {
       'profile_online': "オンライン",
       'profile_last_seen': "最終オンライン：@date",
@@ -5335,7 +5349,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "フォロワー",
       'share_profile_following': "フォロー中",
       'share_profile_reputation': "評判",
-    },
+          'event_add_to_calendar': "予定に追加",
+      'event_added_to_calendar': "予定に追加済み",
+},
     'ru': {
       'profile_online': "В сети",
       'profile_last_seen': "Последний раз в сети: @date",
@@ -5968,7 +5984,9 @@ class AppTranslationAdditions {
           'share_profile_followers': "Подписчики",
       'share_profile_following': "Подписки",
       'share_profile_reputation': "Репутация",
-    },
+          'event_add_to_calendar': "Добавить в календарь",
+      'event_added_to_calendar': "Добавлено в календарь",
+},
   };
 
   static void register() => Get.addTranslations(keys);
