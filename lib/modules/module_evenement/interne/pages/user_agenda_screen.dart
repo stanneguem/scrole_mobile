@@ -8,6 +8,7 @@ import '../controllers/user_agenda_controller.dart';
 import '../../centre/models/event_model.dart';
 import 'user_pass_screen.dart';
 import 'event_itinerary_screen.dart';
+import 'event_itinerary_overview_screen.dart';
 
 class UserAgendaScreen extends GetView<UserAgendaController> {
   const UserAgendaScreen({super.key});
@@ -49,7 +50,7 @@ class UserAgendaScreen extends GetView<UserAgendaController> {
                 context,
                 controller.activeEvent!,
                 onPassTap: () => Get.to(() => UserPassScreen(event: controller.activeEvent!)),
-                onPlanningTap: () => Get.to(() => EventItineraryScreen(event: controller.activeEvent!)),
+                onPlanningTap: () => Get.to(() => EventItineraryOverviewScreen(event: controller.activeEvent!)),
                 onRemoveTap: () => _confirmRemoveEvent(context, controller.activeEvent!),
               ),
               const SizedBox(height: 24),
@@ -58,9 +59,9 @@ class UserAgendaScreen extends GetView<UserAgendaController> {
             ],
             ...controller.myAgenda.map((event) => _AgendaItem(
                   event: event,
-                  onTap: () => Get.to(() => EventItineraryScreen(event: event)),
+                  onTap: () => Get.to(() => EventItineraryOverviewScreen(event: event)),
                   onPassTap: () => Get.to(() => UserPassScreen(event: event)),
-                  onPlanningTap: () => Get.to(() => EventItineraryScreen(event: event)),
+                  onPlanningTap: () => Get.to(() => EventItineraryOverviewScreen(event: event)),
                   onRemoveTap: () => _confirmRemoveEvent(context, event),
                 )),
           ],
