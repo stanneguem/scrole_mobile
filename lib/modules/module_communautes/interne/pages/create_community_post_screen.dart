@@ -873,9 +873,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                 final isCorrect = _pollData!['kind'] == 'quiz' &&
                                     rawOption is Map && rawOption['is_correct'] == true;
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 7),
+                                  padding: const EdgeInsets.only(bottom: 9),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: colorScheme.surface.withValues(alpha: 0.9),
                                       borderRadius: BorderRadius.circular(12),
