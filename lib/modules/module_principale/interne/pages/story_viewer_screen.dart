@@ -122,6 +122,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       _viewedStoryIds.add(story.id);
       story.viewed = true;
       story.viewersCount++;
+      _storiesController.refreshGroupViewedState(_currentGroup);
       setState(() {});
       _storiesController.markStoriesViewed([story.id]);
     }
