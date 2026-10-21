@@ -12,6 +12,7 @@ class ExternalProfileModel {
   final String? coverUrl;
   final String? country;
   final String? city;
+  final DateTime? lastSeenAt;
   final bool isPrivate;
   final bool isBlocked;
   final bool isConnected;
@@ -51,6 +52,7 @@ class ExternalProfileModel {
     this.coverUrl,
     this.country,
     this.city,
+    this.lastSeenAt,
     this.isPrivate = false,
     this.isBlocked = false,
     this.isConnected = false,
@@ -126,6 +128,7 @@ class ExternalProfileModel {
       coverUrl: coverUrl,
       country: country,
       city: city,
+      lastSeenAt: lastSeenAt,
       isPrivate: isPrivate,
       isBlocked: isBlocked,
       isConnected: isConnected ?? this.isConnected,
@@ -184,6 +187,7 @@ class ExternalProfileModel {
       coverUrl: json['cover_url'] as String?,
       country: json['country'] as String?,
       city: json['city'] as String?,
+      lastSeenAt: json['last_seen_at'] == null ? null : DateTime.tryParse(json['last_seen_at'].toString()),
       isPrivate: json['is_private'] == true,
       isBlocked: json['is_blocked'] == true,
       isConnected: json['is_connected'] == true,
@@ -227,6 +231,7 @@ class ExternalProfileModel {
       'cover_url': coverUrl,
       'country': country,
       'city': city,
+      'last_seen_at': lastSeenAt?.toIso8601String(),
       'is_private': isPrivate,
       'is_blocked': isBlocked,
       'is_connected': isConnected,
