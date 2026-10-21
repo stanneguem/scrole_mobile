@@ -1376,6 +1376,20 @@ class EventRepository {
       if (realCreatedAt != null && realCreatedAt.isNotEmpty) 'p_real_created_at': realCreatedAt,
     };
 
+    // Une certification incluse doit être confirmée par le serveur avant
+    // de considérer l'événement comme certifié. On ne met pas cette action en outbox :
+    // une création hors ligne ne doit jamais consommer ou simuler un quota.
+    if (data['certify_with_subscription'] == true) {
+      try {
+        final response = await _remote.createCertifiedEvent(rpcParams);
+        await _dao.saveEventStructured(response, syncStatus: 'synced');
+        return EventModel.fromJson(response);
+      } catch (e) {
+        await _dao.deleteEvent(id);
+        rethrow;
+      }
+    }
+
     // 2. Enfilement outbox
     await _dao.enqueueOutbox(
       userId: userId,
