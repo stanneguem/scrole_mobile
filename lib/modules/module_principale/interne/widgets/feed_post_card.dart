@@ -9,6 +9,7 @@ import 'package:scrole/modules/module_communautes/externe/repositories/community
 import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import '../../centre/models/community_post.dart';
@@ -202,15 +203,27 @@ class FeedPostCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                post.communityName ?? 'Communauté',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.primary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      post.communityName ?? 'Communauté',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: colorScheme.primary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (post.communityId != null && post.communityId!.isNotEmpty)
+                                    EntityCertifiedBadge(
+                                      entityType: 'community',
+                                      entityId: post.communityId!,
+                                      size: 15,
+                                    ),
+                                ],
                               ),
                             ),
                             Icon(
