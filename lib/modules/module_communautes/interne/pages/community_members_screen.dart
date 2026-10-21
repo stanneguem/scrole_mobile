@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/shared/widgets/user_identity_row.dart';
+import 'package:scrole/shared/widgets/user_certified_badge.dart';
 
 class CommunityMembersScreen extends StatefulWidget {
   final String communityId;
