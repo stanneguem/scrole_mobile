@@ -7,6 +7,7 @@ class UserIdentityRow extends StatelessWidget {
   final String username;
   final String? avatarUrl;
   final bool isCertified;
+  final String? userId;
   final Color? avatarColor;
   final String? subtitle;
   final Widget? trailing;
@@ -22,6 +23,7 @@ class UserIdentityRow extends StatelessWidget {
     required this.username,
     this.avatarUrl,
     this.isCertified = false,
+    this.userId,
     this.avatarColor,
     this.subtitle,
     this.trailing,
@@ -93,7 +95,7 @@ class UserIdentityRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   if (isCertified)
-                    UserCertifiedBadge(size: avatarRadius * 0.8),
+                    UserCertifiedBadge(size: avatarRadius * 0.8, userId: userId),
                   if (subtitle != null)
                     Text(
                       subtitle!,
