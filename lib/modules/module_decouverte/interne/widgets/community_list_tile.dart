@@ -105,7 +105,6 @@ class CommunityListTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 0),
                       EntityCertifiedBadge(entityType: 'community', entityId: community.id, size: 16),
                     ],
                   ),
