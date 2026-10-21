@@ -5,6 +5,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/event_model.dart';
 import '../controllers/event_controller.dart';
 import '../enums/event_enum.dart';
@@ -125,7 +126,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                     )
                   : Icon(Icons.event_outlined, color: colors.outline, size: 30),
             ),
-            title: Text(event.name, style: AppTextStyles.h4),
+            title: Row(children: [Expanded(child: Text(event.name, style: AppTextStyles.h4, maxLines: 1, overflow: TextOverflow.ellipsis)), const SizedBox(width: 5), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 17)]),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
