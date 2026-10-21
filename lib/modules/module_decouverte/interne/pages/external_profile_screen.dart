@@ -10,6 +10,7 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import '../../../module_evenement/interne/pages/external_event_itinerary_screen.dart';
 import '../controllers/external_profile_controller.dart';
 
 class ExternalProfileScreen extends GetView<ExternalProfileController> {
@@ -882,6 +883,23 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                       Expanded(child: Text(location, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                   ],
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final eventId = (event['id'] ?? '').toString();
+                        if (eventId.isEmpty) return;
+                        Get.to(() => ExternalEventItineraryScreen(
+                          userId: controller.userId,
+                          eventId: eventId,
+                          eventName: (event['name'] ?? 'Événement').toString(),
+                        ));
+                      },
+                      icon: const Icon(Icons.route_rounded, size: 17),
+                      label: const Text('Voir son planning'),
+                    ),
+                  ),
                 ]),
               ),
             ]),
