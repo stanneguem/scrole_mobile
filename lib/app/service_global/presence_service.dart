@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'auth_service.dart';
+import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'notification_service.dart';
 
 /// Publie un heartbeat seulement lorsque l'application est au premier plan.
