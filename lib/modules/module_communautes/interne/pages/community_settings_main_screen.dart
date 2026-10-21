@@ -69,6 +69,37 @@ class _CommunityHeaderCard extends StatelessWidget {
 }
 
 // --- Écran B : Gestion de la communauté (3 entrées principales) ---
+class _SettingsSectionCard extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SettingsSectionCard({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Text(title.toUpperCase(), style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant)),
+      ),
+      Container(
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        child: Column(children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: 0.25)),
+            children[i],
+          ],
+        ]),
+      ),
+    ]);
+  }
+}
+
 class _IosSwitchTile extends StatelessWidget {
   final Widget title;
   final Widget? subtitle;
@@ -2104,40 +2135,51 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      _IosSwitchTile(
-                        title: Text('community_settings_manual_approval'.tr),
-                        value: _requireManualApproval,
-                        onChanged: (val) => setState(() => _requireManualApproval = val),
+                      _SettingsSectionCard(
+                        title: 'community_mgmt_access'.tr,
+                        children: [
+                          _IosSwitchTile(
+                            title: Text('community_settings_manual_approval'.tr),
+                            value: _requireManualApproval,
+                            onChanged: (val) => setState(() => _requireManualApproval = val),
+                          ),
+                          _IosSwitchTile(
+                            title: Text('community_settings_certification'.tr),
+                            value: _certificationRequired,
+                            onChanged: (val) => setState(() => _certificationRequired = val),
+                          ),
+                          _IosSwitchTile(
+                            title: Text('community_settings_members_visible'.tr),
+                            value: _membersListVisible,
+                            onChanged: (val) => setState(() => _membersListVisible = val),
+                          ),
+                        ],
                       ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_certification'.tr),
-                        value: _certificationRequired,
-                        onChanged: (val) => setState(() => _certificationRequired = val),
-                      ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_members_visible'.tr),
-                        value: _membersListVisible,
-                        onChanged: (val) => setState(() => _membersListVisible = val),
-                      ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_allow_reports'.tr),
-                        value: _allowReports,
-                        onChanged: (val) => setState(() => _allowReports = val),
-                      ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_allow_comments'.tr),
-                        value: _allowComments,
-                        onChanged: (val) => setState(() => _allowComments = val),
-                      ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_allow_reactions'.tr),
-                        value: _allowReactions,
-                        onChanged: (val) => setState(() => _allowReactions = val),
-                      ),
-                      _IosSwitchTile(
-                        title: Text('community_settings_allow_post_promotion'.tr),
-                        value: _allowPostPromotion,
-                        onChanged: (val) => setState(() => _allowPostPromotion = val),
+                      const SizedBox(height: 16),
+                      _SettingsSectionCard(
+                        title: 'community_access_sub_posts'.tr,
+                        children: [
+                          _IosSwitchTile(
+                            title: Text('community_settings_allow_reports'.tr),
+                            value: _allowReports,
+                            onChanged: (val) => setState(() => _allowReports = val),
+                          ),
+                          _IosSwitchTile(
+                            title: Text('community_settings_allow_comments'.tr),
+                            value: _allowComments,
+                            onChanged: (val) => setState(() => _allowComments = val),
+                          ),
+                          _IosSwitchTile(
+                            title: Text('community_settings_allow_reactions'.tr),
+                            value: _allowReactions,
+                            onChanged: (val) => setState(() => _allowReactions = val),
+                          ),
+                          _IosSwitchTile(
+                            title: Text('community_settings_allow_post_promotion'.tr),
+                            value: _allowPostPromotion,
+                            onChanged: (val) => setState(() => _allowPostPromotion = val),
+                          ),
+                        ],
                       ),
                       _IosSwitchTile(
                         title: Text('community_settings_countries_enabled'.tr),
