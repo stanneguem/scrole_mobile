@@ -101,7 +101,7 @@ class EventListTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 0),
                       EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
                     ],
                   ),
