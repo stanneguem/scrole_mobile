@@ -404,7 +404,7 @@ class _SearchResultTile extends StatelessWidget {
           ),
           if (item.category == 'user' && item.isCertified) ...[
             const SizedBox(width: 4),
-            const UserCertifiedBadge(size: 16),
+            UserCertifiedBadge(size: 16, userId: item.id),
           ],
         ],
       ),
