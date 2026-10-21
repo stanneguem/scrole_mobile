@@ -516,27 +516,44 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                                     children: [
                                       Expanded(
                                         child: UserIdentityRow(
-                                        name: _currentGroup.author.displayName,
-                                        username: _currentGroup.author.username,
-                                        avatarUrl: _currentGroup.author.photoUrl,
-                                        isCertified: _currentGroup.author.isCertified,
-                                        avatarRadius: 18,
-                                        nameStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                        usernameStyle: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                                          name: _currentGroup.author.displayName,
+                                          username: _currentGroup.author.username,
+                                          avatarUrl: _currentGroup.author.photoUrl,
+                                          isCertified: _currentGroup.author.isCertified,
+                                          avatarRadius: 18,
+                                          nameStyle: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                          usernameStyle: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 42),
+                                      const SizedBox(width: 8),
+                                      Flexible(
                                         child: Text(
                                           _formatStoryAge(_currentStory.createdAt),
-                                          style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.end,
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11.5,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 24),
+                                  icon: const Icon(
+                                    Icons.more_vert_rounded,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
                                   onPressed: _showStoryMenu,
                                 ),
                               ],
@@ -544,9 +561,6 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
 
                 // --- Lottie Hearts Animation Overlay ---
                 Positioned(
