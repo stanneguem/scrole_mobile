@@ -149,16 +149,6 @@ class ProfileScreen extends GetView<ProfileController> {
                 Row(
                   children: [
                     CircleButtonWidget(
-                      icon: Icons.people_outline_rounded,
-                      onTap: () => Get.toNamed(AppPages.myContacts),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleButtonWidget(
-                      icon: Icons.mail_outline_rounded,
-                      onTap: () => Get.toNamed(AppPages.eventInvitations),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleButtonWidget(
                       icon: Icons.calendar_today_outlined,
                       onTap: () => Get.toNamed(AppPages.userAgenda),
                     ),
@@ -169,8 +159,8 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     const SizedBox(width: 8),
                     CircleButtonWidget(
-                      icon: Icons.settings_rounded,
-                      onTap: () => Get.toNamed(AppPages.setting),
+                      icon: Icons.share_rounded,
+                      onTap: () => Get.toNamed(AppPages.shareMyProfile),
                     ),
                   ],
                 ),
