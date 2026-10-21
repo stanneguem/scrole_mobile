@@ -1097,7 +1097,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
                             ),
                             if (isCertified) ...[
                               const SizedBox(width: 4),
-                              UserCertifiedBadge(size: 13, userId: (author['user_id'] ?? author['id'])?.toString()),
+                              UserCertifiedBadge(size: 13, userId: (v['user_id'] ?? v['author_id'] ?? v['id'])?.toString()),
                             ],
                           ],
                         ),
