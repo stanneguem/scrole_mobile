@@ -141,12 +141,7 @@ class FeedPostCard extends StatelessWidget {
         width: double.infinity,
         margin: EdgeInsets.zero,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          border: Border(
-            bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.25), width: 1),
-          ),
-        ),
+        color: colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
