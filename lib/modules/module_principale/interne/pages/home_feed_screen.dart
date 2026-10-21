@@ -396,7 +396,7 @@ class _StoriesRow extends GetView<StoriesController> {
                           ),
                           if (group.author.isCertified) ...[
                             const SizedBox(width: 3),
-                            const UserCertifiedBadge(size: 11, showTooltip: false),
+                            UserCertifiedBadge(size: 11, showTooltip: false, userId: group.author.userId),
                           ],
                         ],
                       ),
