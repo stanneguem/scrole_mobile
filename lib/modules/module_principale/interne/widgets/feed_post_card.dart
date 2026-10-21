@@ -148,10 +148,10 @@ class FeedPostCard extends StatelessWidget {
         color: colorScheme.surface,
         child: Stack(
           children: [
-            // Continuous timeline aligned with the author avatar.
+            // Connector begins at the bottom of the avatar and continues to the next avatar.
             Positioned(
-              left: 19,
-              top: showCommunityHeader ? 58 : 0,
+              left: 35,
+              top: showCommunityHeader ? 58 : 64,
               bottom: 0,
               child: Container(
                 width: 2,
@@ -1951,10 +1951,10 @@ class _RepublicationPostCard extends StatelessWidget {
       color: colorScheme.surface,
       child: Stack(
         children: [
-          // Thread line in the avatar gutter, inspired by Twitter's timeline.
+          // Connector starts below the current avatar and continues toward the next.
           Positioned(
-            left: 19,
-            top: 0,
+            left: 35,
+            top: 52,
             bottom: 0,
             child: Container(
               width: 2,
