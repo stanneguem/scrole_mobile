@@ -466,16 +466,17 @@ class _KindTile extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
         color: selected ? accent.withValues(alpha: .08) : colors.surface,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: selected ? accent : colors.outlineVariant, width: selected ? 1.5 : 1),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: selected ? accent.withValues(alpha: .85) : colors.outlineVariant.withValues(alpha: .6), width: selected ? 1.5 : 1),
+        boxShadow: selected ? [BoxShadow(color: accent.withValues(alpha: .08), blurRadius: 18, offset: const Offset(0, 5))] : const [],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(19),
+          borderRadius: BorderRadius.circular(22),
           child: Padding(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
             child: Row(children: [
               Container(
                 width: 50, height: 50,
