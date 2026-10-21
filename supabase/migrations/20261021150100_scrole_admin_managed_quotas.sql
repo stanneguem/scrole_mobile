@@ -1,5 +1,5 @@
 -- Dynamic, admin-managed quotas for the Scrole certification and event model.
--- Additive migration. Do not apply until reviewed and tested on a disposable project.
+-- Applied to the active Supabase project; test functional flows in an isolated project before production rollout.
 
 create table if not exists public.scrole_quota_settings (
   quota_key text primary key,
