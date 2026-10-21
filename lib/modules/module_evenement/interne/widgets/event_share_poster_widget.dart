@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/event_preview_model.dart';
 
 /// Widget d'affiche promotionnelle événementielle (Format 9:16 Réseaux Sociaux).
@@ -96,16 +97,24 @@ class EventSharePosterWidget extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ─── TITRE ÉVÉNEMENT ───
-          Text(
-            event.name,
-            style: GoogleFonts.spaceGrotesk(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              height: 1.15,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  event.name,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 24),
+            ],
           ),
 
           const SizedBox(height: 20),
