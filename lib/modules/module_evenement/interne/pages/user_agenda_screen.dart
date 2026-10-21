@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
@@ -170,7 +171,7 @@ class UserAgendaScreen extends GetView<UserAgendaController> {
               IconButton(
                 onPressed: onRemoveTap,
                 tooltip: "Retirer de l'agenda",
-                icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+                icon: SvgPicture.asset('assets/svg_icons/trash-bin-minimalistic-2-svgrepo-com.svg', width: 21, height: 21, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
               ),
             ],
           ),
@@ -322,7 +323,15 @@ class _AgendaAction extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18),
+          if (danger)
+            SvgPicture.asset(
+              'assets/svg_icons/trash-bin-minimalistic-2-svgrepo-com.svg',
+              width: 18,
+              height: 18,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            )
+          else
+            Icon(icon, size: 18),
           const SizedBox(height: 3),
           Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
         ],
