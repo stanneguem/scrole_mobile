@@ -651,7 +651,7 @@ class _SuggestionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     )),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 0),
                     EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
                   ]),
                   const SizedBox(height: 4),
@@ -746,12 +746,15 @@ class _SuggestionListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    event.name,
-                    style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Row(children: [
+                    Expanded(child: Text(
+                      event.name,
+                      style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
+                    EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                  ]),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('EEEE d MMMM · HH:mm').format(event.startsAt),
