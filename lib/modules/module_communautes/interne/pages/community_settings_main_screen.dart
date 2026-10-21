@@ -2780,7 +2780,7 @@ class _EntityCertificationManagementScreenState extends State<EntityCertificatio
 
   String _friendlyError(String message) {
     if (message.contains('active_profile_certification_required')) return 'Une certification de profil active est nécessaire.';
-    if (message.contains('active_pro_or_premium_subscription_required')) return 'Un abonnement Pro ou Premium actif est nécessaire pour utiliser les certifications incluses.';
+    if (message.contains('active_pro_or_premium_profile_certification_required') || message.contains('active_pro_or_premium_subscription_required')) return 'Une certification de profil Pro ou Premium active est nécessaire pour utiliser les certifications incluses.';
     if (message.contains('quota_exceeded')) return 'Tous vos droits de certification inclus sont déjà utilisés.';
     if (message.contains('entity_not_owned_by_current_user')) return 'Seul le propriétaire peut certifier ce contenu.';
     return message.replaceFirst('Exception: ', '');
@@ -2842,8 +2842,8 @@ class _EntityCertificationManagementScreenState extends State<EntityCertificatio
                     padding: const EdgeInsets.all(16),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text((_entitlements['active'] == true)
-                        ? 'Abonnement ${(_entitlements['plan_code'] ?? '').toString().toUpperCase()} actif'
-                        : 'Aucun abonnement Pro/Premium actif'),
+                        ? '${(_entitlements['plan_code'] ?? '').toString().toUpperCase()} actif · ${_entitlements['entitlement_basis'] == 'profile_certification' ? 'certification de profil' : 'abonnement'}'
+                        : 'Aucun droit Pro/Premium actif'),
                       const SizedBox(height: 10),
                       Text('${used} / ${quota} utilisés · ${remaining} disponible(s)'),
                       if (_entitlements['ends_at'] != null) ...[
