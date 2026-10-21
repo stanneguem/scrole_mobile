@@ -9,65 +9,6 @@ import '../../../../app/service_global/media_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
 import '../../../../shared/widgets/media_gallery_sheet.dart';
 
-// --- Header Widget for Community Hubs ---
-class _CommunityHeaderCard extends StatelessWidget {
-  final String communityName;
-  final String? communityAvatar;
-  final String? communitySlogan;
-
-  const _CommunityHeaderCard({
-    required this.communityName,
-    this.communityAvatar,
-    this.communitySlogan,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage: communityAvatar != null && communityAvatar!.isNotEmpty
-                ? NetworkImage(communityAvatar!)
-                : null,
-            child: communityAvatar == null || communityAvatar!.isEmpty
-                ? Text(communityName.isNotEmpty ? communityName[0].toUpperCase() : 'C', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold))
-                : null,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  communityName,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  communitySlogan ?? 'community_slogan_default'.tr,
-                  style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // --- Écran B : Gestion de la communauté (3 entrées principales) ---
 class _SettingsSectionCard extends StatelessWidget {
   final String title;
@@ -281,11 +222,6 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _CommunityHeaderCard(
-            communityName: _communityName ?? widget.communityName,
-            communityAvatar: _avatarUrl ?? widget.communityAvatar,
-            communitySlogan: _slogan ?? widget.communitySlogan,
-          ),
           // 1. Modération -> Écran C
           _buildTile(
             icon: Icons.admin_panel_settings_outlined,
@@ -391,7 +327,6 @@ class CommunityModerationCenterScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
           Card(
             elevation: 0,
             color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
@@ -1343,7 +1278,6 @@ class CommunityAccessRulesHubScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _CommunityHeaderCard(communityName: communityName, communityAvatar: communityAvatar),
           _buildHubTile(context, title: 'community_access_sub_posts'.tr, subtitle: 'community_access_sub_posts_desc'.tr, icon: Icons.article_outlined, iconColor: Colors.blue, onTap: () => Get.to(() => CommunityPostSettingsScreen(communityId: communityId))),
           const SizedBox(height: 12),
           _buildHubTile(context, title: 'community_access_sub_access'.tr, subtitle: 'community_access_sub_access_desc'.tr, icon: Icons.security_outlined, iconColor: Colors.green, onTap: () => Get.to(() => CommunityAccessDetailsScreen(communityId: communityId))),
