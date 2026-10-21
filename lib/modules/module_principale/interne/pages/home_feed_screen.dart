@@ -15,6 +15,7 @@ import 'create_story_screen.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -596,7 +597,10 @@ class _SuggestedEventsCarousel extends GetView<HomeFeedController> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(ev.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Row(children: [
+                                Expanded(child: Text(ev.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                EntityCertifiedBadge(entityType: 'event', entityId: ev.id, size: 15),
+                              ]),
                               const SizedBox(height: 3),
                               Row(
                                 children: [
