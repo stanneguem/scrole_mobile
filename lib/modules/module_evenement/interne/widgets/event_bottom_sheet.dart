@@ -84,7 +84,7 @@ class EventBottomSheet extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               )),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 0),
                               EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
                             ]),
                             const SizedBox(height: 4),
