@@ -32,6 +32,8 @@ where jobname = 'scrole-expire-subscription-certifications';
 -- c. A profile with an active user_certifications row can add more agenda events.
 -- d. Non-certified event cannot exceed configured start horizon or exact elapsed duration.
 -- e. Certified event can be scheduled within certified_event_horizon_months but not beyond it.
+-- e2. create_certified_event_with_subscription consumes exactly one included event quota atomically.
+-- e3. The same RPC rejects users without an active subscription or without remaining event quota.
 -- f. Non-certified event cannot exceed audience/cofounder/staff quotas.
 -- g. Guest/sponsor/ticket insert, update and delete are denied without event-level certification.
 -- h. Event financial/day-attendance/staff statistics are denied without event-level certification.
