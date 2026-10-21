@@ -172,7 +172,7 @@ class ExternalProfileController extends GetxController {
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
               isConnected: relation['is_friend'] == true,
-              canMessage: relation['is_friend'] == true,
+              canMessage: result.profile!.canMessage,
               connectionRequestSent: relationState == 'requested',
               followsMe: relation['follows_me'] == true,
               relationshipState: relationState,
