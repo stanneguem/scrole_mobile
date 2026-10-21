@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
@@ -47,15 +48,74 @@ class CreateEventController extends GetxController {
   final Rx<DateTime?> endDate = Rx<DateTime?>(null);
   
   final RxBool isLoading = false.obs;
+  final RxBool isProfileCertified = false.obs;
+  final RxInt noncertEventHorizonMonths = 2.obs;
+  final RxInt noncertEventMaxDurationDays = 2.obs;
 
   @override
   void onInit() {
     super.onInit();
     _loadCountries();
+    _loadQuotaRules();
     
     // Ajout de listeners pour forcer la mise à jour de l'UI (Obx) quand le texte change
     nameController.addListener(() => name.value = nameController.text);
     slugController.addListener(() => slug.value = slugController.text);
+  }
+
+  DateTime _addMonthsClamped(DateTime date, int months) {
+    final targetMonth = date.month + months;
+    final lastDay = DateTime(date.year, targetMonth + 1, 0).day;
+    return DateTime(date.year, targetMonth, date.day > lastDay ? lastDay : date.day,
+        date.hour, date.minute);
+  }
+
+  DateTime get maxStartDate => isProfileCertified.value
+      ? DateTime.now().add(const Duration(days: 3650))
+      : _addMonthsClamped(DateTime.now(), noncertEventHorizonMonths.value);
+
+  DateTime get maxEndDate {
+    final start = startDate.value;
+    if (isProfileCertified.value) return DateTime.now().add(const Duration(days: 3650));
+    if (start == null) return maxStartDate;
+    return start.add(Duration(days: noncertEventMaxDurationDays.value));
+  }
+
+  Future<void> _loadQuotaRules() async {
+    try {
+      final client = Supabase.instance.client;
+      final result = await client.rpc('get_scrole_public_quota_settings');
+      if (result is Map) {
+        noncertEventHorizonMonths.value =
+            (result['noncert_event_horizon_months'] as num?)?.toInt() ?? 2;
+        noncertEventMaxDurationDays.value =
+            (result['noncert_event_max_duration_days'] as num?)?.toInt() ?? 2;
+      }
+      final userId = Get.find<AuthService>().userId;
+      if (userId == null || userId.isEmpty) return;
+      final now = DateTime.now().toUtc().toIso8601String();
+      final rows = await client.from('user_certifications').select('id')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .lte('issued_at', now)
+          .or('expires_at.is.null,expires_at.gt.$now')
+          .limit(1);
+      isProfileCertified.value = rows.isNotEmpty;
+    } catch (e) {
+      // Le serveur reste autoritaire. Les valeurs par défaut reflètent la configuration initiale.
+      print('[Quota] Impossible de charger les limites : $e');
+    }
+  }
+
+  void selectStartDate(DateTime date) {
+    startDate.value = date;
+    final end = endDate.value;
+    if (end != null && !isProfileCertified.value &&
+        DateTime(end.year, end.month, end.day)
+          .difference(DateTime(date.year, date.month, date.day)).inDays >
+          noncertEventMaxDurationDays.value) {
+      endDate.value = null;
+    }
   }
 
   Future<void> _loadCountries() async {
@@ -142,9 +202,17 @@ class CreateEventController extends GetxController {
     (isVirtual.value && onlineUrlController.text.trim().isNotEmpty) ||
     (!isVirtual.value && selectedCountry.value != null && selectedCity.value != null && addressController.text.trim().isNotEmpty);
 
-  bool get isDatesValid => 
-    startDate.value != null &&
-    (endDate.value == null || endDate.value!.isAfter(startDate.value!));
+  bool get isDatesValid {
+    final start = startDate.value;
+    final end = endDate.value;
+    if (start == null || (end != null && !end.isAfter(start))) return false;
+    if (isProfileCertified.value) return true;
+    if (start.isAfter(maxStartDate)) return false;
+    if (end != null && DateTime(end.year, end.month, end.day)
+        .difference(DateTime(start.year, start.month, start.day)).inDays >
+        noncertEventMaxDurationDays.value) return false;
+    return true;
+  }
 
   Future<void> createEvent() async {
     if (isLoading.value) return;
