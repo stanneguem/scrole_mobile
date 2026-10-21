@@ -2957,9 +2957,14 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
       final priceGroup = centralAfricaCodes.contains(countryCode)
           ? 'Afrique centrale'
           : (africaCodes.contains(countryCode) ? 'Afrique' : 'Hors Afrique');
-      final storagePriceGroup = _isEvent ? 'event:$priceGroup' : priceGroup;
+      // Le schéma de tarifs actuellement déployé utilise les groupes régionaux
+      // simples (sans préfixe event:). Le type d'entité ne doit donc pas modifier
+      // la clé tant qu'une colonne entity_type n'existe pas dans cette table.
       final price = await client.from('scrole_entity_certification_prices')
-          .select('amount,currency,pricing_group').eq('pricing_group', storagePriceGroup).eq('active', true).limit(1).maybeSingle();
+          .select('amount,currency,pricing_group')
+          .eq('pricing_group', priceGroup)
+          .eq('active', true)
+          .maybeSingle();
       if (price == null) throw Exception('entity_cert_price_unavailable'.tr);
       if (!mounted) return;
       setState(() {
