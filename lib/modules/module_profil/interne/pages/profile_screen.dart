@@ -8,6 +8,7 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/image_source_sheet.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
@@ -617,6 +618,7 @@ class ProfileScreen extends GetView<ProfileController> {
                   Row(children: [
                     Expanded(child: Text((ev['name'] ?? 'Événement').toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface))),
+                    EntityCertifiedBadge(entityType: 'event', entityId: (ev['id'] ?? '').toString(), size: 16),
                     if (role.isNotEmpty) Text(role, style: TextStyle(fontSize: 11, color: colorScheme.primary)),
                   ]),
                   if (date.isNotEmpty) ...[
