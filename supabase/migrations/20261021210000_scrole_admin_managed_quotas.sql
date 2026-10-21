@@ -308,6 +308,46 @@ create trigger scrole_calendar_quota_limits
 before insert on public.event_calendar
 for each row execute function public.scrole_enforce_calendar_quota_limits();
 
+-- Selected participation dates are subject to the same configurable horizon.
+create or replace function public.scrole_enforce_calendar_day_horizon()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+declare
+  v_is_profile_certified boolean;
+  v_horizon integer;
+begin
+  select exists (
+    select 1 from public.user_certifications uc
+    where uc.user_id = new.user_id
+      and uc.status::text = 'active'
+      and uc.issued_at <= now()
+      and (uc.expires_at is null or uc.expires_at > now())
+  ) into v_is_profile_certified;
+
+  if not v_is_profile_certified then
+    select value into v_horizon
+    from public.scrole_quota_settings
+    where quota_key = 'noncert_agenda_horizon_months';
+
+    if new.event_date > (now() + make_interval(months => coalesce(v_horizon, 2)))::date then
+      raise exception 'agenda_selected_day_horizon_exceeded'
+        using errcode = '22023',
+        detail = format('Les jours de participation doivent être dans les %s prochains mois.', coalesce(v_horizon, 2));
+    end if;
+  end if;
+
+  return new;
+end;
+$;
+
+drop trigger if exists scrole_calendar_day_horizon on public.event_calendar_days;
+create trigger scrole_calendar_day_horizon
+before insert or update of event_date on public.event_calendar_days
+for each row execute function public.scrole_enforce_calendar_day_horizon();
+
 create or replace function public.scrole_enforce_event_team_quota_limits()
 returns trigger
 language plpgsql
@@ -369,4 +409,5 @@ for each row execute function public.scrole_enforce_event_team_quota_limits();
 
 revoke all on function public.scrole_enforce_event_quota_limits() from public, anon, authenticated;
 revoke all on function public.scrole_enforce_calendar_quota_limits() from public, anon, authenticated;
+revoke all on function public.scrole_enforce_calendar_day_horizon() from public, anon, authenticated;
 revoke all on function public.scrole_enforce_event_team_quota_limits() from public, anon, authenticated;
