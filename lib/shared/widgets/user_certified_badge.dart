@@ -19,13 +19,8 @@ extension CertificationBadgeTypeStyle on CertificationBadgeType {
           const Color(0xFF1877F2),
       };
 
-  String get tooltipKey => switch (this) {
-        CertificationBadgeType.basic => 'profile_verified_tooltip',
-        CertificationBadgeType.pro => 'profile_pro_verified_tooltip',
-        CertificationBadgeType.premium => 'profile_premium_verified_tooltip',
-        CertificationBadgeType.event => 'event_certified_tooltip',
-        CertificationBadgeType.community => 'community_certified_tooltip',
-      };
+  // Clé déjà traduite dans toutes les langues de l'application.
+  String get tooltipKey => 'profile_verified_tooltip';
 }
 
 /// Badge centralisé : le niveau est fourni par le statut réel de l'entité,
