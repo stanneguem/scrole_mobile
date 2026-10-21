@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'profile_online': "En ligne",
       'profile_last_seen': "Dernière connexion : @date",
       'privacy_show_country': "Afficher mon pays",
       'privacy_show_country_desc': "Autoriser l’affichage du pays sur mon profil.",
@@ -710,6 +711,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Tout le monde",
     },
     'en': {
+      'profile_online': "Online",
       'profile_last_seen': "Last seen: @date",
       'privacy_show_country': "Show my country",
       'privacy_show_country_desc': "Allow your country to appear on your profile.",
@@ -1411,6 +1413,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Everyone",
     },
     'es': {
+      'profile_online': "En línea",
       'profile_last_seen': "Última conexión: @date",
       'privacy_show_country': "Mostrar mi país",
       'privacy_show_country_desc': "Permitir que tu país aparezca en tu perfil.",
@@ -2029,6 +2032,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Todo el mundo",
     },
     'de': {
+      'profile_online': "Online",
       'profile_last_seen': "Zuletzt online: @date",
       'privacy_show_country': "Mein Land anzeigen",
       'privacy_show_country_desc': "Erlaube, dass dein Land in deinem Profil angezeigt wird.",
@@ -2630,6 +2634,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Alle",
     },
     'it': {
+      'profile_online': "Online",
       'profile_last_seen': "Ultimo accesso: @date",
       'privacy_show_country': "Mostra il mio paese",
       'privacy_show_country_desc': "Consenti di mostrare il tuo paese sul profilo.",
@@ -3231,6 +3236,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Tutti",
     },
     'pt': {
+      'profile_online': "Online",
       'profile_last_seen': "Última vez online: @date",
       'privacy_show_country': "Mostrar meu país",
       'privacy_show_country_desc': "Permitir que seu país apareça no perfil.",
@@ -3832,6 +3838,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "Todos",
     },
     'zh': {
+      'profile_online': "在线",
       'profile_last_seen': "最近上线：@date",
       'privacy_show_country': "显示我的国家",
       'privacy_show_country_desc': "允许在个人资料中显示你的国家。",
@@ -4433,6 +4440,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "所有人",
     },
     'ja': {
+      'profile_online': "オンライン",
       'profile_last_seen': "最終オンライン：@date",
       'privacy_show_country': "国を表示",
       'privacy_show_country_desc': "プロフィールに国を表示することを許可します。",
@@ -5033,6 +5041,7 @@ class AppTranslationAdditions {
       'event_itinerary_visibility_everyone': "全員",
     },
     'ru': {
+      'profile_online': "В сети",
       'profile_last_seen': "Последний раз в сети: @date",
       'privacy_show_country': "Показывать мою страну",
       'privacy_show_country_desc': "Разрешить отображение страны в профиле.",
