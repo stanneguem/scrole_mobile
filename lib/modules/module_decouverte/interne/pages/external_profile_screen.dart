@@ -897,7 +897,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                         ));
                       },
                       icon: const Icon(Icons.route_rounded, size: 17),
-                      label: const Text('Voir son planning'),
+                      label: Text('external_event_itinerary_button'.tr),
                     ),
                   ),
                 ]),
