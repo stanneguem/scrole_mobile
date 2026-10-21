@@ -38,8 +38,7 @@ Deno.serve(async (req: Request) => {
   const accuracy = Number(body.accuracy_m);
   const deviceId = typeof body.device_id === "string" ? body.device_id : "";
   const requestId = typeof body.request_id === "string" ? body.request_id : "";
-  const expectedCountryId = typeof body.expected_country_id === "string" ? body.expected_country_id : "";
-  const cityId = typeof body.city_id === "string" ? body.city_id : null;
+  // GPS country detection is independent of the declared profile location.
   const capturedAt = new Date(typeof body.captured_at === "string" ? body.captured_at : "");
 
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 ||
@@ -50,9 +49,8 @@ Deno.serve(async (req: Request) => {
     return reply(400, { error: "gps_accuracy_insufficient", maximum_accuracy_m: 1000 });
   }
   const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!deviceId || !uuidPattern.test(requestId) || !uuidPattern.test(expectedCountryId) ||
-      (cityId !== null && !uuidPattern.test(cityId))) {
-    return reply(400, { error: "invalid_device_or_location_selection" });
+  if (!deviceId || !uuidPattern.test(requestId)) {
+    return reply(400, { error: "invalid_device_or_request" });
   }
   const ageMs = Date.now() - capturedAt.getTime();
   if (!Number.isFinite(capturedAt.getTime()) || ageMs < -30_000 || ageMs > 120_000) {
@@ -95,24 +93,12 @@ Deno.serve(async (req: Request) => {
     .select("id,code_iso").ilike("code_iso", countryCode).eq("is_active", true).maybeSingle();
   if (countryError) return reply(500, { error: "country_lookup_failed" });
   if (!country) return reply(422, { error: "country_not_supported", country_code: countryCode });
-  if (country.id !== expectedCountryId) {
-    return reply(422, { error: "selected_country_does_not_match_gps", detected_country_code: countryCode });
-  }
-
-  if (cityId) {
-    const { data: city, error: cityError } = await admin.from("cities")
-      .select("id").eq("id", cityId).eq("country_id", country.id).eq("is_active", true).maybeSingle();
-    if (cityError) return reply(500, { error: "city_lookup_failed" });
-    if (!city) return reply(422, { error: "city_does_not_belong_to_verified_country" });
-  }
-
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 15 * 60 * 1000);
   const { data: verification, error: insertError } = await admin.from("user_country_verifications")
     .insert({
       user_id: user.id,
       country_id: country.id,
-      city_id: cityId,
       country_code: countryCode,
       status: "verified",
       method: "gps",
@@ -128,29 +114,18 @@ Deno.serve(async (req: Request) => {
     return reply(500, { error: "verification_record_failed" });
   }
 
-  const { data: applied, error: applyError } = await admin.rpc("apply_verified_current_country", {
-    p_user_id: user.id,
-    p_verification_id: verification.id,
-  });
-  if (applyError) {
-    await admin.from("user_country_verifications")
-      .update({ status: "review_required", rejection_reason: "profile_update_failed" })
-      .eq("id", verification.id)
-      .eq("user_id", user.id);
-    return reply(500, { error: "country_profile_update_failed" });
-  }
-
-  await admin.from("user_devices").update({
+  const { error: deviceUpdateError } = await admin.from("user_devices").update({
     detected_country_id: country.id,
     last_seen_at: now.toISOString(),
   }).eq("id", deviceId).eq("user_id", user.id);
+  if (deviceUpdateError) return reply(500, { error: "device_country_update_failed" });
 
   return reply(200, {
     status: "verified",
-    country_id: country.id,
-    country_code: countryCode,
+    detected_country_id: country.id,
+    detected_country_code: countryCode,
     verified_at: now.toISOString(),
     expires_at: expiresAt.toISOString(),
-    profile_update: applied,
+    verification_id: verification.id,
   });
 });
