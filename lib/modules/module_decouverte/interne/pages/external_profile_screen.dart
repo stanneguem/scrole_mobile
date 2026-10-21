@@ -13,6 +13,16 @@ import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import '../../../module_evenement/interne/pages/external_event_itinerary_screen.dart';
 import '../controllers/external_profile_controller.dart';
 
+
+String _formatLastSeen(DateTime value) {
+  final local = value.toLocal();
+  final day = local.day.toString().padLeft(2, '0');
+  final month = local.month.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$day/$month/${local.year} $hour:$minute';
+}
+
 class ExternalProfileScreen extends GetView<ExternalProfileController> {
   const ExternalProfileScreen({super.key});
 
@@ -360,6 +370,19 @@ class _Identity extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ],
+              if (profile.lastSeenAt != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'profile_last_seen'.trParams({
+                    'date': _formatLastSeen(profile.lastSeenAt!),
+                  }),
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ],
