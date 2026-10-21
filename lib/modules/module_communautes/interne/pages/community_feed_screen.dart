@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
@@ -60,7 +61,7 @@ class CommunityFeedScreen extends StatelessWidget {
                     communityId: communityId,
                   ));
             },
-            tooltip: 'Créer une publication',
+            tooltip: 'community_feed_create_post_tooltip'.tr,
           ),
         ],
       ),
@@ -133,25 +134,48 @@ class CommunityFeedScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.forum_outlined, size: 64, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                      const SizedBox(height: 16),
+                      SvgPicture.asset(
+                        'assets/svg_icons/chat-round-svgrepo-com.svg',
+                        width: 76,
+                        height: 76,
+                        colorFilter: ColorFilter.mode(
+                          colorScheme.primary.withValues(alpha: 0.82),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
                       Text(
                         'community_feed_empty_title'.tr,
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 15),
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
+                      const SizedBox(height: 9),
+                      Text(
+                        'community_feed_empty_subtitle'.tr,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 14,
+                          height: 1.45,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 14),
+                      TextButton(
                         onPressed: () {
                           Get.to(() => CreateCommunityPostScreen(
                                 communityName: communityName,
                                 communityId: communityId,
                               ));
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colorScheme.primary,
-                          foregroundColor: colorScheme.onPrimary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: colorScheme.primary,
+                          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
                         child: Text('community_feed_create_first_post'.tr),
                       ),
