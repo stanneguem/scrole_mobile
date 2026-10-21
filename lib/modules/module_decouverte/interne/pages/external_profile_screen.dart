@@ -985,7 +985,7 @@ class _ExpandableBioState extends State<_ExpandableBio> {
         final tp = TextPainter(
           text: span,
           maxLines: 2,
-          textDirection: TextDirection.ltr,
+          textDirection: Directionality.of(context),
         );
         tp.layout(maxWidth: constraints.maxWidth);
         final exceeds = tp.didExceedMaxLines;
