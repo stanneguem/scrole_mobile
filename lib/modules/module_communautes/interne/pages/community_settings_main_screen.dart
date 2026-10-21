@@ -2946,7 +2946,7 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
           : (regionalGroup.contains('afrique') ? 'Afrique' : 'Hors Afrique');
       final storagePriceGroup = _isEvent ? 'event:$priceGroup' : priceGroup;
       final price = await client.from('scrole_entity_certification_prices')
-          .select('amount,currency,pricing_group').eq('pricing_group', storagePriceGroup).eq('active', true).maybeSingle();
+          .select('amount,currency,pricing_group').eq('pricing_group', storagePriceGroup).eq('active', true).limit(1).maybeSingle();
       if (price == null) throw Exception('entity_cert_price_unavailable'.tr);
       if (!mounted) return;
       setState(() {
