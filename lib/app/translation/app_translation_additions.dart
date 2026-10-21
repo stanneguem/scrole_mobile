@@ -5,6 +5,13 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      // Global app drawer
+      'drawer_my_content': "Mon contenu",
+      'drawer_creation': "Créer",
+      'drawer_about': "À propos de Scrole",
+      'drawer_settings': "Paramètres",
+      'drawer_logout': "Se déconnecter",
+
       'community_member_count_loading': "Membres…",
       'community_member_count_one': "1 membre",
       'community_member_count_many': "{count} membres",
@@ -658,6 +665,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Vérification des restrictions…",
     },
     'en': {
+      // Global app drawer
+      'drawer_my_content': "My content",
+      'drawer_creation': "Create",
+      'drawer_about': "About Scrole",
+      'drawer_settings': "Settings",
+      'drawer_logout': "Log out",
+
       'community_member_count_loading': "Members…",
       'community_member_count_one': "1 member",
       'community_member_count_many': "{count} members",
@@ -1307,6 +1321,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Checking field restrictions…",
     },
     'es': {
+      // Global app drawer
+      'drawer_my_content': "Mi contenido",
+      'drawer_creation': "Crear",
+      'drawer_about': "Acerca de Scrole",
+      'drawer_settings': "Configuración",
+      'drawer_logout': "Cerrar sesión",
+
       'community_member_count_loading': "Miembros…",
       'community_member_count_one': "1 miembro",
       'community_member_count_many': "{count} miembros",
@@ -1873,6 +1894,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Comprobando las restricciones…",
     },
     'de': {
+      // Global app drawer
+      'drawer_my_content': "Meine Inhalte",
+      'drawer_creation': "Erstellen",
+      'drawer_about': "Über Scrole",
+      'drawer_settings': "Einstellungen",
+      'drawer_logout': "Abmelden",
+
       'community_member_count_loading': "Mitglieder…",
       'community_member_count_one': "1 Mitglied",
       'community_member_count_many': "{count} Mitglieder",
@@ -2422,6 +2450,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Feldbeschränkungen werden geprüft…",
     },
     'it': {
+      // Global app drawer
+      'drawer_my_content': "I miei contenuti",
+      'drawer_creation': "Crea",
+      'drawer_about': "Informazioni su Scrole",
+      'drawer_settings': "Impostazioni",
+      'drawer_logout': "Esci",
+
       'community_member_count_loading': "Membri…",
       'community_member_count_one': "1 membro",
       'community_member_count_many': "{count} membri",
@@ -2971,6 +3006,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Verifica delle restrizioni…",
     },
     'pt': {
+      // Global app drawer
+      'drawer_my_content': "Meu conteúdo",
+      'drawer_creation': "Criar",
+      'drawer_about': "Sobre o Scrole",
+      'drawer_settings': "Configurações",
+      'drawer_logout': "Sair",
+
       'community_member_count_loading': "Membros…",
       'community_member_count_one': "1 membro",
       'community_member_count_many': "{count} membros",
@@ -3520,6 +3562,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "A verificar as restrições…",
     },
     'zh': {
+      // Global app drawer
+      'drawer_my_content': "我的内容",
+      'drawer_creation': "创建",
+      'drawer_about': "关于 Scrole",
+      'drawer_settings': "设置",
+      'drawer_logout': "退出登录",
+
       'community_member_count_loading': "成员…",
       'community_member_count_one': "1 位成员",
       'community_member_count_many': "{count} 位成员",
@@ -4069,6 +4118,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "正在检查字段限制…",
     },
     'ja': {
+      // Global app drawer
+      'drawer_my_content': "マイコンテンツ",
+      'drawer_creation': "作成",
+      'drawer_about': "Scrole について",
+      'drawer_settings': "設定",
+      'drawer_logout': "ログアウト",
+
       'community_member_count_loading': "メンバー…",
       'community_member_count_one': "メンバー 1 人",
       'community_member_count_many': "メンバー {count} 人",
@@ -4617,6 +4673,13 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "項目の制限を確認中…",
     },
     'ru': {
+      // Global app drawer
+      'drawer_my_content': "Мой контент",
+      'drawer_creation': "Создать",
+      'drawer_about': "О Scrole",
+      'drawer_settings': "Настройки",
+      'drawer_logout': "Выйти",
+
       'community_member_count_loading': "Участники…",
       'community_member_count_one': "1 участник",
       'community_member_count_many': "Участников: {count}",
