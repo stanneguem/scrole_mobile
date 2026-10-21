@@ -24,6 +24,7 @@ import '../../modules/module_profil/interne/pages/profile_contacts_screen.dart';
 import '../../modules/module_profil/interne/pages/follow_lists_screen.dart';
 import '../../modules/module_profil/interne/pages/follow_requests_screen.dart';
 import '../../modules/module_profil/interne/pages/user_qr_identity_screen.dart';
+import '../../modules/module_profil/interne/pages/share_profile_screen.dart';
 import '../../modules/module_profil/interne/pages/interest_selection_screen.dart';
 import '../../modules/module_decouverte/interne/controllers/external_profile_controller.dart';
 import '../../modules/module_decouverte/interne/pages/external_profile_screen.dart';
@@ -126,6 +127,7 @@ class AppRoutes {
     GetPage(name: AppPages.followLists, page: () => const FollowListsScreen()),
     GetPage(name: AppPages.followRequests, page: () => const FollowRequestsScreen()),
     GetPage(name: AppPages.userQrCode, page: () => const UserQrIdentityScreen()),
+    GetPage(name: AppPages.shareMyProfile, page: () => const ShareProfileScreen()),
     GetPage(name: AppPages.interestSelection, page: () => const InterestSelectionScreen()),
     GetPage(name: AppPages.creationSelection, page: () => const CreationSelectionScreen()),
     GetPage(name: AppPages.myContent, page: () => const MyContentScreen()),
