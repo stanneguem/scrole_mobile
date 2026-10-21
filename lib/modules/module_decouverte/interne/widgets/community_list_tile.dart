@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/discover_models.dart';
 
 class CommunityListTile extends StatelessWidget {
@@ -90,15 +91,23 @@ class CommunityListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    community.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          community.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      EntityCertifiedBadge(entityType: 'community', entityId: community.id, size: 16),
+                    ],
                   ),
                   if (community.description != null &&
                       community.description!.trim().isNotEmpty) ...[
