@@ -262,9 +262,17 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     Obx(() {
                       if (!controller.isVerified.value) return const SizedBox.shrink();
-                      return const Padding(
-                        padding: EdgeInsets.only(left: 6),
-                        child: UserCertifiedBadge(size: 20),
+                      final level = controller.certificationLevel.value;
+                      final badgeType = switch (level) {
+                        'premium' => CertificationBadgeType.premium,
+                        'pro' => CertificationBadgeType.pro,
+                        'basique' => CertificationBadgeType.basic,
+                        _ => null,
+                      };
+                      if (badgeType == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: UserCertifiedBadge(size: 20, type: badgeType),
                       );
                     }),
                   ],
