@@ -61,8 +61,8 @@ class _ExternalEventItineraryScreenState extends State<ExternalEventItineraryScr
       if (!mounted) return;
       setState(() {
         _error = error.toString().contains('event_itinerary_private')
-            ? 'Cette personne ne partage pas son planning avec vous.'
-            : 'Le planning n’est pas accessible. Il est peut-être privé ou indisponible.';
+            ? 'external_event_itinerary_private'.tr
+            : 'external_event_itinerary_unavailable'.tr;
         _loading = false;
       });
     }
@@ -72,7 +72,7 @@ class _ExternalEventItineraryScreenState extends State<ExternalEventItineraryScr
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text('Planning de ${widget.eventName}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+      appBar: AppBar(title: Text('external_event_itinerary_title'.trParams({'event': widget.eventName}), maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -90,7 +90,7 @@ class _ExternalEventItineraryScreenState extends State<ExternalEventItineraryScr
                   ),
                 )
               : _days.isEmpty
-                  ? const Center(child: Text('Aucune activité planifiée pour cet événement.'))
+                  ? Center(child: Text('external_event_itinerary_empty'.tr))
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
@@ -131,10 +131,10 @@ class _ExternalEventItineraryScreenState extends State<ExternalEventItineraryScr
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 10, 8, 12),
-            child: Text('Arrivée : $dayStart     Départ : $dayEnd', style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant)),
+            child: Text('${'event_itinerary_arrival'.tr}: $dayStart     ${'event_itinerary_departure'.tr}: $dayEnd', style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant)),
           ),
           if (activities.isEmpty)
-            Padding(padding: const EdgeInsets.only(left: 8), child: Text('Aucune activité choisie.', style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant))),
+            Padding(padding: const EdgeInsets.only(left: 8), child: Text('external_event_itinerary_none'.tr, style: AppTextStyles.bodySmall.copyWith(color: colors.onSurfaceVariant))),
           ...activities.map((activity) {
             final id = (activity['activity_id'] ?? '').toString();
             final name = _activityNames[id] ?? (activity['name'] ?? 'Activité').toString();
