@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -16,11 +17,20 @@ import '../controllers/external_profile_controller.dart';
 
 String _formatLastSeen(DateTime value) {
   final local = value.toLocal();
-  final day = local.day.toString().padLeft(2, '0');
-  final month = local.month.toString().padLeft(2, '0');
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '$day/$month/${local.year} $hour:$minute';
+  final languageCode = Get.locale?.languageCode ?? 'fr';
+  final pattern = switch (languageCode) {
+    'fr' => "d MMMM yyyy 'à' HH:mm",
+    'en' => "MMMM d, yyyy 'at' h:mm a",
+    'es' => "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
+    'de' => "d. MMMM yyyy 'um' HH:mm",
+    'it' => "d MMMM yyyy 'alle' HH:mm",
+    'pt' => "d 'de' MMMM 'de' yyyy 'às' HH:mm",
+    'zh' => "yyyy年M月d日 HH:mm",
+    'ja' => "yyyy年M月d日 HH:mm",
+    'ru' => "d MMMM yyyy 'в' HH:mm",
+    _ => "d MMMM yyyy HH:mm",
+  };
+  return DateFormat(pattern, languageCode).format(local);
 }
 
 class ExternalProfileScreen extends GetView<ExternalProfileController> {
@@ -388,6 +398,9 @@ class _Identity extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'profile_last_seen'.trParams({'date': _formatLastSeen(profile.lastSeenAt!)}),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
                   style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -991,7 +1004,7 @@ class _ExpandableBioState extends State<_ExpandableBio> {
               GestureDetector(
                 onTap: () => setState(() => _expanded = !_expanded),
                 child: Text(
-                  _expanded ? 'profile_see_less'.tr : 'profile_see_more'.tr,
+                  _expanded ? 'see_less'.tr : 'see_more'.tr,
                   style: TextStyle(
                     color: colors.primary,
                     fontSize: 13,
