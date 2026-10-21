@@ -313,7 +313,7 @@ class _Identity extends StatelessWidget {
                   ),
                   if (profile.isCertified) ...[
                     const SizedBox(width: 6),
-                    const UserCertifiedBadge(size: 20),
+                    UserCertifiedBadge(size: 20, userId: profile.userId),
                   ],
                 ],
               ),
