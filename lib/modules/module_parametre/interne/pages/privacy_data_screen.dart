@@ -108,6 +108,12 @@ class PrivacyDataScreen extends StatelessWidget {
                     try {
                       await client.from('user_privacy').upsert({
                         'user_id': userId,
+                        'profile_visibility': p.profileVisibility,
+                        'show_online_status': p.showOnlineStatus,
+                        'allow_messages_from': p.allowMessagesFrom,
+                        'afficher_pays': p.afficherPays,
+                        'afficher_ville': p.afficherVille,
+                        'afficher_derniere_connexion': p.afficherDerniereConnexion,
                         'event_itinerary_visibility': value,
                       }, onConflict: 'user_id');
                       service.applyPrivacy(AppPrivacy(
@@ -117,7 +123,6 @@ class PrivacyDataScreen extends StatelessWidget {
                         afficherPays: p.afficherPays,
                         afficherVille: p.afficherVille,
                         afficherDerniereConnexion: p.afficherDerniereConnexion,
-                  eventItineraryVisibility: p.eventItineraryVisibility,
                         eventItineraryVisibility: value,
                       ));
                       Get.snackbar('Confidentialité', 'Visibilité du planning mise à jour.');
