@@ -48,7 +48,6 @@ class CreateEventController extends GetxController {
   final Rx<DateTime?> endDate = Rx<DateTime?>(null);
   
   final RxBool isLoading = false.obs;
-  final RxBool isProfileCertified = false.obs;
   final RxInt noncertEventHorizonMonths = 2.obs;
   final RxInt noncertEventMaxDurationDays = 2.obs;
 
@@ -70,13 +69,10 @@ class CreateEventController extends GetxController {
         date.hour, date.minute);
   }
 
-  DateTime get maxStartDate => isProfileCertified.value
-      ? DateTime.now().add(const Duration(days: 3650))
-      : _addMonthsClamped(DateTime.now(), noncertEventHorizonMonths.value);
+  DateTime get maxStartDate => _addMonthsClamped(DateTime.now(), noncertEventHorizonMonths.value);
 
   DateTime get maxEndDate {
     final start = startDate.value;
-    if (isProfileCertified.value) return DateTime.now().add(const Duration(days: 3650));
     if (start == null) return maxStartDate;
     return start.add(Duration(days: noncertEventMaxDurationDays.value));
   }
@@ -91,16 +87,6 @@ class CreateEventController extends GetxController {
         noncertEventMaxDurationDays.value =
             (result['noncert_event_max_duration_days'] as num?)?.toInt() ?? 2;
       }
-      final userId = Get.find<AuthService>().userId;
-      if (userId == null || userId.isEmpty) return;
-      final now = DateTime.now().toUtc().toIso8601String();
-      final rows = await client.from('user_certifications').select('id')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .lte('issued_at', now)
-          .or('expires_at.is.null,expires_at.gt.$now')
-          .limit(1);
-      isProfileCertified.value = rows.isNotEmpty;
     } catch (e) {
       // Le serveur reste autoritaire. Les valeurs par défaut reflètent la configuration initiale.
       print('[Quota] Impossible de charger les limites : $e');
@@ -110,10 +96,7 @@ class CreateEventController extends GetxController {
   void selectStartDate(DateTime date) {
     startDate.value = date;
     final end = endDate.value;
-    if (end != null && !isProfileCertified.value &&
-        DateTime(end.year, end.month, end.day)
-          .difference(DateTime(date.year, date.month, date.day)).inDays >
-          noncertEventMaxDurationDays.value) {
+    if (end != null && end.difference(date) > Duration(days: noncertEventMaxDurationDays.value)) {
       endDate.value = null;
     }
   }
@@ -206,11 +189,8 @@ class CreateEventController extends GetxController {
     final start = startDate.value;
     final end = endDate.value;
     if (start == null || (end != null && !end.isAfter(start))) return false;
-    if (isProfileCertified.value) return true;
     if (start.isAfter(maxStartDate)) return false;
-    if (end != null && DateTime(end.year, end.month, end.day)
-        .difference(DateTime(start.year, start.month, start.day)).inDays >
-        noncertEventMaxDurationDays.value) return false;
+    if (end != null && end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) return false;
     return true;
   }
 
