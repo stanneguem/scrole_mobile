@@ -8,6 +8,8 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 3. `20261021150308_scrole_certification_lifecycle_and_feature_gates.sql`
 4. `20261021150602_scrole_certification_lifecycle_finalization.sql`
 5. `20261021150748_scrole_event_feature_gate_hardening.sql`
+6. `20261021151426_scrole_profile_subscription_entitlements.sql`
+7. `20261021151918_scrole_certified_event_creation.sql`
 
 ## Objets et fonctions
 - `scrole_subscriptions` : registre des abonnements Pro/Premium.
@@ -18,6 +20,8 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 - RPC d'administration : `admin_get_scrole_quotas()`, `admin_update_scrole_quota(text, integer)`.
 - RPC de cycle de vie : `scrole_change_subscription_plan_v2`, `scrole_renew_subscription`, `scrole_grant_included_certification`, `scrole_grant_included_profile_certification`, `scrole_suspend_expired_subscription_certifications`.
 - RPC publique en lecture seule pour le formulaire mobile : `get_scrole_public_quota_settings()`.
+- RPC utilisateur `scrole_get_my_subscription_entitlements()` pour afficher le quota inclus restant.
+- Création d'événement certifié incluse via `create_certified_event_with_subscription(...)` : le choix consomme atomiquement une certification et permet l'horizon certifié de 6 mois.
 - La tâche `pg_cron` `scrole-expire-subscription-certifications` tourne toutes les 15 minutes.
 
 ## Quotas initiaux administrables
@@ -40,7 +44,7 @@ Ces valeurs sont des lignes en base et sont modifiables via l'interface d'admini
 
 ## Points encore nécessaires avant production complète
 - Raccorder les RPC de création/attribution/renouvellement au véritable prestataire de paiement et tester ses webhooks.
-- Le parcours de création d'un événement à plus de deux mois doit permettre de consommer explicitement une certification incluse ou achetée avant l'insertion initiale; actuellement la création initiale non certifiée est limitée à deux mois.
+- Le parcours de création permet maintenant de consommer explicitement une certification incluse Pro/Premium avant l'insertion initiale. Le paiement/achat d'une certification d'événement indépendante n'est pas encore raccordé au prestataire de paiement.
 - Effectuer les tests fonctionnels avec comptes et événements de test, notamment expiration/renouvellement, downgrade Premium → Pro, invitations, billetterie, statistiques et permissions.
 - Le build Flutter et le build Vite/TypeScript n'ont pas été exécutés depuis cet environnement.
 - Le dépôt local contient encore un sous-ensemble de l'historique de migrations distant; ne pas rejouer l'ensemble des anciennes migrations. Les cinq nouvelles versions sont alignées sur l'historique Supabase distant.
