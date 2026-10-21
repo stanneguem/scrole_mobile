@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../controllers/search_controller.dart';
 import '../widgets/app_cached_image.dart';
 import '../widgets/user_certified_badge.dart';
+import '../widgets/entity_certified_badge.dart';
 import '../../modules/module_decouverte/centre/models/discover_models.dart';
 import '../../app/theme/text_styles.dart';
 import '../../app/routes/app_pages.dart';
@@ -405,6 +406,14 @@ class _SearchResultTile extends StatelessWidget {
           if (item.category == 'user' && item.isCertified) ...[
             const SizedBox(width: 4),
             UserCertifiedBadge(size: 16, userId: item.id),
+          ],
+          if (item.category == 'event' || item.category == 'community') ...[
+            const SizedBox(width: 4),
+            EntityCertifiedBadge(
+              entityType: item.category == 'community' ? 'community' : 'event',
+              entityId: item.id,
+              size: 16,
+            ),
           ],
         ],
       ),
