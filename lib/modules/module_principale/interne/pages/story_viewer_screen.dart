@@ -625,7 +625,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                       ],
                                       if (_currentGroup.author.isCertified) ...[
                                         const SizedBox(width: 4),
-                                        const UserCertifiedBadge(size: 14),
+                                        UserCertifiedBadge(size: 14, userId: _currentGroup.author.userId),
                                       ],
                                       const SizedBox(width: 6),
                                       Flexible(
@@ -1097,7 +1097,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
                             ),
                             if (isCertified) ...[
                               const SizedBox(width: 4),
-                              const UserCertifiedBadge(size: 13),
+                              UserCertifiedBadge(size: 13, userId: (v['user_id'] ?? v['author_id'] ?? v['id'])?.toString()),
                             ],
                           ],
                         ),
@@ -1344,7 +1344,7 @@ class _StoryLikersSheetState extends State<_StoryLikersSheet> {
                             ),
                             if (isCertified) ...[
                               const SizedBox(width: 4),
-                              const UserCertifiedBadge(size: 13),
+                              UserCertifiedBadge(size: 13, userId: (v['user_id'] ?? v['author_id'] ?? v['id'])?.toString()),
                             ],
                           ],
                         ),
@@ -1865,7 +1865,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                           ],
                           if (isCertified) ...[
                             const SizedBox(width: 4),
-                            const UserCertifiedBadge(size: 13),
+                            UserCertifiedBadge(size: 13, userId: (v['user_id'] ?? v['author_id'] ?? v['id'])?.toString()),
                           ],
                           if (commentAge().isNotEmpty) ...[
                             const SizedBox(width: 6),
