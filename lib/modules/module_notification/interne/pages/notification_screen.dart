@@ -159,7 +159,7 @@ class NotificationScreen extends GetView<NotificationController> {
       final eventId = idOf(['event_id', 'evenement_id', 'target_event_id']);
 
       if (communityId != null && communityId.isNotEmpty) {
-        Get.to(() => CommunityFeedScreen(communityId: communityId), arguments: {
+        Get.to(() => CommunityFeedScreen(communityId: communityId, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()), arguments: {
           'postId': postId,
           'commentId': commentId,
           'openComment': commentId != null,
@@ -184,7 +184,7 @@ class NotificationScreen extends GetView<NotificationController> {
               .maybeSingle();
           final targetCommunity = post?['community_id']?.toString();
           if (targetCommunity != null && targetCommunity.isNotEmpty) {
-            Get.to(() => CommunityFeedScreen(communityId: targetCommunity), arguments: {
+            Get.to(() => CommunityFeedScreen(communityId: targetCommunity, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()), arguments: {
               'postId': postId,
               'commentId': commentId,
               'openComment': commentId != null,
@@ -209,7 +209,7 @@ class NotificationScreen extends GetView<NotificationController> {
     final communityTargetId = idOf(['community_id', 'communaute_id', 'target_community_id']);
     if (communityTargetId != null &&
         (type.contains('community') || type.contains('communaute') || type.contains('publication'))) {
-      Get.to(() => CommunityFeedScreen(communityId: communityTargetId));
+      Get.to(() => CommunityFeedScreen(communityId: communityTargetId, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()));
       return;
     }
 
