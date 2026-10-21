@@ -11,6 +11,7 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 6. `20261021151426_scrole_profile_subscription_entitlements.sql`
 7. `20261021151918_scrole_certified_event_creation.sql`
 8. `20261021152116_scrole_certified_community_capabilities.sql`
+9. `20261021152314_scrole_subscription_activation_rpc.sql`
 7. `20261021151918_scrole_certified_event_creation.sql`
 
 ## Objets et fonctions
@@ -20,7 +21,7 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 - `scrole_certification_audit` : historique des changements de formule, attribution, suspension et réactivation.
 - `scrole_quota_settings` : paramètres modifiables par l'administration.
 - RPC d'administration : `admin_get_scrole_quotas()`, `admin_update_scrole_quota(text, integer)`.
-- RPC de cycle de vie : `scrole_change_subscription_plan_v2`, `scrole_renew_subscription`, `scrole_grant_included_certification`, `scrole_grant_included_profile_certification`, `scrole_suspend_expired_subscription_certifications`.
+- RPC de cycle de vie : `scrole_activate_subscription`, `scrole_change_subscription_plan_v2`, `scrole_renew_subscription`, `scrole_grant_included_certification`, `scrole_grant_included_profile_certification`, `scrole_suspend_expired_subscription_certifications`.
 - RPC publique en lecture seule pour le formulaire mobile : `get_scrole_public_quota_settings()`.
 - RPC utilisateur `scrole_get_my_subscription_entitlements()` pour afficher le quota inclus restant.
 - Création d'événement certifié incluse via `create_certified_event_with_subscription(...)` : le choix consomme atomiquement une certification et permet l'horizon certifié de 6 mois.
