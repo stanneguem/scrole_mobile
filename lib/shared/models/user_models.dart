@@ -27,8 +27,9 @@ class AppPrivacy {
   final bool afficherPays;
   final bool afficherVille;
   final bool afficherDerniereConnexion;
+  final String eventItineraryVisibility;
 
-  AppPrivacy({required this.profileVisibility, required this.showOnlineStatus, required this.allowMessagesFrom, required this.afficherPays, required this.afficherVille, required this.afficherDerniereConnexion});
+  AppPrivacy({required this.profileVisibility, required this.showOnlineStatus, required this.allowMessagesFrom, required this.afficherPays, required this.afficherVille, required this.afficherDerniereConnexion, this.eventItineraryVisibility = 'only_me'});
 
   factory AppPrivacy.fromJson(Map<String, dynamic> json) => AppPrivacy(
     profileVisibility: json['profile_visibility'] ?? 'public',
@@ -37,11 +38,12 @@ class AppPrivacy {
     afficherPays: json['afficher_pays'] ?? true,
     afficherVille: json['afficher_ville'] ?? true,
     afficherDerniereConnexion: json['afficher_derniere_connexion'] ?? true,
+    eventItineraryVisibility: json['event_itinerary_visibility'] ?? 'only_me',
   );
 
-  Map<String, dynamic> toJson() => {'profile_visibility': profileVisibility, 'show_online_status': showOnlineStatus, 'allow_messages_from': allowMessagesFrom, 'afficher_pays': afficherPays, 'afficher_ville': afficherVille, 'afficher_derniere_connexion': afficherDerniereConnexion};
+  Map<String, dynamic> toJson() => {'profile_visibility': profileVisibility, 'show_online_status': showOnlineStatus, 'allow_messages_from': allowMessagesFrom, 'afficher_pays': afficherPays, 'afficher_ville': afficherVille, 'afficher_derniere_connexion': afficherDerniereConnexion, 'event_itinerary_visibility': eventItineraryVisibility};
 
-  factory AppPrivacy.defaultValues() => AppPrivacy(profileVisibility: 'public', showOnlineStatus: true, allowMessagesFrom: 'everyone', afficherPays: true, afficherVille: true, afficherDerniereConnexion: true);
+  factory AppPrivacy.defaultValues() => AppPrivacy(profileVisibility: 'public', showOnlineStatus: true, allowMessagesFrom: 'everyone', afficherPays: true, afficherVille: true, afficherDerniereConnexion: true, eventItineraryVisibility: 'only_me');
 }
 
 class DeviceInfos {
