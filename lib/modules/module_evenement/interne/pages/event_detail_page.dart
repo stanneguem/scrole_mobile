@@ -716,7 +716,6 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                         Row(
                           children: [
                             Expanded(child: Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface))),
-                            const SizedBox(width: 0),
                             EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
                           ],
                         ),
