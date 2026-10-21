@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
@@ -32,9 +33,9 @@ class CommunityFeedScreen extends StatelessWidget {
         backgroundColor: colorScheme.surface,
         elevation: 0,
         title: FutureBuilder(
-          future: Get.find<CommunityService>().getCommunityById(communityId),
+          future: Supabase.instance.client.rpc('get_community_member_count', params: {'p_community_id': communityId}),
           builder: (context, snapshot) {
-            final memberCount = snapshot.data?.memberCount;
+            final memberCount = snapshot.hasData ? (snapshot.data as num).toInt() : null;
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
