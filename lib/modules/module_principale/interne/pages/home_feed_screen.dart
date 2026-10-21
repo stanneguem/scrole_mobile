@@ -152,6 +152,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const _StoriesRow(),
+                        // Preserve the layout boundary while making the separator
+                        // visually imperceptible, as requested.
+                        Container(
+                          height: 1,
+                          width: double.infinity,
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.01),
+                        ),
                       ],
                     );
                   }
