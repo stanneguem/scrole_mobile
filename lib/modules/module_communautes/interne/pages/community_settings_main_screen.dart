@@ -2932,18 +2932,31 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
       final profile = await client.from('user_profiles').select('country_id').eq('user_id', user.id).limit(1).maybeSingle();
       final countryId = profile?['country_id']?.toString();
       if (countryId == null || countryId.isEmpty) throw Exception('entity_cert_price_country_missing'.tr);
-      final country = await client.from('countries').select('nom').eq('id', countryId).limit(1).maybeSingle();
+      // Le pays peut être lié à plusieurs groupes de prix de certification
+      // (profil, événement, communauté). Ne pas choisir arbitrairement une ligne
+      // avec limit(1), car cela peut classer l'Allemagne comme « Afrique ».
+      final country = await client
+          .from('countries')
+          .select('nom,code_iso,default_currency_code')
+          .eq('id', countryId)
+          .maybeSingle();
       final countryName = country?['nom']?.toString();
-      final mapping = await client.from('certification_prix_group_pays').select('prix_groupe').eq('pays_id', countryId).limit(1).maybeSingle();
-      final groupId = mapping?['prix_groupe']?.toString();
-      String? groupName;
-      if (groupId != null) {
-        final group = await client.from('certification_prix_groupe').select('nom').eq('id', groupId).limit(1).maybeSingle();
-        groupName = group?['nom']?.toString();
-      }
-      final regionalGroup = (groupName ?? '').toLowerCase();
-      final priceGroup = (regionalGroup.contains('central') || regionalGroup.contains('centrale')) ? 'Afrique centrale'
-          : (regionalGroup.contains('afrique') ? 'Afrique' : 'Hors Afrique');
+      final countryCode = (country?['code_iso']?.toString() ?? '').toUpperCase();
+
+      const centralAfricaCodes = {
+        'CM', 'CF', 'TD', 'CG', 'CD', 'GQ', 'GA', 'ST',
+      };
+      const africaCodes = {
+        'DZ', 'AO', 'BJ', 'BW', 'BF', 'BI', 'CV', 'CM', 'CF', 'TD',
+        'KM', 'CG', 'CD', 'CI', 'DJ', 'EG', 'GQ', 'ER', 'SZ', 'ET',
+        'GA', 'GM', 'GH', 'GN', 'GW', 'KE', 'LS', 'LR', 'LY', 'MG',
+        'MW', 'ML', 'MR', 'MU', 'MA', 'MZ', 'NA', 'NE', 'NG', 'RW',
+        'ST', 'SN', 'SC', 'SL', 'SO', 'ZA', 'SS', 'SD', 'TZ', 'TG',
+        'TN', 'UG', 'ZM', 'ZW',
+      };
+      final priceGroup = centralAfricaCodes.contains(countryCode)
+          ? 'Afrique centrale'
+          : (africaCodes.contains(countryCode) ? 'Afrique' : 'Hors Afrique');
       final storagePriceGroup = _isEvent ? 'event:$priceGroup' : priceGroup;
       final price = await client.from('scrole_entity_certification_prices')
           .select('amount,currency,pricing_group').eq('pricing_group', storagePriceGroup).eq('active', true).limit(1).maybeSingle();
