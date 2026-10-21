@@ -2845,7 +2845,6 @@ class _EntityCertificationManagementScreenState extends State<EntityCertificatio
                         ? 'Abonnement ${(_entitlements['plan_code'] ?? '').toString().toUpperCase()} actif'
                         : 'Aucun abonnement Pro/Premium actif'),
                       const SizedBox(height: 10),
-                      Text('$used sur $quota utilisé(s) · $remaining restant(s)'.replaceFirst('$used', '$used').replaceFirst('$quota', '$quota')),
                       Text('${used} / ${quota} utilisés · ${remaining} disponible(s)'),
                       if (_entitlements['ends_at'] != null) ...[
                         const SizedBox(height: 6),
