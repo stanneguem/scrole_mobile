@@ -302,7 +302,7 @@ class FeedPostCard extends StatelessWidget {
                                             ),
                                           ),
                                         if (post.authorObj?.isCertified == true)
-                                          const UserCertifiedBadge(size: 14),
+                                          UserCertifiedBadge(size: 14, userId: post.authorObj?.userId),
                                         Text(
                                           '· ${_formatShortTime(post.timeAgo)}',
                                           style: TextStyle(
@@ -783,7 +783,7 @@ class FeedPostCard extends StatelessWidget {
                         ),
                         if (u.isCertified) ...[
                           const SizedBox(width: 6),
-                          const UserCertifiedBadge(size: 14),
+                          UserCertifiedBadge(size: 14, userId: post.authorObj?.userId),
                         ],
                       ],
                     ),
@@ -2026,7 +2026,7 @@ class _RepublicationPostCard extends StatelessWidget {
                                   ),
                                 ),
                               if (isCertified)
-                                const UserCertifiedBadge(size: 14),
+                                UserCertifiedBadge(size: 14, userId: post.authorObj?.userId),
                               const Icon(
                                 Icons.repeat_rounded,
                                 size: 14,
@@ -2167,9 +2167,7 @@ class _RepublicationPostCard extends StatelessWidget {
                                               ),
                                             if (shared.authorObj?.isCertified ==
                                                 true)
-                                              const UserCertifiedBadge(
-                                                size: 13,
-                                              ),
+                                              UserCertifiedBadge(size: 13, userId: shared.authorObj?.userId),
                                             Text(
                                               '· ${_formatShortTime(shared.timeAgo)}',
                                               style: TextStyle(
