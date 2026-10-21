@@ -160,115 +160,116 @@ class _MyCommunityTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final initial = community.name.isNotEmpty ? community.name[0].toUpperCase() : 'C';
+    final imageUrl = community.avatarUrl?.toString() ?? '';
+    final hasImage = imageUrl.isNotEmpty;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 196,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (hasImage)
+                  AppCachedImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: _communityImageFallback(colorScheme, initial),
+                  )
+                else
+                  _communityImageFallback(colorScheme, initial),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xCC000000)],
+                      stops: [0.28, 1],
+                    ),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: community.avatarUrl != null && community.avatarUrl!.isNotEmpty
-                    ? AppCachedImage(
-                        imageUrl: community.avatarUrl!,
-                        width: 62,
-                        height: 62,
-                        fit: BoxFit.cover,
-                        errorWidget: Container(
-                          width: 62,
-                          height: 62,
-                          color: colorScheme.primary.withValues(alpha: 0.15),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
+                ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 16,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              community.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                height: 1.15,
+                                fontWeight: FontWeight.w700,
+                                shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
                               ),
                             ),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: 62,
-                        height: 62,
-                        color: colorScheme.primary.withValues(alpha: 0.15),
-                        child: Center(
-                          child: Text(
-                            initial,
-                            style: TextStyle(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
-                          ),
+                            if (isPending) ...[
+                              const SizedBox(height: 7),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFFFD180)),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'community_creation_in_progress'.tr,
+                                    style: const TextStyle(
+                                      color: Color(0xFFFFD180),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    community.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
+                      const SizedBox(width: 12),
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: isPending ? Colors.orange : colorScheme.primary,
+                          color: Colors.black.withValues(alpha: 0.28),
                           shape: BoxShape.circle,
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isPending ? 'community_creation_in_progress'.tr : 'status_online'.tr,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isPending ? Colors.orange : colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: colorScheme.outline),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _communityImageFallback(ColorScheme colors, String initial) {
+    return Container(
+      color: colors.primaryContainer,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: colors.onPrimaryContainer,
+          fontSize: 56,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
