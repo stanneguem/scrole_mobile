@@ -2942,17 +2942,18 @@ class _EntityCertificationPurchaseScreenState extends State<EntityCertificationP
         groupName = group?['nom']?.toString();
       }
       final regionalGroup = (groupName ?? '').toLowerCase();
-      final priceGroup = regionalGroup.contains('central') ? 'Afrique centrale'
+      final priceGroup = (regionalGroup.contains('central') || regionalGroup.contains('centrale')) ? 'Afrique centrale'
           : (regionalGroup.contains('afrique') ? 'Afrique' : 'Hors Afrique');
+      final storagePriceGroup = _isEvent ? 'event:$priceGroup' : priceGroup;
       final price = await client.from('scrole_entity_certification_prices')
-          .select('amount,currency,pricing_group').eq('pricing_group', priceGroup).eq('active', true).maybeSingle();
+          .select('amount,currency,pricing_group').eq('pricing_group', storagePriceGroup).eq('active', true).maybeSingle();
       if (price == null) throw Exception('entity_cert_price_unavailable'.tr);
       if (!mounted) return;
       setState(() {
         _countryName = countryName;
         _amount = (price['amount'] as num).toDouble();
         _currency = price['currency'].toString();
-        _pricingGroup = price['pricing_group'].toString();
+        _pricingGroup = priceGroup;
         _loadingPrice = false;
       });
     } catch (e) {
