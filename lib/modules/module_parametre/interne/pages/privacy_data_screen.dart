@@ -69,12 +69,12 @@ class PrivacyDataScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Visibilité de mon planning événementiel',
+              'event_itinerary_visibility_title'.tr,
               style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
-              'Choisissez qui peut consulter les activités et horaires que vous avez prévus pour vos événements.',
+              'event_itinerary_visibility_desc'.tr,
               style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
             ),
             const SizedBox(height: 10),
@@ -92,10 +92,10 @@ class PrivacyDataScreen extends StatelessWidget {
                       ? p.eventItineraryVisibility
                       : 'only_me',
                   items: const [
-                    DropdownMenuItem(value: 'only_me', child: Text('Moi uniquement')),
-                    DropdownMenuItem(value: 'friends', child: Text('Mes amis')),
-                    DropdownMenuItem(value: 'followers', child: Text('Mes followers')),
-                    DropdownMenuItem(value: 'everyone', child: Text('Tout le monde')),
+                    DropdownMenuItem(value: 'only_me', child: Text('event_itinerary_visibility_only_me'.tr)),
+                    DropdownMenuItem(value: 'friends', child: Text('event_itinerary_visibility_friends'.tr)),
+                    DropdownMenuItem(value: 'followers', child: Text('event_itinerary_visibility_followers'.tr)),
+                    DropdownMenuItem(value: 'everyone', child: Text('event_itinerary_visibility_everyone'.tr)),
                   ],
                   onChanged: (value) async {
                     if (value == null || value == p.eventItineraryVisibility) return;
