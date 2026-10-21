@@ -743,6 +743,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Retrouve @name sur Scrole : @link",
       'share_profile_subject': "Profil de @name sur Scrole",
       'share_profile_error': "Impossible de préparer la carte de profil. Réessaie.",
+          'share_profile_followers': "Abonnés",
+      'share_profile_reputation': "Réputation",
     },
     'en': {
       'profile_online': "Online",
@@ -1479,6 +1481,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Find @name on Scrole: @link",
       'share_profile_subject': "@name’s profile on Scrole",
       'share_profile_error': "Could not prepare the profile card. Please try again.",
+          'share_profile_followers': "Followers",
+      'share_profile_reputation': "Reputation",
     },
     'es': {
       'profile_online': "En línea",
@@ -2132,6 +2136,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Encuentra a @name en Scrole: @link",
       'share_profile_subject': "Perfil de @name en Scrole",
       'share_profile_error': "No se pudo preparar la tarjeta. Inténtalo de nuevo.",
+          'share_profile_followers': "Seguidores",
+      'share_profile_reputation': "Reputación",
     },
     'de': {
       'profile_online': "Online",
@@ -2768,6 +2774,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Finde @name auf Scrole: @link",
       'share_profile_subject': "Profil von @name auf Scrole",
       'share_profile_error': "Die Profilkarte konnte nicht erstellt werden. Bitte erneut versuchen.",
+          'share_profile_followers': "Follower",
+      'share_profile_reputation': "Ruf",
     },
     'it': {
       'profile_online': "Online",
@@ -3404,6 +3412,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Trova @name su Scrole: @link",
       'share_profile_subject': "Profilo di @name su Scrole",
       'share_profile_error': "Impossibile preparare la scheda. Riprova.",
+          'share_profile_followers': "Follower",
+      'share_profile_reputation': "Reputazione",
     },
     'pt': {
       'profile_online': "Online",
@@ -4040,6 +4050,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Encontra @name no Scrole: @link",
       'share_profile_subject': "Perfil de @name no Scrole",
       'share_profile_error': "Não foi possível preparar o cartão. Tenta novamente.",
+          'share_profile_followers': "Seguidores",
+      'share_profile_reputation': "Reputação",
     },
     'zh': {
       'profile_online': "在线",
@@ -4676,6 +4688,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "在 Scrole 找到 @name：@link",
       'share_profile_subject': "@name 在 Scrole 的个人资料",
       'share_profile_error': "无法生成个人资料卡片，请重试。",
+          'share_profile_followers': "关注者",
+      'share_profile_reputation': "声誉",
     },
     'ja': {
       'profile_online': "オンライン",
@@ -5311,6 +5325,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Scroleで@nameを見つけてください：@link",
       'share_profile_subject': "Scroleの@nameのプロフィール",
       'share_profile_error': "プロフィールカードを作成できませんでした。もう一度お試しください。",
+          'share_profile_followers': "フォロワー",
+      'share_profile_reputation': "評判",
     },
     'ru': {
       'profile_online': "В сети",
@@ -5941,6 +5957,8 @@ class AppTranslationAdditions {
       'share_profile_card_message': "Найдите @name в Scrole: @link",
       'share_profile_subject': "Профиль @name в Scrole",
       'share_profile_error': "Не удалось создать карточку профиля. Попробуйте ещё раз.",
+          'share_profile_followers': "Подписчики",
+      'share_profile_reputation': "Репутация",
     },
   };
 
