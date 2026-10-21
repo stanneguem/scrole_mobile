@@ -161,8 +161,10 @@ class _MyCommunityTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final initial = community.name.isNotEmpty ? community.name[0].toUpperCase() : 'C';
-    final imageUrl = community.avatarUrl?.toString() ?? '';
-    final hasImage = imageUrl.isNotEmpty;
+    final avatarUrl = community.avatarUrl?.toString() ?? '';
+    final coverUrl = community.bannerUrl?.toString() ?? '';
+    final hasCover = coverUrl.isNotEmpty;
+    final hasAvatar = avatarUrl.isNotEmpty;
 
     return Material(
       color: Colors.transparent,
@@ -177,9 +179,9 @@ class _MyCommunityTile extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (hasImage)
+                if (hasCover)
                   AppCachedImage(
-                    imageUrl: imageUrl,
+                    imageUrl: coverUrl,
                     fit: BoxFit.cover,
                     errorWidget: _communityImageFallback(colorScheme, initial),
                   )
@@ -202,18 +204,35 @@ class _MyCommunityTile extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 3))],
+                        ),
+                        child: ClipOval(
+                          child: hasAvatar
+                              ? AppCachedImage(
+                                  imageUrl: avatarUrl,
+                                  fit: BoxFit.cover,
+                                  errorWidget: _communityAvatarFallback(colorScheme, initial),
+                                )
+                              : _communityAvatarFallback(colorScheme, initial),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    community.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: community.name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -222,9 +241,21 @@ class _MyCommunityTile extends StatelessWidget {
                                       shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
                                     ),
                                   ),
-                                ),
-                                EntityCertifiedBadge(entityType: 'community', entityId: community.id, size: 20),
-                              ],
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 4),
+                                      child: EntityCertifiedBadge(
+                                        entityType: 'community',
+                                        entityId: community.id,
+                                        size: 19,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             if (isPending) ...[
                               const SizedBox(height: 7),
@@ -233,12 +264,14 @@ class _MyCommunityTile extends StatelessWidget {
                                 children: [
                                   const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFFFD180)),
                                   const SizedBox(width: 5),
-                                  Text(
-                                    'community_creation_in_progress'.tr,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFD180),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                  Flexible(
+                                    child: Text(
+                                      'community_creation_in_progress'.tr,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFD180),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -270,7 +303,13 @@ class _MyCommunityTile extends StatelessWidget {
 
   Widget _communityImageFallback(ColorScheme colors, String initial) {
     return Container(
-      color: colors.primaryContainer,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primaryContainer, colors.tertiaryContainer],
+        ),
+      ),
       alignment: Alignment.center,
       child: Text(
         initial,
@@ -279,6 +318,17 @@ class _MyCommunityTile extends StatelessWidget {
           fontSize: 56,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+
+  Widget _communityAvatarFallback(ColorScheme colors, String initial) {
+    return Container(
+      color: colors.primaryContainer,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(color: colors.onPrimaryContainer, fontSize: 23, fontWeight: FontWeight.w800),
       ),
     );
   }
