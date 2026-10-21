@@ -62,7 +62,7 @@ class CommunityFeedScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 5),
+                      const SizedBox(width: 0),
                       EntityCertifiedBadge(entityType: 'community', entityId: communityId, size: 17),
                     ],
                   ),
