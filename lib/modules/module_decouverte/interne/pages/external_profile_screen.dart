@@ -396,12 +396,23 @@ class _Identity extends StatelessWidget {
                 ]),
               ] else if (profile.lastSeenAt != null) ...[
                 const SizedBox(height: 4),
-                Text(
-                  'profile_last_seen'.trParams({'date': _formatLastSeen(profile.lastSeenAt!)}),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'profile_last_seen_label'.tr,
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatLastSeen(profile.lastSeenAt!),
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
