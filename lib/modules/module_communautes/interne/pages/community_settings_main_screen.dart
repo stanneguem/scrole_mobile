@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:scrole/modules/module_parametre/interne/pages/certification_plans_screen.dart';
 import '../../centre/services/community_service.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
@@ -2871,14 +2870,126 @@ class _EntityCertificationManagementScreenState extends State<EntityCertificatio
                       const Text('Les achats de certification individuelle nécessitent encore le branchement du paiement sécurisé. Aucun paiement ne sera lancé depuis cet écran pour le moment.'),
                       const SizedBox(height: 12),
                       SizedBox(width: double.infinity, child: OutlinedButton(
-                        onPressed: () => Get.to(() => const CertificationPlansScreen()),
-                        child: const Text('Consulter les offres de certification'),
+                        onPressed: () => Get.to(() => EntityCertificationPurchaseScreen(
+                          entityType: widget.entityType,
+                          entityId: widget.entityId,
+                          entityName: widget.entityName,
+                        )),
+                        child: const Text('Voir les offres pour ce contenu'),
                       )),
                     ]),
                   ),
                 ),
               ]),
             ),
+    );
+  }
+}
+
+
+/// Destination dédiée à l'achat individuel d'une certification d'entité.
+/// Elle ne redirige jamais vers les certifications de profil.
+class EntityCertificationPurchaseScreen extends StatelessWidget {
+  const EntityCertificationPurchaseScreen({
+    super.key,
+    required this.entityType,
+    required this.entityId,
+    required this.entityName,
+  });
+
+  final String entityType;
+  final String entityId;
+  final String entityName;
+
+  bool get _isEvent => entityType == 'event';
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final kind = _isEvent ? 'événement' : 'communauté';
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isEvent ? 'Certification de l’événement' : 'Certification de la communauté'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: .6)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(
+                    _isEvent ? Icons.event_available_rounded : Icons.groups_rounded,
+                    color: colors.onPrimaryContainer,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  entityName,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Certification individuelle de $kind',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Cette offre concerne uniquement ce $kind, pas la certification de votre profil personnel.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.55),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: .6)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, color: colors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Les tarifs et le paiement sécurisé propres aux certifications d’événements et de communautés ne sont pas encore exposés par le backend actuel. Aucun paiement ne sera lancé et les offres de profil ne seront pas affichées ici.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () => Get.back(),
+            icon: const Icon(Icons.arrow_back_rounded),
+            label: const Text('Retour à la certification'),
+          ),
+        ],
+      ),
     );
   }
 }
