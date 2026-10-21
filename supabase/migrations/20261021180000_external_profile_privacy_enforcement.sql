@@ -426,6 +426,7 @@ BEGIN
     'country', CASE WHEN v_priv.afficher_pays THEN v_country ELSE NULL END,
     'city', CASE WHEN v_priv.afficher_ville THEN v_city ELSE NULL END,
     'last_seen_at', CASE WHEN coalesce(v_priv.afficher_derniere_connexion, false) THEN v_last_seen_at ELSE NULL END,
+    'is_online', CASE WHEN coalesce(v_priv.show_online_status, true) AND v_last_seen_at >= now() - interval '5 minutes' THEN true ELSE false END,
     'role', v_role,
     'role_label', v_role_label,
     'is_private', false,
