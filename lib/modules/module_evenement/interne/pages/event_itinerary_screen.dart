@@ -200,19 +200,6 @@ class _EventItineraryScreenState extends State<EventItineraryScreen> {
                         ),
                       ],
                     ),
-      bottomNavigationBar: !_loading && _days.isNotEmpty && _activities.isNotEmpty
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: Text(_saving ? 'Enregistrement…' : 'Enregistrer mon planning'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14)),
-                ),
-              ),
-            )
-          : null,
     );
   }
 
