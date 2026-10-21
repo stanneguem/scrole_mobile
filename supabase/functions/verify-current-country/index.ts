@@ -132,7 +132,13 @@ Deno.serve(async (req: Request) => {
     p_user_id: user.id,
     p_verification_id: verification.id,
   });
-  if (applyError) return reply(500, { error: "country_profile_update_failed" });
+  if (applyError) {
+    await admin.from("user_country_verifications")
+      .update({ status: "review_required", rejection_reason: "profile_update_failed" })
+      .eq("id", verification.id)
+      .eq("user_id", user.id);
+    return reply(500, { error: "country_profile_update_failed" });
+  }
 
   await admin.from("user_devices").update({
     detected_country_id: country.id,
