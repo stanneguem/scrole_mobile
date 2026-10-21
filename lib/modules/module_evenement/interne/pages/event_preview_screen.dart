@@ -11,6 +11,7 @@ import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../shared/widgets/expandable_text_widget.dart';
 import '../../../../app/utils/supabase_error_mapper.dart';
 import '../../centre/models/event_model.dart';
@@ -865,9 +866,18 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
                     ),
 
                   // Titre & Slug
-                  Text(
-                    event.name,
-                    style: GoogleFonts.spaceGrotesk(fontSize: 26, fontWeight: FontWeight.bold),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event.name,
+                          style: GoogleFonts.spaceGrotesk(fontSize: 26, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
+                    ],
                   ),
                   Text(
                     '@${event.slug}',
