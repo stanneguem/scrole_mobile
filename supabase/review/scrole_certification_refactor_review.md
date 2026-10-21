@@ -12,6 +12,7 @@ Les cinq migrations listées ci-dessous ont été appliquées au projet Supabase
 7. `20261021151918_scrole_certified_event_creation.sql`
 8. `20261021152116_scrole_certified_community_capabilities.sql`
 9. `20261021152314_scrole_subscription_activation_rpc.sql`
+10. `20261021152451_scrole_active_community_gate.sql`
 7. `20261021151918_scrole_certified_event_creation.sql`
 
 ## Objets et fonctions
