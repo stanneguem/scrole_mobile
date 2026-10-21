@@ -43,6 +43,24 @@ class AppPrivacy {
 
   Map<String, dynamic> toJson() => {'profile_visibility': profileVisibility, 'show_online_status': showOnlineStatus, 'allow_messages_from': allowMessagesFrom, 'afficher_pays': afficherPays, 'afficher_ville': afficherVille, 'afficher_derniere_connexion': afficherDerniereConnexion, 'event_itinerary_visibility': eventItineraryVisibility};
 
+  AppPrivacy copyWith({
+    String? profileVisibility,
+    bool? showOnlineStatus,
+    String? allowMessagesFrom,
+    bool? afficherPays,
+    bool? afficherVille,
+    bool? afficherDerniereConnexion,
+    String? eventItineraryVisibility,
+  }) => AppPrivacy(
+    profileVisibility: profileVisibility ?? this.profileVisibility,
+    showOnlineStatus: showOnlineStatus ?? this.showOnlineStatus,
+    allowMessagesFrom: allowMessagesFrom ?? this.allowMessagesFrom,
+    afficherPays: afficherPays ?? this.afficherPays,
+    afficherVille: afficherVille ?? this.afficherVille,
+    afficherDerniereConnexion: afficherDerniereConnexion ?? this.afficherDerniereConnexion,
+    eventItineraryVisibility: eventItineraryVisibility ?? this.eventItineraryVisibility,
+  );
+
   factory AppPrivacy.defaultValues() => AppPrivacy(profileVisibility: 'public', showOnlineStatus: true, allowMessagesFrom: 'everyone', afficherPays: true, afficherVille: true, afficherDerniereConnexion: true, eventItineraryVisibility: 'only_me');
 }
 
