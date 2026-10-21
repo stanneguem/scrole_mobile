@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../controllers/community/community_controller.dart';
 import 'create_community_screen.dart';
 import 'community_feed_screen.dart';
@@ -206,17 +207,25 @@ class _MyCommunityTile extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              community.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                height: 1.15,
-                                fontWeight: FontWeight.w700,
-                                shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    community.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      height: 1.15,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                EntityCertifiedBadge(entityType: 'community', entityId: community.id, size: 20),
+                              ],
                             ),
                             if (isPending) ...[
                               const SizedBox(height: 7),
