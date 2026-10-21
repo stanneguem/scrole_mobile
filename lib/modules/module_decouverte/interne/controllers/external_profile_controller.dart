@@ -248,7 +248,7 @@ class ExternalProfileController extends GetxController {
           clearRequestId: freshRelation['request_id'] == null,
         retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
           clearRetryAt: freshRelation['retry_at'] == null,
-        canMessage: freshRelation['is_friend'] == true || nextState == 'friends',
+        canMessage: current.canMessage,
       );
       profile.value = updated;
       isFollowing.value = updated.isFollowing;
@@ -354,7 +354,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: relation['is_friend'] == true,
+          canMessage: current.canMessage,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
