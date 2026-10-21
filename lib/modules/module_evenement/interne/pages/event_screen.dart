@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../../app/theme/app_colors.dart';
 import '../../../../../app/theme/text_styles.dart';
+import '../../../module_principale/interne/controllers/main_layout_controller.dart';
 import 'event_calendar_tab.dart';
 import 'event_suggestion_tab.dart';
 
@@ -17,11 +18,36 @@ class EventScreen extends StatefulWidget {
 class _EventScreenState extends State<EventScreen> {
   int _currentIndex = 0;
   final _pageController = PageController();
+  Worker? _suggestionsNavigationWorker;
+  int _lastSuggestionsNavigationRequest = 0;
 
   @override
   void initState() {
     super.initState();
     bootLog('EventScreen.initState');
+    if (Get.isRegistered<MainLayoutController>()) {
+      final layoutController = Get.find<MainLayoutController>();
+      _lastSuggestionsNavigationRequest = layoutController.eventSuggestionsNavigationRequest.value;
+      _suggestionsNavigationWorker = ever<int>(
+        layoutController.eventSuggestionsNavigationRequest,
+        (request) {
+          if (request <= _lastSuggestionsNavigationRequest) return;
+          _lastSuggestionsNavigationRequest = request;
+          if (!mounted) return;
+          setState(() => _currentIndex = 0);
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(0);
+          }
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _suggestionsNavigationWorker?.dispose();
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override

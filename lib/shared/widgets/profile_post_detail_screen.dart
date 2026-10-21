@@ -17,6 +17,16 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  void _goToPage(int delta) {
+    final target = (_currentPage + delta).clamp(0, widget.post.media.length - 1);
+    if (target == _currentPage) return;
+    _pageController.animateToPage(
+      target,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -26,72 +36,183 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final media = post.media;
+    final rawDate = post.timeAgo.trim();
+    final formattedDate = rawDate.isEmpty ? '' : _formatPublicationDate(rawDate);
+
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
-        title: const Text('Publication'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Get.back()),
+        title: const Text('Publication', style: TextStyle(fontWeight: FontWeight.w700)),
+        centerTitle: true,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Get.back(),
+        ),
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 28),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          if (media.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 1,
-              child: Stack(fit: StackFit.expand, children: [
-                PageView.builder(
-                  controller: _pageController,
-                  itemCount: media.length,
-                  onPageChanged: (index) => setState(() => _currentPage = index),
-                  itemBuilder: (context, index) => _PostMediaPage(key: ValueKey('${post.id}:$index'), media: media[index]),
+          if (media.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: AspectRatio(
+                aspectRatio: 0.92,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: media.length,
+                      physics: const BouncingScrollPhysics(),
+                      onPageChanged: (index) => setState(() => _currentPage = index),
+                      itemBuilder: (context, index) => _PostMediaPage(
+                        key: ValueKey('${post.id}:$index'),
+                        media: media[index],
+                      ),
+                    ),
+                    if (media.length > 1) ...[
+                      Positioned(
+                        left: 12,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(
+                          child: _CarouselArrow(
+                            icon: Icons.chevron_left_rounded,
+                            enabled: _currentPage > 0,
+                            onTap: () => _goToPage(-1),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 12,
+                        top: 0,
+                        bottom: 0,
+                        child: Center(
+                          child: _CarouselArrow(
+                            icon: Icons.chevron_right_rounded,
+                            enabled: _currentPage < media.length - 1,
+                            onTap: () => _goToPage(1),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.68),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.collections_rounded, color: Colors.white, size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_currentPage + 1} / ${media.length}',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 14,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(media.length, (index) {
+                            final selected = index == _currentPage;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              width: selected ? 20 : 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: selected ? Colors.white : Colors.white.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (media.length > 1)
-                  Positioned(top: 12, right: 12, child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-                    child: Text('${_currentPage + 1}/${media.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                  )),
-                if (media.length > 1) ...[
-                  Positioned(left: 4, top: 0, bottom: 0, child: IconButton(
-                    onPressed: _currentPage > 0 ? () => _pageController.previousPage(duration: const Duration(milliseconds: 200), curve: Curves.easeOut) : null,
-                    icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 34))),
-                  Positioned(right: 4, top: 0, bottom: 0, child: IconButton(
-                    onPressed: _currentPage < media.length - 1 ? () => _pageController.nextPage(duration: const Duration(milliseconds: 200), curve: Curves.easeOut) : null,
-                    icon: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 34))),
-                ],
-              ]),
-            ),
-          if (post.content.trim().isNotEmpty)
-            Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(post.content, style: Theme.of(context).textTheme.bodyLarge)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Wrap(spacing: 22, runSpacing: 12, children: [
-              _Metric(icon: Icons.favorite_border_rounded, label: 'J’aime', value: post.likeCount),
-              _Metric(icon: Icons.chat_bubble_outline_rounded, label: 'Commentaires', value: post.commentCount),
-              _Metric(icon: Icons.visibility_outlined, label: 'Vues', value: post.viewCount),
-              _Metric(icon: Icons.repeat_rounded, label: 'Partages', value: post.shareCount),
-            ]),
-          ),
-          if (post.timeAgo.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 14, color: colors.onSurfaceVariant),
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatPublicationDate(post.timeAgo),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                  ),
-                ],
               ),
             ),
+            const SizedBox(height: 18),
+          ],
+          if (formattedDate.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 15, color: colors.onSurfaceVariant),
+                    const SizedBox(width: 7),
+                    Text(
+                      formattedDate,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (post.content.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              post.content,
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.55, fontSize: 15.5),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.45)),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _Metric(icon: Icons.favorite_rounded, value: post.likeCount, color: colors.error)),
+                _metricDivider(colors),
+                Expanded(child: _Metric(icon: Icons.chat_bubble_rounded, value: post.commentCount, color: colors.primary)),
+                _metricDivider(colors),
+                Expanded(child: _Metric(icon: Icons.visibility_rounded, value: post.viewCount, color: colors.tertiary)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
+
+  Widget _metricDivider(ColorScheme colors) => Container(
+        width: 1,
+        height: 28,
+        color: colors.outlineVariant.withValues(alpha: 0.6),
+      );
+
 }
 
 String _formatPublicationDate(String rawDate) {
@@ -186,17 +307,59 @@ class _PostMediaPageState extends State<_PostMediaPage> {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.icon, required this.label, required this.value});
+  const _Metric({required this.icon, required this.value, required this.color});
   final IconData icon;
-  final String label;
   final int value;
+  final Color color;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 18, color: colors.primary),
-      const SizedBox(width: 6),
-      Text('$value $label', style: Theme.of(context).textTheme.bodyMedium),
-    ]);
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 19, color: color),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            _compactCount(value),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _compactCount(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
+    return value.toString();
+  }
+}
+
+class _CarouselArrow extends StatelessWidget {
+  const _CarouselArrow({required this.icon, required this.enabled, required this.onTap});
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: enabled ? 0.58 : 0.24),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: Icon(icon, color: Colors.white.withValues(alpha: enabled ? 1 : 0.55), size: 30),
+        ),
+      ),
+    );
   }
 }

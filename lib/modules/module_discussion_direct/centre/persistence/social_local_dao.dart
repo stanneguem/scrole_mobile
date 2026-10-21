@@ -255,6 +255,17 @@ class SocialLocalDao {
     _notify();
   }
 
+  Future<void> updateUserQrCodeSyncStatus(String qrId, String syncStatus) async {
+    final db = await _db;
+    await db.update(
+      'user_qr_codes',
+      {'sync_status': syncStatus},
+      where: 'id = ?',
+      whereArgs: [qrId],
+    );
+    _notify();
+  }
+
   Future<Map<String, dynamic>?> getActiveUserQrCode(String userId) async {
     final db = await _db;
     final rows = await db.query(

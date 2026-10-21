@@ -75,7 +75,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
       }
     });
 
-    _startStory();
+    // Wait until the first frame so inherited widgets (MediaQuery/Theme)
+    // are available before starting story image precaching.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startStory();
+    });
   }
 
   @override
@@ -95,7 +99,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
       if (nextGroup.stories.isNotEmpty) {
         final url = nextGroup.stories.first.imageUrl;
         if (url != null && url.isNotEmpty) {
-          precacheImage(NetworkImage(url), context);
+          precacheImage(NetworkImage(url), context).catchError((Object _) {});
         }
       }
     }
@@ -111,6 +115,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
 
   void _markCurrentViewed() {
     final story = _currentStory;
+    // Opening your own story is not a view: only other authenticated viewers
+    // should create a story_views row or increase the viewers counter.
+    if (_isOwnStory || story.id.isEmpty) return;
     if (!story.viewed && !_viewedStoryIds.contains(story.id)) {
       _viewedStoryIds.add(story.id);
       story.viewed = true;
@@ -132,6 +139,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
   EventStoryGroup get _currentGroup => widget.groups[_groupIndex];
   StoryItem get _currentStory => _currentGroup.stories[_storyIndex];
   bool get _isOwnStory => _currentGroup.relation == 'own';
+
+  String _formatStoryAge(DateTime createdAt) {
+    final elapsed = DateTime.now().difference(createdAt);
+    if (elapsed.isNegative || elapsed.inSeconds < 60) return 'À l’instant';
+    if (elapsed.inMinutes < 60) return 'Il y a ${elapsed.inMinutes} min';
+    if (elapsed.inHours < 24) return 'Il y a ${elapsed.inHours} h';
+    if (elapsed.inDays == 1) return 'Il y a 1 jour';
+    if (elapsed.inDays < 7) return 'Il y a ${elapsed.inDays} jours';
+    return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+  }
 
   void _nextStory() {
     if (_storyIndex < _currentGroup.stories.length - 1) {
@@ -474,14 +491,27 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: UserIdentityRow(
-                                    name: _currentGroup.author.displayName,
-                                    username: _currentGroup.author.username,
-                                    avatarUrl: _currentGroup.author.photoUrl,
-                                    isCertified: _currentGroup.author.isCertified,
-                                    avatarRadius: 18,
-                                    nameStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                    usernameStyle: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      UserIdentityRow(
+                                        name: _currentGroup.author.displayName,
+                                        username: _currentGroup.author.username,
+                                        avatarUrl: _currentGroup.author.photoUrl,
+                                        isCertified: _currentGroup.author.isCertified,
+                                        avatarRadius: 18,
+                                        nameStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                        usernameStyle: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 42),
+                                        child: Text(
+                                          _formatStoryAge(_currentStory.createdAt),
+                                          style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 IconButton(
@@ -683,6 +713,7 @@ class _StoryViewersSheet extends StatefulWidget {
 class _StoryViewersSheetState extends State<_StoryViewersSheet> {
   final StoriesRepository _repo = StoriesRepository();
   bool _isLoading = true;
+  int _totalViewers = 0;
   List<dynamic> _viewers = [];
 
   @override
@@ -697,6 +728,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
       if (mounted) {
         setState(() {
           _viewers = res['items'] is List ? res['items'] : [];
+          _totalViewers = (res['viewers_count'] as num?)?.toInt() ?? _viewers.length;
           _isLoading = false;
         });
       }
@@ -707,24 +739,17 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
 
   String _formatViewedTime(String? raw) {
     if (raw == null || raw.isEmpty) return '';
-    final dt = DateTime.tryParse(raw);
-    if (dt != null) {
-      final now = DateTime.now();
-      final difference = now.difference(dt);
-
-      if (difference.isNegative || difference.inSeconds < 60) {
-        return 'à l\'instant';
-      } else if (difference.inMinutes < 60) {
-        return 'il y a ${difference.inMinutes}min';
-      } else if (difference.inHours < 24) {
-        return 'il y a ${difference.inHours}h';
-      } else if (difference.inDays < 7) {
-        return difference.inDays == 1 ? 'il y a 1 jour' : 'il y a ${difference.inDays} jours';
-      } else {
-        return 'le ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
-      }
-    }
-    return raw;
+    final dt = DateTime.tryParse(raw)?.toLocal();
+    if (dt == null) return raw;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(dt.year, dt.month, dt.day);
+    final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    final days = today.difference(day).inDays;
+    if (days == 0) return "Aujourd’hui à $time";
+    if (days == 1) return 'Hier à $time';
+    if (days < 7) return 'Il y a $days jours · $time';
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} · $time';
   }
 
   @override
@@ -766,7 +791,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
               Icon(Icons.remove_red_eye_rounded, size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Text(
-                'Personnes ayant vu (${_viewers.length})',
+                'Personnes ayant vu (${_totalViewers})',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
               ),
             ],
@@ -1271,6 +1296,19 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
         ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim()
         : (author['username']?.toString() ?? 'Utilisateur');
     final avatarUrl = author['photo_url']?.toString() ?? author['avatar_url']?.toString();
+    final isCertified = author['is_certified'] == true || author['is_certified'] == 1 ||
+        author['is_verified'] == true || author['is_verified'] == 1;
+    final createdAt = DateTime.tryParse(comment['created_at']?.toString() ?? '');
+    String commentAge() {
+      if (createdAt == null) return '';
+      final elapsed = DateTime.now().difference(createdAt);
+      if (elapsed.inSeconds < 60) return 'À l’instant';
+      if (elapsed.inMinutes < 60) return 'Il y a ${elapsed.inMinutes} min';
+      if (elapsed.inHours < 24) return 'Il y a ${elapsed.inHours} h';
+      if (elapsed.inDays == 1) return 'Il y a 1 jour';
+      if (elapsed.inDays < 7) return 'Il y a ${elapsed.inDays} jours';
+      return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
+    }
     final content = comment['content']?.toString() ?? '';
     final replies = comment['replies'] is List ? (comment['replies'] as List).map((r) => Map<String, dynamic>.from(r)).toList() : <Map<String, dynamic>>[];
 
@@ -1298,10 +1336,26 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        authorName,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
+                            ),
+                          ),
+                          if (isCertified) ...[
+                            const SizedBox(width: 5),
+                            const UserCertifiedBadge(size: 13),
+                          ],
+                        ],
                       ),
+                      if (commentAge().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(commentAge(), style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant)),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         content,

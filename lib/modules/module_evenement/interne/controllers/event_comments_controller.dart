@@ -135,10 +135,6 @@ class EventCommentsController extends GetxController {
   }
 
   void startReplyTo(EventComment comment) {
-    if (!isInMyCalendar.value) {
-      Get.snackbar('Action requise', 'Ajoutez cet événement à votre agenda pour commenter.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
     replyingToComment.value = comment;
     commentFocusNode.requestFocus();
   }
@@ -153,11 +149,6 @@ class EventCommentsController extends GetxController {
   }
 
   Future<void> sendComment(String eventId) async {
-    if (!isInMyCalendar.value) {
-      Get.snackbar('Action requise', 'Ajoutez cet événement à votre agenda pour commenter.', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
     final text = commentTextController.text.trim();
     if (text.isEmpty || isSending.value) return;
 

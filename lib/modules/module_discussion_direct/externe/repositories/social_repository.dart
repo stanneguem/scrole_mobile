@@ -284,6 +284,31 @@ class SocialRepository {
     return qr;
   }
 
+  /// Réessaie immédiatement l'envoi d'un QR local au backend.
+  /// En cas de timeout après création serveur, une violation d'unicité signifie
+  /// que le QR existe déjà : on peut donc marquer la copie locale comme synchronisée.
+  Future<void> syncUserQrCode(Map<String, dynamic> qr) async {
+    final userId = currentUserId;
+    final qrId = (qr['id'] ?? '').toString();
+    if (userId == null || userId.isEmpty) {
+      throw StateError('Utilisateur non connecté');
+    }
+    if (qrId.isEmpty) throw StateError('Identifiant du QR code manquant');
+    if ((qr['user_id'] ?? '').toString() != userId) {
+      throw StateError('Ce QR code ne correspond pas à l’utilisateur connecté');
+    }
+
+    try {
+      await _client.rpc('generate_user_qr_code', params: {'p_id': qrId});
+    } on PostgrestException catch (e) {
+      // La requête a pu aboutir côté serveur avant une coupure réseau.
+      if (e.code != '23505') rethrow;
+    }
+
+    await _dao.updateUserQrCodeSyncStatus(qrId, 'synced');
+    debugPrint('[FOLLOW] QR synchronisé user_id=$userId id=$qrId');
+  }
+
   /// Scanner un QR personnel : une seule action crée la relation mutuelle.
   Future<Map<String, dynamic>?> scanQrCode(String qrId, [String? mode]) async {
     final userId = currentUserId;

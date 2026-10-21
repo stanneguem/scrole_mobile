@@ -25,6 +25,10 @@ import '../widgets/add_to_calendar_dialog.dart';
 import 'event_days_selector_screen.dart';
 import 'event_comments_screen.dart';
 import 'event_rating_screen.dart';
+import '../widgets/event_share_options_sheet.dart';
+import '../widgets/event_share_card_design_picker.dart';
+import '../../../module_principale/interne/pages/create_story_screen.dart';
+import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 
 class EventDetailPage extends StatefulWidget {
   final EventModel event;
@@ -420,23 +424,113 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
     }
   }
 
-  void _shareEvent() {
-    if (_preview == null || !_preview!.canShare) return;
+  String _eventShareText() {
+    final event = _preview?.event ?? widget.event;
+    final details = <String>[
+      'Découvre cet événement : ${event.name}',
+      if ((event.description ?? '').trim().isNotEmpty) event.description!.trim(),
+    ];
+    return details.join('\n\n');
+  }
 
-    EventSharePosterService.shareEventPoster(
+  Future<void> _openEventShareCardPicker({
+    required String destination,
+    Map<String, dynamic>? community,
+  }) async {
+    final preview = _preview;
+    if (preview == null || !mounted) return;
+
+    await showModalBottomSheet<void>(
       context: context,
-      preview: _preview!,
-      repository: Get.find<EventRepository>(),
-      onShareSuccess: (_) {
-        if (mounted) {
-          setState(() {});
-        }
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (pickerContext) => EventShareCardDesignPicker(
+        preview: preview,
+        onSelected: (designIndex) async {
+          Navigator.of(pickerContext).pop();
+          try {
+            final cardFile = await EventShareCardRenderer.renderToFile(
+              context: context,
+              preview: preview,
+              designIndex: designIndex,
+            );
+            if (!mounted) return;
+            final caption = _eventShareText();
+            if (destination == 'story') {
+              Get.to(() => CreateStoryScreen(
+                    prefilledText: caption,
+                    prefilledMediaUrl: cardFile.path,
+                  ));
+            } else {
+              Get.to(() => CreateCommunityPostScreen(
+                    communityId: community == null ? null : (community['id'] ?? '').toString(),
+                    communityName: community == null ? 'Mon fil' : (community['name'] ?? 'Communauté').toString(),
+                    prefilledText: caption,
+                    prefilledMediaUrl: cardFile.path,
+                  ));
+            }
+          } catch (error) {
+            if (mounted) {
+              Get.snackbar('Partage impossible', 'La carte de l’événement n’a pas pu être créée.');
+            }
+            debugPrint('[EventShare] Could not render event card: $error');
+          }
+        },
+      ),
     );
   }
 
+  void _shareEvent() {
+    if (_preview == null || !_preview!.canShare) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => EventShareOptionsSheet(
+        preview: _preview!,
+        onFeed: () {
+          Navigator.of(sheetContext).pop();
+          _openEventShareCardPicker(destination: 'feed');
+        },
+        onCommunity: () {
+          Navigator.of(sheetContext).pop();
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (pickerContext) => EventShareCommunityPicker(
+              onSelected: (community) {
+                Navigator.of(pickerContext).pop();
+                final communityId = (community['id'] ?? '').toString();
+                if (communityId.isEmpty) {
+                  Get.snackbar('Partage', 'Cette communauté est introuvable.');
+                  return;
+                }
+                _openEventShareCardPicker(destination: 'community', community: community);
+              },
+            ),
+          );
+        },
+        onStory: () {
+          Navigator.of(sheetContext).pop();
+          _openEventShareCardPicker(destination: 'story');
+        },
+        onNativeApps: () {
+          Navigator.of(sheetContext).pop();
+          EventSharePosterService.shareEventPoster(
+            context: context,
+            preview: _preview!,
+            repository: Get.find<EventRepository>(),
+            onShareSuccess: (_) {
+              if (mounted) setState(() {});
+            },
+          );
+        },
+      ),
+    );
+  }
   void _openCommentSheet() {
-    if (_preview != null && (_preview!.viewerRole == 'staff' || !_preview!.canComment)) return;
     Get.to(() => EventCommentsScreen(
       eventId: widget.event.id,
       eventName: widget.event.name,
@@ -539,9 +633,7 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                   ),
                   actions: [
                     GestureDetector(
-                      onTap: (_preview != null && _preview!.viewerRole == 'staff')
-                          ? null
-                          : ((_preview == null || _preview!.canComment) ? _openCommentSheet : null),
+                      onTap: _openCommentSheet,
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
                         width: 40,
@@ -931,41 +1023,18 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                   if (_preview == null || _preview!.canAddToCalendar) ...[
                     Row(
                       children: [
-                        // 1. S'inscrire (4/6 de l'espace à gauche)
                         Expanded(
-                          flex: 4,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              _showTicketsOrRegistrationSheet(context, _preview);
-                            },
-                            icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                            label: Text(
-                              'S\'inscrire (${NumberFormatter.formatCount(_preview?.attendeeCount ?? 0)})',
-                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // 2. Ajouter à l'agenda (2/6 de l'espace à droite)
-                        Expanded(
-                          flex: 2,
                           child: ElevatedButton.icon(
                             onPressed: _isCalendarLoading ? null : _handleCalendarAction,
-                            icon: Icon(_isEventAdded ? Icons.check : Icons.calendar_today, size: 16),
+                            icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
                             label: Text(
-                              '${NumberFormatter.formatCount(totalAdded)}',
-                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 12),
+                              _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
+                              style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
                               foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
@@ -1030,7 +1099,9 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                       // 2. NOTER
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: (_preview != null && _preview!.canRate) ? _openRatingSheet : null,
+                          onPressed: (_preview != null && _preview!.canRate)
+                              ? _openRatingSheet
+                              : null,
                           icon: Icon(Icons.star_outline_rounded, size: 16, color: colorScheme.onSurface),
                           label: Text(
                             'Noter',

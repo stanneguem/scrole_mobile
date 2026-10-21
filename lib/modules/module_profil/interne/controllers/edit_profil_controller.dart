@@ -151,7 +151,7 @@ class EditProfileController extends GetxController {
       if (isClosed) return;
       if (data == null) throw StateError('get_myprofile returned no profile data');
 
-      _profileController.usernameUpdatedAt = _parseLockDate(data['username_updated_at']);
+      _profileController.usernameUpdatedAt.value = _parseLockDate(data['username_updated_at']);
       _profileController.genderUpdatedAt.value = _parseLockDate(data['gender_updated_at']);
       _profileController.locationUpdatedAt.value = _parseLockDate(data['location_updated_at']);
       _profileController.birthDateUpdatedAt.value = _parseLockDate(data['birth_date_updated_at']);
@@ -312,8 +312,13 @@ class EditProfileController extends GetxController {
         selectedCity.value!.nom.toLowerCase() != _profileController.city.value.toLowerCase();
 
     if (canChangeLocation.value && (countryChanged || cityChanged)) {
-      if (selectedCountry.value != null) payload['country_id'] = selectedCountry.value!.id;
-      if (selectedCity.value != null) payload['city_id'] = selectedCity.value!.id;
+      if (selectedCountry.value != null) {
+        payload['country_id'] = selectedCountry.value!.id;
+        // A city from the previous country must never remain attached.
+        payload['city_id'] = selectedCity.value?.id;
+      } else if (cityChanged && selectedCity.value != null) {
+        payload['city_id'] = selectedCity.value!.id;
+      }
     }
 
     final interestIds = selectedInterestIds.toList();

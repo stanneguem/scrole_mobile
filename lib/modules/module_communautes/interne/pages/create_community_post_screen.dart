@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
@@ -14,7 +17,6 @@ import 'package:scrole/modules/module_communautes/centre/models/news/community_h
 import 'community_poll_composer_screen.dart';
 import 'community_post_hashtag_selection_screen.dart';
 import 'community_post_settings_screen.dart';
-import 'community_post_mentions_screen.dart';
 
 class CreateCommunityPostScreen extends StatefulWidget {
   final String communityName;
@@ -50,6 +52,21 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   final List<CommunityHashtag> _selectedHashtags = [];
   List<Map<String, dynamic>> _selectedMentions = [];
   List<String> _selectedMentionIds = [];
+  final Set<String> _selectedCommunityIds = {};
+  final Set<String> _selectedEventIds = {};
+  final LayerLink _mentionLayerLink = LayerLink();
+  OverlayEntry? _mentionOverlay;
+  Timer? _mentionSearchDebounce;
+  List<Map<String, dynamic>> _mentionSuggestions = [];
+  String? _activeMentionType;
+  int _mentionStart = -1;
+  int _mentionRequest = 0;
+  List<Map<String, dynamic>> _liveSuggestions = [];
+  String? _suggestionTrigger;
+  String _suggestionQuery = '';
+  bool _loadingSuggestions = false;
+  Timer? _suggestionDebounce;
+  int _suggestionRequestId = 0;
 
   @override
   void initState() {
@@ -60,6 +77,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
   @override
   void dispose() {
+    _suggestionDebounce?.cancel();
+    _mentionOverlay?.remove();
+    _mentionSearchDebounce?.cancel();
     _textController.dispose();
     super.dispose();
   }
@@ -70,19 +90,346 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
 
-  Future<void> _openMentions() async {
-    final cId = widget.communityId ?? Get.parameters['id'] ?? '';
-    final result = await Get.to<List<Map<String, dynamic>>>(
-      () => const CommunityPostMentionsScreen(),
-      arguments: {'communityId': cId, 'initialSelected': _selectedMentionIds},
-    );
-    if (result != null) {
-      setState(() {
-        _selectedMentions = result;
-        _selectedMentionIds = result.map((m) => (m['user_id'] ?? m['id'] ?? '').toString()).toList();
-      });
+  void _handleLegacyComposerTextChanged(String value) {
+    setState(() {});
+    _suggestionDebounce?.cancel();
+    final cursor = _textController.selection.baseOffset;
+    if (cursor < 0 || cursor > value.length) { _hideLiveSuggestions(); return; }
+    final match = RegExp(r'(?:^|\s)([#@])([^\s#@]*)$').firstMatch(value.substring(0, cursor));
+    if (match == null) { _hideLiveSuggestions(); return; }
+    final trigger = match.group(1)!;
+    final query = match.group(2) ?? '';
+    if (query.isEmpty) { _hideLiveSuggestions(); return; }
+    setState(() {
+      _suggestionTrigger = trigger;
+      _suggestionQuery = query;
+      _liveSuggestions = [];
+      _loadingSuggestions = true;
+    });
+    final requestId = ++_suggestionRequestId;
+    _suggestionDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (trigger == '#') { _searchLiveHashtags(query, requestId); }
+      else { _searchLiveMentions(query, requestId); }
+    });
+  }
+
+  void _removeMentionOverlay() {
+    _mentionOverlay?.remove();
+    _mentionOverlay = null;
+    _activeMentionType = null;
+    _mentionSuggestions = [];
+  }
+
+  void _onPostTextChanged(String value) {
+    final cursor = _textController.selection.baseOffset;
+    if (cursor >= 0 && cursor <= value.length) {
+      final prefix = value.substring(0, cursor);
+      final match = RegExp(r'(^|\\s)([@*~])([^\\s@*~]*)$').firstMatch(prefix);
+      if (match != null) {
+        _hideLiveSuggestions();
+        final trigger = match.group(2)!;
+        _activeMentionType = trigger == '@' ? 'user' : trigger == '*' ? 'event' : 'community';
+        _mentionStart = cursor - trigger.length - (match.group(3) ?? '').length;
+        final query = match.group(3) ?? '';
+        _mentionSearchDebounce?.cancel();
+        _mentionSearchDebounce = Timer(const Duration(milliseconds: 180), () {
+          _searchPostMentionSuggestions(query, _activeMentionType!);
+        });
+        setState(() {});
+        return;
+      }
+    }
+    _removeMentionOverlay();
+    _handleLegacyComposerTextChanged(value);
+  }
+
+  Future<void> _searchPostMentionSuggestions(String query, String type) async {
+    final request = ++_mentionRequest;
+    try {
+      final client = Supabase.instance.client;
+      List<Map<String, dynamic>> results = [];
+      if (type == 'user') {
+        final rows = await client.from('user_profiles')
+            .select('user_id, username, first_name, last_name, photo_url, is_verified')
+            .eq('account_status', 'active').isFilter('deleted_at', null)
+            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
+            .order('username').limit(7);
+        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      } else if (type == 'community') {
+        final rows = await client.from('communities')
+            .select('id, name, photo_profile, visibility')
+            .eq('status', 'active').ilike('name', '%$query%')
+            .order('name').limit(7);
+        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+      } else {
+        final rows = await client.from('events')
+            .select('id, name, photo, starts_at, status')
+            .ilike('name', '%$query%').order('starts_at').limit(12);
+        results = rows.map((r) => Map<String, dynamic>.from(r))
+            .where((r) => !const {'deleted', 'cancelled', 'archived'}.contains((r['status'] ?? '').toString().toLowerCase()))
+            .take(7).toList();
+      }
+      if (!mounted || request != _mentionRequest || _activeMentionType != type) return;
+      setState(() => _mentionSuggestions = results);
+      _showPostMentionOverlay();
+    } catch (e) {
+      debugPrint('[MENTIONS] Post suggestion search failed: $e');
+      if (request == _mentionRequest) _removeMentionOverlay();
     }
   }
+
+  void _showPostMentionOverlay() {
+    if (_mentionSuggestions.isEmpty || _activeMentionType == null) {
+      _removeMentionOverlay();
+      return;
+    }
+    _mentionOverlay ??= OverlayEntry(builder: (overlayContext) {
+      final type = _activeMentionType;
+      final items = List<Map<String, dynamic>>.from(_mentionSuggestions);
+      return Positioned(
+        width: MediaQuery.of(context).size.width - 32,
+        child: CompositedTransformFollower(
+          link: _mentionLayerLink, showWhenUnlinked: false,
+          targetAnchor: Alignment.topLeft, followerAnchor: Alignment.bottomLeft,
+          offset: const Offset(0, -8),
+          child: Material(
+            elevation: 12, color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(14), clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 250),
+              child: ListView.separated(
+                padding: EdgeInsets.zero, shrinkWrap: true, itemCount: items.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: .35)),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final isUser = type == 'user';
+                  final title = isUser
+                      ? ((item['username'] ?? '').toString().isNotEmpty ? '@${item['username']}' : '${item['first_name'] ?? ''} ${item['last_name'] ?? ''}'.trim())
+                      : (item['name'] ?? '').toString();
+                  final subtitle = isUser ? '${item['first_name'] ?? ''} ${item['last_name'] ?? ''}'.trim()
+                      : type == 'event' ? (item['starts_at'] ?? '').toString().replaceFirst('T', ' ') : 'Communauté';
+                  final image = (item[isUser ? 'photo_url' : type == 'event' ? 'photo' : 'photo_profile'] ?? '').toString();
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      backgroundImage: image.startsWith('http') ? NetworkImage(image) : null,
+                      child: image.startsWith('http') ? null : Icon(isUser ? Icons.person_outline : type == 'event' ? Icons.event_outlined : Icons.groups_outlined, size: 19),
+                    ),
+                    title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    subtitle: subtitle.isEmpty ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                    onTap: () => _insertPostMention(type!, item),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+    final overlay = Overlay.of(context);
+    if (!_mentionOverlay!.mounted) overlay.insert(_mentionOverlay!);
+    else _mentionOverlay!.markNeedsBuild();
+  }
+
+  void _insertPostMention(String type, Map<String, dynamic> item) {
+    final id = (item[type == 'user' ? 'user_id' : 'id'] ?? '').toString();
+    final token = type == 'user' ? '@${item['username'] ?? item['first_name'] ?? 'utilisateur'}'
+        : type == 'event' ? '*${item['name'] ?? 'événement'}' : '~${item['name'] ?? 'communauté'}';
+    final text = _textController.text;
+    final cursor = _textController.selection.baseOffset.clamp(0, text.length);
+    final start = _mentionStart.clamp(0, cursor);
+    _textController.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, '$token '),
+      selection: TextSelection.collapsed(offset: start + token.length + 1),
+    );
+    if (id.isNotEmpty) {
+      if (type == 'user') {
+        _selectedMentions.removeWhere((m) => (m['user_id'] ?? '').toString() == id);
+        _selectedMentions.add(item);
+        _selectedMentionIds = _selectedMentions.map((m) => (m['user_id'] ?? m['id'] ?? '').toString()).where((x) => x.isNotEmpty).toList();
+      } else if (type == 'event') {
+        _selectedEventIds.add(id);
+      } else {
+        _selectedCommunityIds.add(id);
+      }
+    }
+    _removeMentionOverlay();
+    setState(() {});
+  }
+
+  void _hideLiveSuggestions() {
+    if (_suggestionTrigger == null && _liveSuggestions.isEmpty && !_loadingSuggestions) return;
+    _suggestionRequestId++;
+    setState(() {
+      _suggestionTrigger = null;
+      _suggestionQuery = '';
+      _liveSuggestions = [];
+      _loadingSuggestions = false;
+    });
+  }
+
+  Future<void> _searchLiveHashtags(String query, int requestId) async {
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'search_community_hashtags',
+        params: {'p_query': query.replaceFirst(RegExp(r'^#+'), ''), 'p_limit': 8},
+      );
+      dynamic decoded = response;
+      if (decoded is String) decoded = jsonDecode(decoded);
+      final results = decoded is List
+          ? decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+          : <Map<String, dynamic>>[];
+      if (!mounted || requestId != _suggestionRequestId) return;
+      setState(() { _liveSuggestions = results; _loadingSuggestions = false; });
+    } catch (error) {
+      debugPrint('[PostComposer] hashtag autocomplete failed: $error');
+      if (!mounted || requestId != _suggestionRequestId) return;
+      setState(() { _liveSuggestions = []; _loadingSuggestions = false; });
+    }
+  }
+
+  Future<void> _searchLiveMentions(String query, int requestId) async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        if (mounted && requestId == _suggestionRequestId) setState(() { _liveSuggestions = []; _loadingSuggestions = false; });
+        return;
+      }
+      List<Map<String, dynamic>> results = [];
+      final communityId = widget.communityId;
+      if (communityId != null && communityId.isNotEmpty) {
+        final service = Get.isRegistered<CommunityService>()
+            ? Get.find<CommunityService>() : Get.put(CommunityService());
+        final response = await service.getCommunityMembersRpc(
+          communityId: communityId, limit: 12, query: query,
+        );
+        final raw = response['items'] ?? response['members'] ?? response['data'] ?? [];
+        if (raw is List) {
+          results = raw.whereType<Map>().map((item) {
+            final row = Map<String, dynamic>.from(item);
+            final profile = row['user_profiles'] is Map
+                ? Map<String, dynamic>.from(row['user_profiles'] as Map) : <String, dynamic>{};
+            return {
+              ...profile, ...row,
+              'user_id': row['user_id'] ?? profile['user_id'] ?? row['userId'] ?? row['profile_id'] ?? profile['id'],
+              'username': row['username'] ?? profile['username'],
+              'first_name': row['first_name'] ?? profile['first_name'],
+              'last_name': row['last_name'] ?? profile['last_name'],
+              'photo_url': row['photo_url'] ?? profile['photo_url'],
+            };
+          }).where((item) => (item['user_id'] ?? '').toString() != userId).toList();
+        }
+      } else {
+        final friendships = await client.from('friendships')
+            .select('user_a_id,user_b_id')
+            .or('user_a_id.eq.$userId,user_b_id.eq.$userId').limit(200);
+        final friendIds = <String>{};
+        for (final relation in friendships) {
+          final otherId = relation['user_a_id']?.toString() == userId
+              ? relation['user_b_id']?.toString() : relation['user_a_id']?.toString();
+          if (otherId != null && otherId.isNotEmpty && otherId != userId) friendIds.add(otherId);
+        }
+        if (friendIds.isNotEmpty) {
+          final safeQuery = query.replaceAll(',', '').replaceAll('%', '').replaceAll('_', r'\_');
+          final profiles = await client.from('user_profiles')
+              .select('user_id,username,first_name,last_name,photo_url,is_verified')
+              .inFilter('user_id', friendIds.toList())
+              .or('username.ilike.%$safeQuery%,first_name.ilike.%$safeQuery%,last_name.ilike.%$safeQuery%')
+              .limit(8);
+          results = List<Map<String, dynamic>>.from(profiles);
+        }
+      }
+      if (!mounted || requestId != _suggestionRequestId) return;
+      setState(() { _liveSuggestions = results.take(8).toList(); _loadingSuggestions = false; });
+    } catch (error) {
+      debugPrint('[PostComposer] mention autocomplete failed: $error');
+      if (!mounted || requestId != _suggestionRequestId) return;
+      setState(() { _liveSuggestions = []; _loadingSuggestions = false; });
+    }
+  }
+
+  void _insertLiveSuggestion(Map<String, dynamic> suggestion) {
+    final trigger = _suggestionTrigger;
+    if (trigger == null) return;
+    final username = (suggestion['username'] ?? '').toString().trim();
+    final cleanName = (trigger == '#'
+        ? (suggestion['name'] ?? suggestion['normalized_name'] ?? '').toString().trim().replaceFirst(RegExp(r'^#+'), '')
+        : username).replaceFirst(RegExp(r'^[@#]+'), '');
+    final insertionValue = cleanName.isNotEmpty ? '$trigger$cleanName ' : '';
+    if (insertionValue.isEmpty) return;
+    final cursor = _textController.selection.baseOffset.clamp(0, _textController.text.length);
+    final start = (cursor - _suggestionQuery.length - 1).clamp(0, cursor);
+    final newText = _textController.text.replaceRange(start, cursor, insertionValue);
+    _textController.value = TextEditingValue(text: newText,
+        selection: TextSelection.collapsed(offset: start + insertionValue.length));
+    if (trigger == '#') {
+      if (!_selectedHashtags.any((tag) => tag.name.toLowerCase() == cleanName.toLowerCase())) {
+        _selectedHashtags.add(CommunityHashtag(
+          id: (suggestion['id'] ?? cleanName).toString(), name: cleanName,
+          postCount: (suggestion['post_count'] as num?)?.toInt() ?? 0,
+        ));
+      }
+    } else {
+      final id = (suggestion['user_id'] ?? suggestion['id'] ?? '').toString();
+      if (id.isNotEmpty && !_selectedMentionIds.contains(id)) {
+        _selectedMentionIds.add(id);
+        _selectedMentions.add({...suggestion, 'user_id': id});
+      }
+    }
+    _hideLiveSuggestions();
+    setState(() {});
+  }
+
+  Widget _buildLiveSuggestions(ColorScheme colors) {
+    final trigger = _suggestionTrigger;
+    if (trigger == null) return const SizedBox.shrink();
+    final scope = widget.communityId != null && widget.communityId!.isNotEmpty ? 'cette communauté' : 'tes amis';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 260),
+        decoration: BoxDecoration(
+          color: colors.surface, borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: .8)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .06), blurRadius: 14, offset: const Offset(0, 5))],
+        ),
+        child: _loadingSuggestions
+            ? const Padding(padding: EdgeInsets.all(16), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+            : _liveSuggestions.isEmpty
+                ? Padding(padding: const EdgeInsets.all(14), child: Text(
+                    trigger == '#' ? 'Aucun hashtag trouvé pour le moment.' : 'Aucun compte correspondant dans ${scope}.',
+                    style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)))
+                : ListView.separated(
+                    shrinkWrap: true, padding: const EdgeInsets.symmetric(vertical: 5),
+                    itemCount: _liveSuggestions.length,
+                    separatorBuilder: (_, __) => Divider(height: 1, indent: 54, color: colors.outlineVariant.withValues(alpha: .45)),
+                    itemBuilder: (context, index) {
+                      final item = _liveSuggestions[index];
+                      final isTag = trigger == '#';
+                      final displayName = isTag ? (item['name'] ?? '').toString()
+                          : '${item['first_name'] ?? ''} ${item['last_name'] ?? ''}'.trim();
+                      final handle = isTag ? '${item['post_count'] ?? 0} publication(s)' : '${item['username'] ?? ''}';
+                      final photo = (item['photo_url'] ?? '').toString();
+                      return ListTile(
+                        dense: true,
+                        leading: isTag
+                            ? CircleAvatar(backgroundColor: colors.primary.withValues(alpha: .12), child: Icon(Icons.tag_rounded, color: colors.primary))
+                            : CircleAvatar(backgroundColor: colors.surfaceContainerHighest,
+                                backgroundImage: photo.startsWith('http') ? NetworkImage(photo) : null,
+                                child: photo.startsWith('http') ? null : Icon(Icons.person_outline_rounded, color: colors.onSurfaceVariant)),
+                        title: Text(isTag ? '#$displayName' : (displayName.isEmpty ? handle : displayName),
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                        subtitle: Text(handle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+                        onTap: () => _insertLiveSuggestion(item),
+                      );
+                    },
+                  ),
+      ),
+    );
+  }
+
 
   Future<void> _openPollCreator() async {
     if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
@@ -112,6 +459,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
+    if (_pollData != null && content.isEmpty) {
+      Get.snackbar('Question manquante', 'Écris la question du sondage ou du quiz avant de publier.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+
     if (filesToPublish.length > 4) {
       Get.snackbar('Limite dépassée', 'Maximum 4 photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
@@ -133,14 +485,32 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
 
     final postContent = content.isNotEmpty ? content : null;
-    final hashtagsList = _selectedHashtags.map((h) => h.name).toList();
-    final mentionsList = _selectedMentionIds;
+    // Keep explicitly selected tags and also persist hashtags typed directly in the text.
+    final hashtagsList = <String>[];
+    final seenHashtags = <String>{};
+    void addHashtag(String raw) {
+      final clean = raw.trim().replaceFirst(RegExp(r'^#+'), '');
+      if (clean.isEmpty) return;
+      final key = clean.toLowerCase();
+      if (seenHashtags.add(key)) hashtagsList.add(clean);
+    }
+    for (final tag in _selectedHashtags) {
+      addHashtag(tag.name);
+    }
+    for (final match in RegExp(r'(?<![A-Za-z0-9_])#([A-Za-z0-9_À-ÿ]+)').allMatches(content)) {
+      addHashtag(match.group(1) ?? '');
+    }
+    final postId = const Uuid().v4();
+    final mentionsList = _selectedMentionIds.toSet().toList();
     final isCommunity = widget.communityId != null && widget.communityId!.isNotEmpty;
     final cId = widget.communityId ?? '';
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
-    unawaited(service.createCommunityPost(
+    unawaited(() async {
+      try {
+        await service.createCommunityPost(
+      requestedPostId: postId,
       communityId: cId,
       content: postContent,
       imageFiles: filesToPublish,
@@ -152,7 +522,15 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       mentions: mentionsList,
       poll: _pollData,
       allowPromotion: isCommunity ? _allowPromotion : true,
-    ));
+        );
+        if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
+          await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+            'p_source_type': 'post', 'p_source_id': postId,
+            'p_community_ids': _selectedCommunityIds.toList(), 'p_event_ids': _selectedEventIds.toList(),
+          });
+        }
+      } catch (e) { debugPrint('[MENTIONS] Post publish/entity mention error: $e'); }
+    }());
   }
 
   Future<void> _openGallery() async {
@@ -359,7 +737,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                     // Champ de texte
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
+                      child: CompositedTransformTarget(
+                        link: _mentionLayerLink,
+                        child: TextField(
                         controller: _textController,
                         autofocus: true,
                         maxLines: null,
@@ -377,9 +757,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           filled: false,
                           counterText: '',
                         ),
-                        onChanged: (_) => setState(() {}),
+                        onChanged: _onPostTextChanged,
+                        ),
                       ),
                     ),
+                    _buildLiveSuggestions(colorScheme),
 
                     if (_selectedHashtags.isNotEmpty)
                       Padding(
@@ -418,34 +800,105 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                         ),
                       ),
 
-                    // Poll Preview Card
+                    // Interactive poll / quiz preview
                     if (_pollData != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.09),
+                                colorScheme.tertiary.withValues(alpha: 0.06),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.28)),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.poll_rounded, color: colorScheme.primary),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Sondage (${_pollData!['kind']})', style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.primary)),
-                                    Text('${(_pollData!['options'] as List).length} options', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant)),
-                                  ],
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary.withValues(alpha: 0.13),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      _pollData!['kind'] == 'quiz' ? Icons.lightbulb_rounded : Icons.poll_rounded,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          switch (_pollData!['kind']) {
+                                            'quiz' => 'Quiz',
+                                            'multiple' => 'Sondage à choix multiples',
+                                            'this_or_that' => 'Tu préfères…',
+                                            _ => 'Sondage classique',
+                                          },
+                                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: colorScheme.onSurface),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '${(_pollData!['options'] as List).length} options · prêt à publier',
+                                          style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Supprimer le sondage',
+                                    onPressed: () => setState(() => _pollData = null),
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                onPressed: () => setState(() => _pollData = null),
-                                icon: const Icon(Icons.close_rounded),
-                              ),
+                              const SizedBox(height: 12),
+                              ...((_pollData!['options'] as List).asMap().entries.map((entry) {
+                                final rawOption = entry.value;
+                                final option = rawOption is Map
+                                    ? (rawOption['label'] ?? '').toString()
+                                    : rawOption.toString();
+                                final isCorrect = _pollData!['kind'] == 'quiz' &&
+                                    rawOption is Map && rawOption['is_correct'] == true;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 7),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.surface.withValues(alpha: 0.9),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isCorrect ? Colors.green.withValues(alpha: 0.7) : colorScheme.outlineVariant.withValues(alpha: 0.55),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          isCorrect ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                          size: 18,
+                                          color: isCorrect ? Colors.green : colorScheme.outline,
+                                        ),
+                                        const SizedBox(width: 9),
+                                        Expanded(child: Text(option, style: TextStyle(fontSize: 13, color: colorScheme.onSurface))),
+                                        if (isCorrect)
+                                          const Text('Bonne réponse', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              })),
                             ],
                           ),
                         ),
@@ -556,11 +1009,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                     icon: Icon(Icons.tag_rounded, color: _selectedHashtags.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
                     tooltip: 'Hashtags',
                   ),
-                  IconButton(
-                    onPressed: _openMentions,
-                    icon: Icon(Icons.alternate_email_rounded, color: _selectedMentions.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
-                    tooltip: 'Mentions',
-                  ),
+
                   IconButton(
                     onPressed: () async {
                       final result = await Get.to<Map<String, dynamic>>(() => CommunityPostSettingsScreen(

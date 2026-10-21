@@ -70,8 +70,37 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
     }
   }
 
+  bool get _eventHasStarted => !DateTime.now().isBefore(widget.event.startsAt);
+
+  String _friendlyRatingError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('pourrez noter') || message.contains('aura commencé')) {
+      return 'Vous pourrez noter cet événement dès qu’il aura commencé.';
+    }
+    if (message.contains('équipe de l') || message.contains('team')) {
+      return 'Les organisateurs et les membres de l’équipe ne peuvent pas noter cet événement.';
+    }
+    if (message.contains('conditions d’accès') || message.contains('conditions d\'accès') || message.contains('accès à cet événement')) {
+      return 'Votre profil ne remplit pas les conditions d’accès à cet événement.';
+    }
+    if (message.contains('authentification')) {
+      return 'Connectez-vous pour pouvoir noter cet événement.';
+    }
+    return 'Impossible d’enregistrer votre note. Vérifiez votre accès à l’événement et réessayez.';
+  }
+
   Future<void> _submitRating() async {
     if (_selectedScore == null || _isSaving) return;
+    if (!_eventHasStarted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vous pourrez noter cet événement dès qu’il aura commencé.'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -101,7 +130,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Impossible d\'enregistrer votre note. Veuillez réessayer.',
+              _friendlyRatingError(e),
               style: AppTextStyles.bodySmall.copyWith(color: Colors.white),
             ),
             backgroundColor: AppColors.error,
@@ -182,6 +211,35 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton(
+              onPressed: (_selectedScore == null || _isSaving || !_eventHasStarted)
+                  ? null
+                  : _submitRating,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                disabledForegroundColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.45),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: GoogleFonts.spaceGrotesk(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : Text(_myExistingRating != null ? 'Modifier ma note' : 'Valider ma note'),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -260,6 +318,32 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                     ),
                   ],
 
+                  if (!_eventHasStarted) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colorScheme.tertiaryContainer.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.45)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.schedule_rounded, color: colorScheme.onTertiaryContainer, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'La notation sera disponible dès le début de l’événement.',
+                              style: AppTextStyles.bodySmall.copyWith(color: colorScheme.onTertiaryContainer, height: 1.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 28),
 
                   // Affichage de la note sélectionnée
@@ -324,7 +408,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                       final isSelected = score == _selectedScore;
 
                       return InkWell(
-                        onTap: () => setState(() => _selectedScore = score),
+                        onTap: _eventHasStarted ? () => setState(() => _selectedScore = score) : null,
                         borderRadius: BorderRadius.circular(14),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
@@ -362,33 +446,7 @@ class _EventRatingScreenState extends State<EventRatingScreen> {
                     }),
                   ),
 
-                  const SizedBox(height: 36),
-
-                  // Bouton de validation
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (_selectedScore == null || _isSaving) ? null : _submitRating,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.35),
-                        disabledForegroundColor: Colors.white70,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                            )
-                          : Text(
-                              _myExistingRating != null ? 'Modifier ma note' : 'Valider ma note',
-                              style: GoogleFonts.spaceGrotesk(fontSize: 15, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
