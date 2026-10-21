@@ -144,7 +144,6 @@ class UserAgendaScreen extends GetView<UserAgendaController> {
               children: [
                 Row(children: [
                   Expanded(child: Text(event.name, style: AppTextStyles.h3.copyWith(color: Colors.white))),
-                  const SizedBox(width: 0),
                   EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 18),
                 ]),
                 const SizedBox(height: 4),
@@ -250,7 +249,6 @@ class _AgendaItem extends StatelessWidget {
                                 Row(
                                   children: [
                                     Expanded(child: Text(event.name, style: AppTextStyles.h4, maxLines: 2, overflow: TextOverflow.ellipsis)),
-                                    const SizedBox(width: 0),
                                     EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 17),
                                   ],
                                 ),
