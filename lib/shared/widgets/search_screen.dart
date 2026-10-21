@@ -408,7 +408,6 @@ class _SearchResultTile extends StatelessWidget {
             UserCertifiedBadge(size: 16, userId: item.id),
           ],
           if (item.category == 'event' || item.category == 'community') ...[
-            const SizedBox(width: 0),
             EntityCertifiedBadge(
               entityType: item.category == 'community' ? 'community' : 'event',
               entityId: item.id,
