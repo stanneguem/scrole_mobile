@@ -504,6 +504,33 @@ class SupabaseEventService {
     }
   }
 
+
+  Future<List<Map<String, dynamic>>> getMyEventItineraryPlans(String eventId) async {
+    final response = await _client
+        .from('event_itinerary_plans')
+        .select('planned_date, plan')
+        .eq('event_id', eventId)
+        .eq('user_id', _client.auth.currentUser!.id)
+        .order('planned_date');
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<void> saveMyEventItineraryPlan({
+    required String eventId,
+    required String plannedDate,
+    required Map<String, dynamic> plan,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Vous devez être connecté pour enregistrer un planning.');
+    await _client.from('event_itinerary_plans').upsert({
+      'user_id': user.id,
+      'event_id': eventId,
+      'planned_date': plannedDate,
+      'plan': plan,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id,event_id,planned_date');
+  }
+
   Future<List<Map<String, dynamic>>> getEventDayAttendance(String eventId) async {
     try {
       final response = await _client.rpc('get_event_day_attendance', params: {'p_event_id': eventId});
