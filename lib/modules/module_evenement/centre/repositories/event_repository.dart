@@ -722,6 +722,13 @@ class EventRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getExternalEventItinerary({
+    required String userId,
+    required String eventId,
+  }) async {
+    return _remote.getExternalEventItinerary(userId: userId, eventId: eventId);
+  }
+
   Future<void> saveMyEventItineraryPlan({
     required String eventId,
     required String plannedDate,
