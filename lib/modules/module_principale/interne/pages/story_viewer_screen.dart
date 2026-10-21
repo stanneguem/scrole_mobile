@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
@@ -198,6 +199,25 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
       setState(() {
         _currentStory.isLiked = !newLiked;
       });
+    }
+  }
+
+  Future<void> _shareCurrentStory() async {
+    final story = _currentStory;
+    final author = _currentGroup.author.displayName;
+    final parts = <String>[
+      'Story de $author sur Scrole',
+      if ((story.content ?? '').trim().isNotEmpty) story.content!.trim(),
+      if ((story.imageUrl ?? '').trim().isNotEmpty) story.imageUrl!.trim(),
+    ];
+    try {
+      await SharePlus.instance.share(ShareParams(text: parts.join('\n\n')));
+    } catch (e) {
+      if (mounted) {
+        Get.snackbar('Erreur', 'Impossible de partager cette story.',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+      debugPrint('[STORY] Error sharing story: $e');
     }
   }
 
@@ -582,6 +602,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with TickerProvid
                                   ),
                                 ),
                               ),
+
+                            // Share story with the device share sheet.
+                            InkWell(
+                              onTap: _shareCurrentStory,
+                              borderRadius: BorderRadius.circular(16),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                child: Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+                              ),
+                            ),
 
                             // 2. Comments icon & count (Both own & other stories)
                             InkWell(
@@ -1091,6 +1121,62 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
     }
   }
 
+  Future<void> _toggleStoryCommentReaction(Map<String, dynamic> comment, String reaction) async {
+    final commentId = comment['id']?.toString() ?? '';
+    if (commentId.isEmpty || _isExpired) return;
+
+    final previousReaction = comment['user_reaction']?.toString();
+    final previousLikes = (comment['likes_count'] as num?)?.toInt() ?? 0;
+    final previousDislikes = (comment['dislikes_count'] as num?)?.toInt() ?? 0;
+    final nextReaction = previousReaction == reaction ? 'none' : reaction;
+
+    setState(() {
+      comment['user_reaction'] = nextReaction == 'none' ? null : nextReaction;
+      comment['likes_count'] = (previousLikes
+          + (nextReaction == 'like' ? 1 : 0)
+          - (previousReaction == 'like' ? 1 : 0)).clamp(0, 1 << 30);
+      comment['dislikes_count'] = (previousDislikes
+          + (nextReaction == 'dislike' ? 1 : 0)
+          - (previousReaction == 'dislike' ? 1 : 0)).clamp(0, 1 << 30);
+    });
+
+    try {
+      await _repo.setStoryCommentReaction(commentId, nextReaction);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        comment['user_reaction'] = previousReaction;
+        comment['likes_count'] = previousLikes;
+        comment['dislikes_count'] = previousDislikes;
+      });
+      Get.snackbar('Erreur', 'Impossible d’enregistrer la réaction.',
+          snackPosition: SnackPosition.BOTTOM);
+      debugPrint('[STORY] Error reacting to comment: $e');
+    }
+  }
+
+  Future<void> _shareStoryComment(Map<String, dynamic> comment) async {
+    final author = comment['author'] is Map
+        ? Map<String, dynamic>.from(comment['author'])
+        : <String, dynamic>{};
+    final username = author['username']?.toString();
+    final authorName = username != null && username.isNotEmpty
+        ? '@$username'
+        : (author['first_name']?.toString() ?? 'Utilisateur');
+    final content = comment['content']?.toString() ?? '';
+    try {
+      await SharePlus.instance.share(ShareParams(
+        text: 'Commentaire de $authorName sur une story Scrole :\n\n$content',
+      ));
+    } catch (e) {
+      if (mounted) {
+        Get.snackbar('Erreur', 'Impossible de partager ce commentaire.',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+      debugPrint('[STORY] Error sharing story comment: $e');
+    }
+  }
+
   Future<void> _sendComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty || _isSending || _isExpired) return;
@@ -1310,6 +1396,9 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
       return '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}';
     }
     final content = comment['content']?.toString() ?? '';
+    final likesCount = (comment['likes_count'] as num?)?.toInt() ?? 0;
+    final dislikesCount = (comment['dislikes_count'] as num?)?.toInt() ?? 0;
+    final userReaction = comment['user_reaction']?.toString();
     final replies = comment['replies'] is List ? (comment['replies'] as List).map((r) => Map<String, dynamic>.from(r)).toList() : <Map<String, dynamic>>[];
 
     return Padding(
@@ -1365,9 +1454,48 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 12, top: 4),
-                  child: Row(
+                  padding: const EdgeInsets.only(left: 8, top: 5),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      InkWell(
+                        onTap: () => _shareStoryComment(comment),
+                        child: Icon(Icons.ios_share_rounded, size: 15, color: colorScheme.onSurfaceVariant),
+                      ),
+                      InkWell(
+                        onTap: () => _toggleStoryCommentReaction(comment, 'like'),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.north_rounded, size: 16,
+                              color: userReaction == 'like' ? colorScheme.primary : colorScheme.onSurfaceVariant),
+                            if (likesCount > 0) ...[
+                              const SizedBox(width: 3),
+                              Text('$likesCount', style: TextStyle(fontSize: 11.5,
+                                fontWeight: userReaction == 'like' ? FontWeight.bold : FontWeight.normal,
+                                color: userReaction == 'like' ? colorScheme.primary : colorScheme.onSurfaceVariant)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _toggleStoryCommentReaction(comment, 'dislike'),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.south_rounded, size: 16,
+                              color: userReaction == 'dislike' ? Colors.orangeAccent : colorScheme.onSurfaceVariant),
+                            if (dislikesCount > 0) ...[
+                              const SizedBox(width: 3),
+                              Text('$dislikesCount', style: TextStyle(fontSize: 11.5,
+                                fontWeight: userReaction == 'dislike' ? FontWeight.bold : FontWeight.normal,
+                                color: userReaction == 'dislike' ? Colors.orangeAccent : colorScheme.onSurfaceVariant)),
+                            ],
+                          ],
+                        ),
+                      ),
                       GestureDetector(
                         onTap: () => setState(() => _replyingTo = comment),
                         child: Text(
