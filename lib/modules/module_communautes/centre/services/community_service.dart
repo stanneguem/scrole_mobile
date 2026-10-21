@@ -922,7 +922,29 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
         Get.put(CommunityOutboxProcessor());
       }
       await Get.find<CommunityOutboxProcessor>().processPendingPosts();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[POST] Immediate outbox processing failed for $postId: $e');
+    }
+
+    // Do not silently report success when the server rejected the publication.
+    // Keep the outbox entry for retry, but return the actual backend error to
+    // the composer so the author knows the post has not yet been published.
+    try {
+      final pending = await db
+          .query('post_outbox', where: 'operation_id = ?', whereArgs: [operationId], limit: 1);
+      if (pending.isNotEmpty) {
+        final rawError = pending.first['last_error']?.toString().trim();
+        final detail = (rawError == null || rawError.isEmpty)
+            ? 'La publication est enregistrée pour une nouvelle tentative.'
+            : rawError;
+        throw Exception('Publication non confirmée : $detail');
+      }
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: Publication non confirmée')) {
+        rethrow;
+      }
+      debugPrint('[POST] Could not verify outbox result for $postId: $e');
+    }
   }
 
   String _generateUuidV4() {
