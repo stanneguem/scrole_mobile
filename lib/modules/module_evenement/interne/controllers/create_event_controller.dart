@@ -50,6 +50,10 @@ class CreateEventController extends GetxController {
   final RxBool isLoading = false.obs;
   final RxInt noncertEventHorizonMonths = 2.obs;
   final RxInt noncertEventMaxDurationDays = 2.obs;
+  final RxInt certifiedEventHorizonMonths = 6.obs;
+  final RxInt remainingIncludedEvents = 0.obs;
+  final RxBool canUseIncludedCertification = false.obs;
+  final RxBool useIncludedCertification = false.obs;
 
   @override
   void onInit() {
@@ -69,10 +73,14 @@ class CreateEventController extends GetxController {
         date.hour, date.minute);
   }
 
-  DateTime get maxStartDate => _addMonthsClamped(DateTime.now(), noncertEventHorizonMonths.value);
+  DateTime get maxStartDate => _addMonthsClamped(
+      DateTime.now(), useIncludedCertification.value
+          ? certifiedEventHorizonMonths.value
+          : noncertEventHorizonMonths.value);
 
   DateTime get maxEndDate {
     final start = startDate.value;
+    if (useIncludedCertification.value) return DateTime.now().add(const Duration(days: 3650));
     if (start == null) return maxStartDate;
     return start.add(Duration(days: noncertEventMaxDurationDays.value));
   }
@@ -86,6 +94,17 @@ class CreateEventController extends GetxController {
             (result['noncert_event_horizon_months'] as num?)?.toInt() ?? 2;
         noncertEventMaxDurationDays.value =
             (result['noncert_event_max_duration_days'] as num?)?.toInt() ?? 2;
+        certifiedEventHorizonMonths.value =
+            (result['certified_event_horizon_months'] as num?)?.toInt() ?? 6;
+      }
+      final entitlements = await client.rpc('scrole_get_my_subscription_entitlements');
+      if (entitlements is Map && entitlements['active'] == true) {
+        remainingIncludedEvents.value =
+            (entitlements['event_remaining'] as num?)?.toInt() ?? 0;
+        canUseIncludedCertification.value = remainingIncludedEvents.value > 0;
+      } else {
+        remainingIncludedEvents.value = 0;
+        canUseIncludedCertification.value = false;
       }
     } catch (e) {
       // Le serveur reste autoritaire. Les valeurs par défaut reflètent la configuration initiale.
@@ -93,10 +112,27 @@ class CreateEventController extends GetxController {
     }
   }
 
+  void setUseIncludedCertification(bool enabled) {
+    if (enabled && !canUseIncludedCertification.value) return;
+    useIncludedCertification.value = enabled;
+    final start = startDate.value;
+    if (start != null && start.isAfter(maxStartDate)) {
+      startDate.value = null;
+      endDate.value = null;
+      return;
+    }
+    final end = endDate.value;
+    if (!enabled && start != null && end != null &&
+        end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) {
+      endDate.value = null;
+    }
+  }
+
   void selectStartDate(DateTime date) {
     startDate.value = date;
     final end = endDate.value;
-    if (end != null && end.difference(date) > Duration(days: noncertEventMaxDurationDays.value)) {
+    if (!useIncludedCertification.value && end != null &&
+        end.difference(date) > Duration(days: noncertEventMaxDurationDays.value)) {
       endDate.value = null;
     }
   }
@@ -190,7 +226,8 @@ class CreateEventController extends GetxController {
     final end = endDate.value;
     if (start == null || (end != null && !end.isAfter(start))) return false;
     if (start.isAfter(maxStartDate)) return false;
-    if (end != null && end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) return false;
+    if (!useIncludedCertification.value && end != null &&
+        end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) return false;
     return true;
   }
 
@@ -222,6 +259,7 @@ class CreateEventController extends GetxController {
         'is_free': isFree.value,
         'is_public': isPublic.value,
         'real_created_at': isRecent.value ? realCreatedAt.value?.toUtc().toIso8601String() : null,
+        'certify_with_subscription': useIncludedCertification.value,
       });
       
       Get.back();
