@@ -1278,43 +1278,22 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
                 top: false,
                 child: Row(
                   children: [
-                    // 1. Ajouter à l'agenda (2/6 de l'espace)
                     Expanded(
-                      flex: 2,
                       child: ElevatedButton.icon(
                         onPressed: _isCalendarLoading ? null : _handleCalendarAction,
-                        icon: Icon(preview.isInMyCalendar ? Icons.check : Icons.calendar_today, size: 16),
+                        icon: Icon(preview.isInMyCalendar ? Icons.check : Icons.calendar_today, size: 18),
                         label: Text(
-                          '${NumberFormatter.formatCount(totalAdded)}',
-                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 12),
+                          preview.isInMyCalendar
+                              ? 'event_added_to_calendar'.tr
+                              : 'event_add_to_calendar'.tr,
+                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: preview.isInMyCalendar ? AppColors.success : colorScheme.surfaceContainerHighest,
-                          foregroundColor: preview.isInMyCalendar ? AppColors.white : colorScheme.onSurface,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                          backgroundColor: preview.isInMyCalendar ? AppColors.success : AppColors.primary,
+                          foregroundColor: AppColors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // 2. S'inscrire (4/6 de l'espace)
-                    Expanded(
-                      flex: 4,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _showTicketsOrRegistrationSheet(context, preview);
-                        },
-                        icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                        label: Text(
-                          'S\'inscrire (${NumberFormatter.formatCount(preview.attendeeCount)})',
-                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
