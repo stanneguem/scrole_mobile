@@ -5,6 +5,10 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'creation_title': "Créer",
+      'creation_prompt': "Que souhaitez-vous créer ?",
+      'creation_event_title': "Événement",
+      'creation_event_subtitle': "Organisez un événement et invitez des participants.",
       // Global app drawer
       'drawer_my_content': "Mon contenu",
       'drawer_creation': "Créer",
@@ -665,6 +669,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Vérification des restrictions…",
     },
     'en': {
+      'creation_title': "Create",
+      'creation_prompt': "What would you like to create?",
+      'creation_event_title': "Event",
+      'creation_event_subtitle': "Organize an event and invite participants.",
       // Global app drawer
       'drawer_my_content': "My content",
       'drawer_creation': "Create",
@@ -1321,6 +1329,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Checking field restrictions…",
     },
     'es': {
+      'creation_title': "Crear",
+      'creation_prompt': "¿Qué te gustaría crear?",
+      'creation_event_title': "Evento",
+      'creation_event_subtitle': "Organiza un evento e invita a participantes.",
       // Global app drawer
       'drawer_my_content': "Mi contenido",
       'drawer_creation': "Crear",
@@ -1894,6 +1906,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Comprobando las restricciones…",
     },
     'de': {
+      'creation_title': "Erstellen",
+      'creation_prompt': "Was möchtest du erstellen?",
+      'creation_event_title': "Veranstaltung",
+      'creation_event_subtitle': "Organisiere eine Veranstaltung und lade Teilnehmer ein.",
       // Global app drawer
       'drawer_my_content': "Meine Inhalte",
       'drawer_creation': "Erstellen",
@@ -2450,6 +2466,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Feldbeschränkungen werden geprüft…",
     },
     'it': {
+      'creation_title': "Crea",
+      'creation_prompt': "Che cosa vuoi creare?",
+      'creation_event_title': "Evento",
+      'creation_event_subtitle': "Organizza un evento e invita i partecipanti.",
       // Global app drawer
       'drawer_my_content': "I miei contenuti",
       'drawer_creation': "Crea",
@@ -3006,6 +3026,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "Verifica delle restrizioni…",
     },
     'pt': {
+      'creation_title': "Criar",
+      'creation_prompt': "O que você gostaria de criar?",
+      'creation_event_title': "Evento",
+      'creation_event_subtitle': "Organize um evento e convide participantes.",
       // Global app drawer
       'drawer_my_content': "Meu conteúdo",
       'drawer_creation': "Criar",
@@ -3562,6 +3586,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "A verificar as restrições…",
     },
     'zh': {
+      'creation_title': "创建",
+      'creation_prompt': "你想创建什么？",
+      'creation_event_title': "活动",
+      'creation_event_subtitle': "组织一场活动并邀请参与者。",
       // Global app drawer
       'drawer_my_content': "我的内容",
       'drawer_creation': "创建",
@@ -4118,6 +4146,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "正在检查字段限制…",
     },
     'ja': {
+      'creation_title': "作成",
+      'creation_prompt': "何を作成しますか？",
+      'creation_event_title': "イベント",
+      'creation_event_subtitle': "イベントを企画して参加者を招待しましょう。",
       // Global app drawer
       'drawer_my_content': "マイコンテンツ",
       'drawer_creation': "作成",
@@ -4673,6 +4705,10 @@ class AppTranslationAdditions {
       'edit_profile_checking_lock': "項目の制限を確認中…",
     },
     'ru': {
+      'creation_title': "Создать",
+      'creation_prompt': "Что вы хотите создать?",
+      'creation_event_title': "Мероприятие",
+      'creation_event_subtitle': "Организуйте мероприятие и пригласите участников.",
       // Global app drawer
       'drawer_my_content': "Мой контент",
       'drawer_creation': "Создать",
