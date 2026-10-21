@@ -11,6 +11,23 @@ create unique index if not exists scrole_subscriptions_one_active_per_user_idx
   on public.scrole_subscriptions (user_id)
   where status = 'active';
 
+-- Profile certifications included in Pro/Premium are tracked separately from
+-- independently purchased/admin-granted profile certifications.
+create table if not exists public.profile_certification_entitlements (
+  id uuid primary key default gen_random_uuid(),
+  user_certification_id uuid not null unique references public.user_certifications(id) on delete restrict,
+  subscription_id uuid not null references public.scrole_subscriptions(id) on delete restrict,
+  status text not null default 'active' check (status in ('active','suspended','expired')),
+  valid_until timestamptz,
+  suspended_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists profile_certification_entitlements_subscription_status_idx
+  on public.profile_certification_entitlements(subscription_id,status);
+alter table public.profile_certification_entitlements enable row level security;
+revoke all on public.profile_certification_entitlements from anon,authenticated;
+
 create or replace function public.scrole_enforce_event_quota_limits()
 returns trigger
 language plpgsql
@@ -161,6 +178,155 @@ $function$;
 
 revoke all on function public.scrole_grant_included_certification(uuid,text,uuid) from public, anon, authenticated;
 grant execute on function public.scrole_grant_included_certification(uuid,text,uuid) to service_role;
+
+-- Grant the profile tier included in a Pro/Premium subscription after the
+-- trusted payment backend confirms activation. Existing independently granted
+-- certifications are left untouched.
+create or replace function public.scrole_grant_included_profile_certification(p_subscription_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_sub public.scrole_subscriptions%rowtype;
+  v_type_id uuid;
+  v_cert_id uuid;
+  v_entitlement_id uuid;
+  v_code text;
+begin
+  select * into v_sub from public.scrole_subscriptions
+  where id=p_subscription_id for update;
+  if not found then raise exception 'subscription_not_found' using errcode='P0002'; end if;
+  if v_sub.status <> 'active' or (v_sub.ends_at is not null and v_sub.ends_at <= now()) then
+    raise exception 'active_subscription_required' using errcode='22023';
+  end if;
+
+  select id into v_type_id from public.certification_type
+  where lower(code)=v_sub.plan_code and est_actif=true
+  limit 1;
+  if v_type_id is null then raise exception 'profile_certification_type_not_configured' using errcode='55000'; end if;
+
+  select pce.id, pce.user_certification_id
+  into v_entitlement_id, v_cert_id
+  from public.profile_certification_entitlements pce
+  where pce.subscription_id=p_subscription_id
+  order by pce.created_at desc limit 1 for update;
+
+  if v_cert_id is null then
+    select uc.id into v_cert_id
+    from public.user_certifications uc
+    where uc.user_id=v_sub.user_id and uc.certification_type_id=v_type_id
+      and uc.status::text='active'
+      and uc.issued_at <= now()
+      and (uc.expires_at is null or uc.expires_at > now())
+      and not exists (
+        select 1 from public.profile_certification_entitlements pce
+        where pce.user_certification_id=uc.id
+      )
+    order by uc.issued_at desc limit 1;
+    if v_cert_id is not null then
+      return jsonb_build_object('status','already_certified_independently','user_certification_id',v_cert_id);
+    end if;
+
+    v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,12));
+    insert into public.user_certifications(
+      user_id,certification_type_id,status,issued_at,expires_at,certification_code
+    ) values (
+      v_sub.user_id,v_type_id,'active'::public.status_certification,now(),v_sub.ends_at,v_code
+    ) returning id into v_cert_id;
+
+    insert into public.profile_certification_entitlements(
+      user_certification_id,subscription_id,status,valid_until
+    ) values(v_cert_id,p_subscription_id,'active',v_sub.ends_at)
+    returning id into v_entitlement_id;
+  else
+    update public.user_certifications
+    set certification_type_id=v_type_id,status='active'::public.status_certification,
+        issued_at=coalesce(issued_at,now()),expires_at=v_sub.ends_at
+    where id=v_cert_id and user_id=v_sub.user_id;
+    update public.profile_certification_entitlements
+    set status='active',valid_until=v_sub.ends_at,suspended_at=null,updated_at=now()
+    where id=v_entitlement_id;
+  end if;
+
+  insert into public.scrole_certification_audit(
+    actor_user_id,subscription_id,entity_type,entity_id,action,new_status,details
+  ) values (
+    v_sub.user_id,p_subscription_id,'profile',v_sub.user_id,'included_profile_certification_granted','active',
+    jsonb_build_object('user_certification_id',v_cert_id,'plan_code',v_sub.plan_code,'valid_until',v_sub.ends_at)
+  );
+
+  return jsonb_build_object('status','active','user_certification_id',v_cert_id,'entitlement_id',v_entitlement_id);
+end;
+$function$;
+
+revoke all on function public.scrole_grant_included_profile_certification(uuid) from public,anon,authenticated;
+grant execute on function public.scrole_grant_included_profile_certification(uuid) to service_role;
+
+-- Keep the subscription-included profile badge in sync on plan downgrade, expiry,
+-- cancellation and renewal. Independently granted profile certifications are not linked
+-- to this table and therefore remain untouched.
+create or replace function public.scrole_sync_included_profile_certification()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_type_id uuid;
+  v_ent record;
+begin
+  if new.status='active' and (new.ends_at is null or new.ends_at > now()) then
+    select id into v_type_id from public.certification_type
+    where lower(code)=new.plan_code and est_actif=true limit 1;
+
+    for v_ent in
+      update public.profile_certification_entitlements
+      set status='active',valid_until=new.ends_at,suspended_at=null,updated_at=now()
+      where subscription_id=new.id and status in ('active','suspended')
+      returning id,user_certification_id
+    loop
+      update public.user_certifications
+      set status='active'::public.status_certification,
+          certification_type_id=coalesce(v_type_id,certification_type_id),
+          expires_at=new.ends_at
+      where id=v_ent.user_certification_id;
+
+      insert into public.scrole_certification_audit(
+        actor_user_id,subscription_id,entity_type,entity_id,action,previous_status,new_status,details
+      ) values (
+        new.user_id,new.id,'profile',new.user_id,'included_profile_certification_reactivated',
+        'suspended','active',jsonb_build_object('user_certification_id',v_ent.user_certification_id,'valid_until',new.ends_at)
+      );
+    end loop;
+  else
+    for v_ent in
+      update public.profile_certification_entitlements
+      set status='suspended',suspended_at=coalesce(suspended_at,now()),updated_at=now()
+      where subscription_id=new.id and status='active'
+      returning id,user_certification_id
+    loop
+      update public.user_certifications
+      set expires_at=least(coalesce(expires_at,now()),now())
+      where id=v_ent.user_certification_id;
+
+      insert into public.scrole_certification_audit(
+        actor_user_id,subscription_id,entity_type,entity_id,action,previous_status,new_status,details
+      ) values (
+        new.user_id,new.id,'profile',new.user_id,'included_profile_certification_suspended',
+        'active','suspended',jsonb_build_object('user_certification_id',v_ent.user_certification_id)
+      );
+    end loop;
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists scrole_sync_included_profile_certification on public.scrole_subscriptions;
+create trigger scrole_sync_included_profile_certification
+after update of status,ends_at,plan_code on public.scrole_subscriptions
+for each row execute function public.scrole_sync_included_profile_certification();
 
 -- Expiration is processed every 15 minutes; included certifications are suspended,
 -- not deleted, and every transition is recorded in the audit log.
