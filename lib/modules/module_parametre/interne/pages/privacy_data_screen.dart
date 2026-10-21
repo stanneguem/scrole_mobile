@@ -57,6 +57,7 @@ class PrivacyDataScreen extends StatelessWidget {
                     afficherPays: old.afficherPays,
                     afficherVille: old.afficherVille,
                     afficherDerniereConnexion: old.afficherDerniereConnexion,
+                    eventItineraryVisibility: old.eventItineraryVisibility,
                   ));
                 } catch (e, stack) {
                   debugPrint('[FOLLOW] update user_privacy.profile_visibility exception=$e\\n$stack');
@@ -66,7 +67,69 @@ class PrivacyDataScreen extends StatelessWidget {
               textPrimary: textPrimary,
               textSecondary: textSecondary,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
+            Text(
+              'Visibilité de mon planning événementiel',
+              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Choisissez qui peut consulter les activités et horaires que vous avez prévus pour vos événements.',
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.black1 : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: textSecondary.withValues(alpha: 0.25)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: const {'only_me', 'friends', 'followers', 'everyone'}.contains(p.eventItineraryVisibility)
+                      ? p.eventItineraryVisibility
+                      : 'only_me',
+                  items: const [
+                    DropdownMenuItem(value: 'only_me', child: Text('Moi uniquement')),
+                    DropdownMenuItem(value: 'friends', child: Text('Mes amis')),
+                    DropdownMenuItem(value: 'followers', child: Text('Mes followers')),
+                    DropdownMenuItem(value: 'everyone', child: Text('Tout le monde')),
+                  ],
+                  onChanged: (value) async {
+                    if (value == null || value == p.eventItineraryVisibility) return;
+                    final client = Supabase.instance.client;
+                    final userId = client.auth.currentUser?.id;
+                    if (userId == null) {
+                      Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+                      return;
+                    }
+                    try {
+                      await client.from('user_privacy').upsert({
+                        'user_id': userId,
+                        'event_itinerary_visibility': value,
+                      }, onConflict: 'user_id');
+                      service.applyPrivacy(AppPrivacy(
+                        profileVisibility: p.profileVisibility,
+                        showOnlineStatus: p.showOnlineStatus,
+                        allowMessagesFrom: p.allowMessagesFrom,
+                        afficherPays: p.afficherPays,
+                        afficherVille: p.afficherVille,
+                        afficherDerniereConnexion: p.afficherDerniereConnexion,
+                  eventItineraryVisibility: p.eventItineraryVisibility,
+                        eventItineraryVisibility: value,
+                      ));
+                      Get.snackbar('Confidentialité', 'Visibilité du planning mise à jour.');
+                    } catch (e) {
+                      debugPrint('[PRIVACY] update event_itinerary_visibility failed: $e');
+                      Get.snackbar('error_title'.tr, 'follow_action_failed'.tr);
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
             _buildSwitchTile(
               title: 'privacy_use_data_improve'.tr,
               subtitle: 'privacy_use_data_improve_desc'.tr,
