@@ -271,7 +271,7 @@ class _FollowListTabState extends State<_FollowListTab> {
                               Flexible(child: Text(display.isEmpty ? pseudo : display, maxLines: 1, overflow: TextOverflow.ellipsis)),
                               if (certified) ...[
                                 const SizedBox(width: 4),
-                                const UserCertifiedBadge(size: 16, showTooltip: true),
+                                UserCertifiedBadge(size: 16, showTooltip: true, userId: id),
                               ],
                             ]),
                             subtitle: Text(pseudo.startsWith('@') ? pseudo : '@$pseudo'),
