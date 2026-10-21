@@ -1312,6 +1312,7 @@ class SupabaseEventService {
       await _client.rpc('remove_event_from_calendar', params: {'p_event_id': eventId});
     } catch (e) {
       debugPrint('[Error] removeEventFromCalendar RPC: $e');
+      rethrow;
     }
   }
 
