@@ -783,7 +783,7 @@ class FeedPostCard extends StatelessWidget {
                         ),
                         if (u.isCertified) ...[
                           const SizedBox(width: 6),
-                          UserCertifiedBadge(size: 14, userId: post.authorObj?.userId),
+                          UserCertifiedBadge(size: 14, userId: u.userId),
                         ],
                       ],
                     ),
