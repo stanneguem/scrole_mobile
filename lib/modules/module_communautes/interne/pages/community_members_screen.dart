@@ -494,7 +494,8 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                                       username: username,
                                       avatarUrl: avatar,
                                       isCertified: isCertified,
-                                      prefixWidget: isVerified ? const Icon(Icons.verified_rounded, size: 16, color: Colors.blue) : null,
+                                      userId: member['user_id']?.toString(),
+                                      prefixWidget: isVerified ? UserCertifiedBadge(size: 16, userId: member['user_id']?.toString()) : null,
                                       subtitle: roleTag.isNotEmpty ? roleTag : null,
                                       trailing: (_isStaff && !isSelf)
                                           ? Icon(Icons.more_vert_rounded, size: 18, color: colorScheme.onSurfaceVariant)
