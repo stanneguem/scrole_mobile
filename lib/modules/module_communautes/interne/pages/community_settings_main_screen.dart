@@ -174,7 +174,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
       } catch (e) {
         debugPrint('[CommunitySettingsMainScreen] Certification status unavailable: $e');
       }
-      if (_role != 'admin' && _role != 'moderator') {
+      if (!_isCommunityOwner && _role != 'admin' && _role != 'moderator') {
         Get.back();
         Get.snackbar('error'.tr, 'community_access_denied'.tr, snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
         return;
@@ -234,7 +234,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
       return Scaffold(appBar: AppBar(title: Text('community_management_title'.tr)), body: const Center(child: CircularProgressIndicator()));
     }
 
-    if (!_isAdmin && _role != 'moderator') {
+    if (!_isCommunityOwner && !_isAdmin && _role != 'moderator') {
       return Scaffold(
         appBar: AppBar(title: Text('community_management_title'.tr)),
         body: Center(child: Text('community_access_denied'.tr, style: TextStyle(color: colorScheme.error, fontSize: 16))),
@@ -248,15 +248,17 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 1. Modération -> Écran C
-          _buildTile(
-            icon: Icons.admin_panel_settings_outlined,
-            iconColor: Colors.indigo,
-            title: 'community_mgmt_mod'.tr,
-            subtitle: 'community_mgmt_mod_sub'.tr,
-            badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
-            onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
-          ),
+          // La gestion de la certification appartient exclusivement au propriétaire.
+          // Les outils de modération restent réservés aux administrateurs/modérateurs.
+          if (_isAdmin || _role == 'moderator')
+            _buildTile(
+              icon: Icons.admin_panel_settings_outlined,
+              iconColor: Colors.indigo,
+              title: 'community_mgmt_mod'.tr,
+              subtitle: 'community_mgmt_mod_sub'.tr,
+              badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
+              onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
+            ),
           if (_isCommunityOwner) ...[
             _buildTile(
               icon: Icons.verified_rounded,
