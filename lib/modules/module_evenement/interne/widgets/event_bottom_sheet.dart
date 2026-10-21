@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/event_model.dart';
 
 class EventBottomSheet extends StatelessWidget {
@@ -73,15 +74,19 @@ class EventBottomSheet extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              event.name,
-                              style: AppTextStyles.labelLarge.copyWith(
-                                color: colorScheme.onSurface,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            Row(children: [
+                              Expanded(child: Text(
+                                event.name,
+                                style: AppTextStyles.labelLarge.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )),
+                              const SizedBox(width: 5),
+                              EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                            ]),
                             const SizedBox(height: 4),
                             Text(
                               '${event.timeString ?? 'Toute la journée'} · ${event.isOnline ? 'En ligne' : (event.address?.split(',').first ?? 'Paris')}',
