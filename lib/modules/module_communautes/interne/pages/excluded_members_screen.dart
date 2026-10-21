@@ -183,7 +183,7 @@ class _ExcludedMembersScreenState extends State<ExcludedMembersScreen> {
                                     ),
                                     if (excludedUser.isVerified) ...[
                                       const SizedBox(width: 4),
-                                      const UserCertifiedBadge(size: 16),
+                                      UserCertifiedBadge(size: 16, userId: excludedUser.userId),
                                     ],
                                   ],
                                 ),
