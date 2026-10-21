@@ -167,7 +167,7 @@ begin
   if v_user is null then
     raise exception 'authentication_required' using errcode = '28000';
   end if;
-  if p_new_plan not in ('pro', 'premium') then
+  if p_new_plan is null or p_new_plan not in ('pro', 'premium') then
     raise exception 'invalid_subscription_plan' using errcode = '22023';
   end if;
 
@@ -321,3 +321,4 @@ end;
 $$;
 
 revoke all on function public.scrole_suspend_expired_subscription_certifications() from public, anon, authenticated;
+grant execute on function public.scrole_suspend_expired_subscription_certifications() to service_role;
