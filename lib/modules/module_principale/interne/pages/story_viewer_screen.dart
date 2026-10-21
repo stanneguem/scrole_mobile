@@ -1865,7 +1865,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                           ],
                           if (isCertified) ...[
                             const SizedBox(width: 4),
-                            UserCertifiedBadge(size: 13, userId: (v['user_id'] ?? v['author_id'] ?? v['id'])?.toString()),
+                            UserCertifiedBadge(size: 13, userId: (author['user_id'] ?? author['id'])?.toString()),
                           ],
                           if (commentAge().isNotEmpty) ...[
                             const SizedBox(width: 6),
