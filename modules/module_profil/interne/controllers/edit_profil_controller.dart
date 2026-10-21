@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:scrole/app/repository_global/location_repository.dart';
 import 'package:scrole/app/service_global/centre_interrets_service.dart';
-import 'package:scrole/app/service_global/current_country_verification_service.dart';
 import 'package:scrole/shared/models/interest_model.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/app/routes/app_pages.dart';
@@ -297,31 +296,6 @@ class EditProfileController extends GetxController {
     }
     if (!(formKey.currentState?.validate() ?? false)) return;
 
-    final countryChanged = selectedCountry.value != null &&
-        selectedCountry.value!.nom.toLowerCase() != _profileController.country.value.toLowerCase();
-    final cityChanged = selectedCity.value != null &&
-        selectedCity.value!.nom.toLowerCase() != _profileController.city.value.toLowerCase();
-    final locationChanged = canChangeLocation.value && (countryChanged || cityChanged);
-
-    if (locationChanged) {
-      try {
-        await CurrentCountryVerificationService(Supabase.instance.client).verify(
-          expectedCountryId: selectedCountry.value!.id,
-          cityId: selectedCity.value?.id,
-        );
-        await _profileController.refreshProfile();
-        await _refreshLockMetadata();
-      } catch (e) {
-        Get.snackbar(
-          'profile_error_title'.tr,
-          e.toString().replaceFirst('Bad state: ', ''),
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 6),
-        );
-        return;
-      }
-    }
-
     final Map<String, dynamic> payload = {
       'last_name': nomController.text.trim(),
       'first_name': prenomController.text.trim(),
@@ -330,6 +304,10 @@ class EditProfileController extends GetxController {
       if (canChangeGender.value && selectedGender.value != null) 'gender': selectedGender.value,
       if (canChangeBirthDate.value && selectedBirthDate.value != null)
         'birth_date': _formatDate(selectedBirthDate.value!),
+      if (canChangeLocation.value && selectedCountry.value != null)
+        'country_id': selectedCountry.value!.id,
+      if (canChangeLocation.value && selectedCity.value != null)
+        'city_id': selectedCity.value!.id,
     };
 
     final interestIds = selectedInterestIds.toList();
