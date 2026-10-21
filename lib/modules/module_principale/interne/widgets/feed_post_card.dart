@@ -328,7 +328,7 @@ class FeedPostCard extends StatelessWidget {
                                   child: Padding(
                                     padding: const EdgeInsets.all(4),
                                     child: Icon(
-                                      Icons.more_horiz_rounded,
+                                      Icons.more_vert_rounded,
                                       size: 20,
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -2033,15 +2033,6 @@ class _RepublicationPostCard extends StatelessWidget {
                                 color: Colors.green,
                               ),
                               Text(
-                                hasCommunity
-                                    ? 'a republié dans ${post.communityName ?? "une communauté"}'
-                                    : 'a republié',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              Text(
                                 '· ${_formatShortTime(post.timeAgo)}',
                                 style: TextStyle(
                                   fontSize: 12.5,
@@ -2063,7 +2054,7 @@ class _RepublicationPostCard extends StatelessWidget {
                           child: Padding(
                             padding: const EdgeInsets.all(4),
                             child: Icon(
-                              Icons.more_horiz_rounded,
+                              Icons.more_vert_rounded,
                               size: 20,
                               color: colorScheme.onSurfaceVariant,
                             ),
