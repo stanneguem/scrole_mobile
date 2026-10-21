@@ -344,7 +344,6 @@ class _StoriesRow extends GetView<StoriesController> {
               padding: const EdgeInsets.only(right: 12),
               child: GestureDetector(
                 onTap: () {
-                  controller.markAsViewed(group.author.userId);
                   final viewerIndex = hasOwnStory ? index : index - 1;
                   Get.to(() => StoryViewerScreen(groups: allGroupsForViewer, initialGroupIndex: viewerIndex));
                 },
