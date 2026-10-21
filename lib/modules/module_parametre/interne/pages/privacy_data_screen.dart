@@ -144,7 +144,7 @@ class PrivacyDataScreen extends StatelessWidget {
       Container(
         width: 46, height: 46,
         decoration: BoxDecoration(color: colors.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
-        child: Icon(CupertinoIcons.shield_lefthalf_filled, color: colors.primary, size: 24),
+        child: Icon(CupertinoIcons.shield_lefthalf, color: colors.primary, size: 24),
       ),
       const SizedBox(width: 14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
