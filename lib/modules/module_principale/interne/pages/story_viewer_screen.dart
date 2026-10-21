@@ -571,43 +571,71 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                               children: [
                                 Expanded(
                                   child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
-                                      Expanded(
-                                        child: UserIdentityRow(
-                                          name:
-                                              _currentGroup.author.displayName,
-                                          username:
-                                              _currentGroup.author.username,
-                                          avatarUrl:
-                                              _currentGroup.author.photoUrl,
-                                          isCertified:
-                                              _currentGroup.author.isCertified,
-                                          avatarRadius: 18,
-                                          nameStyle: const TextStyle(
+                                      CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: Colors.white24,
+                                        backgroundImage: _currentGroup.author.photoUrl != null &&
+                                                _currentGroup.author.photoUrl!.isNotEmpty
+                                            ? NetworkImage(_currentGroup.author.photoUrl!)
+                                            : null,
+                                        child: _currentGroup.author.photoUrl == null ||
+                                                _currentGroup.author.photoUrl!.isEmpty
+                                            ? Text(
+                                                _currentGroup.author.displayName.isNotEmpty
+                                                    ? _currentGroup.author.displayName[0].toUpperCase()
+                                                    : 'U',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        fit: FlexFit.loose,
+                                        child: Text(
+                                          _currentGroup.author.displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
                                           ),
-                                          usernameStyle: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 12.5,
-                                          ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          _formatStoryAge(
-                                            _currentStory.createdAt,
+                                      if (_currentGroup.author.username.isNotEmpty) ...[
+                                        const SizedBox(width: 5),
+                                        Flexible(
+                                          fit: FlexFit.loose,
+                                          child: Text(
+                                            '@${_currentGroup.author.username.replaceFirst(RegExp(r'^@'), '')}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
                                           ),
+                                        ),
+                                      ],
+                                      if (_currentGroup.author.isCertified) ...[
+                                        const SizedBox(width: 4),
+                                        const UserCertifiedBadge(size: 14),
+                                      ],
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        fit: FlexFit.loose,
+                                        child: Text(
+                                          _formatStoryAge(_currentStory.createdAt),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          textAlign: TextAlign.end,
                                           style: const TextStyle(
                                             color: Colors.white70,
-                                            fontSize: 11.5,
+                                            fontSize: 11,
                                           ),
                                         ),
                                       ),
