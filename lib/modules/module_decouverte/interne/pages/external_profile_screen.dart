@@ -13,6 +13,7 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../../../module_evenement/interne/pages/external_event_itinerary_screen.dart';
 import '../controllers/external_profile_controller.dart';
 
@@ -923,6 +924,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
+                    EntityCertifiedBadge(entityType: 'event', entityId: (event['id'] ?? '').toString(), size: 16),
                     if (role.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
