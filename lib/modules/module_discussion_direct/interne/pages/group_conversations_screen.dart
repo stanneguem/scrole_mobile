@@ -183,12 +183,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final _composer = TextEditingController();
   late Future<List<Map<String, dynamic>>> _messagesFuture;
   bool _sending = false;
+  String _wallpaperKey = 'none';
   RealtimeChannel? _messagesChannel;
 
   @override
   void initState() {
     super.initState();
     _messagesFuture = widget.service.fetchMessages(widget.group.id);
+    widget.service.getPersonalWallpaper(widget.group.id).then((value) {
+      if (mounted) setState(() => _wallpaperKey = value);
+    }).catchError((_) {});
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await widget.service.markRead(widget.group.id);
@@ -248,6 +252,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (selected == null) return;
     try {
       await widget.service.setPersonalWallpaper(widget.group.id, selected);
+      if (mounted) setState(() => _wallpaperKey = selected);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Votre préférence de fond a été enregistrée.')),
       );
@@ -328,7 +333,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             ),
           ),
         Expanded(
-          child: FutureBuilder<List<Map<String, dynamic>>>(
+          child: Container(
+            color: _wallpaperKey == 'none'
+                ? Theme.of(context).scaffoldBackgroundColor
+                : Color.alphaBlend(
+                    ({
+                      'fond1': const Color(0xFF4F86F7),
+                      'fond2': const Color(0xFF38A58A),
+                      'fond3': const Color(0xFFE2A44B),
+                    }[_wallpaperKey] ?? Theme.of(context).colorScheme.surfaceTint).withValues(alpha: 0.10),
+                    Theme.of(context).colorScheme.surface,
+                  ),
+            child: FutureBuilder<List<Map<String, dynamic>>>(
             future: _messagesFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
@@ -380,6 +396,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 },
               );
             },
+            ),
           ),
         ),
         SafeArea(
