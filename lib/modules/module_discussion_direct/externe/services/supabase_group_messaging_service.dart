@@ -63,6 +63,20 @@ class SupabaseGroupMessagingService {
         .toList(growable: false);
   }
 
+  Future<List<Map<String, dynamic>>> searchUsersForGroupInvite(String groupId, String query) async {
+    _validateId(groupId, 'groupId');
+    final term = query.trim();
+    if (term.length < 2) return const [];
+    final response = await _client.rpc('search_users_for_group_invite', params: {
+      'p_group_id': groupId,
+      'p_query': term,
+    });
+    if (response is! List) return const [];
+    return response.whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList(growable: false);
+  }
+
   Future<void> inviteMembers(String groupId, List<String> userIds) async {
     _validateId(groupId, 'groupId');
     final uniqueIds = userIds.map((id) => id.trim()).where((id) => id.isNotEmpty && id != _userId).toSet().toList();
