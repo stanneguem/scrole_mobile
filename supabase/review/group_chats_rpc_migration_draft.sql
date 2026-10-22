@@ -227,7 +227,7 @@ end $$;
 
 create or replace function public.get_group_personal_wallpaper(p_group_id uuid)
 returns text language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_uid uuid := auth.uid(); v_wallpaper text;
 begin
  if v_uid is null then raise exception 'authentication_required' using errcode='28000'; end if;
@@ -236,7 +236,7 @@ begin
  end if;
  select wallpaper_key into v_wallpaper from public.group_member_wallpapers where group_id=p_group_id and user_id=v_uid;
  return coalesce(v_wallpaper,'none');
-end $;
+end $$;
 
 create or replace function public.leave_group_conversation(p_group_id uuid)
 returns void language plpgsql security definer set search_path = ''
