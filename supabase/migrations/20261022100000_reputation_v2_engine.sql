@@ -264,11 +264,12 @@ begin
     coalesce(max((r.config->>'dimension_weight')::numeric) filter(where r.config->>'dimension'='recognition'),0.25),
     coalesce(max((r.config->>'dimension_weight')::numeric) filter(where r.config->>'dimension'='consistency'),0.20),
     coalesce(max((r.config->>'dimension_weight')::numeric) filter(where r.config->>'dimension'='communities'),0.15),
+    coalesce(max((r.config->>'dimension_weight')::numeric) filter(where r.config->>'dimension'='trust'),0.10),
     coalesce(max((r.config->>'saturation_k')::numeric) filter(where r.config->>'dimension'='quality'),30),
     coalesce(max((r.config->>'saturation_k')::numeric) filter(where r.config->>'dimension'='recognition'),40),
     coalesce(max((r.config->>'saturation_k')::numeric) filter(where r.config->>'dimension'='consistency'),45),
     coalesce(max((r.config->>'saturation_k')::numeric) filter(where r.config->>'dimension'='communities'),24)
-  into v_weight_quality,v_weight_recognition,v_weight_consistency,v_weight_communities,v_quality_k,v_recognition_k,v_consistency_k,v_communities_k
+  into v_weight_quality,v_weight_recognition,v_weight_consistency,v_weight_communities,v_weight_trust,v_quality_k,v_recognition_k,v_consistency_k,v_communities_k
   from public.reputation_scoring_rules r where r.enabled;
 
   -- Saturation: more activity keeps helping, but each additional action has less impact.
@@ -292,8 +293,9 @@ begin
     v_factor:=greatest(0.50,exp(-ln(1.0+v_decay_rate/100.0)*v_inactive_weeks));
   end if;
   v_total:=greatest(0,least(5,(
-      v_quality*v_weight_quality+v_recognition*v_weight_recognition+
-      v_consistency*v_weight_consistency+v_communities*v_weight_communities+v_trust*v_weight_trust
+      (v_quality*v_weight_quality+v_recognition*v_weight_recognition+
+      v_consistency*v_weight_consistency+v_communities*v_weight_communities+v_trust*v_weight_trust)
+      / greatest(0.01,v_weight_quality+v_weight_recognition+v_weight_consistency+v_weight_communities+v_weight_trust)
     )*v_factor));
   v_result:=jsonb_build_object('user_id',v_target,'community_id',p_community_id,
     'score',round(v_total::numeric,2),'max_score',5.00,'last_meaningful_activity_at',v_last,
