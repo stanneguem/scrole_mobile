@@ -1,4 +1,10 @@
 -- Make group activation threshold configurable from Scrole Admin.
+alter table public.scrole_quota_settings
+  drop constraint if exists scrole_quota_settings_category_check;
+alter table public.scrole_quota_settings
+  add constraint scrole_quota_settings_category_check
+  check (category = any (array['agenda','events','team','subscriptions','messaging']::text[]));
+
 insert into public.scrole_quota_settings
   (quota_key, value, label, description, category, min_value, max_value, updated_at)
 values
