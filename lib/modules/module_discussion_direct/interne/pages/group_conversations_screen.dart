@@ -112,8 +112,8 @@ class _GroupConversationsScreenState extends State<GroupConversationsScreen> {
                 return Column(children: invitations.map((invite) => Card(
                   child: ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.groups_outlined)),
-                    title: Text('Invitation à un groupe'),
-                    subtitle: Text('Invitation reçue le ${MaterialLocalizations.of(context).formatShortDate(invite.createdAt.toLocal())}'),
+                    title: Text(invite.groupName?.isNotEmpty == true ? invite.groupName! : 'Invitation à un groupe'),
+                    subtitle: Text('${invite.inviterName?.isNotEmpty == true ? '${invite.inviterName} · ' : ''}Invitation reçue le ${MaterialLocalizations.of(context).formatShortDate(invite.createdAt.toLocal())}'),
                     trailing: Wrap(spacing: 4, children: [
                       IconButton(tooltip: 'Refuser', onPressed: () => _respond(invite, false), icon: const Icon(Icons.close)),
                       IconButton(tooltip: 'Accepter', onPressed: () => _respond(invite, true), icon: Icon(Icons.check_circle_outline, color: theme.colorScheme.primary)),
@@ -225,7 +225,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     try {
       await widget.service.sendMessage(groupId: widget.group.id, text: text);
       _composer.clear();
-      if (mounted) setState(() => _messagesFuture = widget.service.fetchMessages(widget.group.id));
+      if (mounted) {
+        await widget.service.markRead(widget.group.id);
+        setState(() => _messagesFuture = widget.service.fetchMessages(widget.group.id));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Envoi impossible : $e')));
     } finally {
@@ -271,17 +274,25 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 itemBuilder: (context, index) {
                   final message = messages[index];
                   final body = '${message['content'] ?? message['text'] ?? ''}';
+                  final senderId = '${message['sender_id'] ?? ''}';
+                  final mine = senderId == Supabase.instance.client.auth.currentUser?.id;
                   return Align(
-                    alignment: Alignment.centerLeft,
+                    alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * .82),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: mine ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Text(body.isEmpty ? 'Pièce jointe' : body),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        if (!mine && (message['sender_name'] as String?)?.isNotEmpty == true)
+                          Text(message['sender_name'] as String, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(body.isEmpty ? 'Pièce jointe' : body),
+                        if (message['created_at'] != null)
+                          Align(alignment: Alignment.bottomRight, child: Text(MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(DateTime.parse('${message['created_at']}').toLocal())), style: Theme.of(context).textTheme.labelSmall)),
+                      ]),
                     ),
                   );
                 },
