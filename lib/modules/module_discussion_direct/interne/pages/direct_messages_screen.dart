@@ -492,11 +492,9 @@ class _AnimatedConversationTile extends StatelessWidget {
                             ),
                           ),
                           if (conversation.participantIds.isNotEmpty)
-                            Padding(
-                              child: UserCertifiedBadge(
-                                userId: conversation.participantIds.first,
-                                size: 16,
-                              ),
+                            UserCertifiedBadge(
+                              userId: conversation.participantIds.first,
+                              size: 16,
                             ),
                           const SizedBox(width: 8),
                           Text(
