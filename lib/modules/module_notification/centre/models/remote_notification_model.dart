@@ -29,6 +29,7 @@ class RemoteNotificationModel {
   String get localPayload => jsonEncode({
         'source': 'supabase',
         'notification_id': id,
+        'type': type,
         'data': data,
         'actor_id': actorId,
       });
