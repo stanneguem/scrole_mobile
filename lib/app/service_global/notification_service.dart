@@ -17,6 +17,7 @@ import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/modules/module_notification/centre/services/notification_db_service.dart';
+import 'package:scrole/modules/module_notification/centre/services/notification_deep_link_router.dart';
 import 'package:scrole/modules/module_notification/externe/repositories/fcm_token_repository.dart';
 import 'package:scrole/modules/module_notification/externe/repositories/notification_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/repositories/messaging_repository.dart';
@@ -257,9 +258,14 @@ class NotificationService {
         if (payload != null && payload.isNotEmpty) {
           try {
             final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
-            if (data['type'] == 'message_received')
+            if (data['type'] == 'message_received') {
               _openMessageConversation(data);
-          } catch (_) {}
+            } else {
+              unawaited(NotificationDeepLinkRouter.open(data));
+            }
+          } catch (e) {
+            debugPrint('[FCM] Unable to parse local notification payload: $e');
+          }
         }
         onNotificationTap?.call(response);
       },
@@ -631,9 +637,34 @@ class NotificationService {
     });
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       final data = Map<String, dynamic>.from(message.data);
-      if (data['type'] == 'message_received') _openMessageConversation(data);
+      if (data['type'] == 'message_received') {
+        _openMessageConversation(data);
+      } else {
+        unawaited(NotificationDeepLinkRouter.open(data));
+      }
     });
+
+    // When Android/iOS launches the app from a terminated state via an FCM tap.
+    unawaited(_routeInitialFirebaseMessage());
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  Future<void> _routeInitialFirebaseMessage() async {
+    try {
+      final initial = await _fcm.getInitialMessage();
+      if (initial == null || initial.data.isEmpty) return;
+      // Wait until GetX routes and the initial app frame are available.
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      final data = Map<String, dynamic>.from(initial.data);
+      if (data['type'] == 'message_received') {
+        _openMessageConversation(data);
+      } else {
+        await NotificationDeepLinkRouter.open(data);
+      }
+    } catch (e, st) {
+      debugPrint('[FCM] Failed to route initial notification: $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   Future<void> showNotification({
