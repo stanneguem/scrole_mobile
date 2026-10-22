@@ -579,10 +579,13 @@ class NotificationService {
   }
 
   Future<void> _setupFirebaseMessaging() async {
+    // En premier plan, on laisse FlutterLocalNotifications gérer l'affichage.
+    // Si iOS affiche aussi le payload FCM natif, la même notification apparaît
+    // deux fois (bannière FCM + notification locale).
     await _fcm.setForegroundNotificationPresentationOptions(
-      alert: true,
+      alert: false,
       badge: true,
-      sound: true,
+      sound: false,
     );
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
