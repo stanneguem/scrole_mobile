@@ -303,9 +303,11 @@ class NotificationService {
     final authService = Get.find<AuthService>();
     _authWorker = ever(authService.currentUser, (user) async {
       if (user != null) {
-        // À chaque nouvelle session (connexion ou switch de compte),
-        // on force un nouveau token pour isoler les notifications.
-        await rotateToken();
+        // Réutiliser le token stable : le backend compare last_seen_at pour
+        // ne rattraper que les notifications reçues pendant l'absence.
+        // Supprimer le token à chaque session faisait perdre ce checkpoint et
+        // rejouait tout l'historique des notifications non lues.
+        await ensureCurrentDeviceRegistered();
         await syncLanguage(force: true);
       }
     });
