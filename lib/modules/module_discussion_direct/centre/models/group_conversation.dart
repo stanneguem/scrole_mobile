@@ -2,7 +2,7 @@
 ///
 /// Supabase remains authoritative for membership, activation, ownership and access.
 enum GroupConversationStatus { pendingMembers, active, closed }
-enum GroupMemberRole { creator, administrator, member }
+enum GroupMemberRole { owner, creator, administrator, member }
 enum GroupMembershipStatus { active, left, removed }
 enum GroupInvitationStatus { pending, accepted, refused, revoked, expired }
 
@@ -24,8 +24,6 @@ class GroupConversation {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  /// Pending groups cannot send until three members have joined; activated
-  /// groups continue with two or one member, but not zero.
   bool get canSendMessages => status == GroupConversationStatus.active &&
       everActivated && activeMemberCount > 0;
   bool get isClosed => status == GroupConversationStatus.closed || activeMemberCount == 0;
@@ -56,7 +54,6 @@ class GroupMember {
   final String userId;
   final GroupMemberRole role;
   final GroupMembershipStatus status;
-  /// Server-recorded timestamp used for deterministic owner succession.
   final DateTime? joinedAt;
   final String? displayName;
   final String? avatarUrl;
@@ -64,6 +61,7 @@ class GroupMember {
 
   factory GroupMember.fromJson(Map<String, dynamic> json) {
     final role = switch ('${json['role'] ?? 'member'}') {
+      'owner' => GroupMemberRole.owner,
       'creator' => GroupMemberRole.creator,
       'administrator' || 'admin' => GroupMemberRole.administrator,
       _ => GroupMemberRole.member,
@@ -81,10 +79,7 @@ class GroupMember {
   }
 }
 
-/// Pure client-side mirror of the succession rule for display/tests only.
-/// The authoritative transfer must run transactionally in the database.
-/// Oldest active administrator wins; if none exists, oldest active ordinary
-/// member wins. Null timestamps sort last; user ID breaks ties deterministically.
+/// Client-side mirror for display/tests only; the database performs the real transfer.
 String? selectNextGroupOwnerId(Iterable<GroupMember> members) {
   final eligible = members.where((member) =>
       member.isActive &&
