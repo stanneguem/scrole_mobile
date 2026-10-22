@@ -453,6 +453,15 @@ class _NotificationTile extends StatelessWidget {
     final data = payload['data'] is Map ? Map<String, dynamic>.from(payload['data'] as Map) : <String, dynamic>{};
     final type = notification.type.toLowerCase();
 
+    // Canceled/revoked invitations are informational and must not offer stale actions.
+    final actionable = data['actionable'] ?? payload['actionable'];
+    if (actionable == false ||
+        type.endsWith('_annulee') ||
+        type.endsWith('_annulée') ||
+        type.contains('invitation_annulee')) {
+      return const SizedBox.shrink();
+    }
+
     // Si une action a déjà été prise, on affiche le résultat au lieu des boutons
     if (notification.actionStatus != 'pending') {
       final isAccepted = notification.actionStatus == 'accepted';
