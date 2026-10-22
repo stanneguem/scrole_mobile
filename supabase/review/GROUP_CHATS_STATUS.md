@@ -1,33 +1,40 @@
-# Group chats — implementation status
+# Group chats — implementation and validation status
 
 Branch: `feature/group-chats`
 
-## Implemented in branch
-- Group models and lifecycle/owner succession tests.
-- Supabase group service: create/list groups, invitations, member roles/removal/leave, messages, read marker, wallpaper preference RPCs, private media upload and signed URL request.
-- Standalone Flutter UI: group list, create group, invitations accept/refuse with group/inviter labels, message screen, Realtime message refresh, image attachment picker/upload, per-user wallpaper preference, member list and management, leave confirmation.
-- Groups entry icon on the existing direct-message inbox.
-- Read-only inspection of the deployed profile and notification table schemas.
-- SQL review drafts for foundation, group RPCs, RLS/Realtime, private media, and invitation notifications/read receipts.
+## Supabase backend
+- Applied migration: `20261022170631_group_chats` (registered by Supabase as `group_chats`).
+- Added group conversation, member, invitation, message, receipt and per-member wallpaper tables.
+- Added SECURITY DEFINER RPCs for group creation, listing, invitations, activation, member management, messaging, read markers, wallpaper and receipt queries.
+- Added member-scoped RLS, Realtime publication membership and a private `group-chat-media` bucket with membership-based Storage policies.
+- Added an invitation notification trigger using the existing `public.notifications` schema.
+- The consolidated migration was executed inside a transaction and rolled back successfully as a syntax/schema preflight, then applied with the Supabase migration API. Post-apply queries confirmed the group tables and private bucket exist.
 
-## Critical deployment caveat
-These changes are not verified production-ready. The Flutter project was not available in a local build environment during this work, so `dart format`, `flutter analyze`, and Flutter tests were not run. The SQL drafts have not been applied or validated against a disposable Supabase database. No remote database schema was changed.
+## Flutter frontend
+- Added group list, creation, invitation inbox, chat, member-management and leave-group screens.
+- Added entry point from the direct-message inbox and registered the group service in MessagingBinding.
+- Added image attachment upload to the private bucket and signed-URL display for images.
+- Added personal wallpaper selection and persisted preferences.
+- Added message refresh and activation-state refresh through Realtime.
+- Added CI workflow for formatting, analysis and lifecycle unit tests.
 
-## Required final verification
-1. Consolidate the review SQL into ordered migration(s), run on disposable Supabase, and fix all failures.
-2. Verify every SECURITY DEFINER function's owner, search_path, execute grants, row locks, and concurrent invitation/owner-succession cases.
-3. Verify RLS denies removed/left users for group messages and Storage signed URL creation; test two active members and a removed member.
-4. Wire attachment signed-URL display, delivery/read receipt indicators, and notification deep links into the UI.
-5. Add a user-search/contact picker instead of requiring invitees to enter a raw user UUID.
-6. Integrate invitation revocation and admin restrictions; verify only owner can grant/revoke administrator role and no one can remove the owner.
-7. Connect the group screen into named app routing if desired; current inbox entry opens the screen directly.
-8. Run formatter, analyzer, unit/widget tests and integration tests.
-9. Obtain explicit approval before applying final migration to the remote project.
+## Validation status
+- SQL preflight: passed (migration ran inside a transaction and was rolled back without errors).
+- Supabase post-apply: confirmed the six group tables and private `group-chat-media` bucket.
+- Supabase security/performance advisors: reviewed. They report many pre-existing project-wide findings; this migration adds no destructive change to existing direct-message data.
+- Flutter CI: pending GitHub Actions result. Do not claim Flutter compilation/tests passed until the workflow concludes successfully.
+- End-to-end testing with real authenticated users and access-denial tests for removed members/media is still required.
 
-## Contract
-- Messaging is disabled until the third member accepts.
+## Core contract
+- Messages are disabled until the third member accepts.
 - Once activated, the group remains usable with two or one active members; zero active members closes it.
-- Owner leaves: oldest active administrator succeeds; if none, oldest active ordinary member.
-- Invitation acceptance alone creates membership; sending an invitation does not.
+- Owner departure: oldest active administrator succeeds; otherwise oldest active ordinary member.
+- Invitation acceptance is required before membership is created.
 - Wallpapers are per user.
-- Server-side membership checks must protect all messages, Realtime and private media.
+- Server-side membership checks protect message RPCs, Realtime and private media.
+
+## Follow-up before production sign-off
+1. Wait for and fix any GitHub Actions failure.
+2. Add a real contact/user search instead of requiring invitees to enter UUIDs.
+3. Finish notification deep-link handling and visible read/delivery indicators.
+4. Run authenticated integration tests covering acceptance races, ownership succession, removed-member access, signed media URLs and rejoining.
