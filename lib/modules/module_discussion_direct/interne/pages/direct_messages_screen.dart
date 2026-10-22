@@ -7,6 +7,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
 import '../../centre/models/conversation_model.dart';
 import '../../centre/models/message_model.dart';
@@ -477,7 +478,7 @@ class _AnimatedConversationTile extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
                               conversation.name ?? 'Discussion',
                               maxLines: 1,
@@ -490,6 +491,14 @@ class _AnimatedConversationTile extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (conversation.participantIds.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: UserCertifiedBadge(
+                                userId: conversation.participantIds.first,
+                                size: 16,
+                              ),
+                            ),
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(conversation.updatedAt),
