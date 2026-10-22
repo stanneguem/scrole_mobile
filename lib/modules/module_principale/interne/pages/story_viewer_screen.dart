@@ -1518,7 +1518,11 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
     setState(() => _isSending = true);
     try {
       final commentId = const Uuid().v4();
-      final parentId = _replyingTo?['id']?.toString();
+      // Les stories autorisent un seul niveau de réponses : si l'utilisateur
+      // appuie sur « Répondre » sous une réponse, rattacher au commentaire
+      // racine plutôt qu'à une réponse qui ne peut pas être parent.
+      final parentId = _replyingTo?['parent_comment_id']?.toString() ??
+          _replyingTo?['id']?.toString();
 
       await _repo.createStoryComment(
         p_id: commentId,
