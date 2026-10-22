@@ -396,7 +396,7 @@ class ProfileController extends GetxController {
         if (reputationRaw is Map) {
           final reputationData = Map<String, dynamic>.from(reputationRaw);
           reputation.value = ((reputationData['score'] as num?)?.toDouble() ?? 0.0)
-              .clamp(0.0, 5.0);
+              .clamp(0.0, 5.0).toDouble();
         }
       } catch (e) {
         // Compatibility fallback until the reputation V2 migration is deployed.
