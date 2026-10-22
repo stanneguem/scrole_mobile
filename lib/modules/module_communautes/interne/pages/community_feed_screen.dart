@@ -83,15 +83,26 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       }
 
       await WidgetsBinding.instance.endOfFrame;
-      final key = _postKeys[_targetPostId!];
-      final targetContext = key?.currentContext;
-      if (targetContext != null) {
-        await Scrollable.ensureVisible(
-          targetContext,
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeInOut,
-          alignment: 0.12,
+      // A lazy ListView may not have built the target card yet. Jump near its
+      // approximate index, let Flutter build it, then align it precisely.
+      for (var attempt = 0; attempt < 4; attempt++) {
+        final targetContext = _postKeys[_targetPostId!]?.currentContext;
+        if (targetContext != null) {
+          await Scrollable.ensureVisible(
+            targetContext,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeInOut,
+            alignment: 0.12,
+          );
+          break;
+        }
+        if (!_scrollController.hasClients) break;
+        final estimatedOffset = (index * 420.0).clamp(
+          0.0,
+          _scrollController.position.maxScrollExtent,
         );
+        _scrollController.jumpTo(estimatedOffset);
+        await WidgetsBinding.instance.endOfFrame;
       }
 
       if (_targetCommentId != null &&
@@ -106,7 +117,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (_) => CommunityCommentsSheet(post: post, controller: controller),
+          builder: (_) => CommunityCommentsSheet(post: post, controller: controller, targetCommentId: _targetCommentId),
         );
       }
     } catch (e, st) {
