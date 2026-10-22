@@ -1458,20 +1458,13 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
     });
 
     try {
-      // Le RPC renvoie les commentaires racines et leurs réponses.
-      // On n'effectue cet appel que lorsque l'utilisateur déplie un fil,
-      // puis on conserve le résultat en mémoire tant que le modal reste ouvert.
-      final res = await _repo.getStoryComments(widget.storyId);
-      final items = res['items'] is List
-          ? List<Map<String, dynamic>>.from(res['items'])
-          : <Map<String, dynamic>>[];
-      final root = items.cast<Map<String, dynamic>?>().firstWhere(
-        (item) => item?['id']?.toString() == commentId,
-        orElse: () => null,
+      // Charger uniquement les réponses du commentaire sélectionné.
+      final res = await _repo.getStoryCommentReplies(
+        widget.storyId,
+        commentId,
       );
-      final rawReplies = root?['replies'];
-      final replies = rawReplies is List
-          ? rawReplies.map((item) => Map<String, dynamic>.from(item as Map)).toList()
+      final replies = res['items'] is List
+          ? List<Map<String, dynamic>>.from(res['items'])
           : <Map<String, dynamic>>[];
 
       if (mounted) {
