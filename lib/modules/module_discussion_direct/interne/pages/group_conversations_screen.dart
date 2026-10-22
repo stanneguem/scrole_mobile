@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -218,6 +221,59 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     super.dispose();
   }
 
+  Future<void> _chooseWallpaper() async {
+    const choices = <String, String>{
+      'none': 'Aucun fond',
+      'fond1': 'Fond 1',
+      'fond2': 'Fond 2',
+      'fond3': 'Fond 3',
+    };
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Fond de discussion personnel'),
+        children: choices.entries.map((entry) => SimpleDialogOption(
+          onPressed: () => Navigator.pop(context, entry.key),
+          child: Text(entry.value),
+        )).toList(),
+      ),
+    );
+    if (selected == null) return;
+    try {
+      await widget.service.setPersonalWallpaper(widget.group.id, selected);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Votre préférence de fond a été enregistrée.')),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de modifier le fond : $e')),
+      );
+    }
+  }
+
+  Future<void> _attachImage() async {
+    if (_sending || !widget.group.canSendMessages) return;
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 88);
+    if (picked == null || !mounted) return;
+    setState(() => _sending = true);
+    try {
+      final file = File(picked.path);
+      final path = await widget.service.uploadGroupMedia(
+        groupId: widget.group.id,
+        file: file,
+        contentType: picked.mimeType ?? 'image/jpeg',
+      );
+      await widget.service.sendMessage(groupId: widget.group.id, type: 'image', mediaPaths: [path]);
+      if (mounted) setState(() => _messagesFuture = widget.service.fetchMessages(widget.group.id));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Envoi de la pièce jointe impossible : $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   Future<void> _send() async {
     final text = _composer.text.trim();
     if (text.isEmpty || _sending || !widget.group.canSendMessages) return;
@@ -243,6 +299,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       appBar: AppBar(
         title: Text(widget.group.name),
         actions: [
+          IconButton(
+            tooltip: 'Fond personnel',
+            icon: const Icon(Icons.wallpaper_outlined),
+            onPressed: _chooseWallpaper,
+          ),
           IconButton(
             tooltip: 'Membres et paramètres',
             icon: const Icon(Icons.people_outline),
