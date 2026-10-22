@@ -345,3 +345,22 @@ end $$;
 
 revoke all on function public.admin_apply_reputation_penalty(uuid,text,uuid,text,text,text,integer) from public,anon;
 grant execute on function public.admin_apply_reputation_penalty(uuid,text,uuid,text,text,text,integer) to authenticated;
+
+
+create or replace function public.get_community_member_reputations(p_community_id uuid,p_user_ids uuid[])
+returns table(user_id uuid,score numeric)
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated' using errcode='28000'; end if;
+  if not exists(select 1 from public.community_members cm where cm.community_id=p_community_id and cm.user_id=auth.uid()) then
+    raise exception 'community_membership_required' using errcode='42501';
+  end if;
+  return query
+    select requested.user_id,
+      coalesce((public.get_user_reputation(requested.user_id,p_community_id)->>'score')::numeric,0)::numeric
+    from (select distinct unnest(coalesce(p_user_ids,'{}'::uuid[])) as user_id) requested
+    join public.community_members cm on cm.community_id=p_community_id and cm.user_id=requested.user_id;
+end $$;
+revoke all on function public.get_community_member_reputations(uuid,uuid[]) from public,anon;
+grant execute on function public.get_community_member_reputations(uuid,uuid[]) to authenticated;
