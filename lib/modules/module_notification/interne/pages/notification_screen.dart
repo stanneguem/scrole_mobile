@@ -506,7 +506,7 @@ class _NotificationTile extends StatelessWidget {
       return null;
     }
 
-    if (type == 'connection_request' || type == 'demande_ami' || type == 'friend_request' || type == 'demande_connexion') {
+    if (type == 'connection_request' || type == 'follow_request' || type == 'demande_ami' || type == 'friend_request' || type == 'demande_connexion') {
       final requestId = resolveId(['request_id', 'id', 'friend_request_id']);
       if (requestId == null) return const SizedBox.shrink();
       return _ActionRow(
