@@ -148,6 +148,21 @@ class StoriesRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getStoryCommentReplies(
+    String storyId,
+    String commentId, {
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    final response = await client.rpc('get_story_comment_replies', params: {
+      'p_story_id': storyId,
+      'p_comment_id': commentId,
+      'p_limit': limit,
+      'p_offset': offset,
+    });
+    if (response is Map) return Map<String, dynamic>.from(response);
+    return {'items': [], 'total': 0, 'has_more': false};
+  }
   Future<String?> setStoryCommentReaction(String commentId, String? reaction) async {
     try {
       final normalized = reaction == null || reaction == 'none' ? 'none' : reaction;
