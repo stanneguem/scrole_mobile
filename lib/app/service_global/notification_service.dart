@@ -473,7 +473,9 @@ class NotificationService {
                 .select()
                 .eq('user_id', userId);
             if (lastSeen != null) {
-              query.gt('created_at', lastSeen.toIso8601String());
+              // Inclure l'égalité : plusieurs notifications peuvent partager
+              // le même timestamp. L'insert local est idempotent par ID.
+              query.gte('created_at', lastSeen.toUtc().toIso8601String());
             }
 
             try {
@@ -559,6 +561,9 @@ class NotificationService {
       type: type,
       payload: payload,
       createdAt: createdAt,
+      // Le rattrapage Realtime doit respecter l'état serveur, sinon une
+      // notification déjà lue revient comme non lue après reconnexion.
+      isRead: data['read_at'] != null,
     );
 
     // 2. Affichage local si la notification est nouvelle et le corps non vide
