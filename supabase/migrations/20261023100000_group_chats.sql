@@ -455,7 +455,6 @@ begin
   'public.mark_group_conversation_read(uuid,uuid,timestamptz)'::regprocedure,
   'public.set_group_personal_wallpaper(uuid,text)'::regprocedure,
   'public.get_group_personal_wallpaper(uuid)'::regprocedure,
-  'public.get_group_message_receipts(uuid)'::regprocedure,
   'public.leave_group_conversation(uuid)'::regprocedure,
   'public.remove_group_member(uuid,uuid)'::regprocedure,
   'public.change_group_member_role(uuid,uuid,text)'::regprocedure
@@ -663,3 +662,6 @@ grant execute on function public.get_group_message_receipts(uuid) to authenticat
 
 -- For read receipts, the existing mark_group_conversation_read function updates receipts.
 -- Inserted messages create one receipt row for each member active at send time.
+
+revoke all on function public.get_group_message_receipts(uuid) from public, anon;
+grant execute on function public.get_group_message_receipts(uuid) to authenticated;
