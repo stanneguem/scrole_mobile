@@ -333,7 +333,7 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
           Expanded(
             child: _engagementStat(
-              '${_formatReputation(controller.reputation.value)}/5',
+              _formatReputation(controller.reputation.value),
               'profile_stat_reputation'.tr,
               colorScheme,
             ),
