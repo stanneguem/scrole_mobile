@@ -1395,6 +1395,9 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
   bool _isLoading = true;
   bool _isSending = false;
   List<Map<String, dynamic>> _comments = [];
+  final Set<String> _expandedReplyIds = <String>{};
+  final Map<String, List<Map<String, dynamic>>> _repliesByCommentId = {};
+  final Set<String> _loadingReplyIds = <String>{};
   Map<String, dynamic>? _replyingTo;
   String? _errorMessage;
 
@@ -1436,6 +1439,59 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
           _isLoading = false;
           _errorMessage = 'story_error_loading_comments'.tr;
         });
+      }
+    }
+  }
+
+  Future<void> _toggleReplies(Map<String, dynamic> comment) async {
+    final commentId = comment['id']?.toString() ?? '';
+    if (commentId.isEmpty) return;
+
+    if (_expandedReplyIds.contains(commentId)) {
+      setState(() => _expandedReplyIds.remove(commentId));
+      return;
+    }
+
+    setState(() {
+      _expandedReplyIds.add(commentId);
+      _loadingReplyIds.add(commentId);
+    });
+
+    try {
+      // Le RPC renvoie les commentaires racines et leurs réponses.
+      // On n'effectue cet appel que lorsque l'utilisateur déplie un fil,
+      // puis on conserve le résultat en mémoire tant que le modal reste ouvert.
+      final res = await _repo.getStoryComments(widget.storyId);
+      final items = res['items'] is List
+          ? List<Map<String, dynamic>>.from(res['items'])
+          : <Map<String, dynamic>>[];
+      final root = items.cast<Map<String, dynamic>?>().firstWhere(
+        (item) => item?['id']?.toString() == commentId,
+        orElse: () => null,
+      );
+      final rawReplies = root?['replies'];
+      final replies = rawReplies is List
+          ? rawReplies.map((item) => Map<String, dynamic>.from(item as Map)).toList()
+          : <Map<String, dynamic>>[];
+
+      if (mounted) {
+        setState(() {
+          _repliesByCommentId[commentId] = replies;
+          _loadingReplyIds.remove(commentId);
+        });
+      }
+    } catch (e) {
+      debugPrint('[STORY] Error loading replies for $commentId: $e');
+      if (mounted) {
+        setState(() {
+          _loadingReplyIds.remove(commentId);
+          _expandedReplyIds.remove(commentId);
+        });
+        Get.snackbar(
+          'error'.tr,
+          'story_error_loading_comments'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     }
   }
@@ -1801,11 +1857,15 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
     final likesCount = (comment['likes_count'] as num?)?.toInt() ?? 0;
     final dislikesCount = (comment['dislikes_count'] as num?)?.toInt() ?? 0;
     final userReaction = comment['user_reaction']?.toString();
-    final replies = comment['replies'] is List
-        ? (comment['replies'] as List)
-              .map((r) => Map<String, dynamic>.from(r))
-              .toList()
-        : <Map<String, dynamic>>[];
+    final commentId = comment['id']?.toString() ?? '';
+    final replies = isReply
+        ? <Map<String, dynamic>>[]
+        : (_repliesByCommentId[commentId] ?? <Map<String, dynamic>>[]);
+    final repliesExpanded = _expandedReplyIds.contains(commentId);
+    final repliesLoading = _loadingReplyIds.contains(commentId);
+    final repliesCount = (comment['replies_count'] as num?)?.toInt() ??
+        (comment['reply_count'] as num?)?.toInt() ??
+        replies.length;
 
     return Padding(
       padding: EdgeInsets.only(left: isReply ? 32 : 0, bottom: 16),
@@ -1990,7 +2050,60 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
                     ],
                   ),
                 ),
-                if (replies.isNotEmpty) ...[
+                if (!isReply && repliesCount > 0) ...[
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: repliesLoading ? null : () => _toggleReplies(comment),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (repliesLoading)
+                            const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(strokeWidth: 1.6),
+                            )
+                          else
+                            Icon(
+                              repliesExpanded
+                                  ? Icons.keyboard_arrow_up_rounded
+                                  : Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: colorScheme.primary,
+                            ),
+                          const SizedBox(width: 4),
+                          Text(
+                            repliesLoading
+                                ? 'Chargement des réponses…'
+                                : repliesExpanded
+                                    ? 'Masquer les réponses'
+                                    : 'Afficher les réponses ($repliesCount)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (!isReply && repliesExpanded && !repliesLoading && replies.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 4),
+                    child: Text(
+                      'Aucune réponse pour le moment.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                if (!isReply && repliesExpanded && !repliesLoading && replies.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   ...replies.map(
                     (reply) =>
