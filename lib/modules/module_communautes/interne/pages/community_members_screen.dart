@@ -210,7 +210,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           final id = row['user_id']?.toString();
           final score = (row['score'] as num?)?.toDouble();
           if (id != null && score != null) {
-            _communityReputations[id] = score.clamp(0.0, 5.0);
+            _communityReputations[id] = score.clamp(0.0, 5.0).toDouble();
           }
         }
       });
