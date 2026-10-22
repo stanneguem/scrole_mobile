@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -11,7 +12,7 @@ import 'create_community_post_screen.dart';
 import 'community_settings_screen.dart';
 import '../../../../shared/widgets/entity_certified_badge.dart';
 
-class CommunityFeedScreen extends StatelessWidget {
+class CommunityFeedScreen extends StatefulWidget {
   final String communityId;
   final String communityName;
 
@@ -22,9 +23,114 @@ class CommunityFeedScreen extends StatelessWidget {
   });
 
   @override
+  State<CommunityFeedScreen> createState() => _CommunityFeedScreenState();
+}
+
+class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
+  late final CommunityFeedController controller;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _postKeys = <String, GlobalKey>{};
+  String? _targetPostId;
+  String? _targetCommentId;
+  bool _targetNavigationStarted = false;
+  bool _targetCommentOpened = false;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(
+      CommunityFeedController(null, widget.communityId),
+      tag: widget.communityId,
+    );
+    controller.communityName.value = widget.communityName;
+    final args = Get.arguments;
+    if (args is Map) {
+      _targetPostId = (args['postId'] ?? args['post_id'] ?? args['publication_id'])?.toString();
+      _targetCommentId = (args['commentId'] ?? args['comment_id'] ?? args['commentaire_id'])?.toString();
+    }
+    if (_targetPostId != null && _targetPostId!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_navigateToNotificationTarget());
+      });
+    }
+  }
+
+  Future<void> _navigateToNotificationTarget() async {
+    if (_targetNavigationStarted || _targetPostId == null || _targetPostId!.isEmpty) return;
+    _targetNavigationStarted = true;
+    try {
+      await controller.fetchCommunityFeed(isRefresh: true);
+      var attempts = 0;
+      while (mounted &&
+          !controller.posts.any((post) => post.id == _targetPostId) &&
+          controller.hasMore &&
+          attempts < 30) {
+        final previousCount = controller.posts.length;
+        await controller.loadMorePosts();
+        attempts++;
+        if (controller.posts.length == previousCount) break;
+      }
+
+      if (!mounted) return;
+      final index = controller.posts.indexWhere((post) => post.id == _targetPostId);
+      if (index < 0) {
+        Get.snackbar(
+          'Publication introuvable',
+          'Cette publication n’est plus disponible ou tu n’as pas accès à son contenu.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      await WidgetsBinding.instance.endOfFrame;
+      final key = _postKeys[_targetPostId!];
+      final targetContext = key?.currentContext;
+      if (targetContext != null) {
+        await Scrollable.ensureVisible(
+          targetContext,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOut,
+          alignment: 0.12,
+        );
+      }
+
+      if (_targetCommentId != null &&
+          _targetCommentId!.isNotEmpty &&
+          !_targetCommentOpened &&
+          mounted) {
+        _targetCommentOpened = true;
+        final post = controller.posts[index];
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        if (!mounted) return;
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => CommunityCommentsSheet(post: post, controller: controller),
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[CommunityFeedScreen] Notification target navigation failed: $e\\n$st');
+      if (mounted) {
+        Get.snackbar(
+          'Navigation impossible',
+          'Impossible d’ouvrir le contenu ciblé. Réessaie depuis les notifications.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(CommunityFeedController(null, communityId), tag: communityId);
-    controller.communityName.value = communityName;
+    final communityId = widget.communityId;
+    final communityName = widget.communityName;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -223,6 +329,7 @@ class CommunityFeedScreen extends StatelessWidget {
             return RefreshIndicator(
               onRefresh: () => controller.fetchCommunityFeed(isRefresh: true),
               child: ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 90),
                 itemCount: posts.length + (controller.hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
@@ -235,7 +342,10 @@ class CommunityFeedScreen extends StatelessWidget {
                   }
 
                   final post = posts[index];
-                  return VisibilityDetector(
+                  final postKey = _postKeys.putIfAbsent(post.id, () => GlobalKey());
+                  return KeyedSubtree(
+                    key: postKey,
+                    child: VisibilityDetector(
                     key: Key('comm_post_vis_${post.id}'),
                     onVisibilityChanged: (info) {
                       if (info.visibleFraction >= 0.5) {
@@ -254,6 +364,7 @@ class CommunityFeedScreen extends StatelessWidget {
                           builder: (_) => CommunityCommentsSheet(post: post, controller: controller),
                         );
                       },
+                    ),
                     ),
                   );
                 },
