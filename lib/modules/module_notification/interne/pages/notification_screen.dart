@@ -166,15 +166,8 @@ class NotificationScreen extends GetView<NotificationController> {
         });
         return;
       }
-      if (eventId != null && eventId.isNotEmpty) {
-        await controller.goToEventPreview(eventId);
-        return;
-      }
-      final mentionedUserId = idOf(['mentioned_user_id', 'target_user_id', 'profile_user_id']);
-      if (mentionedUserId != null && mentionedUserId.isNotEmpty) {
-        Get.toNamed(AppPages.externalProfilePath(mentionedUserId));
-        return;
-      }
+      // If the mention was made inside a comment, open that comment's post first.
+      // The event remains accessible from the comment itself.
       if (postId != null && postId.isNotEmpty) {
         try {
           final post = await Supabase.instance.client
@@ -182,7 +175,7 @@ class NotificationScreen extends GetView<NotificationController> {
               .select('id,community_id')
               .eq('id', postId)
               .maybeSingle();
-          final targetCommunity = post?['community_id']?.toString();
+          final targetCommunity = post?['community_id']?.toString() ?? communityId;
           if (targetCommunity != null && targetCommunity.isNotEmpty) {
             Get.to(() => CommunityFeedScreen(communityId: targetCommunity, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()), arguments: {
               'postId': postId,
@@ -195,6 +188,37 @@ class NotificationScreen extends GetView<NotificationController> {
           debugPrint('[Notification] Could not resolve mention target post: $e');
         }
       }
+      if (eventId != null && eventId.isNotEmpty) {
+        await controller.goToEventPreview(eventId);
+        return;
+      }
+      final mentionedUserId = idOf(['mentioned_user_id', 'target_user_id', 'profile_user_id']);
+      if (mentionedUserId != null && mentionedUserId.isNotEmpty) {
+        Get.toNamed(AppPages.externalProfilePath(mentionedUserId));
+        return;
+      }
+    }
+
+    // Commentaires et réponses sur une publication communautaire : ouvrir
+    // la publication puis le panneau de commentaires correspondant.
+    final contentPostId = idOf(['post_id', 'publication_id', 'source_post_id', 'target_post_id']);
+    final contentCommunityId = idOf(['community_id', 'communaute_id', 'target_community_id']);
+    final contentCommentId = idOf(['comment_id', 'commentaire_id', 'target_comment_id', 'parent_comment_id']);
+    if (contentPostId != null &&
+        contentCommunityId != null &&
+        (type.contains('comment') || type.contains('reply') || type.contains('community_post_like'))) {
+      Get.to(
+        () => CommunityFeedScreen(
+          communityId: contentCommunityId,
+          communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString(),
+        ),
+        arguments: {
+          'postId': contentPostId,
+          'commentId': contentCommentId,
+          'openComment': contentCommentId != null,
+        },
+      );
+      return;
     }
 
     // Les invitations d'événement ouvrent la fiche de l'événement.
