@@ -106,7 +106,7 @@ class GroupInvitation {
   const GroupInvitation({
     required this.id, required this.groupId, required this.invitedUserId,
     required this.invitedBy, required this.status, required this.createdAt,
-    this.respondedAt,
+    this.respondedAt, this.groupName, this.inviterName,
   });
   final String id;
   final String groupId;
@@ -115,6 +115,8 @@ class GroupInvitation {
   final GroupInvitationStatus status;
   final DateTime createdAt;
   final DateTime? respondedAt;
+  final String? groupName;
+  final String? inviterName;
   bool get isPending => status == GroupInvitationStatus.pending;
 
   factory GroupInvitation.fromJson(Map<String, dynamic> json) {
@@ -130,6 +132,8 @@ class GroupInvitation {
       invitedUserId: '${json['invited_user_id']}', invitedBy: '${json['invited_by']}',
       status: status, createdAt: DateTime.parse('${json['created_at']}').toUtc(),
       respondedAt: json['responded_at'] == null ? null : DateTime.parse('${json['responded_at']}').toUtc(),
+      groupName: json['group_name'] as String?,
+      inviterName: json['inviter_name'] as String?,
     );
   }
 }
