@@ -23,6 +23,11 @@ class CommunityMembersScreen extends StatefulWidget {
   State<CommunityMembersScreen> createState() => _CommunityMembersScreenState();
 }
 
+String _formatReputation(num value) {
+  final rounded = (value.clamp(0, 5) * 10).round() / 10;
+  return rounded.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+}
+
 class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
   final CommunityService _service = Get.find<CommunityService>();
   final TextEditingController _searchController = TextEditingController();
@@ -532,7 +537,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                                       isCertified: isCertified,
                                       userId: member['user_id']?.toString(),
                                       prefixWidget: isVerified ? UserCertifiedBadge(size: 16, userId: member['user_id']?.toString()) : null,
-                                      subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ') : null,
+                                      subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${_formatReputation(communityScore)}/5'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${_formatReputation(communityScore)}/5 · Réputation communauté'].join('  ') : null,
                                       trailing: (_isStaff && !isSelf)
                                           ? Icon(Icons.more_vert_rounded, size: 18, color: colorScheme.onSurfaceVariant)
                                           : null,
