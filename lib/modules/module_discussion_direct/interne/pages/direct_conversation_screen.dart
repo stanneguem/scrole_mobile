@@ -718,64 +718,73 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                   ],
                 ),
               ),
-            Row(
-              children: [
-                if (!editingMode)
-                  _CircleIcon(
-                    icon: Icons.add,
-                    color: hasWallpaper ? Colors.white : null,
-                    onTap: () => showImageSourceSheet(
-                      context,
-                      onCamera: controller.pickCameraMedia,
-                      onGallery: controller.pickGalleryMedia,
-                    ),
-                  ),
-                if (!editingMode) const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: controller.messageController,
-                    onTap: () => controller.showEmojiPicker.value = false,
-                    style: TextStyle(
-                      color: hasWallpaper ? Colors.white : colors.onSurface,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: editingMode
-                          ? 'Modifier le message...'
-                          : 'chats_message_hint'.tr,
-                      hintStyle: TextStyle(
-                        color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 360;
+                final iconSize = compact ? 38.0 : 44.0;
+                final gap = compact ? 4.0 : 8.0;
+                return Row(
+                  children: [
+                    if (!editingMode)
+                      _CircleIcon(
+                        icon: Icons.add,
+                        size: iconSize,
+                        color: hasWallpaper ? Colors.white : null,
+                        onTap: () => showImageSourceSheet(
+                          context,
+                          onCamera: controller.pickCameraMedia,
+                          onGallery: controller.pickGalleryMedia,
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: hasWallpaper
-                          ? Colors.black.withValues(alpha: .45)
-                          : colors.surfaceContainerHighest.withValues(alpha: .3),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    if (!editingMode) SizedBox(width: gap),
+                    Expanded(
+                      child: TextField(
+                        controller: controller.messageController,
+                        onTap: () => controller.showEmojiPicker.value = false,
+                        style: TextStyle(
+                          color: hasWallpaper ? Colors.white : colors.onSurface,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: editingMode
+                              ? 'Modifier le message...'
+                              : 'chats_message_hint'.tr,
+                          hintStyle: TextStyle(
+                            color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: hasWallpaper
+                              ? Colors.black.withValues(alpha: .45)
+                              : colors.surfaceContainerHighest.withValues(alpha: .3),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: compact ? 10 : 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (_) => controller.sendMessage(),
                       ),
                     ),
-                    onSubmitted: (_) => controller.sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _CircleIcon(
-                  icon: editingMode
-                      ? Icons.check_rounded
-                      : controller.isTyping.value
-                      ? Icons.send
-                      : Icons.mic_none,
-                  color: canSendText ? AppColors.primary : (hasWallpaper ? Colors.white : null),
-                  onTap: canSendText
-                      ? controller.sendMessage
-                      : controller.startRecording,
-                  onLongPress: editingMode ? null : controller.startRecording,
-                  onLongPressUp: editingMode ? null : controller.stopRecording,
-                ),
-              ],
+                    SizedBox(width: gap),
+                    _CircleIcon(
+                      size: iconSize,
+                      icon: editingMode
+                          ? Icons.check_rounded
+                          : controller.isTyping.value
+                          ? Icons.send
+                          : Icons.mic_none,
+                      color: canSendText ? AppColors.primary : (hasWallpaper ? Colors.white : null),
+                      onTap: canSendText
+                          ? controller.sendMessage
+                          : controller.startRecording,
+                      onLongPress: editingMode ? null : controller.startRecording,
+                      onLongPressUp: editingMode ? null : controller.stopRecording,
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -804,6 +813,7 @@ class _CircleIcon extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.onLongPressUp,
+    this.size = 44,
   });
 
   final IconData icon;
@@ -811,6 +821,7 @@ class _CircleIcon extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onLongPressUp;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -821,8 +832,8 @@ class _CircleIcon extends StatelessWidget {
       onLongPressUp: onLongPressUp,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 44,
-        height: 44,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: c.withValues(alpha: .15),
