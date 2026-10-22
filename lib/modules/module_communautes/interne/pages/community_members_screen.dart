@@ -139,9 +139,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           _isLoadingMore = false;
         });
       }
-    }
-
-  } on PostgrestException catch (e) {
+    } on PostgrestException catch (e) {
       final isHidden = e.code == 'P0001' || e.message.toLowerCase().contains('masquée') || e.message.toLowerCase().contains('masque');
       if (isHidden) {
         if (_isStaff) {
