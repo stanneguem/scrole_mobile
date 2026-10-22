@@ -82,16 +82,17 @@ create policy "Authenticated users can read enabled reputation rules"
 
 -- Conservative initial defaults. Product/admin can tune these after the scoring path
 -- and server-side award functions are reviewed. Values are not active until migration is applied.
+-- points are internal ledger units; the displayed score must be normalized/weighted to 0.00–5.00.
 insert into public.reputation_scoring_rules (rule_key, label, points, daily_cap, enabled, config)
 values
-  ('meaningful_post', 'Publication originale pertinente', 2, 6, true, '{"max_awards_per_day":3,"requires_non_spam":true}'::jsonb),
-  ('constructive_comment', 'Commentaire constructif', 1, 5, true, '{"max_awards_per_day":5,"requires_minimum_content":true}'::jsonb),
-  ('post_positive_reaction_received', 'Réaction positive reçue sur une publication', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true}'::jsonb),
-  ('comment_positive_reaction_received', 'Réaction positive reçue sur un commentaire', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true}'::jsonb),
-  ('helpful_reply', 'Réponse reconnue comme utile', 3, 6, true, '{"max_awards_per_day":2,"single_award_per_source":true}'::jsonb),
-  ('meaningful_activity_day', 'Journée de participation significative', 1, 1, true, '{"max_awards_per_day":1}'::jsonb),
-  ('confirmed_spam_penalty', 'Abus confirmé par modération', -3, null, true, '{"moderation_required":true,"must_reference_reversed_entry":true}'::jsonb),
-  ('weekly_inactivity_decay', 'Décroissance hebdomadaire après inactivité', 0, null, true, '{"grace_days":30,"rate_percent":1,"period":"week","minimum_score":0}'::jsonb)
+  ('meaningful_post', 'Publication originale pertinente', 2, 6, true, '{"max_awards_per_day":3,"requires_non_spam":true,"public_score_scale":"0-5","dimension":"quality","dimension_weight":0.30,"saturation_k":24}'::jsonb),
+  ('constructive_comment', 'Commentaire constructif', 1, 5, true, '{"max_awards_per_day":5,"requires_minimum_content":true,"public_score_scale":"0-5","dimension":"quality","dimension_weight":0.30,"saturation_k":30}'::jsonb),
+  ('post_positive_reaction_received', 'Réaction positive reçue sur une publication', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true,"public_score_scale":"0-5","dimension":"recognition","dimension_weight":0.25,"saturation_k":40}'::jsonb),
+  ('comment_positive_reaction_received', 'Réaction positive reçue sur un commentaire', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true,"public_score_scale":"0-5","dimension":"recognition","dimension_weight":0.25,"saturation_k":35}'::jsonb),
+  ('helpful_reply', 'Réponse reconnue comme utile', 3, 6, true, '{"max_awards_per_day":2,"single_award_per_source":true,"public_score_scale":"0-5","dimension":"quality","dimension_weight":0.30,"saturation_k":24}'::jsonb),
+  ('meaningful_activity_day', 'Journée de participation significative', 1, 1, true, '{"max_awards_per_day":1,"public_score_scale":"0-5","dimension":"consistency","dimension_weight":0.20,"saturation_k":45,"requires_distinct_active_day":true}'::jsonb),
+  ('confirmed_spam_penalty', 'Abus confirmé par modération', -3, null, true, '{"moderation_required":true,"must_reference_reversed_entry":true,"dimension":"trust","dimension_weight":0.10}'::jsonb),
+  ('weekly_inactivity_decay', 'Décroissance hebdomadaire après inactivité', 0, null, true, '{"grace_days":30,"rate_percent":1,"period":"week","minimum_score":0,"applies_to_public_score":true}'::jsonb)
 on conflict (rule_key) do nothing;
 
 -- No INSERT/UPDATE/DELETE policies are intentionally defined for client roles.
