@@ -35,6 +35,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
   bool _isAdminUser = false;
   String _userRole = 'member';
   List<Map<String, dynamic>> _members = [];
+  final Map<String, double> _communityReputations = {};
   String? _nextCursor;
   bool _hasMore = false;
   String _searchQuery = '';
@@ -119,6 +120,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
       final newMembers = rawItems.map((e) => Map<String, dynamic>.from(e)).toList();
       final nextCursor = res['next_cursor']?.toString();
       final hasMore = res['has_more'] == true;
+      await _loadCommunityReputations(newMembers);
 
       if (mounted) {
         setState(() {
@@ -137,7 +139,39 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
           _isLoadingMore = false;
         });
       }
-    } on PostgrestException catch (e) {
+    }
+
+  Future<void> _loadCommunityReputations(List<Map<String, dynamic>> members) async {
+    final ids = members
+        .map((member) => member['user_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    if (ids.isEmpty) return;
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_community_member_reputations',
+        params: {'p_community_id': widget.communityId, 'p_user_ids': ids},
+      );
+      if (response is! List || !mounted) return;
+      setState(() {
+        for (final raw in response) {
+          if (raw is! Map) continue;
+          final row = Map<String, dynamic>.from(raw);
+          final id = row['user_id']?.toString();
+          final score = (row['score'] as num?)?.toDouble();
+          if (id != null && score != null) {
+            _communityReputations[id] = score.clamp(0.0, 5.0);
+          }
+        }
+      });
+    } catch (e) {
+      // The UI remains usable while the V2 migration is awaiting deployment.
+      debugPrint('[CommunityMembersScreen] Community reputation unavailable: $e');
+    }
+  }
+
+  } on PostgrestException catch (e) {
       final isHidden = e.code == 'P0001' || e.message.toLowerCase().contains('masquée') || e.message.toLowerCase().contains('masque');
       if (isHidden) {
         if (_isStaff) {
@@ -470,6 +504,8 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                             final isVerified = (member['is_verified'] == true || member['is_verified'] == 1 || member['is_verified'] == 'true') && !isCertified;
                             final role = member['role']?.toString() ?? 'member';
                             final isSelf = member['is_self'] == true || member['is_self'] == 1 || member['is_self'] == 'true';
+            final memberId = member['user_id']?.toString() ?? '';
+            final communityScore = _communityReputations[memberId];
 
                             String roleTag = '';
                             if (role == 'admin') roleTag = isSelf ? ' (Admin · Vous)' : ' (Admin)';
@@ -497,7 +533,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                                       isCertified: isCertified,
                                       userId: member['user_id']?.toString(),
                                       prefixWidget: isVerified ? UserCertifiedBadge(size: 16, userId: member['user_id']?.toString()) : null,
-                                      subtitle: roleTag.isNotEmpty ? roleTag : null,
+                                      subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ') : null,
                                       trailing: (_isStaff && !isSelf)
                                           ? Icon(Icons.more_vert_rounded, size: 18, color: colorScheme.onSurfaceVariant)
                                           : null,
