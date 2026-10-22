@@ -184,11 +184,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   late Future<List<Map<String, dynamic>>> _messagesFuture;
   bool _sending = false;
   String _wallpaperKey = 'none';
+  late GroupConversation _group;
   RealtimeChannel? _messagesChannel;
 
   @override
   void initState() {
     super.initState();
+    _group = widget.group;
     _messagesFuture = widget.service.fetchMessages(widget.group.id);
     widget.service.getPersonalWallpaper(widget.group.id).then((value) {
       if (mounted) setState(() => _wallpaperKey = value);
@@ -219,7 +221,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             }
           },
         )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'group_conversations',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.group.id,
+          ),
+          callback: (_) async {
+            try {
+              final groups = await widget.service.fetchMyGroups();
+              final refreshed = groups.where((group) => group.id == widget.group.id);
+              if (mounted && refreshed.isNotEmpty) {
+                setState(() => _group = refreshed.first);
+                _reloadMessages();
+              }
+            } catch (_) {
+              // The group may have been closed or access revoked.
+            }
+          },
+        )
         .subscribe();
+  }
+
+  void _reloadMessages() {
+    if (mounted) setState(() => _messagesFuture = widget.service.fetchMessages(widget.group.id));
   }
 
   @override
@@ -306,10 +334,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canSend = widget.group.canSendMessages;
+    final canSend = _group.canSendMessages;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.group.name),
+        title: Text(_group.name),
         actions: [
           IconButton(
             tooltip: 'Fond personnel',
