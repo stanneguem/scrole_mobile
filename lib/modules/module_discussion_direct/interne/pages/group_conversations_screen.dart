@@ -452,7 +452,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     _membersFuture = widget.service.fetchMembers(widget.group.id);
   }
 
-  void _reload() => setState(() => _membersFuture = widget.service.fetchMembers(widget.group.id));
+  void _reload() {
+    if (!mounted) return;
+    setState(() => _membersFuture = widget.service.fetchMembers(widget.group.id));
+  }
 
   Future<void> _leave() async {
     final confirmed = await showDialog<bool>(
@@ -559,7 +562,8 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     if (id == null || id.isEmpty) return;
     try {
       await widget.service.inviteMembers(widget.group.id, [id]);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invitation envoyée. Le membre devra l’accepter.')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invitation envoyée. Le membre devra l’accepter.')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invitation impossible : $e')));
     }
@@ -571,6 +575,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
         : GroupMemberRole.administrator;
     try {
       await widget.service.changeMemberRole(widget.group.id, member.userId, newRole);
+      if (!mounted) return;
       _reload();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Modification impossible : $e')));
@@ -592,6 +597,7 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
     if (confirmed != true) return;
     try {
       await widget.service.removeMember(widget.group.id, member.userId);
+      if (!mounted) return;
       _reload();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retrait impossible : $e')));
