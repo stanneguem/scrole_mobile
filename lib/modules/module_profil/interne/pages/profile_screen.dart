@@ -328,7 +328,7 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
           Expanded(
             child: _engagementStat(
-              controller.reputation.value.toStringAsFixed(1),
+              '${controller.reputation.value.toStringAsFixed(2)}/5',
               'profile_stat_reputation'.tr,
               colorScheme,
             ),
