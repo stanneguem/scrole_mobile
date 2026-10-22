@@ -58,7 +58,7 @@ class ProfileController extends GetxController {
   final RxInt eventsAttendedCount = 0.obs;
   final RxInt eventsOrganizedCount = 0.obs;
   final RxInt interactionsCount = 0.obs;
-  final RxDouble reputation = 1.0.obs;
+  final RxDouble reputation = 0.0.obs;
 
   final RxList<Interest> userInterests = <Interest>[].obs;
 
@@ -388,7 +388,22 @@ class ProfileController extends GetxController {
       eventsAttendedCount.value = (stats['events_attended_count'] as num?)?.toInt() ?? 0;
       eventsOrganizedCount.value = (stats['events_organized_count'] as num?)?.toInt() ?? 0;
       interactionsCount.value = (stats['interactions_count'] as num?)?.toInt() ?? 0;
-      reputation.value = (stats['reputation'] as num?)?.toDouble() ?? 1.0;
+      try {
+        final reputationRaw = await Supabase.instance.client.rpc(
+          'get_user_reputation',
+          params: {'p_user_id': uid, 'p_community_id': null},
+        );
+        if (reputationRaw is Map) {
+          final reputationData = Map<String, dynamic>.from(reputationRaw);
+          reputation.value = ((reputationData['score'] as num?)?.toDouble() ?? 0.0)
+              .clamp(0.0, 5.0);
+        }
+      } catch (e) {
+        // Compatibility fallback until the reputation V2 migration is deployed.
+        reputation.value = ((stats['reputation'] as num?)?.toDouble() ?? reputation.value)
+            .clamp(0.0, 5.0);
+        debugPrint('[ProfileController] V2 reputation unavailable; legacy fallback used: $e');
+      }
     } catch (e, stack) {
       debugPrint('[ProfileController] get_profile_engagement_stats failed: $e\\n$stack');
     }
