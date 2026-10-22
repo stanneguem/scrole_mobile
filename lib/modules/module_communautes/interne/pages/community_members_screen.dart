@@ -532,7 +532,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                                       isCertified: isCertified,
                                       userId: member['user_id']?.toString(),
                                       prefixWidget: isVerified ? UserCertifiedBadge(size: 16, userId: member['user_id']?.toString()) : null,
-                                      subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ') : null,
+                                      subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${communityScore.toStringAsFixed(2)}/5 · Réputation communauté'].join('  ') : null,
                                       trailing: (_isStaff && !isSelf)
                                           ? Icon(Icons.more_vert_rounded, size: 18, color: colorScheme.onSurfaceVariant)
                                           : null,
