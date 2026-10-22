@@ -419,7 +419,12 @@ class NotificationService {
         title: notification['title']?.toString() ?? 'Scrole',
         message: notification['body']?.toString() ?? '',
         type: type,
-        payload: jsonEncode(notification['data'] ?? {}),
+        payload: jsonEncode({
+          if (notification['data'] is Map) ...Map<String, dynamic>.from(notification['data'] as Map),
+          'type': type,
+          'notification_id': id,
+          if (notification['actor_id'] != null) 'actor_id': notification['actor_id'],
+        }),
       );
     }
   }
@@ -514,7 +519,13 @@ class NotificationService {
     final title = data['title']?.toString() ?? 'Scrole';
     final body = data['body']?.toString() ?? '';
     final type = data['type']?.toString() ?? 'info';
-    final payload = data['data'] != null ? jsonEncode(data['data']) : null;
+    final rawPayloadData = data['data'];
+    final payload = jsonEncode({
+      if (rawPayloadData is Map) ...Map<String, dynamic>.from(rawPayloadData),
+      'type': type,
+      'notification_id': id,
+      if (data['actor_id'] != null) 'actor_id': data['actor_id'],
+    });
 
     final dbService = Get.find<NotificationDbService>();
 
