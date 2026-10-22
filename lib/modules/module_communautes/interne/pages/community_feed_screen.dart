@@ -100,7 +100,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         final estimatedOffset = (index * 420.0).clamp(
           0.0,
           _scrollController.position.maxScrollExtent,
-        );
+        ).toDouble();
         _scrollController.jumpTo(estimatedOffset);
         await WidgetsBinding.instance.endOfFrame;
       }
