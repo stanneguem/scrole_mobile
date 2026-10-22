@@ -237,7 +237,16 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   Widget build(BuildContext context) {
     final canSend = widget.group.canSendMessages;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.group.name)),
+      appBar: AppBar(
+        title: Text(widget.group.name),
+        actions: [
+          IconButton(
+            tooltip: 'Membres et paramètres',
+            icon: const Icon(Icons.people_outline),
+            onPressed: () => Get.to(() => GroupMembersScreen(group: widget.group, service: widget.service)),
+          ),
+        ],
+      ),
       body: Column(children: [
         if (!canSend)
           Material(
@@ -300,6 +309,162 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+
+class GroupMembersScreen extends StatefulWidget {
+  const GroupMembersScreen({super.key, required this.group, required this.service});
+  final GroupConversation group;
+  final SupabaseGroupMessagingService service;
+
+  @override
+  State<GroupMembersScreen> createState() => _GroupMembersScreenState();
+}
+
+class _GroupMembersScreenState extends State<GroupMembersScreen> {
+  late Future<List<GroupMember>> _membersFuture;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _membersFuture = widget.service.fetchMembers(widget.group.id);
+  }
+
+  void _reload() => setState(() => _membersFuture = widget.service.fetchMembers(widget.group.id));
+
+  Future<void> _leave() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quitter le groupe ?'),
+        content: const Text('Si vous êtes propriétaire, la propriété sera transmise à l’administrateur actif le plus ancien, sinon au membre actif le plus ancien.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Quitter')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      await widget.service.leaveGroup(widget.group.id);
+      if (!mounted) return;
+      Get.until((route) => route.isFirst || route.settings.name == null);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vous avez quitté le groupe.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Impossible de quitter le groupe : $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _invite() async {
+    final controller = TextEditingController();
+    final id = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Inviter un membre'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Identifiant utilisateur'),
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.pop(context, value.trim()),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Envoyer l’invitation')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (id == null || id.isEmpty) return;
+    try {
+      await widget.service.inviteMembers(widget.group.id, [id]);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invitation envoyée. Le membre devra l’accepter.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invitation impossible : $e')));
+    }
+  }
+
+  Future<void> _changeRole(GroupMember member) async {
+    final newRole = member.role == GroupMemberRole.administrator
+        ? GroupMemberRole.member
+        : GroupMemberRole.administrator;
+    try {
+      await widget.service.changeMemberRole(widget.group.id, member.userId, newRole);
+      _reload();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Modification impossible : $e')));
+    }
+  }
+
+  Future<void> _remove(GroupMember member) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retirer ce membre ?'),
+        content: const Text('Cette personne perdra immédiatement l’accès au groupe et à ses médias protégés. Elle devra recevoir une nouvelle invitation pour revenir.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retirer')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await widget.service.removeMember(widget.group.id, member.userId);
+      _reload();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Retrait impossible : $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Membres du groupe')),
+      body: FutureBuilder<List<GroupMember>>(
+        future: _membersFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) return Center(child: Text('Impossible de charger les membres : ${snapshot.error}'));
+          final members = snapshot.data ?? const <GroupMember>[];
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          final currentMember = members.where((m) => m.userId == currentUserId).firstOrNull;
+          final canManage = currentMember?.role == GroupMemberRole.owner || currentMember?.role == GroupMemberRole.administrator;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (canManage) FilledButton.icon(onPressed: _busy ? null : _invite, icon: const Icon(Icons.person_add_alt_1), label: const Text('Inviter un membre')),
+              const SizedBox(height: 8),
+              ...members.map((member) => Card(
+                child: ListTile(
+                  leading: CircleAvatar(child: Icon(member.role == GroupMemberRole.owner ? Icons.workspace_premium : member.role == GroupMemberRole.administrator ? Icons.admin_panel_settings_outlined : Icons.person_outline)),
+                  title: Text(member.displayName?.isNotEmpty == true ? member.displayName! : 'Membre'),
+                  subtitle: Text(member.role == GroupMemberRole.owner ? 'Propriétaire' : member.role == GroupMemberRole.administrator ? 'Administrateur' : 'Membre'),
+                  trailing: canManage && member.userId != currentUserId && member.role != GroupMemberRole.owner
+                      ? PopupMenuButton<String>(
+                          onSelected: (action) {
+                            if (action == 'role') _changeRole(member);
+                            if (action == 'remove') _remove(member);
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(value: 'role', child: Text(member.role == GroupMemberRole.administrator ? 'Rétrograder en membre' : 'Nommer administrateur')),
+                            const PopupMenuItem(value: 'remove', child: Text('Retirer du groupe')),
+                          ],
+                        )
+                      : null,
+                ),
+              )),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(onPressed: _busy ? null : _leave, icon: const Icon(Icons.exit_to_app), label: const Text('Quitter le groupe')),
+            ],
+          );
+        },
+      ),
     );
   }
 }
