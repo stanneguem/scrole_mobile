@@ -12,6 +12,7 @@ import '../widgets/direct_voice_message_player.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/image_source_sheet.dart';
 import '../../../../shared/widgets/media_full_screen_page.dart';
 import '../../centre/models/message_model.dart';
@@ -161,12 +162,25 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             () => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  controller.otherUserName.value.toUpperCase(),
-                  style: AppTextStyles.h6.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        controller.otherUserName.value.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.h6.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    UserCertifiedBadge(
+                      userId: controller.otherUserId,
+                      size: 16,
+                    ),
+                  ],
                 ),
                 if (controller.isOtherUserTyping.value)
                   const Text(
