@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../centre/models/group_conversation.dart';
@@ -145,6 +148,41 @@ class SupabaseGroupMessagingService {
       return Map<String, dynamic>.from(response.first as Map);
     }
     throw StateError('The server did not return the inserted group message.');
+  }
+
+  Future<String> uploadGroupMedia({
+    required String groupId,
+    required File file,
+    String? contentType,
+  }) async {
+    _validateId(groupId, 'groupId');
+    final extension = p.extension(file.path).toLowerCase();
+    const allowed = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.m4a', '.mp3', '.ogg', '.pdf'};
+    if (!allowed.contains(extension)) {
+      throw ArgumentError.value(extension, 'file', 'Unsupported group attachment type.');
+    }
+    final objectPath = '$groupId/$_userId/${DateTime.now().microsecondsSinceEpoch}$extension';
+    await _client.storage.from('group-chat-media').upload(
+      objectPath,
+      file,
+      fileOptions: FileOptions(contentType: contentType, upsert: false),
+    );
+    return objectPath;
+  }
+
+  Future<String> createSignedMediaUrl(String objectPath, {Duration expiresIn = const Duration(minutes: 5)}) async {
+    if (objectPath.startsWith('/') || objectPath.contains('..')) {
+      throw ArgumentError.value(objectPath, 'objectPath');
+    }
+    final parts = objectPath.split('/');
+    if (parts.length != 3) throw ArgumentError.value(objectPath, 'objectPath');
+    _validateId(parts[0], 'groupId');
+    if (parts[1] != _userId) {
+      // Signed URLs are requested through an RPC in the secure implementation;
+      // do not let a client mint URLs for arbitrary object paths.
+      await _client.rpc('assert_group_media_access', params: {'p_group_id': parts[0]});
+    }
+    return _client.storage.from('group-chat-media').createSignedUrl(objectPath, expiresIn.inSeconds);
   }
 
   Future<void> markRead(String groupId, {String? lastMessageId, DateTime? readAt}) async {
