@@ -180,7 +180,21 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
         if (_comments.length == previousCount) break;
       }
       if (!mounted) return;
-      final index = _comments.indexWhere((comment) => comment['id']?.toString() == widget.targetCommentId);
+      var index = _comments.indexWhere((comment) => comment['id']?.toString() == widget.targetCommentId);
+      if (index < 0) {
+        // The target may be a reply rather than a top-level comment. Expand
+        // each parent until the reply is found, then scroll to its parent.
+        for (var i = 0; i < _comments.length; i++) {
+          final parentId = _comments[i]['id']?.toString();
+          if (parentId == null) continue;
+          await _loadReplies(parentId);
+          final replies = _repliesMap[parentId] ?? const <Map<String, dynamic>>[];
+          if (replies.any((reply) => reply['id']?.toString() == widget.targetCommentId)) {
+            index = i;
+            break;
+          }
+        }
+      }
       if (index < 0) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
