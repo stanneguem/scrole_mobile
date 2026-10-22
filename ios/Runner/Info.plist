@@ -30,6 +30,8 @@
 	<string>Scrole a besoin d'accéder à votre galerie pour enregistrer ou publier des photos et vidéos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Scrole a besoin d'accéder à votre galerie pour vous permettre de choisir des photos et vidéos à publier.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Scrole utilise votre position actuelle uniquement pour vérifier le pays lorsque vous modifiez votre localisation.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Scrole a besoin d'accéder à votre appareil photo pour vous permettre de prendre des photos et vidéos à publier.</string>
 	<key>NSMicrophoneUsageDescription</key>

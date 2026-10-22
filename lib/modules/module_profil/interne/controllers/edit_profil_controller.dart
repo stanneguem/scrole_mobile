@@ -312,8 +312,13 @@ class EditProfileController extends GetxController {
         selectedCity.value!.nom.toLowerCase() != _profileController.city.value.toLowerCase();
 
     if (canChangeLocation.value && (countryChanged || cityChanged)) {
-      if (selectedCountry.value != null) payload['country_id'] = selectedCountry.value!.id;
-      if (selectedCity.value != null) payload['city_id'] = selectedCity.value!.id;
+      if (selectedCountry.value != null) {
+        payload['country_id'] = selectedCountry.value!.id;
+        // A city from the previous country must never remain attached.
+        payload['city_id'] = selectedCity.value?.id;
+      } else if (cityChanged && selectedCity.value != null) {
+        payload['city_id'] = selectedCity.value!.id;
+      }
     }
 
     final interestIds = selectedInterestIds.toList();
