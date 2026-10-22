@@ -6,6 +6,7 @@ import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/service_global/notification_service.dart';
@@ -60,27 +61,77 @@ class ChatController extends GetxController {
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
   final RxString selectedWallpaper = 'fond1'.obs;
+  final RxBool isSharedWallpaper = false.obs;
 
   void _loadWallpaper() {
-    if (!Get.isRegistered<FastCacheService>()) return;
-    final cache = Get.find<FastCacheService>();
-    final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
-    if (targetId.isEmpty) return;
-    final key = 'chat_wallpaper_$targetId';
-    final saved = cache.get<String>(key);
-    selectedWallpaper.value = saved ?? 'fond1';
-  }
-
-  Future<void> setWallpaper(String wallpaperKey) async {
-    selectedWallpaper.value = wallpaperKey;
-    selectedWallpaper.refresh();
     if (Get.isRegistered<FastCacheService>()) {
       final cache = Get.find<FastCacheService>();
       final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
       if (targetId.isNotEmpty) {
-        final key = 'chat_wallpaper_$targetId';
-        await cache.set(key, wallpaperKey);
+        selectedWallpaper.value = cache.get<String>('chat_wallpaper_$targetId') ?? 'fond1';
       }
+    }
+    if (!isDraftConversation && conversationId.isNotEmpty) unawaited(_loadSharedWallpaper());
+  }
+
+  Future<void> _loadSharedWallpaper() async {
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_direct_conversation_wallpaper',
+        params: {'p_conversation_id': conversationId},
+      );
+      if (response is Map && response['wallpaper_key'] is String) {
+        final key = response['wallpaper_key'] as String;
+        if (key.isNotEmpty) {
+          selectedWallpaper.value = key;
+          isSharedWallpaper.value = true;
+          if (Get.isRegistered<FastCacheService>()) {
+            await Get.find<FastCacheService>().set('chat_wallpaper_$conversationId', key);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[CHAT_WALLPAPER] Unable to load shared wallpaper: $e');
+    }
+  }
+
+  Future<void> setWallpaper(String wallpaperKey, {bool applyToBoth = false}) async {
+    final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
+    if (applyToBoth) {
+      if (isDraftConversation || conversationId.isEmpty) {
+        Get.snackbar('Fond d’écran', 'Envoie d’abord un message pour créer la discussion.');
+        return;
+      }
+      if (wallpaperKey.startsWith('custom:')) {
+        Get.snackbar('Fond d’écran', 'Les fonds personnalisés doivent être téléversés pour être partagés. Choisis un fond intégré pour le moment.');
+        return;
+      }
+      try {
+        await Supabase.instance.client.rpc('set_direct_conversation_wallpaper', params: {
+          'p_conversation_id': conversationId,
+          'p_wallpaper_key': wallpaperKey,
+        });
+        selectedWallpaper.value = wallpaperKey;
+        isSharedWallpaper.value = true;
+      } on PostgrestException catch (e) {
+        if (e.message.contains('certification_required')) {
+          Get.snackbar('Fonction réservée', 'La certification Basique ou supérieure est nécessaire pour changer le fond pour les deux personnes.');
+        } else {
+          Get.snackbar('Fond d’écran', 'Impossible d’appliquer le fond partagé. Réessaie plus tard.');
+        }
+        return;
+      } catch (e) {
+        debugPrint('[CHAT_WALLPAPER] Shared wallpaper update failed: $e');
+        Get.snackbar('Fond d’écran', 'Impossible d’appliquer le fond partagé. Réessaie plus tard.');
+        return;
+      }
+    } else {
+      selectedWallpaper.value = wallpaperKey;
+      isSharedWallpaper.value = false;
+    }
+    selectedWallpaper.refresh();
+    if (Get.isRegistered<FastCacheService>() && targetId.isNotEmpty) {
+      await Get.find<FastCacheService>().set('chat_wallpaper_$targetId', wallpaperKey);
     }
   }
 
