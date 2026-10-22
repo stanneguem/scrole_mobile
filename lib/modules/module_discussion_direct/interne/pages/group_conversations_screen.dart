@@ -357,7 +357,21 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         if (!mine && (message['sender_name'] as String?)?.isNotEmpty == true)
                           Text(message['sender_name'] as String, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
-                        Text(body.isEmpty ? 'Pièce jointe' : body),
+                        if (message['type'] == 'image' && message['media_urls'] is List && (message['media_urls'] as List).isNotEmpty)
+                          FutureBuilder<String>(
+                            future: widget.service.createSignedMediaUrl('${(message['media_urls'] as List).first}'),
+                            builder: (context, mediaSnapshot) {
+                              if (mediaSnapshot.hasError) return const Text('Image inaccessible');
+                              if (!mediaSnapshot.hasData) return const SizedBox(width: 180, height: 120, child: Center(child: CircularProgressIndicator()));
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(mediaSnapshot.data!, width: 220, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Text('Impossible de charger l’image')),
+                              );
+                            },
+                          )
+                        else if (body.isNotEmpty) Text(body)
+                        else const Text('Pièce jointe'),
                         if (message['created_at'] != null)
                           Align(alignment: Alignment.bottomRight, child: Text(MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(DateTime.parse('${message['created_at']}').toLocal())), style: Theme.of(context).textTheme.labelSmall)),
                       ]),
@@ -512,7 +526,10 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           if (snapshot.hasError) return Center(child: Text('Impossible de charger les membres : ${snapshot.error}'));
           final members = snapshot.data ?? const <GroupMember>[];
           final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-          final currentMember = members.where((m) => m.userId == currentUserId).firstOrNull;
+          GroupMember? currentMember;
+          for (final member in members) {
+            if (member.userId == currentUserId) { currentMember = member; break; }
+          }
           final canManage = currentMember?.role == GroupMemberRole.owner || currentMember?.role == GroupMemberRole.administrator;
           return ListView(
             padding: const EdgeInsets.all(16),
