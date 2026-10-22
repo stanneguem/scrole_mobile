@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/routes/app_pages.dart';
 import '../../../module_communautes/interne/pages/community_feed_screen.dart';
+import '../../../module_discussion_direct/interne/pages/group_conversations_screen.dart';
 
 /// Shared deep-link handler for taps from the notification center, FCM and
 /// local notifications. Payloads are untrusted and identifiers are validated
@@ -36,6 +37,11 @@ class NotificationDeepLinkRouter {
     final actorId = value(['actor_id', 'sender_id', 'user_id', 'target_user_id']);
 
     try {
+      if (type == 'group_invitation' || type == 'group_invite') {
+        Get.to(() => const GroupConversationsScreen());
+        return;
+      }
+
       // Comment/reply/mention payloads usually carry community_id and post_id.
       if (communityId != null &&
           (postId != null ||
