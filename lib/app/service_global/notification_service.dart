@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, VoidCallback;
+import 'package:flutter/foundation.dart'
+    show debugPrint, kIsWeb, VoidCallback, debugPrintStack;
 import 'package:flutter/widgets.dart'
     show WidgetsBinding, WidgetsBindingObserver, Locale;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -22,7 +23,7 @@ import 'package:scrole/modules/module_notification/externe/repositories/fcm_toke
 import 'package:scrole/modules/module_notification/externe/repositories/notification_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/repositories/messaging_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message.dart'
-as messaging;
+    as messaging;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -35,15 +36,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final data = message.data;
     final title =
         data['title']?.toString() ??
-            data['sender_name']?.toString() ??
-            data['subject']?.toString() ??
-            'Scrole';
+        data['sender_name']?.toString() ??
+        data['subject']?.toString() ??
+        'Scrole';
     final body =
         data['body']?.toString() ??
-            data['content']?.toString() ??
-            data['message']?.toString() ??
-            data['text']?.toString() ??
-            '';
+        data['content']?.toString() ??
+        data['message']?.toString() ??
+        data['text']?.toString() ??
+        '';
 
     if (body.isNotEmpty) {
       final plugin = FlutterLocalNotificationsPlugin();
@@ -61,7 +62,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       final notifId = data['notification_id']?.toString() ?? '';
 
       await plugin.show(
-        id: notifId.isNotEmpty ? notifId.hashCode.abs() : message.hashCode.abs(),
+        id: notifId.isNotEmpty
+            ? notifId.hashCode.abs()
+            : message.hashCode.abs(),
         title: title,
         body: body,
         notificationDetails: const NotificationDetails(
@@ -97,7 +100,7 @@ class NotificationService {
   NotificationService._internal();
   static final NotificationService instance = NotificationService._internal();
   final FlutterLocalNotificationsPlugin _plugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FcmTokenRepository _tokenRepository = FcmTokenRepository(
     Supabase.instance.client,
@@ -112,12 +115,12 @@ class NotificationService {
   String? _lastSyncedLanguage;
 
   static const AndroidNotificationChannel _defaultChannel =
-  AndroidNotificationChannel(
-    'scrole_default_channel',
-    'Notifications Scrole',
-    description: 'Notifications générales de l\'application',
-    importance: Importance.max,
-  );
+      AndroidNotificationChannel(
+        'scrole_default_channel',
+        'Notifications Scrole',
+        description: 'Notifications générales de l\'application',
+        importance: Importance.max,
+      );
   static const String replyActionId = 'reply_action';
   static const String _replyCategoryId = 'reply_category';
 
@@ -128,8 +131,8 @@ class NotificationService {
   String _currentLanguageCode() {
     final locale =
         Get.locale ??
-            Get.deviceLocale ??
-            WidgetsBinding.instance.platformDispatcher.locale;
+        Get.deviceLocale ??
+        WidgetsBinding.instance.platformDispatcher.locale;
     const supported = ['fr', 'en', 'es', 'de'];
     return supported.contains(locale.languageCode) ? locale.languageCode : 'fr';
   }
@@ -276,8 +279,8 @@ class NotificationService {
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin
-    >()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_defaultChannel);
     await _setupFirebaseMessaging();
     await _setupRealtimeNotifications();
@@ -298,17 +301,14 @@ class NotificationService {
     });
 
     final authService = Get.find<AuthService>();
-    _authWorker = ever(
-      authService.currentUser,
-          (user) async {
-        if (user != null) {
-          // À chaque nouvelle session (connexion ou switch de compte),
-          // on force un nouveau token pour isoler les notifications.
-          await rotateToken();
-          await syncLanguage(force: true);
-        }
-      },
-    );
+    _authWorker = ever(authService.currentUser, (user) async {
+      if (user != null) {
+        // À chaque nouvelle session (connexion ou switch de compte),
+        // on force un nouveau token pour isoler les notifications.
+        await rotateToken();
+        await syncLanguage(force: true);
+      }
+    });
 
     // Synchronisation de la langue : au démarrage et à chaque changement
     // de langue de l'appareil.
@@ -345,14 +345,14 @@ class NotificationService {
     if (Platform.isIOS) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-      >()
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
     } else if (Platform.isAndroid) {
       await _plugin
           .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-      >()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     }
 
@@ -394,8 +394,11 @@ class NotificationService {
       );
       await _replayMissedNotifications(missed);
     } catch (e) {
-      if (e.toString().contains('23505') || e.toString().contains('already exists')) {
-        debugPrint('[FCM] Token already registered for this user, ignoring duplicate error.');
+      if (e.toString().contains('23505') ||
+          e.toString().contains('already exists')) {
+        debugPrint(
+          '[FCM] Token already registered for this user, ignoring duplicate error.',
+        );
         return;
       }
       debugPrint('[FCM] Échec enregistrement token/appareil: $e');
@@ -403,8 +406,8 @@ class NotificationService {
   }
 
   Future<void> _replayMissedNotifications(
-      List<Map<String, dynamic>> missed,
-      ) async {
+    List<Map<String, dynamic>> missed,
+  ) async {
     final userId = Get.find<AuthService>().userId;
     if (userId == null || missed.isEmpty) return;
     final db = Get.find<NotificationDbService>();
@@ -420,10 +423,12 @@ class NotificationService {
         message: notification['body']?.toString() ?? '',
         type: type,
         payload: jsonEncode({
-          if (notification['data'] is Map) ...Map<String, dynamic>.from(notification['data'] as Map),
+          if (notification['data'] is Map)
+            ...Map<String, dynamic>.from(notification['data'] as Map),
           'type': type,
           'notification_id': id,
-          if (notification['actor_id'] != null) 'actor_id': notification['actor_id'],
+          if (notification['actor_id'] != null)
+            'actor_id': notification['actor_id'],
         }),
       );
     }
@@ -451,16 +456,20 @@ class NotificationService {
           final row = payload.newRecord;
           await _processIncomingNotification(row);
         },
-      )
-          .subscribe((status, error) async {
+      ).subscribe((status, error) async {
         if (status == RealtimeSubscribeStatus.subscribed) {
           if (_subscribedOnce) {
             // RECONNEXION : Rattrapage ciblé pour combler les "trous"
-            debugPrint('[Sync] Notification channel reconnected, catching up...');
+            debugPrint(
+              '[Sync] Notification channel reconnected, catching up...',
+            );
             final lastSeen = await db.getLatestNotificationTimestamp(userId);
 
             // On récupère tout ce qui est arrivé depuis le dernier checkpoint local
-            final query = client.from('notifications').select().eq('user_id', userId);
+            final query = client
+                .from('notifications')
+                .select()
+                .eq('user_id', userId);
             if (lastSeen != null) {
               query.gt('created_at', lastSeen.toIso8601String());
             }
@@ -470,7 +479,9 @@ class NotificationService {
               for (final n in missed) {
                 await _processIncomingNotification(n);
               }
-              debugPrint('[Sync] Notification catch-up completed: ${missed.length} missed notifications processed.');
+              debugPrint(
+                '[Sync] Notification catch-up completed: ${missed.length} missed notifications processed.',
+              );
             } catch (e) {
               debugPrint('[Error] Notification catch-up failed: $e');
             }
@@ -515,7 +526,9 @@ class NotificationService {
     final userId = Get.find<AuthService>().userId;
     if (userId == null) return;
 
-    final id = data['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final id =
+        data['id']?.toString() ??
+        DateTime.now().millisecondsSinceEpoch.toString();
     final title = data['title']?.toString() ?? 'Scrole';
     final body = data['body']?.toString() ?? '';
     final type = data['type']?.toString() ?? 'info';
@@ -577,17 +590,17 @@ class NotificationService {
       final type = data['type']?.toString() ?? 'info';
       final title =
           message.notification?.title ??
-              data['title']?.toString() ??
-              data['sender_name']?.toString() ??
-              data['subject']?.toString() ??
-              'Scrole';
+          data['title']?.toString() ??
+          data['sender_name']?.toString() ??
+          data['subject']?.toString() ??
+          'Scrole';
       final body =
           message.notification?.body ??
-              data['body']?.toString() ??
-              data['content']?.toString() ??
-              data['message']?.toString() ??
-              data['text']?.toString() ??
-              '';
+          data['body']?.toString() ??
+          data['content']?.toString() ??
+          data['message']?.toString() ??
+          data['text']?.toString() ??
+          '';
 
       if (type == 'message_received') {
         final conversationId = data['conversation_id']?.toString();
@@ -611,8 +624,8 @@ class NotificationService {
       // Même identifiant que le chemin Realtime (`id` de la ligne = `notification_id`)
       final notifId =
           data['notification_id']?.toString() ??
-              message.messageId ??
-              DateTime.now().millisecondsSinceEpoch.toString();
+          message.messageId ??
+          DateTime.now().millisecondsSinceEpoch.toString();
 
       final userId = Get.find<AuthService>().userId;
       var saved = true;
@@ -666,7 +679,10 @@ class NotificationService {
       final launch = await _plugin.getNotificationAppLaunchDetails();
       final response = launch?.notificationResponse;
       final payload = response?.payload;
-      if (launch?.didNotificationLaunchApp != true || payload == null || payload.isEmpty) return;
+      if (launch?.didNotificationLaunchApp != true ||
+          payload == null ||
+          payload.isEmpty)
+        return;
       await Future<void>.delayed(const Duration(milliseconds: 700));
       final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
       if (data['type'] == 'message_received') {
@@ -675,7 +691,9 @@ class NotificationService {
         await NotificationDeepLinkRouter.open(data);
       }
     } catch (e, st) {
-      debugPrint('[Notifications] Failed to route local notification launch: $e');
+      debugPrint(
+        '[Notifications] Failed to route local notification launch: $e',
+      );
       debugPrintStack(stackTrace: st);
     }
   }
@@ -752,9 +770,7 @@ class NotificationService {
             replyActionId,
             'Répondre',
             inputs: [
-              const AndroidNotificationActionInput(
-                label: 'Votre message',
-              ),
+              const AndroidNotificationActionInput(label: 'Votre message'),
             ],
           ),
         ],
