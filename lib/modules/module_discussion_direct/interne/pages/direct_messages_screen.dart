@@ -535,23 +535,26 @@ class _AnimatedConversationTile extends StatelessWidget {
                       ),
                       if (conversation.lastMessage != null &&
                           conversation.lastMessage!.senderId == currentUserId)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _ReceiptStatusIcon(status: conversation.lastMessage!.status),
-                              const SizedBox(width: 4),
-                              Text(
-                                _receiptLabel(conversation.lastMessage!.status),
-                                style: AppTextStyles.caption.copyWith(
-                                  fontSize: 10,
-                                  color: conversation.lastMessage!.status == MessageStatus.read
-                                      ? Colors.blue
-                                      : colorScheme.onSurfaceVariant.withOpacity(.65),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 3, right: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ReceiptStatusIcon(status: conversation.lastMessage!.status),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _receiptLabel(conversation.lastMessage!.status),
+                                  style: AppTextStyles.caption.copyWith(
+                                    fontSize: 10,
+                                    color: conversation.lastMessage!.status == MessageStatus.read
+                                        ? Colors.blue
+                                        : colorScheme.onSurfaceVariant.withOpacity(.65),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                     ],
