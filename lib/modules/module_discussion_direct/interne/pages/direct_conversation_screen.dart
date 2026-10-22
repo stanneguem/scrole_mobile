@@ -377,8 +377,10 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                 children: content,
               ),
             ),
-            if (header)
+            if (header || isMe)
               Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     DateFormat.Hm().format(m.createdAt),
@@ -389,7 +391,27 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                           : colors.onSurfaceVariant.withValues(alpha: .5),
                     ),
                   ),
-                  if (isMe) _status(m.status),
+                  if (isMe) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _status(m.status),
+                        const SizedBox(width: 3),
+                        Text(
+                          _receiptLabel(m.status),
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: m.status == MessageStatus.read
+                                ? Colors.blue
+                                : hasWallpaper
+                                    ? Colors.white70
+                                    : colors.onSurfaceVariant.withValues(alpha: .65),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
           ],
@@ -399,18 +421,27 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   }
 
   Widget _status(MessageStatus s) {
-    final icon = s == MessageStatus.read || s == MessageStatus.received
-        ? Icons.done_all_rounded
-        : s == MessageStatus.sent
-        ? Icons.check_rounded
-        : Icons.error_outline;
+    final icon = switch (s) {
+      MessageStatus.pending || MessageStatus.sending => Icons.schedule_rounded,
+      MessageStatus.sent => Icons.check_rounded,
+      MessageStatus.delivered || MessageStatus.received || MessageStatus.read => Icons.done_all_rounded,
+      MessageStatus.failed || MessageStatus.error => Icons.error_outline_rounded,
+    };
     final color = s == MessageStatus.read
         ? Colors.blue
         : s == MessageStatus.error || s == MessageStatus.failed
-        ? AppColors.error
-        : null;
-    return Icon(icon, size: 15, color: color);
+            ? AppColors.error
+            : null;
+    return Icon(icon, size: 13, color: color);
   }
+
+  String _receiptLabel(MessageStatus s) => switch (s) {
+    MessageStatus.pending || MessageStatus.sending => 'Envoi…',
+    MessageStatus.sent => 'Envoyé',
+    MessageStatus.delivered || MessageStatus.received => 'Reçu',
+    MessageStatus.read => 'Lu',
+    MessageStatus.failed || MessageStatus.error => 'Échec',
+  };
 
   Widget _media(List<String> urls) {
     return Container(
