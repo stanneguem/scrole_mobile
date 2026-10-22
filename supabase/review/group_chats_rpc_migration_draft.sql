@@ -224,6 +224,20 @@ begin
  on conflict(group_id,user_id) do update set wallpaper_key=excluded.wallpaper_key,updated_at=now();
 end $$;
 
+
+create or replace function public.get_group_personal_wallpaper(p_group_id uuid)
+returns text language plpgsql security definer set search_path = ''
+as $
+declare v_uid uuid := auth.uid(); v_wallpaper text;
+begin
+ if v_uid is null then raise exception 'authentication_required' using errcode='28000'; end if;
+ if not exists(select 1 from public.group_conversation_members where group_id=p_group_id and user_id=v_uid and status='active') then
+  raise exception 'not_a_group_member' using errcode='42501';
+ end if;
+ select wallpaper_key into v_wallpaper from public.group_member_wallpapers where group_id=p_group_id and user_id=v_uid;
+ return coalesce(v_wallpaper,'none');
+end $;
+
 create or replace function public.leave_group_conversation(p_group_id uuid)
 returns void language plpgsql security definer set search_path = ''
 as $$
@@ -289,6 +303,7 @@ begin
   'public.insert_group_message(uuid,text,text,text[],uuid)'::regprocedure,
   'public.mark_group_conversation_read(uuid,uuid,timestamptz)'::regprocedure,
   'public.set_group_personal_wallpaper(uuid,text)'::regprocedure,
+  'public.get_group_personal_wallpaper(uuid)'::regprocedure,
   'public.leave_group_conversation(uuid)'::regprocedure,
   'public.remove_group_member(uuid,uuid)'::regprocedure,
   'public.change_group_member_role(uuid,uuid,text)'::regprocedure
