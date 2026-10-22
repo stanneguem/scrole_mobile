@@ -95,7 +95,7 @@ begin
       where l.user_id=p_user_id and l.scope_type=p_scope_type
         and coalesce(l.scope_id,'00000000-0000-0000-0000-000000000000'::uuid)=coalesce(p_scope_id,'00000000-0000-0000-0000-000000000000'::uuid)
         and l.event_key=p_event_key and l.created_at >= date_trunc('day',now());
-    if v_today_count >= v_rule.daily_cap then return; end if;
+    if v_today_count + p_points_delta > v_rule.daily_cap then return; end if;
   end if;
   insert into public.reputation_ledger(user_id,scope_type,scope_id,event_key,source_type,source_id,points_delta,dimension,metadata)
   values(p_user_id,p_scope_type,p_scope_id,p_event_key,p_source_type,p_source_id,p_points_delta,p_dimension,coalesce(p_metadata,'{}'::jsonb))
@@ -144,7 +144,7 @@ begin
   if tg_op='DELETE' then
     select * into v_post from public.community_posts where id=old.post_id;
     if found and old.reaction='like' and v_post.author_id<>old.user_id then
-      perform public.reputation_award_event(v_post.author_id,'global',null,'post_positive_reaction_received','post_reaction',old.post_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb);
+      perform public.reputation_award_event(v_post.author_id,'global',null,'post_positive_reaction_received','post_reaction_reversal',old.post_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb);
       perform public.reputation_award_event(v_post.author_id,'community',v_post.community_id,'post_positive_reaction_received','post_reaction',old.post_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb);
     end if;
     return old;
@@ -157,7 +157,7 @@ begin
     perform public.reputation_award_event(v_post.author_id,'community',v_post.community_id,'post_positive_reaction_received','post_reaction',new.post_id::text||':'||new.user_id::text,1,'recognition',
       jsonb_build_object('reactor_id',new.user_id));
   elsif tg_op='UPDATE' and old.reaction='like' and new.reaction is distinct from 'like' then
-    perform public.reputation_award_event(v_post.author_id,'global',null,'post_positive_reaction_received','post_reaction',new.post_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb);
+    perform public.reputation_award_event(v_post.author_id,'global',null,'post_positive_reaction_received','post_reaction_reversal',new.post_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb);
     perform public.reputation_award_event(v_post.author_id,'community',v_post.community_id,'post_positive_reaction_received','post_reaction',new.post_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb);
   end if;
   return new;
@@ -172,7 +172,7 @@ begin
     select c.* into v_comment from public.community_post_comments c where c.id=old.comment_id;
     if found and old.reaction='like' and v_comment.author_id<>old.user_id then
       select p.community_id into v_community_id from public.community_posts p where p.id=v_comment.post_id;
-      perform public.reputation_award_event(v_comment.author_id,'global',null,'comment_positive_reaction_received','comment_reaction',old.comment_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb);
+      perform public.reputation_award_event(v_comment.author_id,'global',null,'comment_positive_reaction_received','comment_reaction_reversal',old.comment_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb);
       if v_community_id is not null then perform public.reputation_award_event(v_comment.author_id,'community',v_community_id,'comment_positive_reaction_received','comment_reaction',old.comment_id::text||':'||old.user_id::text,-1,'recognition','{"reason":"reaction_removed"}'::jsonb); end if;
     end if;
     return old;
@@ -185,7 +185,7 @@ begin
       jsonb_build_object('reactor_id',new.user_id,'community_id',v_community_id));
     if v_community_id is not null then perform public.reputation_award_event(v_comment.author_id,'community',v_community_id,'comment_positive_reaction_received','comment_reaction',new.comment_id::text||':'||new.user_id::text,1,'recognition','{}'::jsonb); end if;
   elsif tg_op='UPDATE' and old.reaction='like' and new.reaction is distinct from 'like' then
-    perform public.reputation_award_event(v_comment.author_id,'global',null,'comment_positive_reaction_received','comment_reaction',new.comment_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb);
+    perform public.reputation_award_event(v_comment.author_id,'global',null,'comment_positive_reaction_received','comment_reaction_reversal',new.comment_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb);
     if v_community_id is not null then perform public.reputation_award_event(v_comment.author_id,'community',v_community_id,'comment_positive_reaction_received','comment_reaction',new.comment_id::text||':'||new.user_id::text,-1,'recognition','{"reason":"reaction_changed"}'::jsonb); end if;
   end if;
   return new;
@@ -273,7 +273,14 @@ begin
   v_consistency:=5*(1-exp(-greatest(0,v_c)/greatest(1,v_consistency_k)));
   v_communities:=5*(1-exp(-greatest(0,v_n)/greatest(1,v_communities_k)));
   -- Trust is neutral only after a meaningful history exists; new accounts do not start with a high score.
-  v_trust:=case when greatest(v_q,0)+greatest(v_r,0)+greatest(v_c,0)+greatest(v_n,0) >= 10 then 4.0 else 0.0 end;
+  select coalesce(sum(abs(l.points_delta)),0) into v_f
+    from public.reputation_ledger l
+    where l.user_id=v_target and l.dimension='trust' and l.points_delta<0
+      and ((p_community_id is null and l.scope_type='global') or (p_community_id is not null and l.scope_type='community' and l.scope_id=p_community_id));
+  v_trust:=case
+    when greatest(v_q,0)+greatest(v_r,0)+greatest(v_c,0)+greatest(v_n,0) < 10 then 0
+    else greatest(0,5-least(5,v_f))
+  end;
   if v_last is null then v_factor:=0;
   elsif now()-v_last > make_interval(days=>v_grace) then
     v_inactive_weeks:=extract(epoch from (now()-v_last-make_interval(days=>v_grace)))/604800.0;
