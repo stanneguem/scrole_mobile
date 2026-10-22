@@ -168,7 +168,9 @@ class DirectMessagesScreen extends GetView<DirectMessagesController> {
     Get.toNamed(
       AppPages.conversation,
       arguments: {
-        'userId': conversation.peerId(Get.find<MessagingRepository>().currentUserId),
+        'userId': conversation.peerId(
+          Get.find<MessagingRepository>().currentUserId,
+        ),
         'name': conversation.name ?? 'Chat',
         'color': AppColors.primary,
         'avatar': conversation.avatarUrl,
@@ -359,7 +361,11 @@ class _LoadedState extends StatelessWidget {
   final List<ConversationModel> unpinned;
   final String? currentUserId;
   final Future<void> Function() onRefresh;
-  const _LoadedState({required this.unpinned, required this.currentUserId, required this.onRefresh});
+  const _LoadedState({
+    required this.unpinned,
+    required this.currentUserId,
+    required this.onRefresh,
+  });
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     color: AppColors.primary,
@@ -367,12 +373,13 @@ class _LoadedState extends StatelessWidget {
     child: ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: unpinned.length,
-      itemBuilder: (context, index) =>
-          _AnimatedConversationTile(conversation: unpinned[index], currentUserId: currentUserId),
+      itemBuilder: (context, index) => _AnimatedConversationTile(
+        conversation: unpinned[index],
+        currentUserId: currentUserId,
+      ),
     ),
   );
 }
-
 
 class _ReceiptStatusIcon extends StatelessWidget {
   const _ReceiptStatusIcon({required this.status});
@@ -383,14 +390,17 @@ class _ReceiptStatusIcon extends StatelessWidget {
     final icon = switch (status) {
       MessageStatus.pending || MessageStatus.sending => Icons.schedule_rounded,
       MessageStatus.sent => Icons.check_rounded,
-      MessageStatus.delivered || MessageStatus.received || MessageStatus.read => Icons.done_all_rounded,
-      MessageStatus.failed || MessageStatus.error => Icons.error_outline_rounded,
+      MessageStatus.delivered ||
+      MessageStatus.received ||
+      MessageStatus.read => Icons.done_all_rounded,
+      MessageStatus.failed ||
+      MessageStatus.error => Icons.error_outline_rounded,
     };
     final color = status == MessageStatus.read
         ? Colors.blue
         : (status == MessageStatus.failed || status == MessageStatus.error)
-            ? AppColors.error
-            : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(.65);
+        ? AppColors.error
+        : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(.65);
     return Icon(icon, size: 13, color: color);
   }
 }
@@ -398,7 +408,10 @@ class _ReceiptStatusIcon extends StatelessWidget {
 class _AnimatedConversationTile extends StatelessWidget {
   final ConversationModel conversation;
   final String? currentUserId;
-  const _AnimatedConversationTile({required this.conversation, required this.currentUserId});
+  const _AnimatedConversationTile({
+    required this.conversation,
+    required this.currentUserId,
+  });
 
   Future<void> _confirmDelete(BuildContext context) =>
       _confirmConversationDelete(context, conversation.id);
@@ -484,24 +497,34 @@ class _AnimatedConversationTile extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Nom + badge regroupés : le badge reste collé au nom.
                           Flexible(
-                            child: Text(
-                              conversation.name ?? 'Discussion',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                fontWeight: hasUnread
-                                    ? FontWeight.w900
-                                    : FontWeight.w700,
-                                color: colorScheme.onSurface,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    conversation.name ?? 'Discussion',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      fontWeight: hasUnread
+                                          ? FontWeight.w900
+                                          : FontWeight.w700,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                if (conversation.participantIds.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  UserCertifiedBadge(
+                                    userId: conversation.participantIds.first,
+                                    size: 16,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
-                          if (conversation.participantIds.isNotEmpty)
-                            UserCertifiedBadge(
-                              userId: conversation.participantIds.first,
-                              size: 16,
-                            ),
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(conversation.updatedAt),
@@ -529,19 +552,39 @@ class _AnimatedConversationTile extends StatelessWidget {
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: hasUnread
                                     ? colorScheme.onSurface
-                                    : colorScheme.onSurfaceVariant.withOpacity(.7),
-                                fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal,
+                                    : colorScheme.onSurfaceVariant.withOpacity(
+                                        .7,
+                                      ),
+                                fontWeight: hasUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
                           if (hasUnread)
                             Container(
                               margin: const EdgeInsets.only(left: 8),
-                              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              constraints: const BoxConstraints(
+                                minWidth: 24,
+                                minHeight: 24,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
                               alignment: Alignment.center,
-                              decoration: BoxDecoration(color: unreadColor, shape: BoxShape.circle),
-                              child: Text('${conversation.unreadCount}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              decoration: BoxDecoration(
+                                color: unreadColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${conversation.unreadCount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                         ],
                       ),
@@ -554,15 +597,22 @@ class _AnimatedConversationTile extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                _ReceiptStatusIcon(status: conversation.lastMessage!.status),
+                                _ReceiptStatusIcon(
+                                  status: conversation.lastMessage!.status,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  _receiptLabel(conversation.lastMessage!.status),
+                                  _receiptLabel(
+                                    conversation.lastMessage!.status,
+                                  ),
                                   style: AppTextStyles.caption.copyWith(
                                     fontSize: 10,
-                                    color: conversation.lastMessage!.status == MessageStatus.read
+                                    color:
+                                        conversation.lastMessage!.status ==
+                                            MessageStatus.read
                                         ? Colors.blue
-                                        : colorScheme.onSurfaceVariant.withOpacity(.65),
+                                        : colorScheme.onSurfaceVariant
+                                              .withOpacity(.65),
                                   ),
                                 ),
                               ],
@@ -607,7 +657,9 @@ class _AnimatedConversationTile extends StatelessWidget {
   String _getMessagePreview() {
     final msg = conversation.lastMessage;
     if (msg == null) return 'Aucun message';
-    final prefix = msg.senderId == currentUserId ? '${'chats_you_prefix'.tr} ' : '';
+    final prefix = msg.senderId == currentUserId
+        ? '${'chats_you_prefix'.tr} '
+        : '';
     switch (msg.type) {
       case MessageType.image:
         return '$prefix🖼️ Photo';
@@ -623,7 +675,6 @@ class _AnimatedConversationTile extends StatelessWidget {
         return '$prefix${msg.text ?? ''}';
     }
   }
-
 
   String _receiptLabel(MessageStatus status) {
     switch (status) {
