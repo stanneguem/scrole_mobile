@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -39,6 +40,8 @@ class _DirectConversationDetailsScreenState
   bool _notificationsEnabled = true;
   bool _mediaVisibilityEnabled = true;
   ExternalProfileModel? _profile;
+  bool _canApplySharedWallpaper = false;
+  bool _checkingWallpaperEntitlement = true;
 
   String get _displayName {
     final name = (_profile?.username ?? widget.userName).trim();
@@ -64,6 +67,7 @@ class _DirectConversationDetailsScreenState
   void initState() {
     super.initState();
     _loadProfile();
+    _loadWallpaperEntitlement();
   }
 
   Future<void> _loadProfile() async {
@@ -74,6 +78,25 @@ class _DirectConversationDetailsScreenState
       setState(() => _profile = profile);
     } catch (_) {
       // The chat-provided identity remains available if the profile request fails.
+    }
+  }
+
+  Future<void> _loadWallpaperEntitlement() async {
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid == null) return;
+      final level = await Supabase.instance.client.rpc(
+        'get_public_profile_certification_level',
+        params: {'p_user_id': uid},
+      );
+      if (mounted) {
+        setState(() => _canApplySharedWallpaper =
+            const {'basique', 'pro', 'premium'}.contains('$level'.toLowerCase()));
+      }
+    } catch (_) {
+      if (mounted) setState(() => _canApplySharedWallpaper = false);
+    } finally {
+      if (mounted) setState(() => _checkingWallpaperEntitlement = false);
     }
   }
 
@@ -318,7 +341,9 @@ class _DirectConversationDetailsScreenState
           _actionTile(
             icon: Icons.wallpaper_rounded,
             title: 'direct_details_wallpaper'.tr,
-            subtitle: 'direct_details_wallpaper_subtitle'.tr,
+            subtitle: _canApplySharedWallpaper
+                ? 'Choisis un fond pour toi uniquement ou pour vous deux.'
+                : 'Fond personnel. La modification commune nécessite la certification Basique ou supérieure.',
             onTap: () {
               Get.to(
                 () => ChatWallpaperSelectionScreen(
@@ -326,7 +351,10 @@ class _DirectConversationDetailsScreenState
                   userName: _displayName,
                   userColor: widget.userColor,
                   userAvatar: _avatarUrl,
-                  onApply: (wallpaperKey) => controller.setWallpaper(wallpaperKey),
+                  canApplyToBoth: _canApplySharedWallpaper && !_checkingWallpaperEntitlement,
+                  initialApplyToBoth: controller.isSharedWallpaper.value,
+                  onApply: (wallpaperKey, applyToBoth) =>
+                      controller.setWallpaper(wallpaperKey, applyToBoth: applyToBoth),
                 ),
               );
             },
