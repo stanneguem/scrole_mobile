@@ -180,16 +180,41 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   final _composer = TextEditingController();
   late Future<List<Map<String, dynamic>>> _messagesFuture;
   bool _sending = false;
+  RealtimeChannel? _messagesChannel;
 
   @override
   void initState() {
     super.initState();
     _messagesFuture = widget.service.fetchMessages(widget.group.id);
+    _messagesChannel = Supabase.instance.client
+        .channel('group-messages-${widget.group.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'group_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'group_id',
+            value: widget.group.id,
+          ),
+          callback: (_) {
+            if (mounted) {
+              setState(() {
+                _messagesFuture = widget.service.fetchMessages(widget.group.id);
+              });
+            }
+          },
+        )
+        .subscribe();
   }
 
   @override
   void dispose() {
     _composer.dispose();
+    final channel = _messagesChannel;
+    if (channel != null) {
+      Supabase.instance.client.removeChannel(channel);
+    }
     super.dispose();
   }
 
