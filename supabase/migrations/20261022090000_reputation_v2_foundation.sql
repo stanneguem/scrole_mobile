@@ -80,4 +80,18 @@ create policy "Authenticated users can read enabled reputation rules"
   on public.reputation_scoring_rules for select to authenticated
   using (enabled = true);
 
+-- Conservative initial defaults. Product/admin can tune these after the scoring path
+-- and server-side award functions are reviewed. Values are not active until migration is applied.
+insert into public.reputation_scoring_rules (rule_key, label, points, daily_cap, enabled, config)
+values
+  ('meaningful_post', 'Publication originale pertinente', 2, 6, true, '{"max_awards_per_day":3,"requires_non_spam":true}'::jsonb),
+  ('constructive_comment', 'Commentaire constructif', 1, 5, true, '{"max_awards_per_day":5,"requires_minimum_content":true}'::jsonb),
+  ('post_positive_reaction_received', 'Réaction positive reçue sur une publication', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true}'::jsonb),
+  ('comment_positive_reaction_received', 'Réaction positive reçue sur un commentaire', 1, 5, true, '{"distinct_reactors_only":true,"exclude_author":true}'::jsonb),
+  ('helpful_reply', 'Réponse reconnue comme utile', 3, 6, true, '{"max_awards_per_day":2,"single_award_per_source":true}'::jsonb),
+  ('meaningful_activity_day', 'Journée de participation significative', 1, 1, true, '{"max_awards_per_day":1}'::jsonb),
+  ('confirmed_spam_penalty', 'Abus confirmé par modération', -3, null, true, '{"moderation_required":true,"must_reference_reversed_entry":true}'::jsonb),
+  ('weekly_inactivity_decay', 'Décroissance hebdomadaire après inactivité', 0, null, true, '{"grace_days":30,"rate_percent":1,"period":"week","minimum_score":0}'::jsonb)
+on conflict (rule_key) do nothing;
+
 -- No INSERT/UPDATE/DELETE policies are intentionally defined for client roles.
