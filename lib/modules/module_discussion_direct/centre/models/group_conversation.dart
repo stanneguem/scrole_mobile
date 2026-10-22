@@ -56,6 +56,7 @@ class GroupMember {
   final String userId;
   final GroupMemberRole role;
   final GroupMembershipStatus status;
+  /// Server-recorded timestamp used for deterministic owner succession.
   final DateTime? joinedAt;
   final String? displayName;
   final String? avatarUrl;
@@ -78,6 +79,32 @@ class GroupMember {
       displayName: json['display_name'] as String?, avatarUrl: json['avatar_url'] as String?,
     );
   }
+}
+
+/// Pure client-side mirror of the succession rule for display/tests only.
+/// The authoritative transfer must run transactionally in the database.
+/// Oldest active administrator wins; if none exists, oldest active ordinary
+/// member wins. Null timestamps sort last; user ID breaks ties deterministically.
+String? selectNextGroupOwnerId(Iterable<GroupMember> members) {
+  final eligible = members.where((member) =>
+      member.isActive &&
+      (member.role == GroupMemberRole.administrator ||
+       member.role == GroupMemberRole.member)).toList();
+  eligible.sort((a, b) {
+    final rolePriority = (a.role == GroupMemberRole.administrator ? 0 : 1)
+        .compareTo(b.role == GroupMemberRole.administrator ? 0 : 1);
+    if (rolePriority != 0) return rolePriority;
+    final aJoined = a.joinedAt;
+    final bJoined = b.joinedAt;
+    if (aJoined == null && bJoined != null) return 1;
+    if (aJoined != null && bJoined == null) return -1;
+    if (aJoined != null && bJoined != null) {
+      final byDate = aJoined.compareTo(bJoined);
+      if (byDate != 0) return byDate;
+    }
+    return a.userId.compareTo(b.userId);
+  });
+  return eligible.isEmpty ? null : eligible.first.userId;
 }
 
 class GroupInvitation {
