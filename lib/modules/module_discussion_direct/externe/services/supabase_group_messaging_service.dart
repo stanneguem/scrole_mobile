@@ -177,11 +177,7 @@ class SupabaseGroupMessagingService {
     final parts = objectPath.split('/');
     if (parts.length != 3) throw ArgumentError.value(objectPath, 'objectPath');
     _validateId(parts[0], 'groupId');
-    if (parts[1] != _userId) {
-      // Signed URLs are requested through an RPC in the secure implementation;
-      // do not let a client mint URLs for arbitrary object paths.
-      await _client.rpc('assert_group_media_access', params: {'p_group_id': parts[0]});
-    }
+    // Storage enforces active membership through the private bucket's SELECT policy.
     return _client.storage.from('group-chat-media').createSignedUrl(objectPath, expiresIn.inSeconds);
   }
 
