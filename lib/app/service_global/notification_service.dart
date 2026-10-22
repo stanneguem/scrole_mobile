@@ -281,6 +281,7 @@ class NotificationService {
         ?.createNotificationChannel(_defaultChannel);
     await _setupFirebaseMessaging();
     await _setupRealtimeNotifications();
+    unawaited(_routeInitialLocalNotification());
 
     // Process pending outbox actions (deletions, etc.)
     unawaited(processOutbox());
@@ -647,6 +648,25 @@ class NotificationService {
     // When Android/iOS launches the app from a terminated state via an FCM tap.
     unawaited(_routeInitialFirebaseMessage());
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  Future<void> _routeInitialLocalNotification() async {
+    try {
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      final response = launch?.notificationResponse;
+      final payload = response?.payload;
+      if (launch?.didNotificationLaunchApp != true || payload == null || payload.isEmpty) return;
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
+      if (data['type'] == 'message_received') {
+        _openMessageConversation(data);
+      } else {
+        await NotificationDeepLinkRouter.open(data);
+      }
+    } catch (e, st) {
+      debugPrint('[Notifications] Failed to route local notification launch: $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   Future<void> _routeInitialFirebaseMessage() async {
