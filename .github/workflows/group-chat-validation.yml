@@ -27,7 +27,7 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Format changed group chat Dart files
-        run: dart format --output=none --set-exit-if-changed lib/modules/module_discussion_direct/centre/models/group_conversation.dart lib/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart lib/modules/module_discussion_direct/interne/pages/group_conversations_screen.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart test/modules/module_discussion_direct/group_conversation_test.dart
+        run: dart format lib/modules/module_discussion_direct/centre/models/group_conversation.dart lib/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart lib/modules/module_discussion_direct/interne/pages/group_conversations_screen.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart test/modules/module_discussion_direct/group_conversation_test.dart
       - name: Analyze group chat files
         run: flutter analyze lib/modules/module_discussion_direct/centre/models/group_conversation.dart lib/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart lib/modules/module_discussion_direct/interne/pages/group_conversations_screen.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart
       - name: Test group lifecycle rules
