@@ -114,6 +114,8 @@ begin
     perform public.reputation_award_event(new.author_id,'global',null,'community_contribution','community_post',new.id::text,1,'communities',
       jsonb_build_object('community_id',new.community_id));
     perform public.reputation_award_event(new.author_id,'community',new.community_id,'community_contribution','community_post',new.id::text,1,'communities','{}'::jsonb);
+    perform public.reputation_award_event(new.author_id,'global',null,'meaningful_activity_day','active_day',to_char(now() at time zone 'utc','YYYY-MM-DD'),1,'consistency','{}'::jsonb);
+    perform public.reputation_award_event(new.author_id,'community',new.community_id,'meaningful_activity_day','active_day',to_char(now() at time zone 'utc','YYYY-MM-DD'),1,'consistency','{}'::jsonb);
   end if;
   return new;
 end $$;
@@ -132,6 +134,8 @@ begin
     perform public.reputation_award_event(new.author_id,'global',null,'community_contribution','community_comment',new.id::text,1,'communities',
       jsonb_build_object('community_id',v_community_id));
     perform public.reputation_award_event(new.author_id,'community',v_community_id,'community_contribution','community_comment',new.id::text,1,'communities','{}'::jsonb);
+    perform public.reputation_award_event(new.author_id,'global',null,'meaningful_activity_day','active_day',to_char(now() at time zone 'utc','YYYY-MM-DD'),1,'consistency','{}'::jsonb);
+    perform public.reputation_award_event(new.author_id,'community',v_community_id,'meaningful_activity_day','active_day',to_char(now() at time zone 'utc','YYYY-MM-DD'),1,'consistency','{}'::jsonb);
   end if;
   return new;
 end $$;
@@ -319,3 +323,25 @@ revoke all on function public.reputation_on_post_reaction() from public, anon, a
 revoke all on function public.reputation_on_comment_reaction() from public, anon, authenticated;
 revoke all on function public.get_user_reputation(uuid,uuid) from public, anon;
 grant execute on function public.get_user_reputation(uuid,uuid) to authenticated;
+
+
+create or replace function public.admin_apply_reputation_penalty(
+  p_user_id uuid,p_scope_type text,p_scope_id uuid,p_source_type text,p_source_id text,p_reason text,p_points integer default 1
+) returns void
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if not public.is_admin_or_above() then raise exception 'Action réservée aux administrateurs' using errcode='42501'; end if;
+  if p_points < 1 or p_points > 5 then raise exception 'La pénalité doit être comprise entre 1 et 5'; end if;
+  if p_scope_type not in ('global','community') then raise exception 'Portée invalide'; end if;
+  if p_scope_type='community' and p_scope_id is null then raise exception 'La communauté est obligatoire'; end if;
+  if p_source_id is null or length(trim(p_source_id))=0 or p_reason is null or length(trim(p_reason))<8 then
+    raise exception 'La source et un motif explicite sont obligatoires';
+  end if;
+  perform public.reputation_award_event(p_user_id,p_scope_type,p_scope_id,'confirmed_spam_penalty',
+    'moderation:'||p_source_type,p_source_id,-p_points,'trust',
+    jsonb_build_object('reason',p_reason,'moderator_id',auth.uid(),'moderation_source',p_source_type));
+end $$;
+
+revoke all on function public.admin_apply_reputation_penalty(uuid,text,uuid,text,text,text,integer) from public,anon;
+grant execute on function public.admin_apply_reputation_penalty(uuid,text,uuid,text,text,text,integer) to authenticated;
