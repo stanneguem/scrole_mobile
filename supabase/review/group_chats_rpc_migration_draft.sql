@@ -141,7 +141,7 @@ begin
  return query select m.user_id,m.role,m.status,m.joined_at,
   coalesce(nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),p.username,''),
   p.photo_url
- from public.group_conversation_members m left join public.profiles p on p.id=m.user_id
+ from public.group_conversation_members m left join public.user_profiles p on p.user_id=m.user_id
  where m.group_id=p_group_id and m.status='active' order by m.joined_at,m.user_id;
 end $$;
 
@@ -157,10 +157,14 @@ begin
  select ever_activated,status into v_activated,v_status from public.group_conversations where id=p_group_id;
  if v_status='closed' or not v_activated then return; end if;
  return query select to_jsonb(x) from (
-  select id,group_id as conversation_id,sender_id,text as content,message_type as type,
-    media_paths as media_urls,replied_to_id,created_at,edited_at,deleted_at
-  from public.group_messages where group_id=p_group_id and (p_before is null or created_at<p_before)
-  order by created_at desc,id desc limit greatest(1,least(coalesce(p_limit,50),100))
+  select msg.id,msg.group_id as conversation_id,msg.sender_id,
+    coalesce(nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),p.username,'') as sender_name,
+    msg.text as content,msg.message_type as type,msg.media_paths as media_urls,
+    msg.replied_to_id,msg.created_at,msg.edited_at,msg.deleted_at
+  from public.group_messages msg
+  left join public.user_profiles p on p.user_id=msg.sender_id
+  where msg.group_id=p_group_id and (p_before is null or msg.created_at<p_before)
+  order by msg.created_at desc,msg.id desc limit greatest(1,least(coalesce(p_limit,50),100))
  ) x;
 end $$;
 
