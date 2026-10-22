@@ -79,6 +79,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   String? _nextCursor;
   bool _hasMore = false;
 
+  final ScrollController _commentsScrollController = ScrollController();
   final Map<String, GlobalKey> _commentKeys = <String, GlobalKey>{};
   bool _targetCommentNavigationStarted = false;
   final Map<String, List<Map<String, dynamic>>> _repliesMap = {};
@@ -162,6 +163,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     _mentionSearchDebounce?.cancel();
     _commentController.dispose();
     _commentFocusNode.dispose();
+    _commentsScrollController.dispose();
     super.dispose();
   }
 
@@ -206,14 +208,24 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       final targetId = _comments[index]['id']?.toString();
       if (targetId == null) return;
       await WidgetsBinding.instance.endOfFrame;
-      final key = _commentKeys[targetId];
-      if (key?.currentContext != null) {
-        await Scrollable.ensureVisible(
-          key!.currentContext!,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut,
-          alignment: 0.15,
+      for (var attempt = 0; attempt < 4; attempt++) {
+        final targetContext = _commentKeys[targetId]?.currentContext;
+        if (targetContext != null) {
+          await Scrollable.ensureVisible(
+            targetContext,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            alignment: 0.15,
+          );
+          break;
+        }
+        if (!_commentsScrollController.hasClients) break;
+        _commentsScrollController.jumpTo(
+          (index * 180.0)
+              .clamp(0.0, _commentsScrollController.position.maxScrollExtent)
+              .toDouble(),
         );
+        await WidgetsBinding.instance.endOfFrame;
       }
     } catch (e, st) {
       debugPrint('[CommunityCommentsSheet] Target comment navigation failed: $e');
@@ -658,6 +670,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                         : RefreshIndicator(
                             onRefresh: () => _loadComments(),
                             child: ListView.builder(
+                              controller: _commentsScrollController,
                               itemCount: _comments.length + (_hasMore ? 1 : 0),
                               itemBuilder: (context, index) {
                                 if (index >= _comments.length) {
