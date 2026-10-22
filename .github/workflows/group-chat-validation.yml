@@ -1,0 +1,34 @@
+name: Group chat validation
+
+on:
+  pull_request:
+    branches: [relationship, feature/story-comment-interactions]
+    paths:
+      - 'lib/modules/module_discussion_direct/**'
+      - 'test/modules/module_discussion_direct/**'
+      - 'supabase/migrations/*group_chat*'
+      - '.github/workflows/group-chat-validation.yml'
+  push:
+    branches: [feature/group-chats]
+    paths:
+      - 'lib/modules/module_discussion_direct/**'
+      - 'test/modules/module_discussion_direct/**'
+      - 'supabase/migrations/*group_chat*'
+      - '.github/workflows/group-chat-validation.yml'
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format changed group chat Dart files
+        run: dart format --output=none --set-exit-if-changed lib/modules/module_discussion_direct/centre/models/group_conversation.dart lib/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart lib/modules/module_discussion_direct/interne/pages/group_conversations_screen.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart test/modules/module_discussion_direct/group_conversation_test.dart
+      - name: Analyze group chat files
+        run: flutter analyze lib/modules/module_discussion_direct/centre/models/group_conversation.dart lib/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart lib/modules/module_discussion_direct/interne/pages/group_conversations_screen.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart
+      - name: Test group lifecycle rules
+        run: flutter test test/modules/module_discussion_direct/group_conversation_test.dart
