@@ -253,7 +253,7 @@ begin
     coalesce(sum(l.points_delta) filter(where l.dimension='recognition'),0),
     coalesce(sum(l.points_delta) filter(where l.dimension='consistency'),0),
     coalesce(sum(l.points_delta) filter(where l.dimension='communities'),0),
-    max(l.created_at) filter (where l.points_delta > 0 and l.event_key not in ('confirmed_spam_penalty','weekly_inactivity_decay'))
+    max(l.created_at) filter (where l.points_delta > 0 and l.event_key in ('meaningful_post','constructive_comment','meaningful_activity_day','community_contribution'))
   into v_q,v_r,v_c,v_n,v_last
   from public.reputation_ledger l
   where l.user_id=v_target
@@ -281,10 +281,11 @@ begin
     from public.reputation_ledger l
     where l.user_id=v_target and l.dimension='trust' and l.points_delta<0
       and ((p_community_id is null and l.scope_type='global') or (p_community_id is not null and l.scope_type='community' and l.scope_id=p_community_id));
-  v_trust:=case
-    when greatest(v_q,0)+greatest(v_r,0)+greatest(v_c,0)+greatest(v_n,0) < 10 then 0
-    else greatest(0,5-least(5,v_f))
-  end;
+  v_trust:=greatest(
+    0,
+    5*(1-exp(-(greatest(0,v_q)+greatest(0,v_r)+greatest(0,v_c)+greatest(0,v_n))/60.0))
+      - least(5,v_f)
+  );
   if v_last is null then v_factor:=0;
   elsif now()-v_last > make_interval(days=>v_grace) then
     v_inactive_weeks:=extract(epoch from (now()-v_last-make_interval(days=>v_grace)))/604800.0;
@@ -394,9 +395,9 @@ begin
   if length(trim(coalesce(old.content,''))) >= 20 then
     perform public.reputation_award_event(old.author_id,'global',null,'constructive_comment','content_reversal',old.id::text,-1,'quality',
       jsonb_build_object('reason','comment_deleted','community_id',v_community_id));
+    perform public.reputation_award_event(old.author_id,'global',null,'community_contribution','comment_reversal',old.id::text,-1,'communities','{"reason":"comment_deleted"}'::jsonb);
     if v_community_id is not null then
       perform public.reputation_award_event(old.author_id,'community',v_community_id,'constructive_comment','content_reversal',old.id::text,-1,'quality','{"reason":"comment_deleted"}'::jsonb);
-      perform public.reputation_award_event(old.author_id,'global',null,'community_contribution','comment_reversal',old.id::text,-1,'communities','{"reason":"comment_deleted"}'::jsonb);
       perform public.reputation_award_event(old.author_id,'community',v_community_id,'community_contribution','comment_reversal',old.id::text,-1,'communities','{"reason":"comment_deleted"}'::jsonb);
     end if;
   end if;
