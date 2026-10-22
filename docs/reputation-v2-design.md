@@ -4,6 +4,30 @@
 
 The live `public.user_statistics` table currently exposes `points`, `level`, `posts_count`, and `communities_count`. A read-only scan of public routine definitions found references to that table in the admin user detail function, but did not identify the definitive points-awarding routine. Therefore V2 must not silently overwrite existing points or change level thresholds until the awarding triggers, RPCs, and client-side display/calculation paths are fully traced.
 
+## Reputation affichée sur 5 (règle obligatoire)
+
+Le score public total est toujours compris entre **0,00 et 5,00**. Les valeurs du journal (`points_delta`) sont des unités techniques d'événement, pas le score affiché. On ne doit jamais afficher la somme brute du journal comme une réputation.
+
+### Agrégation pondérée
+
+Chaque dimension est normalisée séparément sur 0–5, puis combinée :
+
+- Qualité et utilité des contributions : **30 %**
+- Reconnaissance reçue de personnes distinctes : **25 %**
+- Régularité de participation sur la durée : **20 %**
+- Contribution dans les communautés et niches : **15 %**
+- Fiabilité comportementale et modération : **10 %**
+
+`score_base = 0.30 × qualité + 0.25 × reconnaissance + 0.20 × régularité + 0.15 × communautés + 0.10 × fiabilité`
+
+Chaque dimension reste entre 0 et 5, donc le résultat aussi. Les événements bruts doivent être normalisés avec une courbe de saturation, par exemple `dimension = 5 × (1 - exp(-evidence / k))`, avec un `k` configurable par dimension. Cela empêche 20 réactions ou 20 commentaires de faire mécaniquement bondir le score et rend chaque action supplémentaire progressivement moins rentable.
+
+### Régularité et décroissance
+
+La régularité doit dépendre des jours actifs distincts et de la continuité sur plusieurs semaines, pas du nombre d'actions dans une seule journée. Les plafonds limitent l'accumulation; la saturation limite la progression à long terme. Une inactivité prolongée applique ensuite une baisse lente et calculée une seule fois par période. La réputation ne peut jamais descendre sous 0 ni dépasser 5.
+
+Un nouveau compte ne reçoit pas artificiellement une note élevée avec quelques actions. La confiance dans le score augmente avec des preuves réparties dans le temps et venant de personnes distinctes. Une note élevée doit demander une participation durable et reconnue, sans devenir impossible à atteindre.
+
 ## Principles
 
 - Reputation reflects sustained, constructive participation and community recognition, not raw volume or paid status.
@@ -25,7 +49,7 @@ The live `public.user_statistics` table currently exposes `points`, `level`, `po
 | Meaningful activity day | +1 | Once/day; streak bonus grows slowly and caps |
 | Spam/moderation-confirmed abuse | negative | Reversal references source ledger entry; moderation-only |
 
-These are starting defaults for review, not hard-coded product decisions. Follows, friends, raw membership counts, views, self-reactions, repeated reactions, and paid certification should not directly grant reputation.
+These are starting defaults for review, not hard-coded product decisions. They are internal event units only; the public reputation is separately normalized and weighted on a 0–5 scale. Follows, friends, raw membership counts, views, self-reactions, repeated reactions, and paid certification should not directly grant reputation.
 
 ## Anti-abuse
 
