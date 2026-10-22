@@ -292,7 +292,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   Future<void> _attachImage() async {
-    if (_sending || !widget.group.canSendMessages) return;
+    if (_sending || !_group.canSendMessages) return;
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 88);
     if (picked == null || !mounted) return;
     setState(() => _sending = true);
@@ -316,7 +316,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   Future<void> _send() async {
     final text = _composer.text.trim();
-    if (text.isEmpty || _sending || !widget.group.canSendMessages) return;
+    if (text.isEmpty || _sending || !_group.canSendMessages) return;
     setState(() => _sending = true);
     try {
       await widget.service.sendMessage(groupId: widget.group.id, text: text);
