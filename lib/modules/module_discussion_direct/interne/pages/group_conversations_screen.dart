@@ -35,29 +35,10 @@ class _GroupConversationsScreenState extends State<GroupConversationsScreen> {
   }
 
   Future<void> _createGroup() async {
-    final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Créer un groupe'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 80,
-          decoration: const InputDecoration(
-            labelText: 'Nom du groupe',
-            hintText: 'Ex. Amis, famille, équipe…',
-          ),
-          textCapitalization: TextCapitalization.sentences,
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Créer')),
-        ],
-      ),
+      builder: (_) => const _CreateGroupDialog(),
     );
-    controller.dispose();
     if (name == null || name.trim().isEmpty || !mounted) return;
     try {
       await _service.createGroup(name: name);
@@ -663,6 +644,65 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+
+/// Owns the text controller for the full lifetime of the dialog route.
+/// The controller must not be disposed as soon as showDialog completes,
+/// because the reverse transition can still rebuild the TextField.
+class _CreateGroupDialog extends StatefulWidget {
+  const _CreateGroupDialog();
+
+  @override
+  State<_CreateGroupDialog> createState() => _CreateGroupDialogState();
+}
+
+class _CreateGroupDialogState extends State<_CreateGroupDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop(_controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Créer un groupe'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 80,
+        decoration: const InputDecoration(
+          labelText: 'Nom du groupe',
+          hintText: 'Ex. Amis, famille, équipe…',
+        ),
+        textCapitalization: TextCapitalization.sentences,
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Créer'),
+        ),
+      ],
     );
   }
 }
