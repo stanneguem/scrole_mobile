@@ -45,7 +45,7 @@ begin
         g.name, coalesce(p.username,'')
  from public.group_conversation_invitations i
  join public.group_conversations g on g.id=i.group_id
- left join public.profiles p on p.id=i.invited_by
+ left join public.user_profiles p on p.user_id=i.invited_by
  where i.invited_user_id=v_uid and i.status='pending'
    and (i.expires_at is null or i.expires_at>now())
  order by i.created_at desc;
