@@ -254,8 +254,11 @@ class _DirectConversationDetailsScreenState
                       ),
                     ),
                     if (_isVerified) ...[
-                      const SizedBox(width: 6),
-                      const UserCertifiedBadge(size: 20),
+                      const SizedBox(width: 5),
+                      UserCertifiedBadge(
+                        userId: widget.userId,
+                        size: 20,
+                      ),
                     ],
                   ],
                 ),
