@@ -234,7 +234,7 @@ begin
     if v_blocked then raise exception 'profile_blocked' using errcode='42501'; end if;
     select exists(select 1 from public.friendships f where f.user_a_id=least(v_me,v_target) and f.user_b_id=greatest(v_me,v_target)) into v_connected;
     select exists(select 1 from public.user_follows f where f.follower_id=v_me and f.followed_id=v_target) into v_following;
-    if coalesce(v_visibility,'public') in ('private','prive','privé') and not v_connected and not v_following then
+    if p_community_id is null and coalesce(v_visibility,'public') in ('private','prive','privé') and not v_connected and not v_following then
       raise exception 'profile_private' using errcode='42501';
     end if;
   end if;
