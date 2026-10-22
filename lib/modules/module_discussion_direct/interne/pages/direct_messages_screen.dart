@@ -491,11 +491,13 @@ class _AnimatedConversationTile extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (conversation.participantIds.isNotEmpty)
+                          if (conversation.participantIds.isNotEmpty) ...[
+                            const SizedBox(width: 4),
                             UserCertifiedBadge(
                               userId: conversation.participantIds.first,
                               size: 16,
                             ),
+                          ],
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(conversation.updatedAt),
