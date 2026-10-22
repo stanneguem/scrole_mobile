@@ -189,6 +189,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   void initState() {
     super.initState();
     _messagesFuture = widget.service.fetchMessages(widget.group.id);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await widget.service.markRead(widget.group.id);
+      } catch (_) {
+        // A pending group has no readable history until it activates.
+      }
+    });
     _messagesChannel = Supabase.instance.client
         .channel('group-messages-${widget.group.id}')
         .onPostgresChanges(
