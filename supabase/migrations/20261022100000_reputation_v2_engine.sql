@@ -83,22 +83,28 @@ create or replace function public.reputation_award_event(
 ) returns void
 language plpgsql security definer set search_path = ''
 as $$
-declare v_rule public.reputation_scoring_rules; v_today_count integer;
+declare v_rule public.reputation_scoring_rules; v_today_count integer; v_delta integer;
 begin
   if p_user_id is null or p_points_delta=0 then return; end if;
   select * into v_rule from public.reputation_scoring_rules where rule_key=p_event_key and enabled;
   if not found then return; end if;
-  if p_points_delta > 0 and v_rule.daily_cap is not null then
+  if p_points_delta > 0 then
+    v_delta := v_rule.points;
+    if v_delta <= 0 then return; end if;
+  else
+    v_delta := p_points_delta;
+  end if;
+  if v_delta > 0 and v_rule.daily_cap is not null then
     perform pg_advisory_xact_lock(hashtextextended(p_user_id::text||':'||p_scope_type||':'||coalesce(p_scope_id::text,'global')||':'||p_event_key,0));
     select coalesce(sum(l.points_delta),0)::integer into v_today_count
       from public.reputation_ledger l
       where l.user_id=p_user_id and l.scope_type=p_scope_type
         and coalesce(l.scope_id,'00000000-0000-0000-0000-000000000000'::uuid)=coalesce(p_scope_id,'00000000-0000-0000-0000-000000000000'::uuid)
         and l.event_key=p_event_key and l.created_at >= date_trunc('day',now());
-    if v_today_count + p_points_delta > v_rule.daily_cap then return; end if;
+    if v_today_count + v_delta > v_rule.daily_cap then return; end if;
   end if;
   insert into public.reputation_ledger(user_id,scope_type,scope_id,event_key,source_type,source_id,points_delta,dimension,metadata)
-  values(p_user_id,p_scope_type,p_scope_id,p_event_key,p_source_type,p_source_id,p_points_delta,p_dimension,coalesce(p_metadata,'{}'::jsonb))
+  values(p_user_id,p_scope_type,p_scope_id,p_event_key,p_source_type,p_source_id,v_delta,p_dimension,coalesce(p_metadata,'{}'::jsonb))
   on conflict do nothing;
 end $$;
 
