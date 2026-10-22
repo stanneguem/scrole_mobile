@@ -97,3 +97,26 @@ Community-scoped ledger entries require a verified community context (post/comme
 ## Current migration safety
 
 `20261022090000_reputation_v2_foundation.sql` creates only new tables/indexes/policies and does not change `user_statistics`, award points, or alter existing data. Review it before applying to any environment.
+
+
+## V2 implementation files
+
+- `supabase/migrations/20261022090000_reputation_v2_foundation.sql`: ledger, rule storage, community score storage, RLS.
+- `supabase/migrations/20261022100000_reputation_v2_engine.sql`: weighted score RPC, idempotent award/reversal ledger, post/comment/reaction triggers, community batch score RPC, admin rule RPCs, and moderation penalty RPC.
+- Flutter profile and external-profile controllers call `get_user_reputation` and render the public value as `x.xx/5`; community member lists batch-load local community scores.
+- Scroll Admin has a reputation settings page for rule weights, saturation, daily caps, inactivity grace/rate, and audited moderation penalties.
+
+## Implemented award sources
+
+- Original non-shared community posts with at least 20 characters.
+- Constructive comments with at least 20 characters.
+- Positive reactions from distinct non-authors on posts and comments.
+- One meaningful activity-day award per UTC day, separately for global and community scope.
+- Reverse the source contribution when an eligible post becomes inactive/deleted or a comment is deleted; reaction removal/reversal is idempotent.
+- Confirmed moderation penalties through the admin-only RPC.
+
+The helpful-reply rule is intentionally seeded disabled until Scrole defines a trustworthy "marked helpful" workflow. This avoids awarding points for an event the product does not yet record.
+
+## Deployment and validation status
+
+The migration files are committed to the feature branch but have **not** been applied to Supabase. The app/admin code has not been compiled in this environment. Before enabling this feature, apply both migrations in order after review, run Flutter analysis and the admin TypeScript/Vite build, and test: daily caps, repeated reaction toggles, deleted content, private profiles, community membership visibility, and moderator authorization.
