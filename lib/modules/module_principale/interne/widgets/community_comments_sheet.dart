@@ -56,11 +56,13 @@ class _MentionHighlightingController extends TextEditingController {
 class CommunityCommentsSheet extends StatefulWidget {
   final CommunityPost post;
   final dynamic controller;
+  final String? targetCommentId;
 
   const CommunityCommentsSheet({
     super.key,
     required this.post,
     required this.controller,
+    this.targetCommentId,
   });
 
   @override
@@ -77,6 +79,8 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   String? _nextCursor;
   bool _hasMore = false;
 
+  final Map<String, GlobalKey> _commentKeys = <String, GlobalKey>{};
+  bool _targetCommentNavigationStarted = false;
   final Map<String, List<Map<String, dynamic>>> _repliesMap = {};
   final Map<String, bool> _expandedReplies = {};
   final Map<String, bool> _loadingReplies = {};
@@ -145,7 +149,11 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   @override
   void initState() {
     super.initState();
-    _loadComments();
+    _loadComments().then((_) {
+      if (widget.targetCommentId != null && widget.targetCommentId!.isNotEmpty) {
+        unawaited(_navigateToTargetComment());
+      }
+    });
   }
 
   @override
@@ -155,6 +163,48 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     _commentController.dispose();
     _commentFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _navigateToTargetComment() async {
+    if (_targetCommentNavigationStarted || widget.targetCommentId == null) return;
+    _targetCommentNavigationStarted = true;
+    try {
+      var attempts = 0;
+      while (mounted &&
+          !_comments.any((comment) => comment['id']?.toString() == widget.targetCommentId) &&
+          _hasMore &&
+          attempts < 10) {
+        final previousCount = _comments.length;
+        await _loadComments(loadMore: true);
+        attempts++;
+        if (_comments.length == previousCount) break;
+      }
+      if (!mounted) return;
+      final index = _comments.indexWhere((comment) => comment['id']?.toString() == widget.targetCommentId);
+      if (index < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ce commentaire n’est plus disponible.')),
+          );
+        }
+        return;
+      }
+      final targetId = _comments[index]['id']?.toString();
+      if (targetId == null) return;
+      await WidgetsBinding.instance.endOfFrame;
+      final key = _commentKeys[targetId];
+      if (key?.currentContext != null) {
+        await Scrollable.ensureVisible(
+          key!.currentContext!,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          alignment: 0.15,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('[CommunityCommentsSheet] Target comment navigation failed: $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   Future<void> _loadComments({bool loadMore = false}) async {
@@ -609,7 +659,12 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                                 }
 
                                 final comment = _comments[index];
-                                return _buildCommentItem(comment, isReply: false, parentId: null);
+                                final commentId = comment['id']?.toString() ?? 'comment_$index';
+                                final commentKey = _commentKeys.putIfAbsent(commentId, () => GlobalKey());
+                                return KeyedSubtree(
+                                  key: commentKey,
+                                  child: _buildCommentItem(comment, isReply: false, parentId: null),
+                                );
                               },
                             ),
                           ),
