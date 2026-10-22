@@ -112,7 +112,7 @@ language sql stable security definer set search_path = ''
 as $$
   select exists (
     select 1 from public.group_conversation_members m
-    where m.group_id = p_group_id and m.user_id = p_user_id and m.status = 'active'
+    where m.group_id = p_group_id and m.user_id = auth.uid() and p_user_id = auth.uid() and m.status = 'active'
   );
 $$;
 revoke all on function public.group_is_active_member(uuid, uuid) from public, anon;
