@@ -14,6 +14,11 @@ import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
 import 'package:scrole/modules/module_profil/interne/widgets/circle_button_widget.dart';
 
+String _formatReputation(num value) {
+  final rounded = (value.clamp(0, 5) * 10).round() / 10;
+  return rounded.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+}
+
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
 
@@ -328,7 +333,7 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
           Expanded(
             child: _engagementStat(
-              '${controller.reputation.value.toStringAsFixed(2)}/5',
+              '${_formatReputation(controller.reputation.value)}/5',
               'profile_stat_reputation'.tr,
               colorScheme,
             ),
@@ -348,7 +353,7 @@ class ProfileScreen extends GetView<ProfileController> {
         runSpacing: 12,
         children: [
           _engagementStat(controller.postsCount.value.toString(), 'profile_stat_posts'.tr, colors),
-          _engagementStat(controller.reputation.value.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
+          _engagementStat(_formatReputation(controller.reputation.value), 'profile_stat_reputation'.tr, colors),
         ],
       )),
     );
