@@ -253,7 +253,7 @@ begin
     coalesce(sum(l.points_delta) filter(where l.dimension='recognition'),0),
     coalesce(sum(l.points_delta) filter(where l.dimension='consistency'),0),
     coalesce(sum(l.points_delta) filter(where l.dimension='communities'),0),
-    max(l.created_at)
+    max(l.created_at) filter (where l.points_delta > 0 and l.event_key not in ('confirmed_spam_penalty','weekly_inactivity_decay'))
   into v_q,v_r,v_c,v_n,v_last
   from public.reputation_ledger l
   where l.user_id=v_target
@@ -364,3 +364,48 @@ begin
 end $$;
 revoke all on function public.get_community_member_reputations(uuid,uuid[]) from public,anon;
 grant execute on function public.get_community_member_reputations(uuid,uuid[]) to authenticated;
+
+
+create or replace function public.reputation_on_post_status_change()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  if (new.deleted_at is not null or new.status <> 'active') and old.deleted_at is null and old.status='active' then
+    perform public.reputation_award_event(old.author_id,'global',null,'meaningful_post','content_reversal',old.id::text,-2,'quality',
+      jsonb_build_object('reason','post_deleted_or_inactive','community_id',old.community_id));
+    perform public.reputation_award_event(old.author_id,'community',old.community_id,'meaningful_post','content_reversal',old.id::text,-2,'quality',
+      jsonb_build_object('reason','post_deleted_or_inactive'));
+    perform public.reputation_award_event(old.author_id,'global',null,'community_contribution','content_reversal',old.id::text,-1,'communities','{"reason":"post_deleted_or_inactive"}'::jsonb);
+    perform public.reputation_award_event(old.author_id,'community',old.community_id,'community_contribution','content_reversal',old.id::text,-1,'communities','{"reason":"post_deleted_or_inactive"}'::jsonb);
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists reputation_post_status_change on public.community_posts;
+create trigger reputation_post_status_change after update of status,deleted_at on public.community_posts
+for each row execute function public.reputation_on_post_status_change();
+
+create or replace function public.reputation_on_comment_delete()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+declare v_community_id uuid;
+begin
+  select p.community_id into v_community_id from public.community_posts p where p.id=old.post_id;
+  if length(trim(coalesce(old.content,''))) >= 20 then
+    perform public.reputation_award_event(old.author_id,'global',null,'constructive_comment','content_reversal',old.id::text,-1,'quality',
+      jsonb_build_object('reason','comment_deleted','community_id',v_community_id));
+    if v_community_id is not null then
+      perform public.reputation_award_event(old.author_id,'community',v_community_id,'constructive_comment','content_reversal',old.id::text,-1,'quality','{"reason":"comment_deleted"}'::jsonb);
+      perform public.reputation_award_event(old.author_id,'global',null,'community_contribution','comment_reversal',old.id::text,-1,'communities','{"reason":"comment_deleted"}'::jsonb);
+      perform public.reputation_award_event(old.author_id,'community',v_community_id,'community_contribution','comment_reversal',old.id::text,-1,'communities','{"reason":"comment_deleted"}'::jsonb);
+    end if;
+  end if;
+  return old;
+end $$;
+
+drop trigger if exists reputation_comment_delete on public.community_post_comments;
+create trigger reputation_comment_delete after delete on public.community_post_comments
+for each row execute function public.reputation_on_comment_delete();
+
+revoke all on function public.reputation_on_post_status_change() from public,anon,authenticated;
+revoke all on function public.reputation_on_comment_delete() from public,anon,authenticated;
