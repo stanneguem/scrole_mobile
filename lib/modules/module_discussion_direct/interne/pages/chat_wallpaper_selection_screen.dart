@@ -16,17 +16,13 @@ class ChatWallpaperSelectionScreen extends StatefulWidget {
     required this.userColor,
     this.userAvatar,
     required this.onApply,
-    this.canApplyToBoth = false,
-    this.initialApplyToBoth = false,
   });
 
   final String initialWallpaper;
   final String userName;
   final Color userColor;
   final String? userAvatar;
-  final void Function(String wallpaperKey, bool applyToBoth) onApply;
-  final bool canApplyToBoth;
-  final bool initialApplyToBoth;
+  final ValueChanged<String> onApply;
 
   @override
   State<ChatWallpaperSelectionScreen> createState() =>
@@ -37,7 +33,6 @@ class _ChatWallpaperSelectionScreenState
     extends State<ChatWallpaperSelectionScreen> {
   late String _selectedKey;
   String? _customPath;
-  late bool _applyToBoth;
 
   final List<Map<String, dynamic>> _presetWallpapers = [
     {'id': 'none', 'labelKey': 'wallpaper_none', 'path': null},
@@ -50,7 +45,6 @@ class _ChatWallpaperSelectionScreenState
   void initState() {
     super.initState();
     _selectedKey = widget.initialWallpaper;
-    _applyToBoth = widget.canApplyToBoth && widget.initialApplyToBoth;
     if (_selectedKey.startsWith('custom:')) {
       _customPath = _selectedKey.substring(7);
       if (!File(_customPath!).existsSync()) {
@@ -166,7 +160,7 @@ class _ChatWallpaperSelectionScreenState
             padding: const EdgeInsets.only(right: 8),
             child: TextButton(
               onPressed: () {
-                widget.onApply(_selectedKey, _applyToBoth);
+                widget.onApply(_selectedKey);
                 Get.back();
                 Get.snackbar(
                   'chats_title'.tr,
@@ -191,14 +185,6 @@ class _ChatWallpaperSelectionScreenState
       body: SafeArea(
         child: Column(
           children: [
-            if (widget.canApplyToBoth)
-              SwitchListTile.adaptive(
-                value: _applyToBoth,
-                onChanged: (value) => setState(() => _applyToBoth = value),
-                activeColor: AppColors.primary,
-                title: const Text('Appliquer à nous deux'),
-                subtitle: const Text('Le fond sera synchronisé chez les deux participants.'),
-              ),
             // 1. Zone de Prévisualisation dynamique (Simulateur de discussion)
             Expanded(
               child: Padding(
