@@ -190,6 +190,19 @@ class SupabaseGroupMessagingService {
     });
   }
 
+  Future<String> getPersonalWallpaper(String groupId) async {
+    _validateId(groupId, 'groupId');
+    final response = await _client.rpc('get_group_personal_wallpaper', params: {'p_group_id': groupId});
+    return response is String ? response : 'none';
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMessageReceipts(String messageId) async {
+    _validateId(messageId, 'messageId');
+    final response = await _client.rpc('get_group_message_receipts', params: {'p_message_id': messageId});
+    if (response is! List) return const [];
+    return response.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList(growable: false);
+  }
+
   Future<void> setPersonalWallpaper(String groupId, String wallpaperKey) async {
     _validateId(groupId, 'groupId');
     const allowed = {'none', 'fond1', 'fond2', 'fond3'};
