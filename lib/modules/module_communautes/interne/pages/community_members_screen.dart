@@ -141,36 +141,6 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
       }
     }
 
-  Future<void> _loadCommunityReputations(List<Map<String, dynamic>> members) async {
-    final ids = members
-        .map((member) => member['user_id']?.toString() ?? '')
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
-    if (ids.isEmpty) return;
-    try {
-      final response = await Supabase.instance.client.rpc(
-        'get_community_member_reputations',
-        params: {'p_community_id': widget.communityId, 'p_user_ids': ids},
-      );
-      if (response is! List || !mounted) return;
-      setState(() {
-        for (final raw in response) {
-          if (raw is! Map) continue;
-          final row = Map<String, dynamic>.from(raw);
-          final id = row['user_id']?.toString();
-          final score = (row['score'] as num?)?.toDouble();
-          if (id != null && score != null) {
-            _communityReputations[id] = score.clamp(0.0, 5.0);
-          }
-        }
-      });
-    } catch (e) {
-      // The UI remains usable while the V2 migration is awaiting deployment.
-      debugPrint('[CommunityMembersScreen] Community reputation unavailable: $e');
-    }
-  }
-
   } on PostgrestException catch (e) {
       final isHidden = e.code == 'P0001' || e.message.toLowerCase().contains('masquée') || e.message.toLowerCase().contains('masque');
       if (isHidden) {
@@ -221,6 +191,37 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
       }
     }
   }
+
+  Future<void> _loadCommunityReputations(List<Map<String, dynamic>> members) async {
+    final ids = members
+        .map((member) => member['user_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    if (ids.isEmpty) return;
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_community_member_reputations',
+        params: {'p_community_id': widget.communityId, 'p_user_ids': ids},
+      );
+      if (response is! List || !mounted) return;
+      setState(() {
+        for (final raw in response) {
+          if (raw is! Map) continue;
+          final row = Map<String, dynamic>.from(raw);
+          final id = row['user_id']?.toString();
+          final score = (row['score'] as num?)?.toDouble();
+          if (id != null && score != null) {
+            _communityReputations[id] = score.clamp(0.0, 5.0);
+          }
+        }
+      });
+    } catch (e) {
+      // The UI remains usable while the V2 migration is awaiting deployment.
+      debugPrint('[CommunityMembersScreen] Community reputation unavailable: $e');
+    }
+  }
+
 
   void _onSearchChanged(String val) {
     _searchDebounce?.cancel();
