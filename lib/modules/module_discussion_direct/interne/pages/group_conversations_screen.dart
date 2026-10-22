@@ -501,23 +501,80 @@ class _GroupMembersScreenState extends State<GroupMembersScreen> {
 
   Future<void> _invite() async {
     final controller = TextEditingController();
-    final id = await showDialog<String>(
+    List<Map<String, dynamic>> results = [];
+    bool searching = false;
+    String? searchError;
+    final selected = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Inviter un membre'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Identifiant utilisateur'),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (value) => Navigator.pop(context, value.trim()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Envoyer l’invitation')),
-        ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> search(String value) async {
+            if (value.trim().length < 2) {
+              setDialogState(() { results = []; searching = false; searchError = null; });
+              return;
+            }
+            setDialogState(() { searching = true; searchError = null; });
+            try {
+              final found = await widget.service.searchUsersForGroupInvite(widget.group.id, value);
+              setDialogState(() { results = found; searching = false; });
+            } catch (e) {
+              setDialogState(() { searching = false; searchError = 'Recherche impossible : $e'; });
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Inviter un membre'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom ou pseudo',
+                      hintText: 'Saisir au moins 2 caractères',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: search,
+                  ),
+                  const SizedBox(height: 12),
+                  if (searching) const LinearProgressIndicator(),
+                  if (searchError != null) Text(searchError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  if (!searching && searchError == null && controller.text.trim().length >= 2 && results.isEmpty)
+                    const Padding(padding: EdgeInsets.all(12), child: Text('Aucun utilisateur disponible trouvé.')),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: results.length,
+                      itemBuilder: (context, index) {
+                        final user = results[index];
+                        final username = '${user['username'] ?? ''}';
+                        final displayName = '${user['display_name'] ?? username}';
+                        final avatar = user['avatar_url'] as String?;
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: avatar?.isNotEmpty == true ? NetworkImage(avatar!) : null,
+                            child: avatar?.isNotEmpty == true ? null : const Icon(Icons.person_outline),
+                          ),
+                          title: Text(displayName),
+                          subtitle: Text(username.isEmpty ? 'Utilisateur Scrole' : '@$username'),
+                          onTap: () => Navigator.of(dialogContext).pop(user),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Annuler'))],
+          );
+        },
       ),
     );
     controller.dispose();
+    final id = selected?['user_id'] as String?;
     if (id == null || id.isEmpty) return;
     try {
       await widget.service.inviteMembers(widget.group.id, [id]);
