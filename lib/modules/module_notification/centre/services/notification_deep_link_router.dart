@@ -81,14 +81,7 @@ class NotificationDeepLinkRouter {
         }
       }
 
-      if (eventId != null &&
-          (type.contains('event') ||
-              type.contains('evenement') ||
-              type.contains('invitation') ||
-              type.contains('invite') ||
-              type.contains('mention') ||
-              type.contains('transfer') ||
-              type.contains('transfert'))) {
+      if (eventId != null) {
         Get.toNamed(
           AppPages.eventPreview.replaceFirst(':id', eventId),
           arguments: {'id': eventId, 'eventId': eventId},
