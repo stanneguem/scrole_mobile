@@ -91,8 +91,15 @@ begin
   if p_points_delta > 0 then
     v_delta := v_rule.points;
     if v_delta <= 0 then return; end if;
-  else
+  elsif p_event_key = 'confirmed_spam_penalty' then
     v_delta := p_points_delta;
+  else
+    select -coalesce(sum(l.points_delta),0)::integer into v_delta
+      from public.reputation_ledger l
+      where l.user_id=p_user_id and l.scope_type=p_scope_type
+        and coalesce(l.scope_id,'00000000-0000-0000-0000-000000000000'::uuid)=coalesce(p_scope_id,'00000000-0000-0000-0000-000000000000'::uuid)
+        and l.event_key=p_event_key and l.source_id=p_source_id and l.points_delta>0;
+    if v_delta >= 0 then return; end if;
   end if;
   if v_delta > 0 and v_rule.daily_cap is not null then
     perform pg_advisory_xact_lock(hashtextextended(p_user_id::text||':'||p_scope_type||':'||coalesce(p_scope_id::text,'global')||':'||p_event_key,0));
