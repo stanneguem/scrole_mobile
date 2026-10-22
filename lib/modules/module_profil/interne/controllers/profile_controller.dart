@@ -401,7 +401,7 @@ class ProfileController extends GetxController {
       } catch (e) {
         // Compatibility fallback until the reputation V2 migration is deployed.
         reputation.value = ((stats['reputation'] as num?)?.toDouble() ?? reputation.value)
-            .clamp(0.0, 5.0);
+            .clamp(0.0, 5.0).toDouble();
         debugPrint('[ProfileController] V2 reputation unavailable; legacy fallback used: $e');
       }
     } catch (e, stack) {
