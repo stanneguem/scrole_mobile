@@ -1936,16 +1936,6 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         photoProfile: isProfile ? url : _currentAvatarUrl,
         photoCover: !isProfile ? url : _currentCoverUrl,
       );
-      // Les URLs historiques Supabase ne doivent pas être supprimées via le
-      // stockage R2. Le nettoyage des anciens objets R2 se fait uniquement si
-      // l’URL précédente appartient bien à notre domaine public R2.
-      final previousUrl = isProfile ? _currentAvatarUrl : _currentCoverUrl;
-      if (previousUrl != null && previousUrl != url &&
-          Uri.tryParse(previousUrl)?.host == Uri.tryParse(url)?.host) {
-        // Le backend reste responsable de l'autorisation et de la suppression.
-        // Ne pas utiliser Storage Supabase pour un objet R2.
-      }
-
       if (mounted) {
         setState(() {
           if (isProfile) _currentAvatarUrl = url;
