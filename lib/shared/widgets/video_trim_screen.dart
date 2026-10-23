@@ -47,10 +47,12 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
               _progressVisibility = false;
             });
           }
-          if (outputPath != null) {
+          if (outputPath != null && outputPath.trim().isNotEmpty && File(outputPath).existsSync()) {
+            debugPrint('[VideoTrimScreen] TRIM_SUCCESS outputPath=$outputPath');
             Get.back(result: File(outputPath));
           } else {
-            Get.back(result: widget.videoFile);
+            debugPrint('[VideoTrimScreen] TRIM_FAILED reason=empty_output_path');
+            Get.back<File?>(result: null);
           }
         },
       );
@@ -61,7 +63,9 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
           _progressVisibility = false;
         });
       }
-      Get.back(result: widget.videoFile);
+      // Ne jamais renvoyer la vidéo originale quand le découpage a échoué :
+      // elle pourrait dépasser la limite et faire annuler toute la publication.
+      Get.back<File?>(result: null);
     }
   }
 
