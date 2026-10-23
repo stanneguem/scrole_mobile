@@ -120,21 +120,25 @@ class R2MediaRepository {
     }
 
     debugPrint('[R2_UPLOAD][$traceId] STEP 1: appel Edge Function r2-media-upload');
-    final response = await _client.functions.invoke(
-      'r2-media-upload',
-      body: <String, dynamic>{
-        'action': 'create-upload-url',
-        'category': category,
-        'media_type': mediaType,
-        'content_type': contentType,
-        'extension': extension,
-        'size_bytes': bytes.length,
-        if (entityId != null) 'entity_id': entityId,
-        if (communityId != null) 'community_id': communityId,
-        if (videoDuration != null)
-          'duration_seconds': videoDuration.inMilliseconds / 1000,
-      },
-    );
+    final response = await _client.functions
+        .invoke(
+          'r2-media-upload',
+          body: <String, dynamic>{
+            'action': 'create-upload-url',
+            'category': category,
+            'media_type': mediaType,
+            'content_type': contentType,
+            'extension': extension,
+            'size_bytes': bytes.length,
+            if (entityId != null) 'entity_id': entityId,
+            if (communityId != null) 'community_id': communityId,
+            if (videoDuration != null)
+              'duration_seconds': videoDuration.inMilliseconds / 1000,
+          },
+        )
+        .timeout(const Duration(seconds: 30), onTimeout: () {
+          throw TimeoutException('Délai dépassé lors de la préparation de l’envoi R2.');
+        });
 
     debugPrint('[R2_UPLOAD][$traceId] Edge Function status=${response.status} dataType=${response.data.runtimeType}');
     if (response.status < 200 || response.status >= 300 || response.data is! Map) {
@@ -166,8 +170,15 @@ class R2MediaRepository {
     final client = http.Client();
     try {
       debugPrint('[R2_UPLOAD][$traceId] STEP 2: PUT vers R2 objectKey=$objectKey bytes=${bytes.length} contentType=$contentType');
-      final streamed = await client.send(request);
-      final uploadResponse = await http.Response.fromStream(streamed);
+      final streamed = await client
+          .send(request)
+          .timeout(const Duration(minutes: 3), onTimeout: () {
+        throw TimeoutException('Le transfert vers R2 a dépassé 3 minutes.');
+      });
+      final uploadResponse = await http.Response.fromStream(streamed)
+          .timeout(const Duration(seconds: 30), onTimeout: () {
+        throw TimeoutException('Délai dépassé pendant la confirmation de l’envoi R2.');
+      });
       debugPrint('[R2_UPLOAD][$traceId] R2 PUT status=${uploadResponse.statusCode} responseBytes=${uploadResponse.bodyBytes.length}');
       if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
         final bodyPreview = uploadResponse.body.length > 500
