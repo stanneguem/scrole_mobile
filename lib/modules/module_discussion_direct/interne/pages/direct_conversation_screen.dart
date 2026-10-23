@@ -242,50 +242,80 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28.0),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          width: 360,
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 26),
           decoration: BoxDecoration(
             color: hasWallpaper
-                ? Colors.black.withValues(alpha: 0.20)
-                : (isDark
-                    ? colors.surfaceContainerHighest.withValues(alpha: 0.20)
-                    : Colors.white.withValues(alpha: 0.95)),
-            borderRadius: BorderRadius.circular(16),
+                ? Colors.black.withValues(alpha: .28)
+                : colors.surface.withValues(alpha: isDark ? .72 : .92),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
               color: hasWallpaper
-                  ? Colors.white.withValues(alpha: 0.20)
-                  : colors.outlineVariant.withValues(alpha: 0.20),
-              width: 1,
+                  ? Colors.white.withValues(alpha: .18)
+                  : colors.outlineVariant.withValues(alpha: .35),
+              width: .7,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: isDark ? .10 : .035),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .14)
+                      : colors.primary.withValues(alpha: .10),
+                ),
+                child: Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  size: 29,
+                  color: hasWallpaper ? Colors.white : colors.primary,
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 'chats_empty_title'.tr,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.h4.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 19,
+                  height: 1.2,
+                  letterSpacing: -.35,
+                  fontWeight: FontWeight.w700,
                   color: hasWallpaper ? Colors.white : colors.onSurface,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 9),
               Text(
                 'chats_empty_subtitle'.tr,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(
-                  fontSize: 13,
-                  height: 1.35,
-                  color: hasWallpaper ? Colors.white.withValues(alpha: 0.85) : colors.onSurfaceVariant,
+                  fontSize: 14,
+                  height: 1.5,
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .86)
+                      : colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                height: 3,
+                width: 34,
+                decoration: BoxDecoration(
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .55)
+                      : colors.primary.withValues(alpha: .45),
+                  borderRadius: BorderRadius.circular(99),
                 ),
               ),
             ],
