@@ -276,7 +276,7 @@ class SupabaseMessagingService {
         quality: 82,
         format: CompressFormat.jpeg,
       );
-      if (compressed.isNotEmpty && compressed.length < bytes.length) bytes = compressed;
+      if (compressed.isNotEmpty) bytes = compressed;
       resolvedType = 'image/jpeg';
       extension = 'jpg';
     } else if (resolvedType.isEmpty) {
@@ -297,9 +297,9 @@ class SupabaseMessagingService {
       'extension': extension,
       'size_bytes': bytes.length,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
-      if (conversationId != null && conversationId.isNotEmpty) 'entity_id': conversationId,
+      'entity_id': conversationId,
     };
-    if (category == 'message_media' && (conversationId == null || conversationId.isEmpty)) {
+    if (conversationId == null || conversationId.isEmpty) {
       throw ArgumentError('conversationId is required for private chat media');
     }
     final response = await _client.functions.invoke('r2-media-upload', body: request);
