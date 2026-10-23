@@ -11,6 +11,7 @@ import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../shared/widgets/expandable_text_widget.dart';
 import '../../../../app/utils/supabase_error_mapper.dart';
 import '../../centre/models/event_model.dart';
@@ -865,9 +866,17 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
                     ),
 
                   // Titre & Slug
-                  Text(
-                    event.name,
-                    style: GoogleFonts.spaceGrotesk(fontSize: 26, fontWeight: FontWeight.bold),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event.name,
+                          style: GoogleFonts.spaceGrotesk(fontSize: 26, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
+                    ],
                   ),
                   Text(
                     '@${event.slug}',
@@ -1278,43 +1287,22 @@ class _EventPreviewScreenState extends State<EventPreviewScreen> with SingleTick
                 top: false,
                 child: Row(
                   children: [
-                    // 1. Ajouter à l'agenda (2/6 de l'espace)
                     Expanded(
-                      flex: 2,
                       child: ElevatedButton.icon(
                         onPressed: _isCalendarLoading ? null : _handleCalendarAction,
-                        icon: Icon(preview.isInMyCalendar ? Icons.check : Icons.calendar_today, size: 16),
+                        icon: Icon(preview.isInMyCalendar ? Icons.check : Icons.calendar_today, size: 18),
                         label: Text(
-                          '${NumberFormatter.formatCount(totalAdded)}',
-                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 12),
+                          preview.isInMyCalendar
+                              ? 'event_added_to_calendar'.tr
+                              : 'event_add_to_calendar'.tr,
+                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: preview.isInMyCalendar ? AppColors.success : colorScheme.surfaceContainerHighest,
-                          foregroundColor: preview.isInMyCalendar ? AppColors.white : colorScheme.onSurface,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                          backgroundColor: preview.isInMyCalendar ? AppColors.success : AppColors.primary,
+                          foregroundColor: AppColors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // 2. S'inscrire (4/6 de l'espace)
-                    Expanded(
-                      flex: 4,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _showTicketsOrRegistrationSheet(context, preview);
-                        },
-                        icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                        label: Text(
-                          'S\'inscrire (${NumberFormatter.formatCount(preview.attendeeCount)})',
-                          style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                     ),
@@ -1493,7 +1481,7 @@ class _RestrictedPreviewView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint'),
+        title: Row(children: [Expanded(child: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint', maxLines: 1, overflow: TextOverflow.ellipsis)), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 18)]),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Get.back(),

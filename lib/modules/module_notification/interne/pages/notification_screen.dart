@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../centre/services/notification_db_service.dart';
+import '../../../module_communautes/interne/pages/community_feed_screen.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationScreen extends GetView<NotificationController> {
@@ -120,12 +122,118 @@ class NotificationScreen extends GetView<NotificationController> {
   Future<void> _handleNotification(NotificationEntry notification) async {
     await controller.markAsRead(notification.id);
     final payload = controller.payloadOf(notification);
-    final data = payload['data'];
+    final rawData = payload['data'];
+    final data = rawData is Map
+        ? Map<String, dynamic>.from(rawData)
+        : <String, dynamic>{};
+
+    String? idOf(List<String> keys) {
+      for (final key in keys) {
+        final value = data[key] ?? payload[key];
+        if (value != null && value.toString().isNotEmpty && value.toString() != 'null') {
+          return value.toString();
+        }
+      }
+      return null;
+    }
 
     final type = notification.type.toLowerCase();
 
     if (type == 'follow_request') {
-      Get.toNamed(AppPages.followRequests, arguments: {'requestId': data is Map ? data['request_id'] : null});
+      Get.toNamed(AppPages.followRequests, arguments: {'requestId': data['request_id']});
+      return;
+    }
+
+    // Mentions : ouvrir la cible (publication/commentaire) plutôt que seulement
+    // marquer la notification comme lue. Pour une publication communautaire,
+    // ouvrir le fil de cette communauté et transmettre les identifiants cibles.
+    final isMention = type.contains('mention') ||
+        type == 'mentioned_in_post' ||
+        type == 'mentioned_in_comment' ||
+        type == 'mention_publication' ||
+        type == 'mention_commentaire';
+    if (isMention) {
+      final communityId = idOf(['community_id', 'communaute_id', 'target_community_id']);
+      final postId = idOf(['post_id', 'publication_id', 'source_post_id', 'target_post_id']);
+      final commentId = idOf(['comment_id', 'commentaire_id', 'target_comment_id']);
+      final eventId = idOf(['event_id', 'evenement_id', 'target_event_id']);
+
+      if (communityId != null && communityId.isNotEmpty) {
+        Get.to(() => CommunityFeedScreen(communityId: communityId, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()), arguments: {
+          'postId': postId,
+          'commentId': commentId,
+          'openComment': commentId != null,
+        });
+        return;
+      }
+      // If the mention was made inside a comment, open that comment's post first.
+      // The event remains accessible from the comment itself.
+      if (postId != null && postId.isNotEmpty) {
+        try {
+          final post = await Supabase.instance.client
+              .from('posts')
+              .select('id,community_id')
+              .eq('id', postId)
+              .maybeSingle();
+          final targetCommunity = post?['community_id']?.toString() ?? communityId;
+          if (targetCommunity != null && targetCommunity.isNotEmpty) {
+            Get.to(() => CommunityFeedScreen(communityId: targetCommunity, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()), arguments: {
+              'postId': postId,
+              'commentId': commentId,
+              'openComment': commentId != null,
+            });
+            return;
+          }
+        } catch (e) {
+          debugPrint('[Notification] Could not resolve mention target post: $e');
+        }
+      }
+      if (eventId != null && eventId.isNotEmpty) {
+        await controller.goToEventPreview(eventId);
+        return;
+      }
+      final mentionedUserId = idOf(['mentioned_user_id', 'target_user_id', 'profile_user_id']);
+      if (mentionedUserId != null && mentionedUserId.isNotEmpty) {
+        Get.toNamed(AppPages.externalProfilePath(mentionedUserId));
+        return;
+      }
+    }
+
+    // Commentaires et réponses sur une publication communautaire : ouvrir
+    // la publication puis le panneau de commentaires correspondant.
+    final contentPostId = idOf(['post_id', 'publication_id', 'source_post_id', 'target_post_id']);
+    final contentCommunityId = idOf(['community_id', 'communaute_id', 'target_community_id']);
+    final contentCommentId = idOf(['comment_id', 'commentaire_id', 'target_comment_id', 'parent_comment_id']);
+    if (contentPostId != null &&
+        contentCommunityId != null &&
+        (type.contains('comment') || type.contains('reply') || type.contains('community_post_like'))) {
+      Get.to(
+        () => CommunityFeedScreen(
+          communityId: contentCommunityId,
+          communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString(),
+        ),
+        arguments: {
+          'postId': contentPostId,
+          'commentId': contentCommentId,
+          'openComment': contentCommentId != null,
+        },
+      );
+      return;
+    }
+
+    // Les invitations d'événement ouvrent la fiche de l'événement.
+    final eventTargetId = idOf(['event_id', 'evenement_id', 'eventId']);
+    if (eventTargetId != null &&
+        (type.contains('invitation') || type.contains('invite') || type.contains('evenement'))) {
+      await controller.goToEventPreview(eventTargetId);
+      return;
+    }
+
+    // Les notifications de communauté ouvrent la communauté visée.
+    final communityTargetId = idOf(['community_id', 'communaute_id', 'target_community_id']);
+    if (communityTargetId != null &&
+        (type.contains('community') || type.contains('communaute') || type.contains('publication'))) {
+      Get.to(() => CommunityFeedScreen(communityId: communityTargetId, communityName: (data['community_name'] ?? data['community_nom'] ?? 'Communauté').toString()));
       return;
     }
 
@@ -345,6 +453,15 @@ class _NotificationTile extends StatelessWidget {
     final data = payload['data'] is Map ? Map<String, dynamic>.from(payload['data'] as Map) : <String, dynamic>{};
     final type = notification.type.toLowerCase();
 
+    // Canceled/revoked invitations are informational and must not offer stale actions.
+    final actionable = data['actionable'] ?? payload['actionable'];
+    if (actionable == false ||
+        type.endsWith('_annulee') ||
+        type.endsWith('_annulée') ||
+        type.contains('invitation_annulee')) {
+      return const SizedBox.shrink();
+    }
+
     // Si une action a déjà été prise, on affiche le résultat au lieu des boutons
     if (notification.actionStatus != 'pending') {
       final isAccepted = notification.actionStatus == 'accepted';
@@ -389,7 +506,7 @@ class _NotificationTile extends StatelessWidget {
       return null;
     }
 
-    if (type == 'connection_request' || type == 'demande_ami' || type == 'friend_request' || type == 'demande_connexion') {
+    if (type == 'connection_request' || type == 'follow_request' || type == 'demande_ami' || type == 'friend_request' || type == 'demande_connexion') {
       final requestId = resolveId(['request_id', 'id', 'friend_request_id']);
       if (requestId == null) return const SizedBox.shrink();
       return _ActionRow(

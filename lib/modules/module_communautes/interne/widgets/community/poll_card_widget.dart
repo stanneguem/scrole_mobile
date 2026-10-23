@@ -103,31 +103,32 @@ class _PollCardWidgetState extends State<PollCardWidget> {
     final explanation = (_poll['explanation'] ?? '').toString().trim();
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: .7)),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: .48)),
+        boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .08 : .045), blurRadius: 24, offset: const Offset(0, 8))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(
-            width: 42, height: 42,
+            width: 46, height: 46,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [colors.primary.withValues(alpha: .18), colors.tertiary.withValues(alpha: .14)]),
-              borderRadius: BorderRadius.circular(14)),
-            child: Icon(_quiz ? Icons.lightbulb_rounded : Icons.poll_rounded, color: colors.primary)),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: _quiz ? [colors.tertiary.withValues(alpha: .18), colors.primary.withValues(alpha: .09)] : [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .08)]),
+              borderRadius: BorderRadius.circular(16)),
+            child: Icon(_quiz ? Icons.lightbulb_rounded : _kind == 'this_or_that' ? Icons.compare_arrows_rounded : Icons.poll_rounded, color: _quiz ? colors.tertiary : colors.primary, size: 24)),
           const SizedBox(width: 11),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(_kindLabel(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: colors.onSurface)),
-            const SizedBox(height: 3),
-            Text(_closed ? 'Sondage terminé' : _endLabel(), style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+            Text(_kindLabel(), style: TextStyle(fontSize: 15, letterSpacing: -.2, fontWeight: FontWeight.w800, color: colors.onSurface)),
+            const SizedBox(height: 4),
+            Row(children: [Icon(_closed ? Icons.lock_clock_rounded : Icons.schedule_rounded, size: 13, color: colors.onSurfaceVariant), const SizedBox(width: 4), Flexible(child: Text(_closed ? 'Interaction terminée' : _endLabel(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: colors.onSurfaceVariant)))]),
           ])),
           if (voters > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(30)),
-              child: Text('$voters vote${voters > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant))),
+              decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .75), borderRadius: BorderRadius.circular(30)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.people_alt_outlined, size: 13, color: colors.onSurfaceVariant), const SizedBox(width: 5), Text('$voters vote${voters > 1 ? 's' : ''}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.onSurfaceVariant))])),
         ]),
         const SizedBox(height: 15),
         ...options.map((option) {
@@ -139,7 +140,7 @@ class _PollCardWidgetState extends State<PollCardWidget> {
           final showResult = _results && option['percent'] != null;
           final votes = (option['votes'] as num?)?.toInt() ?? 0;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 9),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -170,7 +171,7 @@ class _PollCardWidgetState extends State<PollCardWidget> {
                         : (_multiple ? Icons.check_box_outline_blank_rounded : Icons.radio_button_off_rounded),
                         size: 21, color: correct ? Colors.green : selected ? colors.primary : colors.outline),
                       const SizedBox(width: 10),
-                      Expanded(child: Text(label, style: TextStyle(fontSize: 14, height: 1.25, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: colors.onSurface))),
+                      Expanded(child: Text(label, style: TextStyle(fontSize: 14, height: 1.35, letterSpacing: -.1, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: colors.onSurface))),
                       if (showResult) ...[
                         const SizedBox(width: 8),
                         Text('${percent.round()}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: colors.onSurface)),
@@ -198,7 +199,7 @@ class _PollCardWidgetState extends State<PollCardWidget> {
           const SizedBox(height: 4),
           SizedBox(width: double.infinity, child: FilledButton(
             onPressed: _saving ? null : _vote,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: const StadiumBorder()),
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), elevation: 0, shape: const StadiumBorder(), textStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: -.1)),
             child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(_quiz ? 'Valider ma réponse' : 'Voter'))),
         ],

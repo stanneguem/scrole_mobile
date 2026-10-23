@@ -52,15 +52,15 @@ class EventShareCardDesignPicker extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Container(
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * .88),
-      padding: EdgeInsets.fromLTRB(16, 14, 16, MediaQuery.of(context).padding.bottom + 18),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).padding.bottom + 20),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: colors.outlineVariant, borderRadius: BorderRadius.circular(4))),
+          Container(width: 38, height: 5, decoration: BoxDecoration(color: colors.outlineVariant.withValues(alpha: .8), borderRadius: BorderRadius.circular(8))),
           const SizedBox(height: 14),
           Text('Choisir une carte', style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: colors.onSurface)),
           const SizedBox(height: 4),

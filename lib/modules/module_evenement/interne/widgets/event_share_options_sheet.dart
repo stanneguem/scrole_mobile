@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_preview_model.dart';
 import 'package:scrole/modules/module_communautes/externe/repositories/community_repository.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 
 class EventShareOptionsSheet extends StatelessWidget {
   const EventShareOptionsSheet({
@@ -81,11 +82,18 @@ class EventShareOptionsSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        event.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: colors.onSurface),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              event.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: colors.onSurface),
+                            ),
+                          ),
+                          EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -319,7 +327,7 @@ class _EventShareCommunityPickerState extends State<EventShareCommunityPicker> {
                       backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
                       child: avatar.isEmpty ? Icon(Icons.groups_rounded, color: colors.primary) : null,
                     ),
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    title: Row(children: [Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)), EntityCertifiedBadge(entityType: 'community', entityId: (community['id'] ?? '').toString(), size: 16)]),
                     trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                     onTap: () => widget.onSelected(community),
                   );

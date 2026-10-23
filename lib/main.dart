@@ -24,6 +24,7 @@ import 'package:scrole/app/service_global/currency_service.dart';
 import 'package:scrole/app/service_global/preferences_service.dart';
 import 'package:scrole/app/service_global/privacy_service.dart';
 import 'package:scrole/app/service_global/session_service.dart';
+import 'package:scrole/app/service_global/presence_service.dart';
 import 'package:scrole/app/service_global/supabse_service.dart';
 import 'package:scrole/app/service_global/sync_service.dart';
 import 'package:scrole/app/service_global/centre_interrets_service.dart';
@@ -253,6 +254,9 @@ Future<void> _initDeferred() async {
         }
       },
     );
+
+    // Maintient une présence en ligne basée sur l'activité réelle au premier plan.
+    Get.put(PresenceService(), permanent: true);
   } catch (e, st) {
     if (kDebugMode) {
       debugPrint('[Boot] Erreur phase différée : $e');

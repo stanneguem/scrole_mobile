@@ -231,8 +231,11 @@ class _DirectConversationDetailsScreenState
                       ),
                     ),
                     if (_isVerified) ...[
-                      const SizedBox(width: 6),
-                      const UserCertifiedBadge(size: 20),
+                      const SizedBox(width: 5),
+                      UserCertifiedBadge(
+                        userId: widget.userId,
+                        size: 20,
+                      ),
                     ],
                   ],
                 ),
@@ -318,7 +321,7 @@ class _DirectConversationDetailsScreenState
           _actionTile(
             icon: Icons.wallpaper_rounded,
             title: 'direct_details_wallpaper'.tr,
-            subtitle: 'direct_details_wallpaper_subtitle'.tr,
+            subtitle: 'Personnalise le fond de cette discussion sur ton appareil.',
             onTap: () {
               Get.to(
                 () => ChatWallpaperSelectionScreen(
@@ -326,7 +329,8 @@ class _DirectConversationDetailsScreenState
                   userName: _displayName,
                   userColor: widget.userColor,
                   userAvatar: _avatarUrl,
-                  onApply: (wallpaperKey) => controller.setWallpaper(wallpaperKey),
+                  onApply: (wallpaperKey) =>
+                      controller.setWallpaper(wallpaperKey),
                 ),
               );
             },

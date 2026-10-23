@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -10,7 +13,28 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
+import '../../../module_evenement/interne/pages/external_event_itinerary_screen.dart';
 import '../controllers/external_profile_controller.dart';
+
+
+String _formatLastSeen(DateTime value) {
+  final local = value.toLocal();
+  final languageCode = Get.locale?.languageCode ?? 'fr';
+  final pattern = switch (languageCode) {
+    'fr' => "d MMMM yyyy 'à' HH:mm",
+    'en' => "MMMM d, yyyy 'at' h:mm a",
+    'es' => "d 'de' MMMM 'de' yyyy 'a las' HH:mm",
+    'de' => "d. MMMM yyyy 'um' HH:mm",
+    'it' => "d MMMM yyyy 'alle' HH:mm",
+    'pt' => "d 'de' MMMM 'de' yyyy 'às' HH:mm",
+    'zh' => "yyyy年M月d日 HH:mm",
+    'ja' => "yyyy年M月d日 HH:mm",
+    'ru' => "d MMMM yyyy 'в' HH:mm",
+    _ => "d MMMM yyyy HH:mm",
+  };
+  return DateFormat(pattern, languageCode).format(local);
+}
 
 class ExternalProfileScreen extends GetView<ExternalProfileController> {
   const ExternalProfileScreen({super.key});
@@ -290,7 +314,7 @@ class _Identity extends StatelessWidget {
                   ),
                   if (profile.isCertified) ...[
                     const SizedBox(width: 6),
-                    const UserCertifiedBadge(size: 20),
+                    UserCertifiedBadge(size: 20, userId: profile.userId),
                   ],
                 ],
               ),
@@ -359,6 +383,39 @@ class _Identity extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ],
+              if (profile.isOnline) ...[
+                const SizedBox(height: 4),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(color: Color(0xFF34C759), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 5),
+                  Text('profile_online'.tr, style: TextStyle(
+                    color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w600)),
+                ]),
+              ] else if (profile.lastSeenAt != null) ...[
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'profile_last_seen_label'.tr,
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatLastSeen(profile.lastSeenAt!),
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -568,10 +625,18 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
   @override
   Widget build(BuildContext context) => Obx(() {
     final p = controller.profile.value!;
-    if (p.isPrivate)
-      return _PrivateProfile(
-        message: 'profile_private_msg'.tr,
+    if (p.isPrivate) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _PrivateProfile(message: 'profile_private_msg'.tr),
+          const SizedBox(height: 14),
+          // Keep relationship/message actions available according to the
+          // recipient's server-calculated privacy settings.
+          _ProfileActions(controller: controller),
+        ],
       );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -859,6 +924,7 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                     ),
+                    EntityCertifiedBadge(entityType: 'event', entityId: (event['id'] ?? '').toString(), size: 16),
                     if (role.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -882,6 +948,23 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
                       Expanded(child: Text(location, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ]),
                   ],
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final eventId = (event['id'] ?? '').toString();
+                        if (eventId.isEmpty) return;
+                        Get.to(() => ExternalEventItineraryScreen(
+                          userId: controller.userId,
+                          eventId: eventId,
+                          eventName: (event['name'] ?? 'Événement').toString(),
+                        ));
+                      },
+                      icon: const Icon(Icons.route_rounded, size: 17),
+                      label: Text('external_event_itinerary_button'.tr),
+                    ),
+                  ),
                 ]),
               ),
             ]),
@@ -917,7 +1000,7 @@ class _ExpandableBioState extends State<_ExpandableBio> {
         final tp = TextPainter(
           text: span,
           maxLines: 2,
-          textDirection: TextDirection.ltr,
+          textDirection: Directionality.of(context),
         );
         tp.layout(maxWidth: constraints.maxWidth);
         final exceeds = tp.didExceedMaxLines;
@@ -936,7 +1019,7 @@ class _ExpandableBioState extends State<_ExpandableBio> {
               GestureDetector(
                 onTap: () => setState(() => _expanded = !_expanded),
                 child: Text(
-                  _expanded ? 'profile_see_less'.tr : 'profile_see_more'.tr,
+                  _expanded ? 'see_less'.tr : 'see_more'.tr,
                   style: TextStyle(
                     color: colors.primary,
                     fontSize: 13,
@@ -1028,7 +1111,7 @@ class _ProfileStats extends StatelessWidget {
             label: 'profile_stat_following'.tr,
           )),
           Expanded(child: _StatItem(
-            value: profile.rating.toStringAsFixed(1),
+            value: _formatReputation(profile.rating),
             label: 'profile_stat_reputation'.tr,
           )),
         ],
@@ -1150,35 +1233,238 @@ class _PrivateProfile extends StatelessWidget {
 
 class _ProfileMenuSheet extends StatelessWidget {
   const _ProfileMenuSheet();
+
   @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surface,
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.share_rounded),
-            title: const Text('Partager le profil'),
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: share profile
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.flag_rounded, color: Colors.red),
-            title: const Text('Signaler le profil', style: TextStyle(color: Colors.red)),
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: report profile
-            },
-          ),
-        ],
+  Widget build(BuildContext context) {
+    final profile = Get.find<ExternalProfileController>().profile.value;
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: .45)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 24, offset: const Offset(0, -5))],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38, height: 4,
+              decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .35), borderRadius: BorderRadius.circular(4)),
+            ),
+            const SizedBox(height: 18),
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(color: colors.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+                child: Icon(Icons.manage_accounts_rounded, color: colors.primary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('profile_actions_title'.tr, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: colors.onSurface)),
+                Text('profile_actions_subtitle'.tr, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+              ])),
+              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+            ]),
+            const SizedBox(height: 18),
+            _ProfileMenuAction(
+              icon: Icons.share_rounded,
+              title: 'profile_share_action'.tr,
+              subtitle: 'profile_share_description'.tr,
+              color: colors.primary,
+              onTap: () async {
+                Navigator.pop(context);
+                if (profile == null) return;
+                final link = 'scrole://user-profile/${profile.userId}';
+                await SharePlus.instance.share(ShareParams(
+                  text: 'profile_share_message'.trParams({'name': profile.displayName, 'link': link}),
+                  subject: 'profile_share_subject'.trParams({'name': profile.displayName}),
+                ));
+              },
+            ),
+            const SizedBox(height: 10),
+            _ProfileMenuAction(
+              icon: Icons.flag_rounded,
+              title: 'profile_report_action'.tr,
+              subtitle: 'profile_report_description'.tr,
+              color: colors.error,
+              onTap: () {
+                Navigator.pop(context);
+                if (profile != null) {
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    backgroundColor: Colors.transparent,
+                    barrierColor: Colors.black.withValues(alpha: .48),
+                    builder: (_) => _ProfileReportSheet(profile: profile),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _ProfileMenuAction extends StatelessWidget {
+  const _ProfileMenuAction({
+    required this.icon, required this.title, required this.subtitle,
+    required this.color, required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 13),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: TextStyle(color: colors.onSurface, fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 3),
+              Text(subtitle, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ])),
+            Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileReportSheet extends StatefulWidget {
+  const _ProfileReportSheet({required this.profile});
+  final dynamic profile;
+
+  @override
+  State<_ProfileReportSheet> createState() => _ProfileReportSheetState();
+}
+
+class _ProfileReportSheetState extends State<_ProfileReportSheet> {
+  String? _reason;
+  final TextEditingController _details = TextEditingController();
+  bool _sending = false;
+
+  static const _reasons = <(String, String, IconData)>[
+    ('spam', 'report_reason_spam', Icons.campaign_outlined),
+    ('fake_profile', 'report_reason_fake_profile', Icons.person_off_outlined),
+    ('harassment', 'report_reason_harassment', Icons.mood_bad_outlined),
+    ('inappropriate', 'report_reason_inappropriate', Icons.visibility_off_outlined),
+    ('other', 'report_reason_other', Icons.more_horiz_rounded),
+  ];
+
+  @override
+  void dispose() {
+    _details.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12, 12, 12, 12 + MediaQuery.viewInsetsOf(context).bottom),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .82),
+          decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(28)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: colors.onSurfaceVariant.withValues(alpha: .35), borderRadius: BorderRadius.circular(4)))),
+              const SizedBox(height: 20),
+              Row(children: [
+                Container(width: 46, height: 46, decoration: BoxDecoration(color: colors.error.withValues(alpha: .12), borderRadius: BorderRadius.circular(15)), child: Icon(Icons.flag_rounded, color: colors.error)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('profile_report_title'.tr, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: colors.onSurface)),
+                  Text(widget.profile.displayName, style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)),
+                ])),
+              ]),
+              const SizedBox(height: 8),
+              Text('profile_report_hint'.tr, style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13)),
+              const SizedBox(height: 18),
+              ..._reasons.map((entry) {
+                final selected = _reason == entry.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: selected ? colors.error.withValues(alpha: .08) : colors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: () => setState(() => _reason = entry.$1),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                        child: Row(children: [
+                          Icon(entry.$3, color: selected ? colors.error : colors.onSurfaceVariant, size: 21),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(entry.$2.tr, style: TextStyle(color: colors.onSurface, fontWeight: selected ? FontWeight.w700 : FontWeight.w500))),
+                          Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, color: selected ? colors.error : colors.onSurfaceVariant),
+                        ]),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (_reason == 'other') ...[
+                const SizedBox(height: 4),
+                TextField(controller: _details, maxLines: 3, decoration: InputDecoration(hintText: 'profile_report_details_hint'.tr, filled: true, fillColor: colors.surfaceContainerLow, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, height: 50, child: FilledButton(
+                onPressed: _reason == null || _sending ? null : _submit,
+                style: FilledButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                child: _sending ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text('profile_report_submit'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
+              )),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (_reason == null || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await Supabase.instance.client.rpc('report_user_profile', params: {
+        'p_reported_user_id': widget.profile.userId,
+        'p_reason': _reason,
+        'p_details': _details.text.trim().isEmpty ? null : _details.text.trim(),
+      });
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      Get.snackbar('success_title'.tr, 'profile_report_success'.tr, snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      Get.snackbar('error_title'.tr, 'profile_report_error'.tr, snackPosition: SnackPosition.BOTTOM);
+    }
+  }
 }
 
 class _HeaderStats extends StatelessWidget {
@@ -1203,7 +1489,7 @@ class _HeaderStats extends StatelessWidget {
           child: _buildStatCol(NumberFormatter.formatCount(profile.followingCount), 'follow_tab_following'.tr, colors),
         ),
         const SizedBox(width: 10),
-        _buildStatCol(profile.rating.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
+        _buildStatCol(_formatReputation(profile.rating), 'profile_stat_reputation'.tr, colors),
       ],
     );
   }
@@ -1430,6 +1716,11 @@ class _ProfileErrorView extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatReputation(num value) {
+  final rounded = (value.clamp(0, 5) * 10).round() / 10;
+  return rounded.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
 }
 
 class _BlockingProfileOverlay extends StatelessWidget {

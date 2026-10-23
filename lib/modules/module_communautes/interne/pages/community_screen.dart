@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../controllers/community/community_controller.dart';
 import 'create_community_screen.dart';
 import 'community_feed_screen.dart';
@@ -124,7 +125,7 @@ class CommunityScreen extends StatelessWidget {
                         ? () {
                             Get.snackbar(
                               'community_creation_in_progress'.tr,
-                              'La communauté est en cours de création sur le serveur.',
+                              'community_creation_pending_message'.tr,
                               snackPosition: SnackPosition.BOTTOM,
                             );
                           }
@@ -160,116 +161,174 @@ class _MyCommunityTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final initial = community.name.isNotEmpty ? community.name[0].toUpperCase() : 'C';
+    final avatarUrl = community.avatarUrl?.toString() ?? '';
+    final coverUrl = community.bannerUrl?.toString() ?? '';
+    final hasCover = coverUrl.isNotEmpty;
+    final hasAvatar = avatarUrl.isNotEmpty;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: community.avatarUrl != null && community.avatarUrl!.isNotEmpty
-                    ? AppCachedImage(
-                        imageUrl: community.avatarUrl!,
-                        width: 62,
-                        height: 62,
-                        fit: BoxFit.cover,
-                        errorWidget: Container(
-                          width: 62,
-                          height: 62,
-                          color: colorScheme.primary.withValues(alpha: 0.15),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: TextStyle(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: 62,
-                        height: 62,
-                        color: colorScheme.primary.withValues(alpha: 0.15),
-                        child: Center(
-                          child: Text(
-                            initial,
-                            style: TextStyle(
-                              color: colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    community.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 196,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (hasCover)
+                  AppCachedImage(
+                    imageUrl: coverUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: _communityImageFallback(colorScheme, initial),
+                  )
+                else
+                  _communityImageFallback(colorScheme, initial),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xCC000000)],
+                      stops: [0.28, 1],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
+                ),
+                Positioned(
+                  left: 18,
+                  right: 18,
+                  bottom: 16,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 54,
+                        height: 54,
                         decoration: BoxDecoration(
-                          color: isPending ? Colors.orange : colorScheme.primary,
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2.5),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 3))],
+                        ),
+                        child: ClipOval(
+                          child: hasAvatar
+                              ? AppCachedImage(
+                                  imageUrl: avatarUrl,
+                                  fit: BoxFit.cover,
+                                  errorWidget: _communityAvatarFallback(colorScheme, initial),
+                                )
+                              : _communityAvatarFallback(colorScheme, initial),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isPending ? 'community_creation_in_progress'.tr : 'status_online'.tr,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isPending ? Colors.orange : colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: community.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      height: 1.15,
+                                      fontWeight: FontWeight.w700,
+                                      shadows: [Shadow(color: Colors.black26, blurRadius: 8)],
+                                    ),
+                                  ),
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 4),
+                                      child: EntityCertifiedBadge(
+                                        entityType: 'community',
+                                        entityId: community.id,
+                                        size: 19,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (isPending) ...[
+                              const SizedBox(height: 7),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFFFD180)),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      'community_creation_in_progress'.tr,
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFD180),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: colorScheme.outline),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _communityImageFallback(ColorScheme colors, String initial) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primaryContainer, colors.tertiaryContainer],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: colors.onPrimaryContainer,
+          fontSize: 56,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _communityAvatarFallback(ColorScheme colors, String initial) {
+    return Container(
+      color: colors.primaryContainer,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(color: colors.onPrimaryContainer, fontSize: 23, fontWeight: FontWeight.w800),
       ),
     );
   }
