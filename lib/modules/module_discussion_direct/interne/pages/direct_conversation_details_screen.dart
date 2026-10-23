@@ -38,6 +38,7 @@ class _DirectConversationDetailsScreenState
 
   bool _notificationsEnabled = true;
   bool _mediaVisibilityEnabled = true;
+  bool _savingPreferences = false;
   ExternalProfileModel? _profile;
 
   String get _displayName {
@@ -64,6 +65,62 @@ class _DirectConversationDetailsScreenState
   void initState() {
     super.initState();
     _loadProfile();
+    _loadConversationPreferences();
+  }
+
+  Future<void> _loadConversationPreferences() async {
+    final controller = Get.isRegistered<DirectConversationController>()
+        ? Get.find<DirectConversationController>()
+        : null;
+    if (controller == null) return;
+    await controller.loadConversationPreferences();
+    if (!mounted) return;
+    setState(() {
+      _notificationsEnabled = controller.conversationNotificationsEnabled.value;
+      _mediaVisibilityEnabled = controller.saveIncomingMediaToGallery.value;
+    });
+  }
+
+  Future<void> _updatePreference({
+    bool? notificationsEnabled,
+    bool? mediaVisibilityEnabled,
+  }) async {
+    if (_savingPreferences) return;
+    final controller = Get.find<DirectConversationController>();
+    final previousNotifications = _notificationsEnabled;
+    final previousMedia = _mediaVisibilityEnabled;
+    setState(() {
+      _savingPreferences = true;
+      if (notificationsEnabled != null) _notificationsEnabled = notificationsEnabled;
+      if (mediaVisibilityEnabled != null) _mediaVisibilityEnabled = mediaVisibilityEnabled;
+    });
+    try {
+      await controller.updateConversationPreference(
+        notificationsEnabled: notificationsEnabled,
+        saveMediaToGallery: mediaVisibilityEnabled,
+      );
+      if (!mounted) return;
+      Get.snackbar(
+        'chats_title'.tr,
+        'Préférences de discussion enregistrées.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _notificationsEnabled = previousNotifications;
+        _mediaVisibilityEnabled = previousMedia;
+      });
+      Get.snackbar(
+        'Erreur',
+        'Impossible d’enregistrer ce réglage. Réessaie.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } finally {
+      if (mounted) setState(() => _savingPreferences = false);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -290,16 +347,14 @@ class _DirectConversationDetailsScreenState
             icon: Icons.notifications_none_rounded,
             title: 'direct_details_notifications'.tr,
             value: _notificationsEnabled,
-            onChanged: (value) =>
-                setState(() => _notificationsEnabled = value),
+            onChanged: (value) => _updatePreference(notificationsEnabled: value),
           ),
           _switchTile(
             icon: Icons.photo_library_outlined,
             title: 'direct_details_media_visibility'.tr,
             subtitle: 'direct_details_media_visibility_subtitle'.tr,
             value: _mediaVisibilityEnabled,
-            onChanged: (value) =>
-                setState(() => _mediaVisibilityEnabled = value),
+            onChanged: (value) => _updatePreference(mediaVisibilityEnabled: value),
           ),
         ],
       ),
