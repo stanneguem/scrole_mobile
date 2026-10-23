@@ -82,18 +82,22 @@ Deno.serve(async (req: Request) => {
   if (profileError) return reply(500, { error: "profile_check_failed" });
   if (!profile || profile.account_status !== "active" || profile.deleted_at !== null) return reply(403, { error: "account_unavailable" });
 
-  // Authorization is intentionally fail-closed for categories whose entity-membership
-  // rules have not yet been verified against this project's schema. Do not expose
-  // a general signing endpoint before those checks are implemented.
-  if (!["profile_avatar", "profile_cover", "bug_report", "post_media"].includes(category)) {
+  // Validate category-specific authorization before signing an upload.
+  if (category === "profile_avatar" || category === "profile_cover") {
+    if (entityId && entityId !== user.id) return reply(403, { error: "profile_owner_required" });
+  } else if (category === "bug_report") {
+    // Authenticated active accounts may submit diagnostic screenshots.
+  } else if (category === "post_media") {
+    if (typeof body.community_id === "string" && body.community_id.trim()) {
+      const { data: member, error } = await userClient.rpc("is_community_member", {
+        p_community_id: body.community_id.trim(),
+      });
+      if (error || member !== true) return reply(403, { error: "community_membership_required" });
+    }
+  } else {
+    // Community/event/message authorization depends on schema-specific ownership,
+    // moderator and privacy rules. Fail closed until those checks are implemented.
     return reply(501, { error: "category_authorization_not_implemented", category });
-  }
-  if ((category === "profile_avatar" || category === "profile_cover") && entityId && entityId !== user.id) {
-    return reply(403, { error: "profile_owner_required" });
-  }
-  if (category === "post_media" && typeof body.community_id === "string" && body.community_id.trim()) {
-    const { data: member, error } = await userClient.rpc("is_community_member", { p_community_id: body.community_id.trim() });
-    if (error || member !== true) return reply(403, { error: "community_membership_required" });
   }
 
   const uploadId = crypto.randomUUID();
