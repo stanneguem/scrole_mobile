@@ -11,6 +11,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/local_storage/structured/app_cache_database.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../externe/repositories/community_repository.dart';
+import '../../interne/controllers/community/community_feed_controller.dart';
+import '../../../module_principale/interne/controllers/home_feed_controller.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../../../shared/constants/post_media_limits.dart';
 import '../persistence/community_local_dao.dart';
@@ -261,6 +263,20 @@ class CommunityOutboxProcessor extends GetxService {
         return const Duration(seconds: 30);
       default:
         return const Duration(minutes: 1);
+    }
+  }
+
+  void _refreshVisibleFeed(String communityId) {
+    try {
+      if (communityId.isNotEmpty) {
+        if (Get.isRegistered<CommunityFeedController>(tag: communityId)) {
+          unawaited(Get.find<CommunityFeedController>(tag: communityId).fetchCommunityFeed(isRefresh: true));
+        }
+      } else if (Get.isRegistered<HomeFeedController>()) {
+        unawaited(Get.find<HomeFeedController>().fetchFeed(refresh: true));
+      }
+    } catch (e) {
+      debugPrint('[POST_CREATE] FEED_REFRESH_AFTER_OUTBOX_FAILED communityId=$communityId error=$e');
     }
   }
 
@@ -519,6 +535,7 @@ class CommunityOutboxProcessor extends GetxService {
           debugPrint('[POST_CREATE][$postKind] RPC_SUCCESS operationId=$operationId postId=$pId elapsedMs=${DateTime.now().difference(rpcStartedAt).inMilliseconds}');
           debugPrint('[POST_CREATE][$postKind] OUTBOX_COMPLETE operationId=$operationId postId=$pId');
           await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
+          _refreshVisibleFeed(communityId);
         } catch (e, st) {
           final errStr = e.toString();
           debugPrint('[POST_CREATE][$postKind] FAILED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\n$st');
@@ -546,6 +563,7 @@ class CommunityOutboxProcessor extends GetxService {
             where: 'id = ?',
             whereArgs: [id],
           );
+          if (terminal) _refreshVisibleFeed(communityId);
         }
       }
     } catch (e, st) {
