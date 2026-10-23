@@ -985,45 +985,18 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     );
     debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_SUCCESS operationId=$operationId elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
+    // Start the durable outbox processor in the background. The composer only
+    // waits until the payload is safely stored locally, never for media uploads
+    // or the remote RPC to finish.
     try {
       if (!Get.isRegistered<CommunityOutboxProcessor>()) {
         Get.put(CommunityOutboxProcessor());
       }
-      await Get.find<CommunityOutboxProcessor>().processPendingPosts();
+      unawaited(Get.find<CommunityOutboxProcessor>().processPendingPosts());
     } catch (e) {
-      debugPrint('[POST_CREATE][COMPOSER] IMMEDIATE_PROCESS_FAILED operationId=$operationId postId=$postId error=$e');
+      debugPrint('[POST_CREATE][COMPOSER] BACKGROUND_PROCESS_START_FAILED operationId=$operationId postId=$postId error=$e');
     }
 
-    // Do not silently report success when the server rejected the publication.
-    // Keep the outbox entry for retry, but return the actual backend error to
-    // the composer so the author knows the post has not yet been published.
-    try {
-      final pending = await db
-          .query('post_outbox', where: 'operation_id = ?', whereArgs: [operationId], limit: 1);
-      if (pending.isNotEmpty) {
-        String? rawError;
-        try {
-          final savedPayload = jsonDecode(pending.first['payload']?.toString() ?? '{}');
-          if (savedPayload is Map<String, dynamic>) {
-            rawError = savedPayload['p_last_error']?.toString().trim();
-          } else if (savedPayload is Map) {
-            rawError = savedPayload['p_last_error']?.toString().trim();
-          }
-        } catch (_) {
-          // Preserve the generic message if the queued payload is malformed.
-        }
-        final detail = (rawError == null || rawError.isEmpty)
-            ? 'La publication est enregistrée pour une nouvelle tentative. Consulte les logs [POST_CREATE] pour identifier l’étape en échec.'
-            : rawError;
-        debugPrint('[POST_CREATE][COMPOSER] NOT_CONFIRMED operationId=$operationId postId=$postId lastError=${rawError ?? '(none)'} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
-        throw Exception('Publication non confirmée : $detail');
-      }
-    } catch (e) {
-      if (e is Exception && e.toString().startsWith('Exception: Publication non confirmée')) {
-        rethrow;
-      }
-      debugPrint('[POST_CREATE][COMPOSER] OUTBOX_VERIFY_ERROR operationId=$operationId postId=$postId error=$e');
-    }
   }
 
   String _generateUuidV4() {
