@@ -566,6 +566,9 @@ class ProfileController extends GetxController {
       }
 
       isUploadingProfileImage.value = true;
+      final previousAvatarUrl = avatarUrl.value.trim().isNotEmpty
+          ? avatarUrl.value.trim()
+          : profileImageUrl.value.trim();
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 3: upload via StorageRepository');
       final String uploadedUrl = await _storageRepository.uploadProfilePicture(userId.value, picked);
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 4: upload terminé url=$uploadedUrl');
@@ -578,6 +581,14 @@ class ProfileController extends GetxController {
       );
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 6: sauvegarde result=$saved');
       if (!saved) throw StateError('Upload réussi mais enregistrement photo_url échoué.');
+      if (previousAvatarUrl.isNotEmpty && previousAvatarUrl != uploadedUrl) {
+        try {
+          await _storageRepository.deleteProfileAvatar(previousAvatarUrl);
+          debugPrint('[PROFILE_AVATAR][$traceId] OLD_AVATAR_DELETED');
+        } catch (deleteError) {
+          debugPrint('[PROFILE_AVATAR][$traceId] OLD_AVATAR_DELETE_WARNING error=$deleteError');
+        }
+      }
       debugPrint('[PROFILE_AVATAR][$traceId] SUCCESS');
     } catch (e, stack) {
       debugPrint('[PROFILE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
