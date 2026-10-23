@@ -167,6 +167,39 @@ class FeedPostCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (post.isPublishing)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.18)),
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: Text(
+                              post.timeAgo == 'Échec de publication'
+                                  ? 'Publication en échec — elle sera retentée automatiquement.'
+                                  : 'Publication en cours… Les interactions seront activées après confirmation.',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // 1. En-tête de la communauté si présente et hors du fil propre de cette communauté
                   if (showCommunityHeader) ...[
                     GestureDetector(
