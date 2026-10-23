@@ -7,8 +7,9 @@ import '../../app/theme/app_colors.dart';
 
 class VideoTrimScreen extends StatefulWidget {
   final File videoFile;
+  final Duration maxDuration;
 
-  const VideoTrimScreen({super.key, required this.videoFile});
+  const VideoTrimScreen({super.key, required this.videoFile, this.maxDuration = const Duration(seconds: 30)});
 
   @override
   State<VideoTrimScreen> createState() => _VideoTrimScreenState();
@@ -110,7 +111,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
                     trimmer: _trimmer,
                     viewerHeight: 50.0,
                     viewerWidth: MediaQuery.of(context).size.width,
-                    maxVideoLength: const Duration(minutes: 2),
+                    maxVideoLength: widget.maxDuration,
                     onChangeStart: (value) => _startValue = value,
                     onChangeEnd: (value) => _endValue = value,
                     onChangePlaybackState: (value) => setState(() => _isPlaying = value),
