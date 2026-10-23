@@ -153,46 +153,62 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
             _sectionLabel('settings_preferences_title'.tr, colors),
             const SizedBox(height: 8),
             _group([
-              Obx(() {
-                final autoplay = preferencesService.preferences.value.autoPlayVideos;
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(15, 12, 15, 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: colors.primary.withValues(alpha: .09),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(CupertinoIcons.play_rectangle, color: colors.primary, size: 19),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('settings_autoplay_videos'.tr, style: TextStyle(
-                              color: colors.onSurface, fontSize: 14, fontWeight: FontWeight.w600,
-                            )),
-                            const SizedBox(height: 3),
-                            Text('settings_autoplay_videos_desc'.tr, style: TextStyle(
-                              color: colors.onSurfaceVariant, fontSize: 12, height: 1.3,
-                            )),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      CupertinoSwitch(
-                        value: autoplay,
-                        activeTrackColor: colors.primary,
-                        onChanged: (value) => preferencesService.update({'auto_play_videos': value}),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.play_rectangle,
+                title: 'settings_autoplay_videos'.tr,
+                subtitle: 'settings_autoplay_videos_desc'.tr,
+                value: preferencesService.preferences.value.autoPlayVideos,
+                onChanged: (value) => preferencesService.update({'auto_play_videos': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.bell,
+                title: 'settings_notifications_enabled'.tr,
+                subtitle: 'settings_notifications_enabled_desc'.tr,
+                value: preferencesService.preferences.value.notificationsEnabled,
+                onChanged: (value) => preferencesService.update({'notifications_enabled': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.bell_badge,
+                title: 'settings_notif_push'.tr,
+                subtitle: 'settings_notif_push_desc'.tr,
+                value: preferencesService.preferences.value.notifPush,
+                onChanged: (value) => preferencesService.update({'notif_push': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.chat_bubble,
+                title: 'settings_notif_messages'.tr,
+                subtitle: 'settings_notif_messages_desc'.tr,
+                value: preferencesService.preferences.value.notifMessages,
+                onChanged: (value) => preferencesService.update({'notif_messages': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.calendar,
+                title: 'settings_notif_events'.tr,
+                subtitle: 'settings_notif_events_desc'.tr,
+                value: preferencesService.preferences.value.notifEvenements,
+                onChanged: (value) => preferencesService.update({'notif_evenements': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.person_2,
+                title: 'settings_notif_communities'.tr,
+                subtitle: 'settings_notif_communities_desc'.tr,
+                value: preferencesService.preferences.value.notifCommunautes,
+                onChanged: (value) => preferencesService.update({'notif_communautes': value}),
+                colors: colors,
+              )),
+              Obx(() => _switchTile(
+                icon: CupertinoIcons.heart,
+                title: 'settings_notif_social'.tr,
+                subtitle: 'settings_notif_social_desc'.tr,
+                value: preferencesService.preferences.value.notifSocial,
+                onChanged: (value) => preferencesService.update({'notif_social': value}),
+                colors: colors,
+              )),
             ], colors),
             const SizedBox(height: 24),
             _sectionLabel('privacy_section_data'.tr, colors),
