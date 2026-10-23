@@ -849,6 +849,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     String? requestedPostId,
     String? content,
     List<File>? imageFiles,
+    List<File>? videoFiles,
     String? audience,
     bool commentsEnabled = true,
     bool sharingEnabled = true,
@@ -858,19 +859,16 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
-    if ((imageFiles?.length ?? 0) > maxPostPhotos) {
-      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
-    }
-
-    if ((imageFiles?.length ?? 0) > maxPostPhotos) {
-      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
+    final totalMediaCount = (imageFiles?.length ?? 0) + (videoFiles?.length ?? 0);
+    if (totalMediaCount > maxPostMedia) {
+      throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
     }
 
     final userId = _authService.userId ?? 'local_user';
     final postId = requestedPostId ?? _generateUuidV4();
     final operationId = postId;
 
-    List<String> localMediaPaths = [];
+    List<Map<String, String>> localMediaPaths = [];
     try {
       final appDir = await getApplicationDocumentsDirectory();
       if (imageFiles != null && imageFiles.isNotEmpty) {
@@ -887,11 +885,18 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
               minHeight: 1280,
               quality: 80,
             );
-            localMediaPaths.add(compressed?.path ?? file.path);
+            localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
           }
         }
       }
-    } catch (_) {}
+      if (videoFiles != null) {
+        for (final video in videoFiles) {
+          if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+        }
+      }
+    } catch (e) {
+      if (videoFiles != null && videoFiles.isNotEmpty) rethrow;
+    }
 
     final payload = {
       'p_id': postId,
