@@ -573,32 +573,40 @@ class CommunityOutboxProcessor extends GetxService {
           _refreshVisibleFeed(communityId ?? '');
         } catch (e, st) {
           final errStr = e.toString();
-          debugPrint('[POST_CREATE][$postKind] FAILED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\n$st');
-          final nextAttempt = attempts + 1;
-          final permanentError = errStr.contains('community_posts_max_photos') ||
-              errStr.contains('violates check constraint') ||
-              errStr.contains('code: 23514');
-          final terminal = permanentError || nextAttempt >= _maxPostAttempts;
-          final retryDelay = _calculateBackoffDelay(nextAttempt);
-          final nextRetryAt = terminal ? 0 : DateTime.now().add(retryDelay).millisecondsSinceEpoch;
-          debugPrint('[POST_CREATE][$postKind] ${permanentError ? 'PERMANENT_ERROR' : terminal ? 'MAX_ATTEMPTS_REACHED' : 'RETRY_SCHEDULED'} operationId=$operationId attempt=$nextAttempt maxAttempts=$_maxPostAttempts delayMs=${terminal ? 0 : retryDelay.inMilliseconds} nextRetryAt=$nextRetryAt error=$errStr');
+          debugPrint('[POST_CREATE][$postKind] CANCELLED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\\n$st');
 
-          // Store the diagnostic in the JSON payload: the deployed SQLite
-          // schema does not expose a last_error column.
-          payload['p_last_error'] = errStr;
-          await db.update(
-            'post_outbox',
-            {
-              'payload': jsonEncode(payload),
-              'status': terminal ? 'failed' : 'pending',
-              'attempt_count': nextAttempt,
-              'next_retry_at': nextRetryAt,
-              'updated_at': DateTime.now().toIso8601String(),
-            },
-            where: 'id = ?',
-            whereArgs: [id],
-          );
-          if (terminal) _refreshVisibleFeed(communityId ?? '');
+          // A failed attempt is final: never put this post back into the retry queue.
+          // Clean any R2 objects uploaded before this attempt failed.
+          final cachedUploaded = payload['p_uploaded_media'];
+          final objectKeys = <String>[];
+          if (cachedUploaded is List) {
+            for (final media in cachedUploaded) {
+              if (media is Map && media['storage']?.toString().toLowerCase() == 'r2') {
+                final key = media['object_key']?.toString().trim() ?? '';
+                if (key.isNotEmpty) objectKeys.add(key);
+              }
+            }
+          }
+          try {
+            await R2MediaRepository(client: Supabase.instance.client).deleteFailedPostMedia(
+              objectKeys: objectKeys,
+              communityId: communityId,
+            );
+          } catch (cleanupError, cleanupStack) {
+            debugPrint('[POST_CREATE][$postKind] MEDIA_CLEANUP_FAILED operationId=$operationId keys=${objectKeys.length} error=$cleanupError\\n$cleanupStack');
+          }
+
+          // Remove the local queued post and permanently stop retries.
+          await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
+          debugPrint('[POST_CREATE][$postKind] OUTBOX_CANCELLED_AND_REMOVED operationId=$operationId');
+          _refreshVisibleFeed(communityId ?? '');
+          try {
+            Get.snackbar(
+              'error'.tr,
+              'La publication a échoué et a été annulée.',
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          } catch (_) {}
         }
       }
     } catch (e, st) {
