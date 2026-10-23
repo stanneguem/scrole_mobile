@@ -399,3 +399,52 @@ begin
 end
 $function$
 ;
+
+
+-- Backward-compatible overload: persist the author's explicit story reshare choice.
+create or replace function public.create_story(
+  p_id uuid,
+  p_kind text,
+  p_content text default null,
+  p_image_url text default null,
+  p_background text default null,
+  p_audience text default 'public',
+  p_poll jsonb default null,
+  p_allow_reshare boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_result jsonb;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required';
+  end if;
+
+  perform public.create_story(
+    p_id, p_kind, p_content, p_image_url, p_background, p_audience, p_poll
+  );
+
+  update public.stories
+     set allow_reshare = coalesce(p_allow_reshare, false)
+   where id = p_id
+     and author_id = v_uid;
+
+  if not found then
+    raise exception 'Story unavailable or not owned by caller';
+  end if;
+
+  select to_jsonb(s) into v_result
+    from public.stories s
+   where s.id = p_id;
+
+  return coalesce(v_result, jsonb_build_object('id', p_id, 'success', true));
+end
+$function$;
+
+revoke all on function public.create_story(uuid, text, text, text, text, text, jsonb, boolean) from public, anon;
+grant execute on function public.create_story(uuid, text, text, text, text, text, jsonb, boolean) to authenticated;
