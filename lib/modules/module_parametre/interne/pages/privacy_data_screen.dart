@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/service_global/privacy_service.dart';
+import '../../../../app/service_global/preferences_service.dart';
 import '../../../../shared/models/user_models.dart';
 
 class PrivacyDataScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class PrivacyDataScreen extends StatefulWidget {
 
 class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
   final PrivacyService service = Get.find<PrivacyService>();
+  final PreferencesService preferencesService = Get.find<PreferencesService>();
   bool _loadFailed = false;
   static const _visibilityValues = {'only_me', 'friends', 'followers', 'everyone'};
 
@@ -146,6 +148,51 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
                   ),
                 ),
               ),
+            ], colors),
+            const SizedBox(height: 24),
+            _sectionLabel('settings_preferences_title'.tr, colors),
+            const SizedBox(height: 8),
+            _group([
+              Obx(() {
+                final autoplay = preferencesService.preferences.value.autoPlayVideos;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(15, 12, 15, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: .09),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(CupertinoIcons.play_rectangle, color: colors.primary, size: 19),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('settings_autoplay_videos'.tr, style: TextStyle(
+                              color: colors.onSurface, fontSize: 14, fontWeight: FontWeight.w600,
+                            )),
+                            const SizedBox(height: 3),
+                            Text('settings_autoplay_videos_desc'.tr, style: TextStyle(
+                              color: colors.onSurfaceVariant, fontSize: 12, height: 1.3,
+                            )),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      CupertinoSwitch(
+                        value: autoplay,
+                        activeTrackColor: colors.primary,
+                        onChanged: (value) => preferencesService.update({'auto_play_videos': value}),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ], colors),
             const SizedBox(height: 24),
             _sectionLabel('privacy_section_data'.tr, colors),
