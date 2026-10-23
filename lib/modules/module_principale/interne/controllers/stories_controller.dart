@@ -302,6 +302,7 @@ class StoriesController extends GetxController {
     String? background,
     String audience = 'public',
     Map<String, dynamic>? poll,
+    bool allowReshare = false,
   }) async {
     final pId = const Uuid().v4();
     debugPrint('[STORY] [Controller] Creating story p_id=$pId, kind=$kind');
@@ -350,6 +351,7 @@ class StoriesController extends GetxController {
         p_background: background,
         p_audience: audience,
         p_poll: poll,
+        p_allow_reshare: allowReshare,
       );
 
       await fetchStories();
