@@ -680,15 +680,15 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       } finally {
         await controller.dispose();
       }
-      if (duration > const Duration(seconds: 30)) {
+      if (duration > const Duration(seconds: 29)) {
         final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: file, maxDuration: const Duration(seconds: 29)));
         if (trimmed == null || !mounted) return;
         file = trimmed;
         final verify = VideoPlayerController.file(file);
         try {
           await verify.initialize();
-          if (verify.value.duration > const Duration(seconds: 30)) {
-            Get.snackbar('Vidéo trop longue', 'La séquence publiée doit durer 30 secondes maximum.', backgroundColor: Colors.black87, colorText: Colors.white);
+          if (verify.value.duration > const Duration(seconds: 29)) {
+            Get.snackbar('Découpage insuffisant', 'La vidéo découpée doit durer 29 secondes maximum. Recommence le découpage.', backgroundColor: Colors.black87, colorText: Colors.white);
             return;
           }
         } finally {
