@@ -127,7 +127,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       content: _textController.text.trim().isNotEmpty ? _textController.text.trim() : null,
       imageFile: _selectedFiles.isNotEmpty ? _selectedFiles.first : null,
       mentions: _selectedMentionIds,
-    );
+      allowReshare: _sharingEnabled,
+    ).whenComplete(() {
+      if (mounted) setState(() => _isPublishing = false);
+    });
 
     Get.back();
   }
