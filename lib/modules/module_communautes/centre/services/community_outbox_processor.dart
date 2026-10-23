@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:video_compress/video_compress.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -390,6 +393,49 @@ class CommunityOutboxProcessor extends GetxService {
               );
               localPath = compressedFile.path;
               debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_SUCCESS operationId=$operationId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes elapsedMs=${DateTime.now().difference(compressionStartedAt).inMilliseconds}');
+            }
+            if (mediaType == 'photo' &&
+                !localPath.startsWith('http://') &&
+                !localPath.startsWith('https://') &&
+                localMediaItems[i]['upload_path'] == null) {
+              final originalFile = File(originalPath);
+              if (!await originalFile.exists()) {
+                throw FileSystemException('La photo sélectionnée n’existe plus sur le stockage local.', originalPath);
+              }
+              final originalBytes = await originalFile.length();
+              final appDir = await getApplicationDocumentsDirectory();
+              final postId = (payload['p_id'] ?? operationId).toString();
+              final compressedPath = p.join(appDir.path, 'posts', postId, 'upload_photo_$i.jpg');
+              await Directory(p.dirname(compressedPath)).create(recursive: true);
+              debugPrint('[POST_CREATE][$postKind] IMAGE_COMPRESS_START operationId=$operationId index=${i + 1} originalBytes=$originalBytes');
+              final compressionStartedAt = DateTime.now();
+              final compressed = await FlutterImageCompress.compressAndGetFile(
+                originalFile.absolute.path,
+                compressedPath,
+                minWidth: 1280,
+                minHeight: 1280,
+                quality: 80,
+                format: CompressFormat.jpeg,
+              ).timeout(const Duration(minutes: 2), onTimeout: () {
+                throw TimeoutException('La compression photo a dépassé 2 minutes.');
+              });
+              if (compressed == null || !await File(compressed.path).exists()) {
+                throw StateError('La compression photo n’a pas produit de fichier exploitable.');
+              }
+              final compressedBytes = await File(compressed.path).length();
+              if (compressedBytes <= 0) throw StateError('La photo compressée est vide.');
+              localMediaItems[i]['upload_path'] = compressed.path;
+              localMediaItems[i]['original_size_bytes'] = originalBytes;
+              localMediaItems[i]['upload_size_bytes'] = compressedBytes;
+              payload['p_local_media'] = localMediaItems;
+              await db.update(
+                'post_outbox',
+                {'payload': jsonEncode(payload), 'updated_at': DateTime.now().toIso8601String()},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+              localPath = compressed.path;
+              debugPrint('[POST_CREATE][$postKind] IMAGE_COMPRESS_SUCCESS operationId=$operationId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes elapsedMs=${DateTime.now().difference(compressionStartedAt).inMilliseconds}');
             }
             if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
               if (mediaType == 'video') {
