@@ -549,15 +549,39 @@ class ProfileController extends GetxController {
   // ============================================
 
   Future<void> pickProfileImage(ImageSource source) async {
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('[PROFILE_AVATAR][$traceId] START source=$source userId=${userId.value}');
     try {
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 1: sélection, recadrage et compression');
       final File? picked = await _mediaService.pickProfileImage(source: source);
-      if (picked == null) return;
+      if (picked == null) {
+        debugPrint('[PROFILE_AVATAR][$traceId] STOP: sélection annulée ou aucune image');
+        return;
+      }
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 2: fichier prêt path=${picked.path}');
+      try {
+        debugPrint('[PROFILE_AVATAR][$traceId] fileSizeBytes=${await picked.length()}');
+      } catch (e) {
+        debugPrint('[PROFILE_AVATAR][$traceId] WARNING lecture taille: $e');
+      }
 
       isUploadingProfileImage.value = true;
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 3: upload via StorageRepository');
       final String uploadedUrl = await _storageRepository.uploadProfilePicture(userId.value, picked);
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 4: upload terminé url=$uploadedUrl');
 
-      await updateProfile({'photo_url': uploadedUrl}, showLoading: false);
-    } catch (e) {
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 5: sauvegarde photo_url');
+      final saved = await updateProfile(
+        {'photo_url': uploadedUrl},
+        showLoading: false,
+        showFeedback: false,
+      );
+      debugPrint('[PROFILE_AVATAR][$traceId] STEP 6: sauvegarde result=$saved');
+      if (!saved) throw StateError('Upload réussi mais enregistrement photo_url échoué.');
+      debugPrint('[PROFILE_AVATAR][$traceId] SUCCESS');
+    } catch (e, stack) {
+      debugPrint('[PROFILE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
+      debugPrint('[PROFILE_AVATAR][$traceId] STACK_TRACE\n$stack');
       Get.snackbar(
         'profile_error_title'.tr,
         'profile_error_avatar'.tr,
@@ -567,6 +591,7 @@ class ProfileController extends GetxController {
       );
     } finally {
       isUploadingProfileImage.value = false;
+      debugPrint('[PROFILE_AVATAR][$traceId] FINALLY upload flag reset');
     }
   }
 
