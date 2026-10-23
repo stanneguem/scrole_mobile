@@ -134,7 +134,21 @@ class SupabaseMessagingService {
     return null;
   }
 
-  Future<void> markDelivered(String id) => _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+  Future<void> markDelivered(String id) async {
+    // Persist the receipt first. The cleanup Edge Function independently verifies
+    // the authenticated recipient and the persisted delivery receipt before deleting.
+    await _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+    try {
+      await _client.functions.invoke(
+        'delete-delivered-message-media',
+        body: {'message_id': id},
+      );
+    } catch (error) {
+      // A delivery receipt is still valid if R2 is temporarily unavailable.
+      // A repeated incoming event retries this call; server-side deletion is idempotent.
+      debugPrint('[Messaging] Delivered-media cleanup deferred: $error');
+    }
+  }
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
         'p_conversation_id': conversationId,
         'p_last_read_at': at.toUtc().toIso8601String(),
