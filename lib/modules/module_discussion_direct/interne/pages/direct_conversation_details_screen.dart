@@ -502,6 +502,52 @@ class _DirectConversationDetailsScreenState
     );
   }
 
+  void _confirmClearConversation() {
+    Get.dialog(
+      AlertDialog(
+        title: Text('direct_details_clear'.tr),
+        content: const Text(
+          'Cette action efface la discussion de votre messagerie. Elle ne supprime pas les messages chez l’autre personne.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('cancel'.tr),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () async {
+              Get.back();
+              try {
+                await Get.find<DirectConversationController>()
+                    .clearConversationForMe();
+                if (!mounted) return;
+                Get.back();
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Discussion effacée de votre messagerie.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              } catch (e) {
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Impossible d’effacer la discussion : $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              }
+            },
+            child: const Text('Effacer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmBlock() {
     final controller = Get.find<DirectConversationController>();
     final isBlocked = controller.blockedByMe.value;
