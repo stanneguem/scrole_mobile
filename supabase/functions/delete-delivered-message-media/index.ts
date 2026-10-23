@@ -65,7 +65,8 @@ Deno.serve(async (req: Request) => {
     console.error("[delete-delivered-message-media] R2 deletion failed", { messageId, error });
     return respond(502, { error: "r2_delete_failed", deleted: false });
   }
-  const { error: updateError } = await admin.from("direct_messages").update({ audio_url: null, media_urls: [] }).eq("id", messageId);
-  if (updateError) return respond(500, { error: "media_deleted_but_message_update_failed", deleted: true, count: keys.length });
+  // Keep the message's media references as metadata. The recipient has already
+  // cached the bytes locally before the delivery receipt was recorded; clearing
+  // these columns would make the attachment disappear from the conversation UI.
   return respond(200, { deleted: true, count: keys.length, message_id: messageId });
 });
