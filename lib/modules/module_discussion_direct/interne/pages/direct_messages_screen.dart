@@ -328,22 +328,20 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            TextButton(
-              onPressed: () => Get.toNamed(AppPages.contacts),
-              style: TextButton.styleFrom(
-                foregroundColor: colorScheme.primary,
+            GestureDetector(
+              onTap: () => Get.toNamed(AppPages.contacts),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 8,
+                  vertical: 6,
                 ),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                'chats_start_chatting'.tr,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  decoration: TextDecoration.underline,
-                  decorationThickness: 1.2,
+                child: Text(
+                  'chats_start_chatting'.tr,
+                  style: TextStyle(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
