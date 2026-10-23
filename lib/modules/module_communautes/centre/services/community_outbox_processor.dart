@@ -393,18 +393,22 @@ class CommunityOutboxProcessor extends GetxService {
           final errStr = e.toString();
           debugPrint('[POST_CREATE][$postKind] FAILED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\n$st');
           final nextAttempt = attempts + 1;
-          final terminal = nextAttempt >= _maxPostAttempts;
+          final permanentError = errStr.contains('community_posts_max_photos') ||
+              errStr.contains('violates check constraint') ||
+              errStr.contains('code: 23514');
+          final terminal = permanentError || nextAttempt >= _maxPostAttempts;
           final retryDelay = _calculateBackoffDelay(nextAttempt);
           final nextRetryAt = terminal ? 0 : DateTime.now().add(retryDelay).millisecondsSinceEpoch;
-          debugPrint('[POST_CREATE][$postKind] ${terminal ? 'MAX_ATTEMPTS_REACHED' : 'RETRY_SCHEDULED'} operationId=$operationId attempt=$nextAttempt maxAttempts=$_maxPostAttempts delayMs=${terminal ? 0 : retryDelay.inMilliseconds} nextRetryAt=$nextRetryAt error=$errStr');
+          debugPrint('[POST_CREATE][$postKind] ${permanentError ? 'PERMANENT_ERROR' : terminal ? 'MAX_ATTEMPTS_REACHED' : 'RETRY_SCHEDULED'} operationId=$operationId attempt=$nextAttempt maxAttempts=$_maxPostAttempts delayMs=${terminal ? 0 : retryDelay.inMilliseconds} nextRetryAt=$nextRetryAt error=$errStr');
 
+          // The installed SQLite post_outbox schema has no last_error column.
+          // Keep the error in logs and update only columns known to exist.
           await db.update(
             'post_outbox',
             {
               'status': terminal ? 'failed' : 'pending',
               'attempt_count': nextAttempt,
               'next_retry_at': nextRetryAt,
-              'last_error': errStr,
               'updated_at': DateTime.now().toIso8601String(),
             },
             where: 'id = ?',
