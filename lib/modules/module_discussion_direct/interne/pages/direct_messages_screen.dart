@@ -13,7 +13,6 @@ import '../../centre/models/conversation_model.dart';
 import '../../centre/models/message_model.dart';
 import '../../centre/repositories/messaging_repository.dart';
 import '../controllers/direct_messages_controller.dart';
-import 'group_conversations_screen.dart';
 
 class DirectMessagesScreen extends GetView<DirectMessagesController> {
   const DirectMessagesScreen({super.key});
@@ -49,11 +48,6 @@ class DirectMessagesScreen extends GetView<DirectMessagesController> {
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Groupes',
-            onPressed: () => Get.to(() => const GroupConversationsScreen()),
-            icon: const Icon(Icons.groups_2_outlined),
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
