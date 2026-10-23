@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
     if (/^https?:\/\//i.test(key)) return null;
     if (key.startsWith("/") || key.includes("..") || key.includes("\\") || !key.startsWith(`messages/${message.conversation_id}/`) || key.split("/").length !== 4) return null;
     const parts = key.split("/");
-    if (parts[2] !== message.sender_id || !/^[a-f0-9-]+\.(jpg|png|webp|avif|mp4|mov|m4a|aac|mp3|ogg|wav|webm)$/i.test(parts[3])) return null;
+    if (parts[2] !== message.sender_id || !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4a|aac|mp3|ogg|wav|webm)$/i.test(parts[3])) return null;
     return key;
   };
   const raw = [...(Array.isArray(message.media_urls) ? message.media_urls : []), message.audio_url].filter((v) => typeof v === "string" && v.trim()) as string[];
