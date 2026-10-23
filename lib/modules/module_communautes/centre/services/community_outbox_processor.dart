@@ -287,6 +287,43 @@ class CommunityOutboxProcessor extends GetxService {
         final payload = Map<String, dynamic>.from(jsonDecode(item['payload'].toString()));
 
         final postKind = communityId == null || communityId.isEmpty ? 'feed' : 'community';
+        final rawLocalMediaForGuard = payload['p_local_media'];
+        final localMediaCountForGuard = rawLocalMediaForGuard is List ? rawLocalMediaForGuard.length : 0;
+        final cachedMediaForGuard = payload['p_uploaded_media'];
+        final cachedMediaCountForGuard = cachedMediaForGuard is List
+            ? cachedMediaForGuard.where((media) => media is Map && media['url'] != null).length
+            : 0;
+        final payloadVersion = payload['p_outbox_version'];
+        // Legacy rows can contain stale media selections from earlier composer attempts.
+        // Never upload them automatically unless every media item already has a cached upload.
+        if (payloadVersion != 2 && cachedMediaCountForGuard != localMediaCountForGuard) {
+          debugPrint('[POST_CREATE][$postKind] LEGACY_OUTBOX_QUARANTINED operationId=$operationId localMediaCount=$localMediaCountForGuard cachedMediaCount=$cachedMediaCountForGuard reason=unversioned_payload_would_upload_media');
+          await db.update(
+            'post_outbox',
+            {
+              'status': 'failed',
+              'next_retry_at': 0,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          continue;
+        }
+        if (localMediaCountForGuard > maxPostMedia) {
+          debugPrint('[POST_CREATE][$postKind] INVALID_OUTBOX_QUARANTINED operationId=$operationId mediaCount=$localMediaCountForGuard limit=$maxPostMedia');
+          await db.update(
+            'post_outbox',
+            {
+              'status': 'failed',
+              'next_retry_at': 0,
+              'updated_at': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: [id],
+          );
+          continue;
+        }
         debugPrint('[POST_CREATE][$postKind] OUTBOX_ITEM_START operationId=$operationId communityId=$communityId attempts=$attempts payloadKeys=${payload.keys.toList()}');
 
         try {
