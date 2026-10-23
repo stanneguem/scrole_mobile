@@ -112,8 +112,12 @@ class StorageRepository {
         mediaType: 'image',
         entityId: userId,
       );
-      debugPrint('[STORAGE_AVATAR][$traceId] SUCCESS objectKey=${uploaded.objectKey} bytes=${uploaded.sizeBytes} contentType=${uploaded.contentType} url=${uploaded.publicUrl}');
-      return uploaded.publicUrl;
+      final url = uploaded.publicUrl;
+      if (url == null || url.isEmpty || !uploaded.isPublic) {
+        throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la photo de profil.');
+      }
+      debugPrint('[STORAGE_AVATAR][$traceId] SUCCESS objectKey=${uploaded.objectKey} bytes=${uploaded.sizeBytes} contentType=${uploaded.contentType}');
+      return url;
     } catch (e, stack) {
       debugPrint('[STORAGE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
       debugPrint('[STORAGE_AVATAR][$traceId] STACK_TRACE\n$stack');
@@ -133,7 +137,11 @@ class StorageRepository {
       mediaType: 'image',
       entityId: userId,
     );
-    return uploaded.publicUrl;
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la couverture du profil.');
+    }
+    return url;
   }
 
   /// Upload une photo de profil de communauté vers Cloudflare R2.
