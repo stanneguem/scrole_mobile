@@ -131,7 +131,7 @@ begin
         end if;
       end if;
       if v_object_key !~ '\.(mp4|mov)
-  if not v_is_share and cardinality(v_photos) = 0 and nullif(btrim(p_content), '') is null then
+  if not v_is_share and v_media_count = 0 and nullif(btrim(p_content), '') is null then
     raise exception 'Un post doit contenir du texte ou au moins un média';
   end if;
   if char_length(coalesce(p_content, '')) > 5000 then raise exception 'Le contenu ne peut pas dépasser 5000 caractères'; end if;
