@@ -18,6 +18,10 @@ const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif",
 };
 const VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov" };
+const AUDIO_TYPES: Record<string, string> = {
+  "audio/mp4": "m4a", "audio/aac": "aac", "audio/mpeg": "mp3",
+  "audio/ogg": "ogg", "audio/wav": "wav", "audio/webm": "webm",
+};
 const CATEGORIES = new Set([
   "profile_avatar", "profile_cover", "community_avatar", "community_cover",
   "post_media", "story_media", "comment_media", "message_media", "event_media", "bug_report",
@@ -71,6 +75,10 @@ Deno.serve(async (req: Request) => {
       const conversationId = parts[1];
       const { data } = await admin.from("direct_conversations").select("user_one_id,user_two_id").eq("id", conversationId).maybeSingle();
       allowed = !!data && (data.user_one_id === user.id || data.user_two_id === user.id);
+    } else if (parts[0] === "private" && parts[1] === "communities" && parts.length >= 6) {
+      const communityId = parts[2];
+      const { data: member } = await admin.rpc("is_community_member", { p_community_id: communityId });
+      allowed = member === true;
     } else if (parts[0] === "stories" && parts.length >= 3) {
       const storyId = parts[1];
       const { data: story } = await admin.from("stories").select("author_id,audience,status,expires_at").eq("id", storyId).maybeSingle();
@@ -124,13 +132,14 @@ Deno.serve(async (req: Request) => {
   const extension = String(body.extension ?? "").toLowerCase().replace(/^\./, "");
   const entityId = typeof body.entity_id === "string" && body.entity_id.trim() ? body.entity_id.trim() : null;
   const isVideo = mediaType === "video";
-  const expectedExtension = (isVideo ? VIDEO_TYPES : IMAGE_TYPES)[contentType];
+  const isAudio = mediaType === "audio";
+  const expectedExtension = (isVideo ? VIDEO_TYPES : isAudio ? AUDIO_TYPES : IMAGE_TYPES)[contentType];
 
   if (!expectedExtension || extension !== expectedExtension) {
     return reply(415, { error: "unsupported_media_format", allowed_image_types: Object.keys(IMAGE_TYPES), allowed_video_types: Object.keys(VIDEO_TYPES) });
   }
   if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) return reply(400, { error: "invalid_size" });
-  const maxBytes = isVideo ? 100 * 1024 * 1024 : 15 * 1024 * 1024;
+  const maxBytes = isVideo ? 100 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 15 * 1024 * 1024;
   if (sizeBytes > maxBytes) return reply(413, { error: "media_size_limit_exceeded", maximum_bytes: maxBytes });
   const duration = Number(body.duration_seconds);
   if (isVideo && (!Number.isFinite(duration) || duration <= 0 || duration > 30)) {
