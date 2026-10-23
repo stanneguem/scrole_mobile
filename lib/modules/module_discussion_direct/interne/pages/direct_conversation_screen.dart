@@ -14,7 +14,7 @@ import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/image_source_sheet.dart';
-import '../../../../shared/widgets/media_full_screen_page.dart';
+import 'chat_media_viewer_screen.dart';
 import '../../centre/models/message_model.dart';
 import '../widgets/chat_cached_media.dart';
 import '../controllers/direct_conversation_controller.dart';
@@ -482,7 +482,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   Widget _one(String path, List<String> all) {
     return GestureDetector(
       onTap: () =>
-          Get.to(() => MediaFullScreenPage(mediaUrls: all, initialIndex: 0)),
+          Get.to(() => ChatMediaViewerScreen(mediaUrls: all, initialIndex: 0)),
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: ChatCachedMedia(
@@ -497,7 +497,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   Widget _thumb(String path, int index, List<String> all) {
     return GestureDetector(
       onTap: () => Get.to(
-        () => MediaFullScreenPage(mediaUrls: all, initialIndex: index),
+        () => ChatMediaViewerScreen(mediaUrls: all, initialIndex: index),
       ),
       child: ChatCachedMedia(
         remoteUrl: path,
