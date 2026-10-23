@@ -96,8 +96,48 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             child: Column(
               children: [
                 Expanded(child: _messages(colors)),
-                Obx(
-                  () => controller.recordingState.value != RecordingState.idle
+                Obx(() {
+                  if (controller.blockedByOtherUser.value) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: colors.errorContainer.withValues(alpha: .65),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colors.error.withValues(alpha: .25), width: 0.7),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.block_rounded, color: colors.onErrorContainer, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Cet utilisateur vous a bloqué. Vous ne pouvez plus lui envoyer de messages.',
+                              style: TextStyle(color: colors.onErrorContainer, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (controller.blockedByMe.value) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        'Vous avez bloqué cet utilisateur. Débloquez-le depuis les paramètres de discussion pour lui envoyer des messages.',
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return controller.recordingState.value != RecordingState.idle
                       ? DirectVoiceRecorderPanel(controller: controller)
                       : Column(
                           mainAxisSize: MainAxisSize.min,
@@ -106,8 +146,8 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                             _composer(context, colors),
                             _emoji(),
                           ],
-                        ),
-                ),
+                        );
+                }),
               ],
             ),
           ),
