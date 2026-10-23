@@ -36,6 +36,7 @@ class R2MediaRepository {
     'png': 'image/png',
     'webp': 'image/webp',
     'avif': 'image/avif',
+    'gif': 'image/gif',
   };
 
   static const Map<String, String> _videoTypes = {
