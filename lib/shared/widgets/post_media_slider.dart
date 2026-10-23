@@ -83,6 +83,58 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
 
     final len = widget.media.length;
 
+    // Mixed-media posts use one consistent horizontal viewer so video items
+    // render as playable tiles instead of being passed to the image cache.
+    if (widget.media.any((item) => item.isVideo)) {
+      return SizedBox(
+        height: 280,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: len,
+              onPageChanged: (index) => setState(() => _currentIndex = index),
+              itemBuilder: (context, index) {
+                final item = widget.media[index];
+                return GestureDetector(
+                  onTap: () => _openFullScreen(context, index),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: item.isVideo
+                        ? Container(
+                            width: double.infinity,
+                            color: Colors.black,
+                            child: const Center(
+                              child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 72),
+                            ),
+                          )
+                        : AppCachedImage(
+                            imageUrl: item.url,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: 280,
+                          ),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              right: 12,
+              top: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                child: Text(
+                  '${_currentIndex + 1}/$len',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // --- Cas 1 : Une seule image ---
     if (len == 1) {
       return GestureDetector(
