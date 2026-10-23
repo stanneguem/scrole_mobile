@@ -523,6 +523,8 @@ class ProfileController extends GetxController {
   // ============================================
 
   Future<void> pickCoverImage(ImageSource source) async {
+    String? uploadedCoverUrl;
+    bool profileCoverSaved = false;
     try {
       final File? picked = await _mediaService.pickCoverImage(source: source);
       if (picked == null) return;
@@ -532,18 +534,15 @@ class ProfileController extends GetxController {
           ? coverUrl.value.trim()
           : coverImageUrl.value.trim();
       final String uploadedUrl = await _storageRepository.uploadProfileCover(userId.value, picked);
+      uploadedCoverUrl = uploadedUrl;
 
       final saved = await updateProfile(
         {'cover_url': uploadedUrl},
         showLoading: false,
         showFeedback: false,
       );
-      if (!saved) {
-        // La base n'a pas adopté la nouvelle couverture : ne pas laisser
-        // l'objet fraîchement uploadé occuper inutilement R2.
-        try { await _storageRepository.deleteProfileAvatar(uploadedUrl); } catch (_) {}
-        throw StateError('Upload réussi mais enregistrement cover_url échoué.');
-      }
+      if (!saved) throw StateError('Upload réussi mais enregistrement cover_url échoué.');
+      profileCoverSaved = true;
       if (previousCoverUrl.isNotEmpty && previousCoverUrl != uploadedUrl) {
         try {
           await _storageRepository.deleteProfileAvatar(previousCoverUrl);
@@ -552,6 +551,11 @@ class ProfileController extends GetxController {
         }
       }
     } catch (e) {
+      if (uploadedCoverUrl != null && !profileCoverSaved) {
+        try { await _storageRepository.deleteProfileAvatar(uploadedCoverUrl); } catch (cleanupError) {
+          debugPrint('[PROFILE_COVER] Orphan R2 upload cleanup deferred: $cleanupError');
+        }
+      }
       Get.snackbar(
         'profile_error_title'.tr,
         'profile_error_cover'.tr,
