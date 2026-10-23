@@ -26,7 +26,7 @@ class ConversationsDao {
   Future<Conversation?> getByOtherUser(String userId, String otherUserId) async {
     if (userId.isEmpty || otherUserId.isEmpty) return null;
     for (final conversation in await getAll(userId)) {
-      if (!conversation.isGroup && conversation.participantIds.contains(otherUserId)) return conversation;
+      if (!conversation.isGroup && conversation.lastMessagePreview != null && conversation.participantIds.contains(otherUserId)) return conversation;
     }
     return null;
   }
@@ -74,6 +74,8 @@ class ConversationsDao {
       }
     }
     final message = conversation.lastMessagePreview;
+    // Never create/reintroduce an inbox row without a visible message.
+    if (message == null) return;
     await db.insert('direct_chat_conversations', {
       'user_id': userId, 'id': conversation.id, 'name': name, 'avatar_url': avatar,
       'participant_ids': jsonEncode(participants), 'last_message': message == null ? null : jsonEncode(message.toJson()),
@@ -90,6 +92,8 @@ class ConversationsDao {
     await db.transaction((txn) async {
       await txn.delete('direct_chat_conversations', where: 'user_id=?', whereArgs: [userId]);
       for (final conversation in conversations) {
+        // The server inbox should contain only conversations with a visible message.
+        if (conversation.lastMessagePreview == null) continue;
         final marker = await txn.query('direct_chat_deleted_conversations', columns: ['deleted_at'], where: 'user_id=? AND conversation_id=?', whereArgs: [userId, conversation.id], limit: 1);
         if (marker.isNotEmpty) {
           final deletedAt = (marker.first['deleted_at'] as num).toInt();
