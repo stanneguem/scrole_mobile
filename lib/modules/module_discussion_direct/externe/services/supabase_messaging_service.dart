@@ -83,14 +83,14 @@ class SupabaseMessagingService {
       final preview = json['last_message_text'] == null || at == null
           ? null
           : Message(
-              id: '${json['last_message_id'] ?? ''}',
-              localId: '${json['last_message_id'] ?? ''}',
-              conversationId: '${json['id']}',
-              senderId: '${json['last_message_sender_id'] ?? ''}',
-              content: json['last_message_text'] as String?,
-              type: MessageType.values.firstWhere((e) => e.name == json['last_message_type'], orElse: () => MessageType.text),
-              sentAt: DateTime.parse(at).toUtc(),
-            );
+        id: '${json['last_message_id'] ?? ''}',
+        localId: '${json['last_message_id'] ?? ''}',
+        conversationId: '${json['id']}',
+        senderId: '${json['last_message_sender_id'] ?? ''}',
+        content: json['last_message_text'] as String?,
+        type: MessageType.values.firstWhere((e) => e.name == json['last_message_type'], orElse: () => MessageType.text),
+        sentAt: DateTime.parse(at).toUtc(),
+      );
       return Conversation(
         id: '${json['id']}',
         participantIds: [other],
@@ -139,10 +139,10 @@ class SupabaseMessagingService {
 
   Future<void> markDelivered(String id) => _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
-        'p_conversation_id': conversationId,
-        'p_last_read_at': at.toUtc().toIso8601String(),
-        'p_last_read_message_id': id
-      });
+    'p_conversation_id': conversationId,
+    'p_last_read_at': at.toUtc().toIso8601String(),
+    'p_last_read_message_id': id
+  });
 
   Future<void> sendTyping(RealtimeChannel channel, bool typing) async {
     final ready = _typingReady[channel];
@@ -171,12 +171,12 @@ class SupabaseMessagingService {
   }
 
   RealtimeChannel subscribeMessages(
-    String conversationId,
-    void Function(Message) onMessage, {
-    void Function(String messageId)? onDeleted,
-    void Function(Map<String, dynamic>)? onReceipt,
-    void Function(RealtimeSubscribeStatus status, Object? error)? onStatus,
-  }) {
+      String conversationId,
+      void Function(Message) onMessage, {
+        void Function(String messageId)? onDeleted,
+        void Function(Map<String, dynamic>)? onReceipt,
+        void Function(RealtimeSubscribeStatus status, Object? error)? onStatus,
+      }) {
     final channel = _client.channel('messaging:$conversationId');
     _bindMessageChanges(
       channel,
@@ -199,11 +199,11 @@ class SupabaseMessagingService {
   }
 
   void _bindMessageChanges(
-    RealtimeChannel channel, {
-    required void Function(Message) onMessage,
-    void Function(String messageId)? onDeleted,
-    String? conversationId,
-  }) {
+      RealtimeChannel channel, {
+        required void Function(Message) onMessage,
+        void Function(String messageId)? onDeleted,
+        String? conversationId,
+      }) {
     channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -249,14 +249,17 @@ class SupabaseMessagingService {
   /// [folder] may be a conversation ID or a descriptive folder; private R2
   /// authorization is bound to the conversation ID passed as [conversationId].
   Future<String?> uploadFile(
-    String localPath,
-    String folder, {
-    String? contentType,
-    String? conversationId,
-    double? durationSeconds,
-  }) async {
+      String localPath,
+      String folder, {
+        String? contentType,
+        String? conversationId,
+        double? durationSeconds,
+      }) async {
     final uid = currentUserId;
     if (uid == null) throw StateError('Authentication required to upload media');
+    if (conversationId == null || conversationId.isEmpty) {
+      throw ArgumentError('conversationId is required for private chat media');
+    }
     final source = File(localPath);
     if (!await source.exists()) throw FileSystemException('Media file not found', localPath);
 
@@ -264,9 +267,7 @@ class SupabaseMessagingService {
     var resolvedType = (contentType ?? '').toLowerCase().split(';').first.trim();
     final lowerPath = localPath.toLowerCase();
     final isImage = resolvedType.startsWith('image/') ||
-        (resolvedType.isEmpty && RegExp(r'\\.(jpe?g|png|webp|heic|heif)
-}
-).hasMatch(lowerPath));
+        (resolvedType.isEmpty && RegExp(r'\.(jpe?g|png|webp|heic|heif)$').hasMatch(lowerPath));
     String extension = source.uri.pathSegments.last.split('.').last.toLowerCase();
     if (isImage) {
       final compressed = await FlutterImageCompress.compressWithList(
@@ -280,15 +281,21 @@ class SupabaseMessagingService {
       resolvedType = 'image/jpeg';
       extension = 'jpg';
     } else if (resolvedType.isEmpty) {
-      if (lowerPath.endsWith('.m4a')) resolvedType = 'audio/mp4';
-      else if (lowerPath.endsWith('.aac')) resolvedType = 'audio/aac';
-      else if (lowerPath.endsWith('.mp4')) resolvedType = 'video/mp4';
-      else if (lowerPath.endsWith('.mov')) resolvedType = 'video/quicktime';
-      else resolvedType = 'application/octet-stream';
+      if (lowerPath.endsWith('.m4a')) {
+        resolvedType = 'audio/mp4';
+      } else if (lowerPath.endsWith('.aac')) {
+        resolvedType = 'audio/aac';
+      } else if (lowerPath.endsWith('.mp4')) {
+        resolvedType = 'video/mp4';
+      } else if (lowerPath.endsWith('.mov')) {
+        resolvedType = 'video/quicktime';
+      } else {
+        resolvedType = 'application/octet-stream';
+      }
     }
     final isVideo = resolvedType.startsWith('video/');
     final isAudio = resolvedType.startsWith('audio/');
-    final category = 'message_media';
+    const category = 'message_media';
     final request = <String, dynamic>{
       'action': 'create-upload-url',
       'category': category,
@@ -299,9 +306,6 @@ class SupabaseMessagingService {
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       'entity_id': conversationId,
     };
-    if (conversationId == null || conversationId.isEmpty) {
-      throw ArgumentError('conversationId is required for private chat media');
-    }
     final response = await _client.functions.invoke('r2-media-upload', body: request);
     if (response.status < 200 || response.status >= 300 || response.data is! Map) {
       throw StateError('R2 upload authorization failed (${response.status}): ${response.data}');
@@ -316,30 +320,7 @@ class SupabaseMessagingService {
       body: bytes,
     );
     if (put.statusCode < 200 || put.statusCode >= 300) {
-      // Log structured R2 error fields only; never log the presigned URL or headers.
-      final responseBody = put.body;
-      String? xmlField(String name) {
-        final match = RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>', caseSensitive: false)
-            .firstMatch(responseBody);
-        return match?.group(1)?.trim();
-      }
-      final errorCode = xmlField('Code');
-      final errorMessage = xmlField('Message');
-      final requestId = xmlField('RequestId') ?? xmlField('RequestID');
-      final hostId = xmlField('HostId');
-      final trimmedBody = responseBody.trim();
-      final details = <String>[
-        if (errorCode != null && errorCode.isNotEmpty) 'code=$errorCode',
-        if (errorMessage != null && errorMessage.isNotEmpty) 'message=$errorMessage',
-        if (requestId != null && requestId.isNotEmpty) 'requestId=$requestId',
-        if (hostId != null && hostId.isNotEmpty) 'hostId=$hostId',
-        if (errorCode == null && errorMessage == null && trimmedBody.isNotEmpty)
-          'body=${trimmedBody.substring(0, trimmedBody.length.clamp(0, 500))}',
-      ].join(', ');
-      throw HttpException(
-        'Cloudflare R2 upload failed (${put.statusCode})'
-        '${details.isEmpty ? '' : ': $details'}',
-      );
+      throw HttpException('Cloudflare R2 upload failed (${put.statusCode})');
     }
     // Public assets can be stored as public URLs; private chat assets store only
     // the object key and are resolved through an authenticated, short-lived URL.
