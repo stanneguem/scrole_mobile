@@ -82,6 +82,12 @@ class ExternalProfileController extends GetxController {
 
   Future<void> loadProfileTab(int index, {bool forceRefresh = false}) async {
     if (userId.isEmpty || loadingProfileTabs.contains(index)) return;
+    if (profile.value?.relationshipState == 'blocked') {
+      profileTabItems.remove(index);
+      profileTabErrors.remove(index);
+      loadedProfileTabs.add(index);
+      return;
+    }
     if (!forceRefresh && loadedProfileTabs.contains(index)) return;
 
     loadingProfileTabs.add(index);
