@@ -254,7 +254,6 @@ Deno.serve(async (req: Request) => {
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-    const isPrivateObject = key.startsWith("private/") || key.startsWith("messages/") || key.startsWith("stories/") || key.startsWith("bug-reports/");
     return reply(200, {
       upload_url: uploadUrl, object_key: key, ...(isPrivateObject ? {} : { public_url: `${publicBaseUrl}/${encodedKey}` }),
       is_public: !isPrivateObject, content_type: contentType, size_bytes: sizeBytes, expires_in: 300, max_video_duration_seconds: 30,
