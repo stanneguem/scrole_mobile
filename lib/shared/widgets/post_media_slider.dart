@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
+import 'package:visibility_detector/visibility_detector.dart';
+import '../../app/service_global/preferences_service.dart';
 import '../../shared/models/post_media.dart';
 import '../../shared/widgets/app_cached_image.dart';
 import 'media_full_screen_page.dart';
@@ -101,35 +105,10 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: item.isVideo
-                        ? Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (item.thumbnailUrl != null && item.thumbnailUrl!.trim().isNotEmpty)
-                                AppCachedImage(
-                                  imageUrl: item.thumbnailUrl!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: 280,
-                                  progressive: true,
-                                  lowResolutionWidth: 400,
-                                  highResolutionWidth: 1080,
-                                )
-                              else
-                                const ColoredBox(color: Colors.black),
-                              // Overlay lisible au-dessus de la miniature vidéo.
-                              Center(
-                                child: Container(
-                                  width: 68,
-                                  height: 68,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.48),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.5),
-                                  ),
-                                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 48),
-                                ),
-                              ),
-                            ],
+                        ? _InlineFeedVideo(
+                            key: ValueKey('feed_video_${_getHeroTag(index)}'),
+                            url: item.url ?? '',
+                            thumbnailUrl: item.thumbnailUrl,
                           )
                         : AppCachedImage(
                             imageUrl: item.url,
@@ -348,6 +327,137 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Plays a feed video only while its card is sufficiently visible. This avoids
+/// starting every video controller in a long, lazily built feed at once.
+class _InlineFeedVideo extends StatefulWidget {
+  final String url;
+  final String? thumbnailUrl;
+
+  const _InlineFeedVideo({
+    super.key,
+    required this.url,
+    required this.thumbnailUrl,
+  });
+
+  @override
+  State<_InlineFeedVideo> createState() => _InlineFeedVideoState();
+}
+
+class _InlineFeedVideoState extends State<_InlineFeedVideo> {
+  VideoPlayerController? _controller;
+  bool _initializing = false;
+  bool _autoPlay = true;
+  bool _visible = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      if (Get.isRegistered<PreferencesService>()) {
+        _autoPlay = Get.find<PreferencesService>().preferences.value.autoPlayVideos;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _initializeIfNeeded() async {
+    if (!_autoPlay || !_visible || _initializing || _controller != null ||
+        widget.url.trim().isEmpty || _failed) return;
+    _initializing = true;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    try {
+      await controller.initialize();
+      if (!mounted || !_visible || !_autoPlay) {
+        await controller.dispose();
+        return;
+      }
+      await controller.setLooping(true);
+      _controller = controller;
+      setState(() {});
+      await controller.play();
+    } catch (error) {
+      debugPrint('[POST_MEDIA] inline video initialization failed: $error');
+      await controller.dispose();
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      _initializing = false;
+    }
+  }
+
+  void _onVisibilityChanged(VisibilityInfo info) {
+    final visible = info.visibleFraction >= 0.60;
+    if (_visible == visible) return;
+    _visible = visible;
+    final controller = _controller;
+    if (!visible) {
+      controller?.pause();
+    } else {
+      _initializeIfNeeded();
+      if (_autoPlay && controller != null && controller.value.isInitialized) {
+        controller.play();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return VisibilityDetector(
+      key: ValueKey('visibility_${widget.key ?? widget.url}'),
+      onVisibilityChanged: _onVisibilityChanged,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (_controller != null && _controller!.value.isInitialized)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _controller!.value.size.width,
+                height: _controller!.value.size.height,
+                child: VideoPlayer(_controller!),
+              ),
+            )
+          else if (widget.thumbnailUrl != null && widget.thumbnailUrl!.trim().isNotEmpty)
+            AppCachedImage(
+              imageUrl: widget.thumbnailUrl!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: 280,
+              progressive: true,
+              lowResolutionWidth: 400,
+              highResolutionWidth: 1080,
+            )
+          else
+            const ColoredBox(color: Colors.black),
+          if (_controller == null || !_controller!.value.isInitialized || !_controller!.value.isPlaying)
+            Center(
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.48),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.5),
+                ),
+                child: Icon(
+                  _autoPlay && !_failed ? Icons.play_arrow_rounded : Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 46,
+                ),
+              ),
+            ),
         ],
       ),
     );
