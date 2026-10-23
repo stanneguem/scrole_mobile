@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
   // Query only rows that still point to the legacy public buckets and paginate
   // to avoid silently skipping records after the first 5,000 rows.
   const pageSize = 250;
-  for (let offset = 0; ; offset += pageSize) {
+  for (let offset = 0; ; offset = 0) {
     const { data: profiles, error: profileError } = await admin.from("user_profiles")
       .select("user_id,photo_url,cover_url")
       .or("photo_url.like.%supabase.co/storage/v1/object/public/avatars/%,cover_url.like.%supabase.co/storage/v1/object/public/avatars/%")
@@ -173,7 +173,7 @@ Deno.serve(async (req: Request) => {
     if (!profiles || profiles.length < pageSize) break;
   }
 
-  for (let offset = 0; ; offset += pageSize) {
+  for (let offset = 0; ; offset = 0) {
     const { data: communities, error: communityError } = await admin.from("communities")
       .select("id,photo_profile,photo_cover")
       .or("photo_profile.like.%supabase.co/storage/v1/object/public/community-media/%,photo_cover.like.%supabase.co/storage/v1/object/public/community-media/%")
