@@ -26,6 +26,15 @@ function collectR2Objects(objects: Map<string, R2MediaObject>, value: unknown) {
   if (String(item.storage ?? "").toLowerCase() === "r2") {
     const key = typeof item.object_key === "string" ? item.object_key.trim() : "";
     if (key) objects.set(key, { key, url: typeof item.url === "string" && item.url.trim() ? item.url.trim() : null });
+    if (String(item.thumbnail_storage ?? "").toLowerCase() === "r2") {
+      const thumbnailKey = typeof item.thumbnail_object_key === "string" ? item.thumbnail_object_key.trim() : "";
+      if (thumbnailKey) {
+        objects.set(thumbnailKey, {
+          key: thumbnailKey,
+          url: typeof item.thumbnail_url === "string" && item.thumbnail_url.trim() ? item.thumbnail_url.trim() : null,
+        });
+      }
+    }
   }
   for (const child of Object.values(item)) collectR2Objects(objects, child);
 }
@@ -75,6 +84,9 @@ async function isR2ObjectReferencedElsewhere(
     const keyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ object_key: object.key }]).limit(1);
     if (keyQuery.error) throw new Error("Vérification des références R2 impossible");
     if ((keyQuery.data ?? []).length > 0) return true;
+    const thumbnailKeyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ thumbnail_object_key: object.key }]).limit(1);
+    if (thumbnailKeyQuery.error) throw new Error("Vérification des références R2 impossible");
+    if ((thumbnailKeyQuery.data ?? []).length > 0) return true;
     if (object.url) {
       const urlQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ url: object.url }]).limit(1);
       if (urlQuery.error) throw new Error("Vérification des références R2 impossible");
