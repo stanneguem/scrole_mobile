@@ -8,6 +8,7 @@ import '../../../../app/local_storage/structured/app_cache_database.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../externe/repositories/community_repository.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
+import '../../../../shared/constants/post_media_limits.dart';
 import '../persistence/community_local_dao.dart';
 
 class CommunityOutboxProcessor extends GetxService {
