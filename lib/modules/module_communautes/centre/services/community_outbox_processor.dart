@@ -559,7 +559,6 @@ class CommunityOutboxProcessor extends GetxService {
                   videoMedia['thumbnail_object_key'] = uploadedThumbnail.objectKey;
                   await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                   debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=video key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
-                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 } else {
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'photo', communityId: communityId,
