@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
       allowed = !!data && (data.user_one_id === user.id || data.user_two_id === user.id);
     } else if (parts[0] === "private" && parts[1] === "communities" && parts.length >= 6) {
       const communityId = parts[2];
-      const { data: member } = await admin.rpc("is_community_member", { p_community_id: communityId });
-      allowed = member === true;
+      const { data: member } = await admin.from("community_members").select("user_id").eq("community_id", communityId).eq("user_id", user.id).maybeSingle();
+      allowed = !!member;
     } else if (parts[0] === "stories" && parts.length >= 3) {
       const storyId = parts[1];
       const { data: story } = await admin.from("stories").select("author_id,audience,status,expires_at").eq("id", storyId).maybeSingle();
@@ -142,7 +142,7 @@ Deno.serve(async (req: Request) => {
   const maxBytes = isVideo ? 100 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 15 * 1024 * 1024;
   if (sizeBytes > maxBytes) return reply(413, { error: "media_size_limit_exceeded", maximum_bytes: maxBytes });
   const duration = Number(body.duration_seconds);
-  if (isVideo && (!Number.isFinite(duration) || duration <= 0 || duration > 30)) {
+  if (isVideo && Number.isFinite(duration) && duration > 30) {
     return reply(400, { error: "video_duration_limit_exceeded", maximum_seconds: 30 });
   }
 
