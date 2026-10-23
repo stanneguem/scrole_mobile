@@ -570,7 +570,7 @@ class CommunityOutboxProcessor extends GetxService {
           debugPrint('[POST_CREATE][$postKind] RPC_SUCCESS operationId=$operationId postId=$pId elapsedMs=${DateTime.now().difference(rpcStartedAt).inMilliseconds}');
           debugPrint('[POST_CREATE][$postKind] OUTBOX_COMPLETE operationId=$operationId postId=$pId');
           await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
-          _refreshVisibleFeed(communityId);
+          _refreshVisibleFeed(communityId ?? '');
         } catch (e, st) {
           final errStr = e.toString();
           debugPrint('[POST_CREATE][$postKind] FAILED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\n$st');
@@ -598,7 +598,7 @@ class CommunityOutboxProcessor extends GetxService {
             where: 'id = ?',
             whereArgs: [id],
           );
-          if (terminal) _refreshVisibleFeed(communityId);
+          if (terminal) _refreshVisibleFeed(communityId ?? '');
         }
       }
     } catch (e, st) {
