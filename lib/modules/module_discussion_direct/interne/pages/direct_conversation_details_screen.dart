@@ -373,7 +373,7 @@ class _DirectConversationDetailsScreenState
             icon: Icons.flag_outlined,
             title: 'direct_details_report'.trParams({'name': _displayName}),
             destructive: true,
-            onTap: () => _comingSoon('direct_details_report_action'.tr),
+            onTap: _showReportDialog,
           ),
         ],
       ),
@@ -508,9 +508,23 @@ class _DirectConversationDetailsScreenState
           TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () {
+            onPressed: () async {
               Get.back();
-              _comingSoon('direct_details_block_user'.tr);
+              try {
+                final controller = Get.find<DirectConversationController>();
+                await controller.blockOtherUser();
+                if (!mounted) return;
+                Get.back();
+                Get.snackbar(
+                  'chats_title'.tr,
+                  '${_displayName} a été bloqué. Cette personne ne pourra plus vous envoyer de messages.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              } catch (e) {
+                Get.snackbar('chats_title'.tr, 'Impossible de bloquer cet utilisateur : $e',
+                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+              }
             },
             child: Text('direct_details_block_action'.tr),
           ),
@@ -527,15 +541,95 @@ class _DirectConversationDetailsScreenState
         actions: [
           TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Get.back();
-              _comingSoon('direct_details_clear_history'.tr);
+              try {
+                final controller = Get.find<DirectConversationController>();
+                await controller.clearConversationForMe();
+                if (!mounted) return;
+                Get.back();
+                Get.snackbar('chats_title'.tr, 'Discussion effacée de votre messagerie.',
+                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+              } catch (e) {
+                Get.snackbar('chats_title'.tr, 'Impossible d’effacer la discussion : $e',
+                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+              }
             },
             child: Text('direct_details_clear_action'.tr),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showReportDialog() async {
+    final detailsController = TextEditingController();
+    String reason = 'Harcèlement ou intimidation';
+    final reasons = <String>[
+      'Harcèlement ou intimidation',
+      'Contenu haineux',
+      'Usurpation d’identité',
+      'Spam ou arnaque',
+      'Contenu inapproprié',
+      'Autre',
+    ];
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: Text('Signaler $_displayName'),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) => SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Choisissez la raison du signalement. Notre équipe pourra l’examiner.'),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: reason,
+                  isExpanded: true,
+                  items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => reason = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: detailsController,
+                  maxLines: 3,
+                  maxLength: 2000,
+                  decoration: const InputDecoration(
+                    labelText: 'Détails (facultatif)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
+          FilledButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Envoyer le signalement'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      detailsController.dispose();
+      return;
+    }
+    try {
+      final controller = Get.find<DirectConversationController>();
+      await controller.reportOtherUser(reason, detailsController.text.trim().isEmpty ? null : detailsController.text.trim());
+      Get.snackbar('Signalement envoyé', 'Merci. Votre signalement a été transmis pour examen.',
+          snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+    } catch (e) {
+      Get.snackbar('chats_title'.tr, 'Impossible d’envoyer le signalement : $e',
+          snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+    } finally {
+      detailsController.dispose();
+    }
   }
 
   void _comingSoon(String feature) {
