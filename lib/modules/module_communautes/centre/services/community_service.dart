@@ -861,7 +861,9 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
-    final totalMediaCount = (imageFiles?.length ?? 0) + (videoFiles?.length ?? 0);
+    final startedAt = DateTime.now();
+    debugPrint('[POST_CREATE][COMPOSER] START communityId=$communityId requestedPostId=$requestedPostId audience=$audience contentLength=${content?.length ?? 0} imageCount=${imageFiles?.length ?? 0} videoCount=${videoFiles?.length ?? 0} orderedCount=${orderedMediaFiles?.length ?? 0} pollPresent=${poll != null}');
+    final totalMediaCount = orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0));
     if (totalMediaCount > maxPostMedia) {
       throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
     }
@@ -916,6 +918,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       if (videoFiles != null && videoFiles.isNotEmpty) rethrow;
     }
 
+    debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARED postId=$postId communityId=$communityId mediaCount=${localMediaPaths.length} types=${localMediaPaths.map((m) => m['type']).toList()} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
+
     final payload = {
       'p_id': postId,
       'p_content': content ?? '',
@@ -956,11 +960,13 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       outboxRow['operation_type'] = 'create';
     }
 
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_START operationId=$operationId postId=$postId communityId=$communityId userId=$userId payloadMediaCount=${localMediaPaths.length} payloadBytes=${jsonEncode(payload).length} hasOperationType=$hasOperationType');
     await db.insert(
       'post_outbox',
       outboxRow,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_SUCCESS operationId=$operationId elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
     try {
       if (!Get.isRegistered<CommunityOutboxProcessor>()) {
@@ -968,7 +974,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       }
       await Get.find<CommunityOutboxProcessor>().processPendingPosts();
     } catch (e) {
-      debugPrint('[POST] Immediate outbox processing failed for $postId: $e');
+      debugPrint('[POST_CREATE][COMPOSER] IMMEDIATE_PROCESS_FAILED operationId=$operationId postId=$postId error=$e');
     }
 
     // Do not silently report success when the server rejected the publication.
@@ -982,13 +988,14 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
         final detail = (rawError == null || rawError.isEmpty)
             ? 'La publication est enregistrée pour une nouvelle tentative.'
             : rawError;
+        debugPrint('[POST_CREATE][COMPOSER] NOT_CONFIRMED operationId=$operationId postId=$postId lastError=${rawError ?? '(none)'} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
         throw Exception('Publication non confirmée : $detail');
       }
     } catch (e) {
       if (e is Exception && e.toString().startsWith('Exception: Publication non confirmée')) {
         rethrow;
       }
-      debugPrint('[POST] Could not verify outbox result for $postId: $e');
+      debugPrint('[POST_CREATE][COMPOSER] OUTBOX_VERIFY_ERROR operationId=$operationId postId=$postId error=$e');
     }
   }
 
