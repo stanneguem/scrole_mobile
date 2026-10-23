@@ -41,6 +41,7 @@ class ChatController extends GetxController {
   final Set<String> _autoSavedMediaMessageIds = <String>{};
   final Set<String> _knownMessageIds = <String>{};
   bool _hasInitialMessageSnapshot = false;
+  final List<MessageModel> _pendingIncomingMedia = <MessageModel>[];
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
   final Rxn<MessageModel> editingMessage = Rxn<MessageModel>();
@@ -123,6 +124,7 @@ class ChatController extends GetxController {
           .toList(growable: false);
       messages.assignAll(converted);
       if (_hasInitialMessageSnapshot && newlyReceived.isNotEmpty) {
+        _pendingIncomingMedia.addAll(newlyReceived);
         unawaited(_autoSaveIncomingMedia(newlyReceived));
       }
       _hasInitialMessageSnapshot = true;
@@ -158,6 +160,13 @@ class ChatController extends GetxController {
       saveIncomingMediaToGallery.value =
           row['save_media_to_gallery'] as bool? ?? true;
       _conversationPreferencesLoaded.value = true;
+      if (saveIncomingMediaToGallery.value && _pendingIncomingMedia.isNotEmpty) {
+        final pending = List<MessageModel>.from(_pendingIncomingMedia);
+        _pendingIncomingMedia.clear();
+        unawaited(_autoSaveIncomingMedia(pending));
+      } else {
+        _pendingIncomingMedia.clear();
+      }
     } catch (e) {
       _conversationPreferencesLoaded.value = true;
       debugPrint('[ChatPreferences] load failed: $e');
@@ -190,7 +199,11 @@ class ChatController extends GetxController {
   }
 
   Future<void> _autoSaveIncomingMedia(List<MessageModel> currentMessages) async {
-    if (!_conversationPreferencesLoaded.value || !saveIncomingMediaToGallery.value) return;
+    if (!_conversationPreferencesLoaded.value) return;
+    if (!saveIncomingMediaToGallery.value) {
+      _pendingIncomingMedia.clear();
+      return;
+    }
     for (final message in currentMessages) {
       if (message.senderId == currentUserId ||
           message.type != MessageType.image ||
@@ -199,6 +212,7 @@ class ChatController extends GetxController {
           !_autoSavedMediaMessageIds.add(message.id)) {
         continue;
       }
+      _pendingIncomingMedia.removeWhere((pending) => pending.id == message.id);
       for (final mediaUrl in message.mediaUrls!) {
         try {
           final localPath = await _repository.resolveLocalMedia(message.id, mediaUrl) ??
