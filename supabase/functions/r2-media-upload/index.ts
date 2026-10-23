@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { S3Client, PutObjectCommand } from "npm:@aws-sdk/client-s3@3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3";
 import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3";
 
 const corsHeaders = {
@@ -53,6 +53,28 @@ Deno.serve(async (req: Request) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return reply(400, { error: "invalid_json" }); }
+  if (body.action === "delete-profile-avatar") {
+    const objectKey = typeof body.object_key === "string" ? body.object_key : "";
+    const expectedPrefix = `profiles/${user.id}/avatar/`;
+    if (!objectKey.startsWith(expectedPrefix) || objectKey.includes("..") ||
+        objectKey.includes("\\") || objectKey.split("/").length !== 4 ||
+        !/^[a-f0-9-]+\.(jpg|png|webp|avif)$/i.test(objectKey.split("/").pop() ?? "")) {
+      return reply(403, { error: "avatar_object_not_owned" });
+    }
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: profile, error: profileError } = await admin.from("user_profiles")
+      .select("account_status, deleted_at").eq("user_id", user.id).maybeSingle();
+    if (profileError) return reply(500, { error: "profile_check_failed" });
+    if (!profile || profile.account_status !== "active" || profile.deleted_at !== null) return reply(403, { error: "account_unavailable" });
+    try {
+      const s3 = new S3Client({ region: "auto", endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } });
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: objectKey }));
+      return reply(200, { deleted: true, object_key: objectKey });
+    } catch (error) {
+      console.error("[r2-media-upload] avatar delete failed", { objectKey, error });
+      return reply(500, { error: "avatar_delete_failed" });
+    }
+  }
   if (body.action !== "create-upload-url") return reply(400, { error: "unsupported_action" });
 
   const category = String(body.category ?? (body.media_type === "video" ? "post_media" : ""));
