@@ -142,7 +142,16 @@ class ContactsScreen extends GetView<ContactsController> {
                   ],
                 ],
               ),
-              subtitle: Text('@${contact.username}', style: TextStyle(color: Colors.grey[500])),
+              subtitle: Text(
+                contact.isBlockedByMe
+                    ? '${contact.username.isEmpty ? '' : '@${contact.username} · '}Bloqué par vous'
+                    : '@${contact.username}',
+                style: TextStyle(
+                  color: contact.isBlockedByMe
+                      ? colorScheme.error
+                      : Colors.grey[500],
+                ),
+              ),
               trailing: contact.isOnline
                   ? Container(
                       width: 8,
