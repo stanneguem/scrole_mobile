@@ -151,7 +151,7 @@ class MessagingRepository {
           : await InternetConnection().hasInternetAccess;
       if (!connected) return const MessagingResult.failure('offline_conversation_unavailable', 'Cette nouvelle discussion nécessite une connexion Internet.');
 
-      return _persistPeerConversation(
+      return await _persistPeerConversation(
         uid,
         otherUserId,
         otherUserName: otherUserName,
@@ -170,16 +170,16 @@ class MessagingRepository {
     final uid = currentUserId;
     if (uid == null) return const MessagingResult.failure('not_authenticated', 'Utilisateur non authentifié.');
     if (otherUserId.isEmpty) return const MessagingResult.failure('invalid_user', 'Utilisateur invalide.');
-    try {
-      return _persistPeerConversation(
-        uid,
-        otherUserId,
-        otherUserName: otherUserName,
-        otherUserAvatar: otherUserAvatar,
+    // Opening a contact must never create a server conversation. Creation is
+    // deferred to resolveConversationForFirstMessage(), called by send actions.
+    final existing = await _conversations.getByOtherUser(uid, otherUserId);
+    if (existing == null || existing.lastMessagePreview == null) {
+      return const MessagingResult.failure(
+        'conversation_not_found',
+        'Aucune conversation existante. Envoyez un premier message pour la créer.',
       );
-    } catch (e) {
-      return MessagingResult.failure('conversation_failed', e.toString());
     }
+    return MessagingResult.success(existing);
   }
 
   Future<MessagingResult<Conversation>> _persistPeerConversation(
