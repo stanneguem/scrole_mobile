@@ -101,7 +101,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
   bool get _canPublish =>
       _textController.text.trim().isNotEmpty ||
-      _selectedFiles.isNotEmpty ||
+      _selectedMedia.isNotEmpty ||
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
 
@@ -473,7 +473,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
 
   Future<void> _openPollCreator() async {
-    if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
+    if (_selectedMedia.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
       Get.snackbar('Attention', 'Un sondage ne peut pas contenir de photos.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -491,8 +491,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     final orderedMedia = List<_SelectedPostMedia>.from(_selectedMedia);
     List<File> filesToPublish = orderedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
     final videosToPublish = orderedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
+    final orderedFilesForService = orderedMedia.map((m) => m.file).toList();
+    final orderedTypesForService = orderedMedia.map((m) => m.isVideo ? 'video' : 'photo').toList();
     if (filesToPublish.isEmpty && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       filesToPublish.add(File(_prefilledUrl!));
+      orderedFilesForService.add(File(_prefilledUrl!));
+      orderedTypesForService.add('photo');
     }
 
     final content = _textController.text.trim();
@@ -558,8 +562,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         content: postContent,
         imageFiles: filesToPublish,
         videoFiles: videosToPublish,
-        orderedMediaFiles: orderedMedia.map((m) => m.file).toList(),
-        orderedMediaTypes: orderedMedia.map((m) => m.isVideo ? 'video' : 'photo').toList(),
+        orderedMediaFiles: orderedFilesForService,
+        orderedMediaTypes: orderedTypesForService,
         audience: isCommunity ? 'public' : _audience,
         commentsEnabled: _commentsEnabled,
         sharingEnabled: _sharingEnabled,
