@@ -41,6 +41,24 @@ class R2MediaRepository {
     'mov': 'video/quicktime',
   };
 
+  Future<void> deleteProfileAvatar(String publicUrl) async {
+    final uri = Uri.tryParse(publicUrl);
+    if (uri == null || !uri.hasAuthority) throw ArgumentError('URL avatar invalide.');
+    final segments = uri.pathSegments;
+    if (segments.length != 4 || segments[0] != 'profiles' || segments[2] != 'avatar') {
+      throw ArgumentError('URL publique de l’avatar non reconnue.');
+    }
+    final objectKey = segments.map(Uri.decodeComponent).join('/');
+    final response = await _client.functions.invoke('r2-media-upload', body: {
+      'action': 'delete-profile-avatar',
+      'object_key': objectKey,
+    });
+    if (response.status < 200 || response.status >= 300 ||
+        response.data is! Map || (response.data as Map)['deleted'] != true) {
+      throw StateError('La suppression de l’ancien avatar R2 a échoué.');
+    }
+  }
+
   Future<R2UploadedMedia> uploadFile({
     required File file,
     required String category,
