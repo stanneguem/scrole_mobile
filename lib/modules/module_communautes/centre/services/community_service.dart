@@ -875,56 +875,50 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     List<Map<String, String>> localMediaPaths = [];
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      // New composers supply a unified ordered list. Keep that order in the
-      // durable outbox payload so uploads and the published post use the same sequence.
+      // Copy selected files into app-owned storage quickly. Compression and
+      // upload happen in the background processor after the outbox row exists.
       if (orderedMediaFiles != null && orderedMediaTypes != null &&
           orderedMediaFiles.length == orderedMediaTypes.length) {
         for (int i = 0; i < orderedMediaFiles.length; i++) {
           final file = orderedMediaFiles[i];
+          if (!await file.exists()) continue;
           final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
-          if (!file.existsSync()) continue;
-          if (type == 'video') {
-            localMediaPaths.add({'path': file.path, 'type': 'video'});
-          } else {
-            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
-            await Directory(p.dirname(targetPath)).create(recursive: true);
-            final originalBytes = await file.length();
-            final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path,
-              targetPath,
-              minWidth: 1280,
-              minHeight: 1280,
-              quality: 80,
-              format: CompressFormat.jpeg,
-            );
-            if (compressed == null || !await File(compressed.path).exists()) {
-              throw StateError('La compression de la photo ${i + 1} a échoué; envoi de l’original interdit.');
-            }
-            final compressedBytes = await File(compressed.path).length();
-            if (compressedBytes <= 0) {
-              throw StateError('La photo compressée ${i + 1} est vide.');
-            }
-            debugPrint('[POST_CREATE][COMPOSER] IMAGE_COMPRESS_SUCCESS postId=$postId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes savedPercent=${originalBytes == 0 ? 0 : ((originalBytes - compressedBytes) * 100 / originalBytes).toStringAsFixed(1)}');
-            localMediaPaths.add({'path': compressed.path, 'type': 'photo'});
+          final extension = p.extension(file.path).isEmpty
+              ? (type == 'video' ? '.mp4' : '.img')
+              : p.extension(file.path);
+          final targetPath = p.join(
+            appDir.path, 'posts', postId,
+            '${type}_$i$extension',
+          );
+          await Directory(p.dirname(targetPath)).create(recursive: true);
+          final stableFile = await file.copy(targetPath);
+          if (await stableFile.length() <= 0) {
+            throw StateError('Le média sélectionné ${i + 1} est vide.');
           }
+          localMediaPaths.add({'path': stableFile.path, 'type': type});
         }
       } else {
         // Backward compatibility for callers that still provide separate lists.
         if (imageFiles != null) {
           for (int i = 0; i < imageFiles.length; i++) {
             final file = imageFiles[i];
-            if (!file.existsSync()) continue;
-            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
+            if (!await file.exists()) continue;
+            final extension = p.extension(file.path).isEmpty ? '.img' : p.extension(file.path);
+            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i$extension');
             await Directory(p.dirname(targetPath)).create(recursive: true);
-            final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
-            );
-            localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
+            final stableFile = await file.copy(targetPath);
+            localMediaPaths.add({'path': stableFile.path, 'type': 'photo'});
           }
         }
         if (videoFiles != null) {
-          for (final video in videoFiles) {
-            if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+          for (int i = 0; i < videoFiles.length; i++) {
+            final video = videoFiles[i];
+            if (!await video.exists()) continue;
+            final extension = p.extension(video.path).isEmpty ? '.mp4' : p.extension(video.path);
+            final targetPath = p.join(appDir.path, 'posts', postId, 'video_$i$extension');
+            await Directory(p.dirname(targetPath)).create(recursive: true);
+            final stableFile = await video.copy(targetPath);
+            localMediaPaths.add({'path': stableFile.path, 'type': 'video'});
           }
         }
       }
