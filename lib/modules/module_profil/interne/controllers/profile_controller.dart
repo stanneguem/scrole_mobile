@@ -528,9 +528,29 @@ class ProfileController extends GetxController {
       if (picked == null) return;
 
       isUploadingCover.value = true;
+      final previousCoverUrl = coverUrl.value.trim().isNotEmpty
+          ? coverUrl.value.trim()
+          : coverImageUrl.value.trim();
       final String uploadedUrl = await _storageRepository.uploadProfileCover(userId.value, picked);
 
-      await updateProfile({'cover_url': uploadedUrl}, showLoading: false);
+      final saved = await updateProfile(
+        {'cover_url': uploadedUrl},
+        showLoading: false,
+        showFeedback: false,
+      );
+      if (!saved) {
+        // La base n'a pas adopté la nouvelle couverture : ne pas laisser
+        // l'objet fraîchement uploadé occuper inutilement R2.
+        try { await _storageRepository.deleteProfileAvatar(uploadedUrl); } catch (_) {}
+        throw StateError('Upload réussi mais enregistrement cover_url échoué.');
+      }
+      if (previousCoverUrl.isNotEmpty && previousCoverUrl != uploadedUrl) {
+        try {
+          await _storageRepository.deleteProfileAvatar(previousCoverUrl);
+        } catch (deleteError) {
+          debugPrint('[PROFILE_COVER] Ancienne couverture R2 conservée après échec de nettoyage: $deleteError');
+        }
+      }
     } catch (e) {
       Get.snackbar(
         'profile_error_title'.tr,
