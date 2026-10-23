@@ -305,11 +305,14 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Jouée une seule fois : évite une animation GPU permanente
+            // lorsque la boîte de réception reste vide.
             Lottie.asset(
               'assets/lotties/nothing.json',
-              width: 200,
-              height: 200,
-              repeat: true,
+              width: 160,
+              height: 160,
+              repeat: false,
+              animate: true,
             ),
             const SizedBox(height: 16),
             Text(
