@@ -553,11 +553,13 @@ class CommunityOutboxProcessor extends GetxService {
                     category: 'post_media',
                     mediaType: 'image',
                     communityId: communityId,
+                    mediaRole: 'video_thumbnail',
                   );
-                  final thumbnailUrl = uploadedThumbnail.publicUrl;
-                  if (thumbnailUrl == null || thumbnailUrl.isEmpty || !uploadedThumbnail.isPublic) {
-                    throw StateError('R2 n’a pas retourné d’URL publique pour la miniature vidéo.');
+                  final thumbnailUrl = uploadedThumbnail.publicUrl ?? uploadedThumbnail.objectKey;
+                  if (thumbnailUrl.trim().isEmpty) {
+                    throw StateError('R2 n’a retourné ni URL ni clé pour la miniature vidéo.');
                   }
+                  debugPrint('[POST_CREATE][$postKind] THUMBNAIL_UPLOAD_SUCCESS operationId=$operationId index=$i key=${uploadedThumbnail.objectKey} public=${uploadedThumbnail.isPublic} urlAvailable=${uploadedThumbnail.publicUrl != null} bytes=${uploadedThumbnail.sizeBytes}');
                   videoMedia['thumbnail_url'] = thumbnailUrl;
                   videoMedia['thumbnail_storage'] = 'r2';
                   videoMedia['thumbnail_object_key'] = uploadedThumbnail.objectKey;
@@ -624,12 +626,14 @@ class CommunityOutboxProcessor extends GetxService {
               throw StateError('La miniature vidéo régénérée est vide.');
             }
             final uploadedThumbnail = await r2MediaRepository.uploadFile(
-              file: file, category: 'post_media', mediaType: 'image', communityId: communityId,
+              file: file, category: 'post_media', mediaType: 'image',
+              communityId: communityId, mediaRole: 'video_thumbnail',
             );
-            final thumbnailUrl = uploadedThumbnail.publicUrl;
-            if (thumbnailUrl == null || thumbnailUrl.isEmpty || !uploadedThumbnail.isPublic) {
-              throw StateError('R2 n’a pas retourné d’URL publique pour la miniature vidéo.');
+            final thumbnailUrl = uploadedThumbnail.publicUrl ?? uploadedThumbnail.objectKey;
+            if (thumbnailUrl.trim().isEmpty) {
+              throw StateError('R2 n’a retourné ni URL ni clé pour la miniature vidéo.');
             }
+            debugPrint('[POST_CREATE][$postKind] THUMBNAIL_RECOVERY_UPLOAD_SUCCESS operationId=$operationId index=$mediaIndex key=${uploadedThumbnail.objectKey} public=${uploadedThumbnail.isPublic} urlAvailable=${uploadedThumbnail.publicUrl != null} bytes=${uploadedThumbnail.sizeBytes}');
             media['thumbnail_url'] = thumbnailUrl;
             media['thumbnail_storage'] = 'r2';
             media['thumbnail_object_key'] = uploadedThumbnail.objectKey;
