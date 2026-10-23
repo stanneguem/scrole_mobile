@@ -867,15 +867,17 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
 
 class _CircleIcon extends StatelessWidget {
   const _CircleIcon({
-    required this.icon,
+    this.icon,
+    this.assetPath,
     this.color,
     this.onTap,
     this.onLongPress,
     this.onLongPressUp,
     this.size = 44,
-  });
+  }) : assert(icon != null || assetPath != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final String? assetPath;
   final Color? color;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
@@ -898,7 +900,14 @@ class _CircleIcon extends StatelessWidget {
           color: c.withValues(alpha: .15),
         ),
         alignment: Alignment.center,
-        child: Icon(icon, color: c, size: 21),
+        child: assetPath != null
+            ? SvgPicture.asset(
+                assetPath!,
+                width: 21,
+                height: 21,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              )
+            : Icon(icon, color: c, size: 21),
       ),
     );
   }
