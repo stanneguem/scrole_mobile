@@ -681,7 +681,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         await controller.dispose();
       }
       if (duration > const Duration(seconds: 30)) {
-        final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: file, maxDuration: const Duration(seconds: 30)));
+        final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: file, maxDuration: const Duration(seconds: 29)));
         if (trimmed == null || !mounted) return;
         file = trimmed;
         final verify = VideoPlayerController.file(file);
