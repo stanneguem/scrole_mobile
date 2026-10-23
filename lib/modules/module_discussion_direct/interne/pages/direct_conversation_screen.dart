@@ -745,8 +745,20 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
       final hasWallpaper = controller.selectedWallpaper.value != 'none';
 
       return Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        decoration: BoxDecoration(
+          color: hasWallpaper
+              ? Colors.black.withValues(alpha: .16)
+              : colors.surface.withValues(alpha: .96),
+          border: Border(
+            top: BorderSide(
+              color: hasWallpaper
+                  ? Colors.white.withValues(alpha: .12)
+                  : colors.outlineVariant.withValues(alpha: .35),
+              width: .6,
+            ),
+          ),
+        ),
         child: Column(
           children: [
             if (editingMode)
@@ -792,8 +804,8 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 360;
-                final iconSize = compact ? 38.0 : 44.0;
-                final gap = compact ? 4.0 : 8.0;
+                final iconSize = compact ? 38.0 : 42.0;
+                final gap = compact ? 5.0 : 8.0;
                 return Row(
                   children: [
                     if (!editingMode)
@@ -813,8 +825,16 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                       child: TextField(
                         controller: controller.messageController,
                         onTap: () => controller.showEmojiPicker.value = false,
+                        minLines: 1,
+                        maxLines: 5,
+                        textCapitalization: TextCapitalization.sentences,
+                        keyboardAppearance: hasWallpaper || Get.isDarkMode
+                            ? Brightness.dark
+                            : Brightness.light,
                         style: TextStyle(
                           color: hasWallpaper ? Colors.white : colors.onSurface,
+                          fontSize: 15,
+                          height: 1.35,
                         ),
                         decoration: InputDecoration(
                           hintText: editingMode
@@ -824,7 +844,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                             color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(22),
                             borderSide: BorderSide(
                               color: colors.outlineVariant.withValues(alpha: .35),
                               width: 0.5,
@@ -849,9 +869,10 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                               ? Colors.black.withValues(alpha: .45)
                               : colors.surfaceContainerHighest.withValues(alpha: .3),
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: compact ? 10 : 16,
-                            vertical: 12,
+                            horizontal: compact ? 12 : 16,
+                            vertical: 11,
                           ),
+                          isDense: true,
                         ),
                         onSubmitted: (_) => controller.sendMessage(),
                       ),
