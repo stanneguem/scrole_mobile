@@ -979,17 +979,17 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       ),
 
                     // Media Preview Grid (backend limit)
-                    if (_selectedFiles.isNotEmpty)
+                    if (_selectedMediaCount > 0)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: _selectedFiles.length == 1 ? 1 : 2,
+                            crossAxisCount: _selectedMediaCount == 1 ? 1 : 2,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
-                            childAspectRatio: _selectedFiles.length == 1 ? 1.6 : 1.2,
+                            childAspectRatio: _selectedMediaCount == 1 ? 1.6 : 1.2,
                           ),
                           itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
@@ -1000,7 +1000,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                  child: isVideo
+                                      ? const ColoredBox(color: Colors.black, child: Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 48)))
+                                      : Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
                                 ),
                                 Positioned(
                                   top: 6,
