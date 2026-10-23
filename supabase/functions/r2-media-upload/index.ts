@@ -87,15 +87,15 @@ Deno.serve(async (req: Request) => {
       const { data: member } = await admin.from("community_members").select("user_id").eq("community_id", communityId).eq("user_id", user.id).maybeSingle();
       allowed = !!member;
     } else if (parts[0] === "stories" && parts.length >= 3) {
-      const { data: story } = await admin.from("stories").select("author_id,audience,status,expires_at").eq("image_url", key).maybeSingle();
+      const { data: story } = await admin.from("stories").select("id,author_id,audience,status,expires_at,image_url").eq("image_url", key).maybeSingle();
       if (story && story.status === "active" && (!story.expires_at || new Date(story.expires_at).getTime() > Date.now())) {
         if (story.author_id === user.id) allowed = true;
-        else if (String(story.audience ?? "").toLowerCase() === "friends") {
-          const { data: friendship } = await admin.from("friendships").select("user_a_id").or(`and(user_a_id.eq.${user.id},user_b_id.eq.${story.author_id}),and(user_a_id.eq.${story.author_id},user_b_id.eq.${user.id})`).maybeSingle();
-          allowed = !!friendship;
-        } else if (["followers","followers_only"].includes(String(story.audience ?? "").toLowerCase())) {
-          const { data: follow } = await admin.from("user_follows").select("follower_id").eq("follower_id", user.id).eq("followed_id", story.author_id).maybeSingle();
-          allowed = !!follow;
+        else {
+          const { data: mutual } = await admin.from("friendships").select("user_a_id")
+            .or(`and(user_a_id.eq.${user.id},user_b_id.eq.${story.author_id}),and(user_a_id.eq.${story.author_id},user_b_id.eq.${user.id})`).maybeSingle();
+          const { data: follow } = await admin.from("user_follows").select("follower_id")
+            .eq("follower_id", user.id).eq("followed_id", story.author_id).maybeSingle();
+          allowed = !!mutual || !!follow;
         }
       }
     } else if (parts[0] === "bug-reports" && parts.length >= 3) {
