@@ -267,7 +267,7 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
 
               // --- Barre inférieure (Compteur à gauche, Statistiques & Interactions à droite) ---
               Positioned(
-                bottom: MediaQuery.of(context).padding.bottom + 16,
+                bottom: MediaQuery.of(context).padding.bottom + 64,
                 left: 16,
                 right: 16,
                 child: IgnorePointer(
