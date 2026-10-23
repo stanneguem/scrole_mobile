@@ -96,78 +96,78 @@ class CommunityOutboxProcessor extends GetxService {
             final visibility = payload['visibility']?.toString() ?? 'public';
             final requireManualApproval = payload['require_manual_approval'] == true || visibility == 'prive';
 
-            final supabaseClient = Supabase.instance.client;
-            String? photoProfile;
-            String? photoCover;
-
-            final avatarLocalPath = payload['avatar_local_path']?.toString() ?? payload['avatar_url']?.toString() ?? payload['photo_profile']?.toString();
-            if (avatarLocalPath != null && avatarLocalPath.isNotEmpty) {
-              if (avatarLocalPath.startsWith('http://') || avatarLocalPath.startsWith('https://')) {
-                photoProfile = avatarLocalPath;
-              } else {
-                final file = File(avatarLocalPath);
-                if (file.existsSync()) {
-                  final storagePath = 'communities/$communityId/profile.jpg';
-                  debugPrint('[CREATE_COMMUNITY] [Outbox] Uploading avatar to community-media at $storagePath');
-                  try {
-                    await supabaseClient.storage.from('community-media').upload(
-                      storagePath,
-                      file,
-                      fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
-                    );
-                    photoProfile = supabaseClient.storage.from('community-media').getPublicUrl(storagePath);
-                    debugPrint('[CREATE_COMMUNITY] [Outbox] Avatar uploaded successfully. Public URL: $photoProfile');
-                  } catch (e) {
-                    debugPrint('[CREATE_COMMUNITY] [Outbox] Avatar upload error: $e');
-                    if (_isDefinitiveUploadError(e)) {
-                      rethrow;
-                    }
-                    rethrow;
-                  }
-                }
-              }
-            }
-
-            final bannerLocalPath = payload['banner_local_path']?.toString() ?? payload['banner_url']?.toString() ?? payload['photo_cover']?.toString();
-            if (bannerLocalPath != null && bannerLocalPath.isNotEmpty) {
-              if (bannerLocalPath.startsWith('http://') || bannerLocalPath.startsWith('https://')) {
-                photoCover = bannerLocalPath;
-              } else {
-                final file = File(bannerLocalPath);
-                if (file.existsSync()) {
-                  final storagePath = 'communities/$communityId/cover.jpg';
-                  debugPrint('[CREATE_COMMUNITY] [Outbox] Uploading banner to community-media at $storagePath');
-                  try {
-                    await supabaseClient.storage.from('community-media').upload(
-                      storagePath,
-                      file,
-                      fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
-                    );
-                    photoCover = supabaseClient.storage.from('community-media').getPublicUrl(storagePath);
-                    debugPrint('[CREATE_COMMUNITY] [Outbox] Banner uploaded successfully. Public URL: $photoCover');
-                  } catch (e) {
-                    debugPrint('[CREATE_COMMUNITY] [Outbox] Banner upload error: $e');
-                    if (_isDefinitiveUploadError(e)) {
-                      rethrow;
-                    }
-                    rethrow;
-                  }
-                }
-              }
-            }
-
-            debugPrint('[CREATE_COMMUNITY] [Outbox] Calling createCommunityRpc with exact parameters: p_id=$communityId, p_name=$name, p_slug=$slug, p_description=$description, p_photo_profile=$photoProfile, p_photo_cover=$photoCover, p_visibility=$visibility, p_require_manual_approval=$requireManualApproval');
-
+            // Créer d’abord la communauté : l’Edge Function R2 vérifie que
+            // l’entité existe et que l’utilisateur en est propriétaire.
             await _repository.createCommunityRpc(
               p_id: communityId,
               p_name: name,
               p_slug: slug,
               p_description: description,
               p_visibility: visibility,
-              p_photo_profile: photoProfile,
-              p_photo_cover: photoCover,
               p_require_manual_approval: requireManualApproval,
             );
+
+            final r2 = R2MediaRepository();
+            final avatarLocalPath = payload['avatar_local_path']?.toString() ??
+                payload['avatar_url']?.toString() ?? payload['photo_profile']?.toString();
+            final bannerLocalPath = payload['banner_local_path']?.toString() ??
+                payload['banner_url']?.toString() ?? payload['photo_cover']?.toString();
+            String? photoProfile;
+            String? photoCover;
+
+            if (avatarLocalPath != null && avatarLocalPath.isNotEmpty) {
+              if (avatarLocalPath.startsWith('http://') || avatarLocalPath.startsWith('https://')) {
+                photoProfile = avatarLocalPath;
+              } else {
+                final file = File(avatarLocalPath);
+                if (!await file.exists()) {
+                  throw FileSystemException('Le fichier de photo de profil de la communauté est introuvable.', avatarLocalPath);
+                }
+                final uploaded = await r2.uploadFile(
+                  file: file,
+                  category: 'community_avatar',
+                  mediaType: 'image',
+                  entityId: communityId,
+                );
+                photoProfile = uploaded.publicUrl;
+                if (photoProfile == null || photoProfile.isEmpty || !uploaded.isPublic) {
+                  throw StateError('R2 n’a pas retourné d’URL publique pour la photo de la communauté.');
+                }
+                debugPrint('[CREATE_COMMUNITY] R2 avatar uploaded key=${uploaded.objectKey}');
+              }
+            }
+
+            if (bannerLocalPath != null && bannerLocalPath.isNotEmpty) {
+              if (bannerLocalPath.startsWith('http://') || bannerLocalPath.startsWith('https://')) {
+                photoCover = bannerLocalPath;
+              } else {
+                final file = File(bannerLocalPath);
+                if (!await file.exists()) {
+                  throw FileSystemException('Le fichier de couverture de la communauté est introuvable.', bannerLocalPath);
+                }
+                final uploaded = await r2.uploadFile(
+                  file: file,
+                  category: 'community_cover',
+                  mediaType: 'image',
+                  entityId: communityId,
+                );
+                photoCover = uploaded.publicUrl;
+                if (photoCover == null || photoCover.isEmpty || !uploaded.isPublic) {
+                  throw StateError('R2 n’a pas retourné d’URL publique pour la couverture de la communauté.');
+                }
+                debugPrint('[CREATE_COMMUNITY] R2 cover uploaded key=${uploaded.objectKey}');
+              }
+            }
+
+            if (photoProfile != null || photoCover != null) {
+              await _repository.updateCommunityInfo(
+                p_id: communityId,
+                p_name: name,
+                p_description: description,
+                p_photo_profile: photoProfile,
+                p_photo_cover: photoCover,
+              );
+            }
           }
 
           debugPrint('[CREATE_COMMUNITY] [Outbox] Operation $operationId completed successfully. Marking confirmed.');
