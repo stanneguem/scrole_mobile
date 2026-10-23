@@ -195,6 +195,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     },
                     child: FeedPostCard(
                       post: post,
+                      onRetryPublishing: () => feedController.retryQueuedPost(post.id),
                       onReactionTap: (reaction) => feedController.handleReaction(post.id, reaction),
                       onCommentTap: () {
                         showModalBottomSheet(
