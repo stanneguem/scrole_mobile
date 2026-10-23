@@ -165,8 +165,17 @@ class HomeFeedController extends GetxController {
 
       debugPrint('[HOME_FEED] fetchFeed started with refresh=$refresh');
 
-      // 2. Fetch pending outbox posts
+      // 2. Show queued personal posts before waiting on the network.
       final pendingPosts = await _getPendingOutboxPosts(userId);
+      if (pendingPosts.isNotEmpty) {
+        final existingRemote = posts.where((post) => !post.isPublishing).toList();
+        final previewById = <String, CommunityPost>{};
+        for (final post in [...pendingPosts, ...existingRemote]) {
+          previewById[post.id] = post;
+        }
+        posts.assignAll(previewById.values);
+        state.value = HomeFeedState.loaded;
+      }
 
       // 3. Remote fetch via get_home_feed RPC
       final result = await _feedRepo.getHomeFeed(limit: 20, cursor: null);
