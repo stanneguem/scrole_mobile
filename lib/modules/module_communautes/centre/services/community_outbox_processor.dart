@@ -577,6 +577,55 @@ class CommunityOutboxProcessor extends GetxService {
               }
             }
           }
+          // Reprise idempotente : si l'application s'est arrêtée après l'upload
+          // de la vidéo mais avant celui de sa miniature, compléter le média mis en cache.
+          for (int mediaIndex = 0; mediaIndex < uploadedMedia.length && mediaIndex < localMediaItems.length; mediaIndex++) {
+            final media = uploadedMedia[mediaIndex];
+            if (media['type']?.toString() != 'video' ||
+                (media['thumbnail_url']?.toString().trim().isNotEmpty ?? false)) {
+              continue;
+            }
+            var sourcePath = (localMediaItems[mediaIndex]['upload_path'] ??
+                localMediaItems[mediaIndex]['path'] ?? '').toString();
+            if (sourcePath.startsWith('http://') || sourcePath.startsWith('https://') ||
+                !await File(sourcePath).exists()) {
+              sourcePath = (localMediaItems[mediaIndex]['path'] ?? '').toString();
+            }
+            if (sourcePath.isEmpty || !await File(sourcePath).exists()) {
+              throw FileSystemException('Vidéo locale indisponible pour régénérer sa miniature.', sourcePath);
+            }
+            final appDir = await getApplicationDocumentsDirectory();
+            final postId = (payload['p_id'] ?? operationId).toString();
+            final thumbnailPath = p.join(appDir.path, 'posts', postId, 'thumbnail_$mediaIndex.jpg');
+            await Directory(p.dirname(thumbnailPath)).create(recursive: true);
+            List<int>? bytes;
+            for (final framePosition in <int>[1000, 0]) {
+              try {
+                bytes = await VideoCompress.getFileThumbnail(
+                  sourcePath, quality: 78, position: framePosition,
+                ).timeout(const Duration(seconds: 30));
+                if (bytes != null && bytes.isNotEmpty) break;
+              } catch (error) {
+                debugPrint('[POST_CREATE][$postKind] THUMBNAIL_RECOVERY_FAILED operationId=$operationId index=$mediaIndex position=$framePosition error=$error');
+              }
+            }
+            if (bytes == null || bytes.isEmpty) {
+              throw StateError('Impossible de régénérer la miniature de la vidéo.');
+            }
+            final file = File(thumbnailPath);
+            await file.writeAsBytes(bytes, flush: true);
+            final uploadedThumbnail = await r2MediaRepository.uploadFile(
+              file: file, category: 'post_media', mediaType: 'image', communityId: communityId,
+            );
+            final thumbnailUrl = uploadedThumbnail.publicUrl;
+            if (thumbnailUrl == null || thumbnailUrl.isEmpty || !uploadedThumbnail.isPublic) {
+              throw StateError('R2 n’a pas retourné d’URL publique pour la miniature vidéo.');
+            }
+            media['thumbnail_url'] = thumbnailUrl;
+            media['thumbnail_storage'] = 'r2';
+            media['thumbnail_object_key'] = uploadedThumbnail.objectKey;
+            await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
+          }
           if (uploadedMedia.length != localMediaItems.length) {
             throw StateError('Téléversement incomplet : ${uploadedMedia.length}/${localMediaItems.length} médias ont été préparés.');
           }
