@@ -327,24 +327,44 @@ class CommunityRepository {
 
   Future<void> deletePost(String postId, {String? reason}) async {
     try {
-      debugPrint('[DELETE] [Repository] Calling RPC delete_post with p_post_id=$postId, p_reason=$reason');
-      await client.rpc('delete_post', params: {
-        'p_post_id': postId,
-        if (reason != null && reason.isNotEmpty) 'p_reason': reason,
-      });
-      debugPrint('[DELETE] [Repository] RPC delete_post successful for postId=$postId');
-    } on PostgrestException catch (e) {
-      debugPrint('[DELETE] [Repository] PostgrestException in delete_post: code=${e.code}, message=${e.message}');
-      final msg = e.message.toLowerCase();
-      if (msg.contains('non autorisée') || msg.contains('unauthorized')) {
+      debugPrint('[DELETE] [Repository] Calling delete-community-post Edge Function for postId=$postId');
+      final response = await client.functions.invoke(
+        'delete-community-post',
+        body: {
+          'post_id': postId,
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+        },
+      );
+
+      final responseData = response.data;
+      if (response.status < 200 || response.status >= 300) {
+        final message = responseData is Map
+            ? (responseData['error']?.toString() ?? 'delete_post_failed')
+            : 'delete_post_failed';
+        if (response.status == 401 || response.status == 403) {
+          throw Exception('delete_unauthorized_error');
+        }
+        throw Exception(message);
+      }
+      if (responseData is Map && responseData['success'] != true) {
+        throw Exception(responseData['error']?.toString() ?? 'delete_post_failed');
+      }
+      debugPrint('[DELETE] [Repository] Post and media cleanup completed for postId=$postId');
+    } catch (e, st) {
+      final message = e.toString().toLowerCase();
+      if (message.contains('delete_unauthorized_error') ||
+          message.contains('action non autorisée') ||
+          message.contains('unauthorized') ||
+          message.contains('status: 403') ||
+          message.contains('status: 401')) {
         throw Exception('delete_unauthorized_error');
       }
-      if (e.code == 'PGRST116' || msg.contains('not found') || msg.contains('does not exist')) {
+      if (message.contains('post introuvable') ||
+          message.contains('post not found') ||
+          message.contains('status: 404')) {
         return;
       }
-      rethrow;
-    } catch (e, st) {
-      debugPrint('[DELETE] [Repository] Unexpected error in delete_post: $e\n$st');
+      debugPrint('[DELETE] [Repository] delete-community-post failed: $e\n$st');
       rethrow;
     }
   }
