@@ -46,6 +46,7 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
   double _dragOffsetY = 0.0;
   double _bgOpacity = 1.0;
   bool _isDragging = false;
+  bool _videoControlsVisible = true;
 
   late int _likesCount;
   late int _dislikesCount;
@@ -168,14 +169,24 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
               PageView.builder(
                 controller: _pageController,
                 itemCount: count,
-                onPageChanged: (index) => setState(() => _currentPage = index),
+                onPageChanged: (index) => setState(() {
+                  _currentPage = index;
+                  _videoControlsVisible = true;
+                }),
                 itemBuilder: (context, index) {
                   final item = _items[index];
                   final url = item.url;
                   if (url.isEmpty) return const SizedBox.shrink();
 
                   if (item.type == 'video') {
-                    return _FullScreenVideoPlayer(url: url);
+                    return _FullScreenVideoPlayer(
+                      url: url,
+                      onControlsVisibilityChanged: (visible) {
+                        if (mounted && _videoControlsVisible != visible) {
+                          setState(() => _videoControlsVisible = visible);
+                        }
+                      },
+                    );
                   }
 
                   final isNetwork = url.startsWith('http://') || url.startsWith('https://');
@@ -230,7 +241,10 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                 left: 10,
                 right: 10,
                 child: AnimatedOpacity(
-                  opacity: _isDragging ? 0.0 : 1.0,
+                  opacity: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible))
+                      ? 0.0
+                      : 1.0,
                   duration: const Duration(milliseconds: 200),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -254,7 +268,10 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                 left: 16,
                 right: 16,
                 child: AnimatedOpacity(
-                  opacity: _isDragging ? 0.0 : 1.0,
+                  opacity: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible))
+                      ? 0.0
+                      : 1.0,
                   duration: const Duration(milliseconds: 200),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -427,7 +444,12 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
 
 class _FullScreenVideoPlayer extends StatefulWidget {
   final String url;
-  const _FullScreenVideoPlayer({required this.url});
+  final ValueChanged<bool> onControlsVisibilityChanged;
+
+  const _FullScreenVideoPlayer({
+    required this.url,
+    required this.onControlsVisibilityChanged,
+  });
 
   @override
   State<_FullScreenVideoPlayer> createState() => _FullScreenVideoPlayerState();
@@ -436,35 +458,224 @@ class _FullScreenVideoPlayer extends StatefulWidget {
 class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
+  bool _controlsVisible = true;
+  bool _showCenterFeedback = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+  Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _controller.initialize().then((_) {
-      if (mounted) {
-        setState(() => _isInitialized = true);
-        _controller.play();
-        _controller.setLooping(true);
-      }
+      if (!mounted) return;
+      _duration = _controller.value.duration;
+      _controller.addListener(_onPlayerChanged);
+      setState(() => _isInitialized = true);
+      _controller.setLooping(true);
+      _controller.play();
+      _scheduleHide();
+    }).catchError((Object error) {
+      debugPrint('[MediaFullScreenPage] video initialization failed: $error');
     });
+  }
+
+  void _onPlayerChanged() {
+    if (!mounted) return;
+    setState(() {
+      _position = _controller.value.position;
+      _duration = _controller.value.duration;
+    });
+  }
+
+  void _setControlsVisible(bool visible) {
+    if (_controlsVisible == visible) return;
+    setState(() => _controlsVisible = visible);
+    widget.onControlsVisibilityChanged(visible);
+  }
+
+  void _revealControls() {
+    _setControlsVisible(true);
+    _scheduleHide();
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    if (_controller.value.isPlaying) {
+      _hideTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _controller.value.isPlaying) {
+          _setControlsVisible(false);
+        }
+      });
+    }
+  }
+
+  void _togglePlayPause() {
+    if (!_isInitialized) return;
+    if (_controller.value.isPlaying) {
+      _controller.pause();
+      _hideTimer?.cancel();
+      _setControlsVisible(true);
+    } else {
+      _controller.play();
+      _setControlsVisible(true);
+      _scheduleHide();
+    }
+    setState(() => _showCenterFeedback = true);
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _showCenterFeedback = false);
+    });
+  }
+
+  Future<void> _seekBy(int seconds) async {
+    if (!_isInitialized) return;
+    final wasPlaying = _controller.value.isPlaying;
+    final target = _controller.value.position + Duration(seconds: seconds);
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : (target > _duration ? _duration : target);
+    await _controller.seekTo(clamped);
+    _revealControls();
+    if (wasPlaying) _scheduleHide();
+    setState(() => _showCenterFeedback = true);
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted) setState(() => _showCenterFeedback = false);
+    });
+  }
+
+  String _format(Duration value) {
+    final minutes = value.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = value.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (value.inHours > 0) {
+      return '${value.inHours.toString().padLeft(2, '0')}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   @override
   void dispose() {
+    _hideTimer?.cancel();
+    _controller.removeListener(_onPlayerChanged);
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: _isInitialized
-          ? AspectRatio(
-              aspectRatio: _controller.value.aspectRatio,
+    final isPlaying = _isInitialized && _controller.value.isPlaying;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Colors.black),
+        if (_isInitialized)
+          Center(
+            child: AspectRatio(
+              aspectRatio: _controller.value.aspectRatio > 0 ? _controller.value.aspectRatio : 16 / 9,
               child: VideoPlayer(_controller),
-            )
-          : const CircularProgressIndicator(color: Colors.white),
+            ),
+          )
+        else
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+        if (_isInitialized)
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _revealControls,
+                  onDoubleTap: () => _seekBy(-10),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _togglePlayPause,
+                  child: Center(
+                    child: AnimatedOpacity(
+                      opacity: _controlsVisible && (!isPlaying || _showCenterFeedback) ? 1 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.42),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+                        ),
+                        child: Icon(
+                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 42,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _revealControls,
+                  onDoubleTap: () => _seekBy(10),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ],
+          ),
+        Positioned(
+          left: 18,
+          right: 18,
+          bottom: MediaQuery.of(context).padding.bottom + 10,
+          child: AnimatedOpacity(
+            opacity: _controlsVisible ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            child: IgnorePointer(
+              ignoring: !_controlsVisible,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.32),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_format(_position), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                          Text(_format(_duration), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                        ],
+                      ),
+                      SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 2,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                          overlayShape: SliderComponentShape.noOverlay,
+                          activeTrackColor: Colors.white,
+                          inactiveTrackColor: Colors.white30,
+                          thumbColor: Colors.white,
+                        ),
+                        child: Slider(
+                          min: 0,
+                          max: _duration.inMilliseconds > 0 ? _duration.inMilliseconds.toDouble() : 1,
+                          value: _position.inMilliseconds.clamp(0, _duration.inMilliseconds > 0 ? _duration.inMilliseconds : 1).toDouble(),
+                          onChanged: (value) async {
+                            await _controller.seekTo(Duration(milliseconds: value.round()));
+                            _revealControls();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
