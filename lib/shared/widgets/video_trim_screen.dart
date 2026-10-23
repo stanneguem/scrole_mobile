@@ -73,7 +73,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(
-          'Découper la vidéo (max 2 min)',
+          'Découper la vidéo (max ${widget.maxDuration.inSeconds} s)',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
