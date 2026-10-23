@@ -39,6 +39,8 @@ class ChatController extends GetxController {
   final RxBool saveIncomingMediaToGallery = true.obs;
   final RxBool _conversationPreferencesLoaded = false.obs;
   final Set<String> _autoSavedMediaMessageIds = <String>{};
+  final Set<String> _knownMessageIds = <String>{};
+  bool _hasInitialMessageSnapshot = false;
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
   final Rxn<MessageModel> editingMessage = Rxn<MessageModel>();
@@ -116,8 +118,14 @@ class ChatController extends GetxController {
     isLoading.value = true;
     _messagesSub = _repository.watchConversation(id).listen((items) {
       final converted = items.map(MessageModel.fromMessage).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final newlyReceived = converted
+          .where((message) => _knownMessageIds.add(message.id))
+          .toList(growable: false);
       messages.assignAll(converted);
-      unawaited(_autoSaveIncomingMedia(converted));
+      if (_hasInitialMessageSnapshot && newlyReceived.isNotEmpty) {
+        unawaited(_autoSaveIncomingMedia(newlyReceived));
+      }
+      _hasInitialMessageSnapshot = true;
       _recalculateUnread();
       isLoading.value = false;
     }, onError: (_) => isLoading.value = false);
@@ -150,9 +158,6 @@ class ChatController extends GetxController {
       saveIncomingMediaToGallery.value =
           row['save_media_to_gallery'] as bool? ?? true;
       _conversationPreferencesLoaded.value = true;
-      if (saveIncomingMediaToGallery.value) {
-        unawaited(_autoSaveIncomingMedia(messages.toList(growable: false)));
-      }
     } catch (e) {
       _conversationPreferencesLoaded.value = true;
       debugPrint('[ChatPreferences] load failed: $e');
@@ -182,7 +187,6 @@ class ChatController extends GetxController {
     conversationNotificationsEnabled.value = nextNotifications;
     saveIncomingMediaToGallery.value = nextMedia;
     _conversationPreferencesLoaded.value = true;
-    if (nextMedia) unawaited(_autoSaveIncomingMedia(messages.toList(growable: false)));
   }
 
   Future<void> _autoSaveIncomingMedia(List<MessageModel> currentMessages) async {
