@@ -359,13 +359,25 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
   bool _autoPlay = true;
   bool _visible = false;
   bool _failed = false;
+  Worker? _preferencesWorker;
 
   @override
   void initState() {
     super.initState();
     try {
       if (Get.isRegistered<PreferencesService>()) {
-        _autoPlay = Get.find<PreferencesService>().preferences.value.autoPlayVideos;
+        final service = Get.find<PreferencesService>();
+        _autoPlay = service.preferences.value.autoPlayVideos;
+        _preferencesWorker = ever(service.preferences, (prefs) {
+          if (!mounted || _autoPlay == prefs.autoPlayVideos) return;
+          setState(() => _autoPlay = prefs.autoPlayVideos);
+          if (!_autoPlay) {
+            _controller?.pause();
+          } else if (_visible) {
+            _initializeIfNeeded();
+            _controller?.play();
+          }
+        });
       }
     } catch (_) {}
   }
@@ -411,6 +423,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
 
   @override
   void dispose() {
+    _preferencesWorker?.dispose();
     _controller?.dispose();
     super.dispose();
   }
