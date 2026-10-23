@@ -136,52 +136,33 @@ class StorageRepository {
     return uploaded.publicUrl;
   }
 
-  /// Upload une photo de profil de communauté
-  /// Structure : communities/{id}/avatar_{timestamp}.jpg
-  Future<String> uploadCommunityAvatar(File file, {String? communityId}) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'avatar_$timestamp.$extension';
-    
-    // Si on a l'ID (update), on range dans un dossier dédié pour nettoyer
-    final dirPath = communityId != null ? 'communities/$communityId' : 'communities/temp_avatars';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'community-media', path: path, file: file);
-
-    if (communityId != null) {
-      _cleanOldFiles(
-        bucket: 'community-media', 
-        directoryPath: dirPath, 
-        prefix: 'avatar_', 
-        currentFileName: fileName,
-      );
+  /// Upload une photo de profil de communauté vers Cloudflare R2.
+  Future<String> uploadCommunityAvatar(File file, {required String communityId}) async {
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'community_avatar',
+      mediaType: 'image',
+      entityId: communityId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour l’avatar de communauté.');
     }
-
     return url;
   }
 
-  /// Upload une bannière de communauté
-  /// Structure : communities/{id}/banner_{timestamp}.jpg
-  Future<String> uploadCommunityBanner(File file, {String? communityId}) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'banner_$timestamp.$extension';
-    
-    final dirPath = communityId != null ? 'communities/$communityId' : 'communities/temp_banners';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'community-media', path: path, file: file);
-
-    if (communityId != null) {
-      _cleanOldFiles(
-        bucket: 'community-media', 
-        directoryPath: dirPath,
-        prefix: 'banner_',
-        currentFileName: fileName,
-      );
+  /// Upload une couverture de communauté vers Cloudflare R2.
+  Future<String> uploadCommunityBanner(File file, {required String communityId}) async {
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'community_cover',
+      mediaType: 'image',
+      entityId: communityId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la couverture de communauté.');
     }
-
     return url;
   }
 
