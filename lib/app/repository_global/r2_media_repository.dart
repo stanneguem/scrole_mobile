@@ -112,7 +112,6 @@ class R2MediaRepository {
     // Ne jamais journaliser uploadUrl : cette URL contient une signature temporaire.
     final request = http.Request('PUT', Uri.parse(uploadUrl))
       ..headers['Content-Type'] = contentType
-      ..headers['Content-Length'] = bytes.length.toString()
       ..bodyBytes = Uint8List.fromList(bytes);
 
     final client = http.Client();
@@ -125,9 +124,14 @@ class R2MediaRepository {
         final bodyPreview = uploadResponse.body.length > 500
             ? uploadResponse.body.substring(0, 500)
             : uploadResponse.body;
-        debugPrint('[R2_UPLOAD][$traceId] R2_PUT_FAILURE body=$bodyPreview');
+        // Extract only the provider error code for a useful diagnostic. Never
+        // print uploadUrl: it contains a temporary signature credential.
+        final codeMatch = RegExp(r'<Code>([^<]+)</Code>').firstMatch(bodyPreview);
+        final providerCode = codeMatch?.group(1);
+        debugPrint('[R2_UPLOAD][$traceId] R2_PUT_FAILURE status=${uploadResponse.statusCode} providerCode=${providerCode ?? 'unknown'} body=$bodyPreview');
         throw HttpException(
-          'Échec du téléversement R2 (HTTP ${uploadResponse.statusCode}).',
+          'Échec du téléversement R2 (HTTP ${uploadResponse.statusCode}'
+          '${providerCode == null ? '' : ', $providerCode'}).',
         );
       }
     } catch (e, stack) {
