@@ -138,6 +138,14 @@ Deno.serve(async (req: Request) => {
       }
       referencedUrl = parts[2] === "avatar" ? community.photo_profile : community.photo_cover;
       authorized = true;
+    } else if (parts[0] === "events" && parts.length === 4 && parts[2] === user.id) {
+      const eventId = parts[1];
+      const { data: event, error } = await admin.from("events")
+        .select("creator_id,photo").eq("id", eventId).maybeSingle();
+      if (error) return reply(500, { error: "event_check_failed" });
+      if (!event || event.creator_id !== user.id) return reply(403, { error: "event_owner_required" });
+      referencedUrl = event.photo;
+      authorized = true;
     }
     if (!authorized) return reply(403, { error: "media_object_not_owned" });
 
@@ -146,7 +154,7 @@ Deno.serve(async (req: Request) => {
         const referenced = new URL(referencedUrl.trim());
         const pathParts = referenced.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
         const stillReferenced = pathParts.some((part, index) =>
-          (part === "profiles" || part === "communities") &&
+          (part === "profiles" || part === "communities" || part === "events") &&
           pathParts.slice(index).join("/") === objectKey
         );
         if (stillReferenced) return reply(409, { error: "media_still_referenced" });
