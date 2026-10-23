@@ -230,19 +230,33 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
 
   Future<void> _confirmSelection() async {
     if (_selectedAssets.isEmpty) return;
+    final expectedCount = _selectedAssets.length;
     setState(() => _isOpeningMedia = true);
 
     try {
       final List<XFile> xFiles = [];
       for (final asset in _selectedAssets) {
         final file = await asset.file;
-        if (file != null) {
-          xFiles.add(XFile(file.path));
+        if (file == null || !await file.exists()) {
+          throw StateError('Un des fichiers sélectionnés est inaccessible.');
         }
+        xFiles.add(XFile(file.path));
+      }
+
+      debugPrint('[MEDIA_GALLERY] Selection resolved: selected=$expectedCount resolved=${xFiles.length}');
+      if (xFiles.length != expectedCount) {
+        throw StateError('Sélection incomplète : $expectedCount photos choisies, ${xFiles.length} accessibles.');
       }
       widget.onSelected(xFiles);
+      if (mounted) Navigator.of(context).pop();
+    } catch (error, stack) {
+      debugPrint('[MEDIA_GALLERY] Selection failed: $error\n$stack');
       if (mounted) {
-        Navigator.of(context).pop();
+        Get.snackbar(
+          'Sélection incomplète',
+          'Certaines photos ne sont pas accessibles. Rien n’a été ajouté : réessaie avec les photos concernées.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } finally {
       if (mounted) setState(() => _isOpeningMedia = false);
