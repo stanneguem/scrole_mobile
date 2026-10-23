@@ -182,7 +182,6 @@ class ContactsScreen extends GetView<ContactsController> {
       return;
     }
 
-    Get.back();
     await Get.toNamed(
       AppPages.conversation,
       arguments: {
