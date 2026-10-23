@@ -1210,22 +1210,119 @@ class _ProfileActivitiesSection extends StatelessWidget {
 class _PrivateProfile extends StatelessWidget {
   const _PrivateProfile({required this.message});
   final String message;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.lock_outline_rounded, size: 34),
-          const SizedBox(height: 10),
-          Text(message, textAlign: TextAlign.center),
-        ],
+    final explanation = message.trim().isNotEmpty && message != 'profile_blocked_msg'.tr
+        ? message
+        : 'Ce profil ne peut pas être affiché, car un blocage est actif entre ce compte et le vôtre. Pour respecter la confidentialité de chacun, les informations et les publications de ce profil ne sont pas accessibles.';
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: colors.outlineVariant.withValues(alpha: .65),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.shadow.withValues(alpha: .07),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: colors.errorContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.lock_person_rounded,
+                    size: 36,
+                    color: colors.onErrorContainer,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Text(
+                  'Profil indisponible',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  explanation,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 14,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withValues(alpha: .7),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 19, color: colors.onSurfaceVariant),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Les actions de suivi et la consultation des contenus sont désactivées pour ce profil.',
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 12.5,
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Retour'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
