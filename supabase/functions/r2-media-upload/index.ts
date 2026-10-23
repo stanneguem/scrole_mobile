@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
   if (body.action === "delete-owned-media" || body.action === "delete-profile-avatar") {
     const objectKey = typeof body.object_key === "string" ? body.object_key.trim() : "";
     const parts = objectKey.split("/");
-    if (!objectKey || objectKey.startsWith("/") || objectKey.includes("..") || objectKey.includes("\\\\") ||
+    if (!objectKey || objectKey.startsWith("/") || objectKey.includes("..") || objectKey.includes(String.fromCharCode(92)) ||
         parts.length !== 4 || !/^[a-f0-9-]+\\.(jpg|jpeg|png|webp|avif)$/i.test(parts[3])) {
       return reply(400, { error: "invalid_media_object_key" });
     }
