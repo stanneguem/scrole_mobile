@@ -109,14 +109,14 @@ class ExternalProfileScreen extends GetView<ExternalProfileController> {
                 if (isSuspended)
                   const _BlockingProfileOverlay(
                     title: 'Profil temporairement indisponible',
-                    message: 'Ce compte est actuellement suspendu. Son profil et ses fonctionnalités ne sont pas accessibles pour le moment.',
+                    message: 'profile_suspended_message'.tr,
                     icon: Icons.pause_circle_outline_rounded,
                     iconColor: Colors.orange,
                   )
                 else if (isBanned)
                   const _BlockingProfileOverlay(
-                    title: 'Profil indisponible',
-                    message: 'Ce compte a été banni de Scrole. Son profil et ses fonctionnalités ne sont plus accessibles.',
+                    title: 'profile_unavailable_title'.tr,
+                    message: 'profile_banned_message'.tr,
                     icon: Icons.block_rounded,
                     iconColor: Colors.red,
                   ),
@@ -1216,7 +1216,7 @@ class _PrivateProfile extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final explanation = message.trim().isNotEmpty && message != 'profile_blocked_msg'.tr
         ? message
-        : 'Ce profil ne peut pas être affiché, car un blocage est actif entre ce compte et le vôtre. Pour respecter la confidentialité de chacun, les informations et les publications de ce profil ne sont pas accessibles.';
+        : 'profile_blocked_explanation'.tr;
 
     return Center(
       child: SingleChildScrollView(
@@ -1293,7 +1293,7 @@ class _PrivateProfile extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Les actions de suivi et la consultation des contenus sont désactivées pour ce profil.',
+                          'profile_blocked_actions_disabled'.tr,
                           style: TextStyle(
                             color: colors.onSurfaceVariant,
                             fontSize: 12.5,
@@ -1310,7 +1310,7 @@ class _PrivateProfile extends StatelessWidget {
                   child: FilledButton.icon(
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('Retour'),
+                    label: Text('profile_action_back'.tr),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -1641,7 +1641,7 @@ class _ProfileDeletedView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Profil supprimé',
+              'profile_deleted_title'.tr,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1651,7 +1651,7 @@ class _ProfileDeletedView extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Ce compte a été supprimé et son profil n’est plus disponible sur Scrole.',
+              'profile_deleted_message'.tr,
               style: TextStyle(
                 fontSize: 14,
                 color: colors.onSurfaceVariant,
@@ -1663,7 +1663,7 @@ class _ProfileDeletedView extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
-              label: const Text('Retour', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: Text('profile_action_back'.tr, style: const TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primary,
                 foregroundColor: colors.onPrimary,
@@ -1702,7 +1702,7 @@ class _ProfileNotFoundView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Profil introuvable',
+              'profile_not_found_title'.tr,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1712,7 +1712,7 @@ class _ProfileNotFoundView extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Ce profil n’existe pas ou n’est plus disponible sur Scrole.',
+              'profile_not_found_message'.tr,
               style: TextStyle(
                 fontSize: 14,
                 color: colors.onSurfaceVariant,
@@ -1769,7 +1769,7 @@ class _ProfileErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Erreur de chargement',
+              'profile_load_error_title'.tr,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -1779,7 +1779,7 @@ class _ProfileErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              message.isNotEmpty ? message : 'Impossible de charger ce profil. Vérifiez votre connexion Internet.',
+              message.isNotEmpty ? message : 'profile_load_error_message'.tr,
               style: TextStyle(
                 fontSize: 14,
                 color: colors.onSurfaceVariant,
@@ -1800,7 +1800,7 @@ class _ProfileErrorView extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Réessayer', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('profile_action_retry'.tr, style: const TextStyle(fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: colors.onPrimary,
