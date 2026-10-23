@@ -152,16 +152,26 @@ class ContactsScreen extends GetView<ContactsController> {
                       : Colors.grey[500],
                 ),
               ),
-              trailing: contact.isOnline
-                  ? Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
+              trailing: contact.isBlockedByMe
+                  ? TextButton.icon(
+                      onPressed: () => controller.unblockContact(contact.id),
+                      icon: const Icon(Icons.lock_open_rounded, size: 17),
+                      label: const Text('Débloquer'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                     )
-                  : null,
+                  : contact.isOnline
+                      ? Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
               onTap: () => _openConversation(contact.id, contact.name, contact.avatarUrl),
             );
           },
