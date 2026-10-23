@@ -157,20 +157,33 @@ Deno.serve(async (req: Request) => {
     }
   };
 
-  const { data: profiles, error: profileError } = await admin.from("user_profiles")
-    .select("user_id,photo_url,cover_url").order("user_id").limit(5000);
-  if (profileError) return reply(500, { error: "profile_scan_failed" });
-  const { data: communities, error: communityError } = await admin.from("communities")
-    .select("id,photo_profile,photo_cover").order("id").limit(5000);
-  if (communityError) return reply(500, { error: "community_scan_failed" });
-
-  for (const row of profiles ?? []) {
-    await migrateField("user_profiles", "user_id", row.user_id, "photo_url", "profile_avatar", row.photo_url);
-    await migrateField("user_profiles", "user_id", row.user_id, "cover_url", "profile_cover", row.cover_url);
+  // Query only rows that still point to the legacy public buckets and paginate
+  // to avoid silently skipping records after the first 5,000 rows.
+  const pageSize = 250;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data: profiles, error: profileError } = await admin.from("user_profiles")
+      .select("user_id,photo_url,cover_url")
+      .or("photo_url.like.%supabase.co/storage/v1/object/public/avatars/%,cover_url.like.%supabase.co/storage/v1/object/public/avatars/%")
+      .order("user_id").range(offset, offset + pageSize - 1);
+    if (profileError) return reply(500, { error: "profile_scan_failed", offset });
+    for (const row of profiles ?? []) {
+      await migrateField("user_profiles", "user_id", row.user_id, "photo_url", "profile_avatar", row.photo_url);
+      await migrateField("user_profiles", "user_id", row.user_id, "cover_url", "profile_cover", row.cover_url);
+    }
+    if (!profiles || profiles.length < pageSize) break;
   }
-  for (const row of communities ?? []) {
-    await migrateField("communities", "id", row.id, "photo_profile", "community_avatar", row.photo_profile);
-    await migrateField("communities", "id", row.id, "photo_cover", "community_cover", row.photo_cover);
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data: communities, error: communityError } = await admin.from("communities")
+      .select("id,photo_profile,photo_cover")
+      .or("photo_profile.like.%supabase.co/storage/v1/object/public/community-media/%,photo_cover.like.%supabase.co/storage/v1/object/public/community-media/%")
+      .order("id").range(offset, offset + pageSize - 1);
+    if (communityError) return reply(500, { error: "community_scan_failed", offset });
+    for (const row of communities ?? []) {
+      await migrateField("communities", "id", row.id, "photo_profile", "community_avatar", row.photo_profile);
+      await migrateField("communities", "id", row.id, "photo_cover", "community_cover", row.photo_cover);
+    }
+    if (!communities || communities.length < pageSize) break;
   }
   return reply(summary.failed ? 207 : 200, { ...summary, note: "Source objects were not deleted. Re-run safely to retry failures." });
 });
