@@ -108,148 +108,26 @@ begin
     if v_media_count > 20 then raise exception 'Une publication peut contenir au maximum 20 médias'; end if;
     v_type := lower(coalesce(v_item->>'type', ''));
     v_url := v_item->>'url';
-
     if v_type = 'video' then
-      if lower(coalesce(v_item->>'storage', '')) <> 'r2' then
-        raise exception 'Vidéo invalide: storage doit être r2';
-      end if;
+      if lower(coalesce(v_item->>'storage', '')) <> 'r2' then raise exception 'Vidéo invalide: storage doit être r2'; end if;
       v_object_key := coalesce(v_item->>'object_key', '');
       v_duration := nullif(v_item->>'duration_seconds', '')::numeric;
-      if v_duration is null or v_duration <= 0 or v_duration > 30 then
-        raise exception 'Une vidéo doit durer au maximum 30 secondes';
-      end if;
-      if nullif(v_url, '') is null or v_url not like 'https://%' or position('..' in v_url) > 0 then
-        raise exception 'URL de vidéo invalide';
-      end if;
+      if v_duration is null or v_duration <= 0 or v_duration > 30 then raise exception 'Une vidéo doit durer au maximum 30 secondes'; end if;
+      if nullif(v_url, '') is null or v_url not like 'https://%' or position('..' in v_url) > 0 then raise exception 'URL de vidéo invalide'; end if;
       if p_community_id is not null then
-        if v_object_key not like 'communities/' || p_community_id::text || '/posts/videos/%' then
-          raise exception 'Clé de stockage vidéo invalide';
-        end if;
+        if v_object_key not like 'communities/' || p_community_id::text || '/posts/videos/%' then raise exception 'Clé de stockage vidéo invalide'; end if;
       else
-        if v_object_key not like 'users/' || v_uid::text || '/posts/videos/%' then
-          raise exception 'Clé de stockage vidéo invalide';
-        end if;
+        if v_object_key not like 'users/' || v_uid::text || '/posts/videos/%' then raise exception 'Clé de stockage vidéo invalide'; end if;
       end if;
-      if v_object_key !~ '\.(mp4|mov)
-  if not v_is_share and v_media_count = 0 and nullif(btrim(p_content), '') is null then
-    raise exception 'Un post doit contenir du texte ou au moins un média';
-  end if;
-  if char_length(coalesce(p_content, '')) > 5000 then raise exception 'Le contenu ne peut pas dépasser 5000 caractères'; end if;
-  if cardinality(coalesce(p_hashtags, '{}')) > 10 then raise exception 'Maximum 10 hashtags'; end if;
-  v_clean := private.clean_mentions(p_community_id, coalesce(p_mentions, '{}'), v_uid, 20);
-
-  if p_community_id is not null then
-    select post_permission, posts_require_approval into v_perm, v_approval
-    from public.community_settings where community_id = p_community_id;
-    v_perm := coalesce(v_perm, 'everyone'); v_approval := coalesce(v_approval, false);
-    if v_perm = 'nobody' then raise exception 'Les publications sont désactivées dans cette communauté'; end if;
-    if v_perm = 'admins_and_moderators' and not public.is_community_staff(p_community_id) then
-      raise exception 'Seuls les administrateurs et modérateurs peuvent publier';
-    end if;
-    if not v_is_share or nullif(btrim(p_content), '') is not null then
-      v_spam := private.detect_post_spam(p_community_id, v_uid, p_content);
-    end if;
-    if cardinality(v_spam) > 0 then v_status := 'spam_suspect';
-    elsif v_approval and not public.is_community_staff(p_community_id) then v_status := 'en_attente'; end if;
-  else
-    if (select count(*) from public.community_posts p
-        where p.author_id = v_uid and p.community_id is null
-          and p.created_at > now() - interval '10 minutes') >= 5 then
-      raise exception 'Vous publiez trop vite : 5 publications maximum toutes les 10 minutes';
-    end if;
-  end if;
-
-  if p_poll is not null then
-    if jsonb_typeof(p_poll) <> 'object' then raise exception 'Sondage invalide'; end if;
-    v_kind := p_poll->>'kind';
-    if v_kind is null or v_kind not in ('single', 'multiple', 'quiz', 'this_or_that') then
-      raise exception 'Type de sondage invalide';
-    end if;
-    v_opts := p_poll->'options';
-    if jsonb_typeof(v_opts) <> 'array' or jsonb_array_length(v_opts) < 2 or jsonb_array_length(v_opts) > 6 then
-      raise exception 'Un sondage doit contenir entre 2 et 6 options';
-    end if;
-    if nullif(p_poll->>'duration_hours', '') is not null then
-      if (p_poll->>'duration_hours')::numeric < 1 or (p_poll->>'duration_hours')::numeric > 168 then
-        raise exception 'Durée de sondage invalide';
-      end if;
-      v_end := now() + ((p_poll->>'duration_hours')::numeric * interval '1 hour');
-    end if;
-    if v_end is null and v_kind <> 'quiz' then raise exception 'La durée du sondage est obligatoire'; end if;
-  end if;
-
-  begin
-    insert into public.community_posts (
-      id, community_id, author_id, content, photo, photos, videos, media, status,
-      comments_enabled, sharing_enabled, reactions_enabled, audience, allow_promotion, shared_post_id, shared_comment_id)
-    values (
-      p_id, p_community_id, v_uid, nullif(btrim(p_content), ''),
-      case when cardinality(v_photos) > 0 then v_photos[1] end, v_photos, '[]'::jsonb,
-      coalesce(p_media, '[]'::jsonb), v_status,
-      coalesce(p_comments_enabled, true), coalesce(p_sharing_enabled, true), coalesce(p_reactions_enabled, true),
-      v_audience, coalesce(p_allow_promotion, true), v_shared, v_shared_comment)
-    returning * into v_row;
-  exception when unique_violation then
-    if v_shared is not null then raise exception 'Vous avez déjà partagé ce post ici'; end if;
-    if v_shared_comment is not null then raise exception 'Vous avez déjà partagé ce commentaire ici'; end if;
-    raise;
-  end;
-
-  if cardinality(coalesce(p_hashtags, '{}')) > 0 then
-    insert into public.hashtags (name, normalized_name)
-    select trim(x), lower(trim(x)) from unnest(p_hashtags) x where nullif(trim(x), '') is not null
-    on conflict (normalized_name) do nothing;
-    insert into public.community_post_hashtags (post_id, hashtag_id)
-    select p_id, h.id from public.hashtags h
-    where h.normalized_name = any (select lower(trim(x)) from unnest(p_hashtags) x where nullif(trim(x), '') is not null)
-    on conflict do nothing;
-  end if;
-  if cardinality(v_clean) > 0 then
-    insert into public.community_post_mentions (post_id, user_id)
-    select p_id, x from unnest(v_clean) x on conflict do nothing;
-  end if;
-  if p_poll is not null then
-    insert into public.community_polls (post_id, kind, ends_at, explanation)
-    values (p_id, v_kind, v_end, nullif(p_poll->>'explanation', ''));
-    for v_item in select value from jsonb_array_elements(v_opts) loop
-      v_i := v_i + 1;
-      insert into public.community_poll_options (post_id, sort_order, label, is_correct)
-      values (p_id, v_i, trim(v_item->>'label'), coalesce((v_item->>'is_correct')::boolean, false));
-    end loop;
-  end if;
-  if p_community_id is not null and cardinality(v_spam) > 0 then
-    insert into public.community_spam_flags (community_id, post_id, author_id, reasons, score)
-    values (p_community_id, p_id, v_uid, v_spam, cardinality(v_spam)) on conflict (post_id) do nothing;
-  end if;
-  if cardinality(v_clean) > 0 then perform private.notify_post_mentions(p_id); end if;
-
-  if v_shared is not null and v_orig.author_id <> v_uid then
-    perform private.notify_community_user(v_orig.author_id, 'post_shared', v_uid,
-      jsonb_build_object('post_id', v_orig.id, 'share_id', p_id, 'community_id', v_orig.community_id,
-                         'target_community_id', p_community_id, 'actor_id', v_uid),
-      'Publication partagée', 'Quelqu''un a partagé votre publication.');
-  end if;
-  if v_shared_comment is not null and v_ocomment.author_id <> v_uid then
-    perform private.notify_community_user(v_ocomment.author_id, 'comment_shared', v_uid,
-      jsonb_build_object('comment_id', v_ocomment.id, 'post_id', v_ocomment.post_id, 'share_id', p_id,
-                         'target_community_id', p_community_id, 'actor_id', v_uid),
-      'Commentaire partagé', 'Quelqu''un a partagé votre commentaire.');
-  end if;
-  return v_row;
-end
-$function$
- then raise exception 'Format vidéo non pris en charge'; end if;
+      if v_object_key !~ '\.(mp4|mov)$' then raise exception 'Format vidéo non pris en charge'; end if;
       continue;
     end if;
-
     if v_type <> 'photo' then raise exception 'Type de média non pris en charge'; end if;
     if lower(coalesce(v_item->>'storage', '')) <> 'supabase' then raise exception 'Photo invalide: storage doit être supabase'; end if;
-    if nullif(v_url, '') is null or v_url not like v_prefix or position('..' in v_url) > 0 then
-      raise exception 'Photo invalide';
-    end if;
+    if nullif(v_url, '') is null or v_url not like v_prefix or position('..' in v_url) > 0 then raise exception 'Photo invalide'; end if;
     v_photos := array_append(v_photos, v_url);
   end loop;
-  if not v_is_share and cardinality(v_photos) = 0 and nullif(btrim(p_content), '') is null then
+  if not v_is_share and v_media_count = 0 and nullif(btrim(p_content), '') is null then
     raise exception 'Un post doit contenir du texte ou au moins un média';
   end if;
   if char_length(coalesce(p_content, '')) > 5000 then raise exception 'Le contenu ne peut pas dépasser 5000 caractères'; end if;
