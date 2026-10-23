@@ -153,6 +153,11 @@ class ChatController extends GetxController {
           .maybeSingle();
       if (row == null) {
         _conversationPreferencesLoaded.value = true;
+        if (_pendingIncomingMedia.isNotEmpty) {
+          final pending = List<MessageModel>.from(_pendingIncomingMedia);
+          _pendingIncomingMedia.clear();
+          unawaited(_autoSaveIncomingMedia(pending));
+        }
         return;
       }
       conversationNotificationsEnabled.value =
@@ -168,7 +173,8 @@ class ChatController extends GetxController {
         _pendingIncomingMedia.clear();
       }
     } catch (e) {
-      _conversationPreferencesLoaded.value = true;
+      _conversationPreferencesLoaded.value = false;
+      _pendingIncomingMedia.clear();
       debugPrint('[ChatPreferences] load failed: $e');
     }
   }
