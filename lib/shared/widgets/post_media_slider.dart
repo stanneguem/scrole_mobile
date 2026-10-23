@@ -101,7 +101,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
               itemBuilder: (context, index) {
                 final item = widget.media[index];
                 return GestureDetector(
-                  onTap: () => _openFullScreen(context, index),
+                  onTap: item.isVideo ? null : () => _openFullScreen(context, index),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: item.isVideo
@@ -109,6 +109,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                             key: ValueKey('feed_video_${_getHeroTag(index)}'),
                             url: item.url ?? '',
                             thumbnailUrl: item.thumbnailUrl,
+                            onOpenFullScreen: () => _openFullScreen(context, index),
                           )
                         : AppCachedImage(
                             imageUrl: item.url,
@@ -339,11 +340,13 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
 class _InlineFeedVideo extends StatefulWidget {
   final String url;
   final String? thumbnailUrl;
+  final VoidCallback onOpenFullScreen;
 
   const _InlineFeedVideo({
     super.key,
     required this.url,
     required this.thumbnailUrl,
+    required this.onOpenFullScreen,
   });
 
   @override
@@ -417,9 +420,14 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
     return VisibilityDetector(
       key: ValueKey('visibility_${widget.key ?? widget.url}'),
       onVisibilityChanged: _onVisibilityChanged,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
+      child: GestureDetector(
+        onTap: () {
+          _controller?.pause();
+          widget.onOpenFullScreen();
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
           if (_controller != null && _controller!.value.isInitialized)
             FittedBox(
               fit: BoxFit.cover,
@@ -458,7 +466,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
