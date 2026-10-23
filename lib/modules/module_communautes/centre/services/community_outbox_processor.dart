@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:video_compress/video_compress.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -345,9 +346,51 @@ class CommunityOutboxProcessor extends GetxService {
           debugPrint('[POST_CREATE][$postKind] MEDIA_PREPARE_START operationId=$operationId count=${localMediaItems.length} types=${localMediaItems.map((m) => m['type'] ?? 'photo').toList()}');
           for (int i = uploadedMedia.length; i < localMediaItems.length; i++) {
             final mediaStartedAt = DateTime.now();
-            final localPath = localMediaItems[i]['path'].toString();
+            var localPath = (localMediaItems[i]['upload_path'] ?? localMediaItems[i]['path']).toString();
+            final originalPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
             debugPrint('[POST_CREATE][$postKind] MEDIA_START operationId=$operationId index=${i + 1}/${localMediaItems.length} type=$mediaType remote=${localPath.startsWith('http://') || localPath.startsWith('https://')} exists=${localPath.startsWith('http') ? 'n/a' : File(localPath).existsSync()}');
+            if (mediaType == 'video' &&
+                !localPath.startsWith('http://') &&
+                !localPath.startsWith('https://') &&
+                localMediaItems[i]['upload_path'] == null) {
+              final originalFile = File(originalPath);
+              if (!await originalFile.exists()) {
+                throw FileSystemException('La vidéo sélectionnée n’existe plus sur le stockage local.', originalPath);
+              }
+              final originalBytes = await originalFile.length();
+              debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_START operationId=$operationId index=${i + 1} originalBytes=$originalBytes');
+              final compressionStartedAt = DateTime.now();
+              final compressedInfo = await VideoCompress.compressVideo(
+                originalPath,
+                quality: VideoQuality.MediumQuality,
+                deleteOrigin: false,
+                includeAudio: true,
+              ).timeout(const Duration(minutes: 5), onTimeout: () {
+                throw TimeoutException('La compression vidéo a dépassé 5 minutes.');
+              });
+              final compressedFile = compressedInfo?.file;
+              if (compressedFile == null || !await compressedFile.exists()) {
+                throw StateError('La compression vidéo n’a pas produit de fichier exploitable.');
+              }
+              final compressedBytes = await compressedFile.length();
+              if (compressedBytes <= 0) {
+                throw StateError('La vidéo compressée est vide.');
+              }
+              // Cache the compressed path before upload so retry does not recompress.
+              localMediaItems[i]['upload_path'] = compressedFile.path;
+              localMediaItems[i]['original_size_bytes'] = originalBytes;
+              localMediaItems[i]['upload_size_bytes'] = compressedBytes;
+              payload['p_local_media'] = localMediaItems;
+              await db.update(
+                'post_outbox',
+                {'payload': jsonEncode(payload), 'updated_at': DateTime.now().toIso8601String()},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+              localPath = compressedFile.path;
+              debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_SUCCESS operationId=$operationId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes elapsedMs=${DateTime.now().difference(compressionStartedAt).inMilliseconds}');
+            }
             if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
               if (mediaType == 'video') {
                 throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
@@ -360,14 +403,17 @@ class CommunityOutboxProcessor extends GetxService {
                 if (mediaType == 'video') {
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'video',
-                    communityId: communityId, videoDuration: const Duration(seconds: 30),
+                    communityId: communityId,
+                    videoDuration: Duration(
+                      milliseconds: (await VideoCompress.getMediaInfo(localPath))?.duration?.round() ?? 0,
+                    ),
                   );
                   uploadedMedia.add({
                     'type': 'video', 'storage': 'r2',
                     'url': uploaded.publicUrl ?? uploaded.objectKey,
                     'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
                     'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
-                    'duration_seconds': 30,
+                    'duration_seconds': ((await VideoCompress.getMediaInfo(localPath))?.duration ?? 0) / 1000,
                   });
                   debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=video key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
                   await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
