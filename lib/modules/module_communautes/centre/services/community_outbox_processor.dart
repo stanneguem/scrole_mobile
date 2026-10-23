@@ -207,6 +207,23 @@ class CommunityOutboxProcessor extends GetxService {
     }
   }
 
+  Future<void> _persistUploadedMedia(
+    dynamic db,
+    int rowId,
+    Map<String, dynamic> payload,
+    List<Map<String, dynamic>> uploadedMedia,
+    String operationId,
+    String postKind,
+  ) async {
+    payload['p_uploaded_media'] = List<Map<String, dynamic>>.from(uploadedMedia);
+    await db.update(
+      'post_outbox',
+      {'payload': jsonEncode(payload), 'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [rowId],
+    );
+    debugPrint('[POST_CREATE][$postKind] MEDIA_PROGRESS_SAVED operationId=$operationId uploaded=${uploadedMedia.length}');
+  }
   bool _isDefinitiveUploadError(dynamic error) {
     final str = error.toString().toLowerCase();
     return str.contains('413') ||
@@ -277,21 +294,18 @@ class CommunityOutboxProcessor extends GetxService {
           final localMediaItems = rawLocalMedia.map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{'path': item.toString(), 'type': 'photo'}).toList();
           List<Map<String, dynamic>> uploadedMedia = [];
           final cachedUploadedMedia = payload['p_uploaded_media'];
-          final canReuseUploadedMedia = cachedUploadedMedia is List &&
-              cachedUploadedMedia.length == localMediaItems.length &&
-              cachedUploadedMedia.every((media) => media is Map && media['url'] != null);
-          if (canReuseUploadedMedia) {
-            uploadedMedia = cachedUploadedMedia
-                .map((media) => Map<String, dynamic>.from(media as Map))
-                .toList();
-            debugPrint('[POST_CREATE][$postKind] MEDIA_REUSE operationId=$operationId count=${uploadedMedia.length} reason=previous_upload_completed');
+          final cachedMediaList = cachedUploadedMedia is List ? cachedUploadedMedia : <dynamic>[];
+          final reusableCount = cachedMediaList.length <= localMediaItems.length ? cachedMediaList.length : 0;
+          if (reusableCount > 0) {
+            uploadedMedia = cachedMediaList.take(reusableCount).where((media) => media is Map && media['url'] != null).map((media) => Map<String, dynamic>.from(media as Map)).toList();
+            debugPrint('[POST_CREATE][$postKind] MEDIA_REUSE operationId=$operationId count=${uploadedMedia.length}/${localMediaItems.length} reason=previous_upload_progress');
           }
 
           final supabaseClient = Supabase.instance.client;
           final r2MediaRepository = R2MediaRepository(client: supabaseClient);
-          if (!canReuseUploadedMedia) {
+          if (uploadedMedia.length < localMediaItems.length) {
           debugPrint('[POST_CREATE][$postKind] MEDIA_PREPARE_START operationId=$operationId count=${localMediaItems.length} types=${localMediaItems.map((m) => m['type'] ?? 'photo').toList()}');
-          for (int i = 0; i < localMediaItems.length; i++) {
+          for (int i = uploadedMedia.length; i < localMediaItems.length; i++) {
             final mediaStartedAt = DateTime.now();
             final localPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
@@ -301,6 +315,7 @@ class CommunityOutboxProcessor extends GetxService {
                 throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
               }
               uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath}); // legacy queued remote URL; new local uploads always go to R2
+              await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
             } else {
               final file = File(localPath);
               if (file.existsSync()) {
@@ -317,6 +332,7 @@ class CommunityOutboxProcessor extends GetxService {
                     'duration_seconds': 30,
                   });
                   debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=video key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 } else {
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'photo', communityId: communityId,
@@ -328,6 +344,7 @@ class CommunityOutboxProcessor extends GetxService {
                     'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
                   });
                   debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=photo key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 }
               } else {
                 throw FileSystemException('Le média sélectionné n’existe plus sur le stockage local.', localPath);
@@ -337,13 +354,7 @@ class CommunityOutboxProcessor extends GetxService {
           if (uploadedMedia.length != localMediaItems.length) {
             throw StateError('Téléversement incomplet : ${uploadedMedia.length}/${localMediaItems.length} médias ont été préparés.');
           }
-          payload['p_uploaded_media'] = uploadedMedia;
-          await db.update(
-            'post_outbox',
-            {'payload': jsonEncode(payload), 'updated_at': DateTime.now().toIso8601String()},
-            where: 'id = ?', whereArgs: [id],
-          );
-          debugPrint('[POST_CREATE][$postKind] MEDIA_CACHE_SAVED operationId=$operationId count=${uploadedMedia.length}');
+          debugPrint('[POST_CREATE][$postKind] MEDIA_CACHE_READY operationId=$operationId count=${uploadedMedia.length}');
           }
 
           final pId = payload['p_id']?.toString() ?? operationId;
