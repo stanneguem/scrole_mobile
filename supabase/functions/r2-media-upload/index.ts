@@ -141,10 +141,12 @@ Deno.serve(async (req: Request) => {
     }
     if (!authorized) return reply(403, { error: "media_object_not_owned" });
 
-    const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
-    const canonicalUrl = `${publicBaseUrl}/${encodedKey}`;
-    if (typeof referencedUrl === "string" && referencedUrl.trim() === canonicalUrl) {
-      return reply(409, { error: "media_still_referenced" });
+    if (typeof referencedUrl === "string" && referencedUrl.trim()) {
+      try {
+        const referenced = new URL(referencedUrl.trim());
+        const referencedKey = referenced.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part)).join("/");
+        if (referencedKey === objectKey) return reply(409, { error: "media_still_referenced" });
+      } catch { /* Malformed or legacy URL cannot point to this canonical R2 key. */ }
     }
     try {
       const s3 = new S3Client({ region: "auto", endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } });
