@@ -31,18 +31,6 @@ class ContactsScreen extends GetView<ContactsController> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Card(
-              child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.groups_2_outlined)),
-                title: const Text('Créer un groupe de discussion'),
-                subtitle: const Text('Choisir un nom puis inviter des contacts'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Get.to(() => const CreateGroupConversationScreen()),
-              ),
-            ),
-          ),
           _buildSearchBar(colorScheme),
           Expanded(child: _buildContactsList(colorScheme)),
         ],
