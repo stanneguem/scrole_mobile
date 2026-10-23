@@ -80,8 +80,7 @@ Deno.serve(async (req: Request) => {
       const { data: member } = await admin.from("community_members").select("user_id").eq("community_id", communityId).eq("user_id", user.id).maybeSingle();
       allowed = !!member;
     } else if (parts[0] === "stories" && parts.length >= 3) {
-      const storyId = parts[1];
-      const { data: story } = await admin.from("stories").select("author_id,audience,status,expires_at").eq("id", storyId).maybeSingle();
+      const { data: story } = await admin.from("stories").select("author_id,audience,status,expires_at").eq("image_url", key).maybeSingle();
       if (story && story.status === "active" && (!story.expires_at || new Date(story.expires_at).getTime() > Date.now())) {
         if (story.author_id === user.id) allowed = true;
         else if (String(story.audience ?? "").toLowerCase() === "friends") {
@@ -170,10 +169,7 @@ Deno.serve(async (req: Request) => {
     if (!conversation || (conversation.user_one_id !== user.id && conversation.user_two_id !== user.id)) return reply(403, { error: "conversation_participant_required" });
     if (!privateBucket) return reply(503, { error: "private_media_bucket_not_configured" });
   } else if (category === "story_media") {
-    // Story media must be scoped to a story owned by the authenticated user.
-    if (!entityId) return reply(400, { error: "story_id_required" });
-    const { data: story } = await admin.from("stories").select("author_id").eq("id", entityId).maybeSingle();
-    if (!story || story.author_id !== user.id) return reply(403, { error: "story_owner_required" });
+    // Story media is uploaded before its database row is created.
     if (!privateBucket) return reply(503, { error: "private_media_bucket_not_configured" });
   } else if (category === "comment_media") {
     return reply(501, { error: "comment_parent_context_required" });
@@ -221,7 +217,7 @@ Deno.serve(async (req: Request) => {
     case "community_cover": key = `communities/${entityId}/cover/${uploadId}.${expectedExtension}`; break;
     case "event_media": key = `events/${entityId}/${user.id}/${uploadId}.${expectedExtension}`; break;
     case "message_media": key = `messages/${entityId}/${user.id}/${uploadId}.${expectedExtension}`; break;
-    case "story_media": key = `stories/${entityId}/${user.id}/${uploadId}.${expectedExtension}`; break;
+    case "story_media": key = `stories/${user.id}/${uploadId}.${expectedExtension}`; break;
     case "bug_report": key = `bug-reports/${user.id}/${uploadId}.${expectedExtension}`; break;
     default: return reply(501, { error: "category_authorization_not_implemented", category });
   }
