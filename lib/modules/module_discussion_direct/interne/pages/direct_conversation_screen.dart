@@ -64,12 +64,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
           onPressed: controller.onBack,
         ),
         title: Obx(() => _buildTitle()),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _openDetails,
-          ),
-        ],
+        actions: const [],
       ),
       body: Stack(
         children: [
@@ -758,7 +753,24 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
+                            borderSide: BorderSide(
+                              color: colors.outlineVariant.withValues(alpha: .35),
+                              width: 0.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(
+                              color: colors.outlineVariant.withValues(alpha: .35),
+                              width: 0.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(
+                              color: colors.outline.withValues(alpha: .55),
+                              width: 0.7,
+                            ),
                           ),
                           filled: true,
                           fillColor: hasWallpaper
