@@ -11,6 +11,7 @@ import 'package:scrole/modules/module_principale/centre/models/post_comment.dart
 import 'package:scrole/modules/module_principale/interne/enums/community_role_enum.dart';
 import 'package:scrole/shared/models/post_media.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 
@@ -156,6 +157,36 @@ class CommunityFeedController extends GetxController {
     } catch (e) {
       debugPrint('[COMMUNITY_FEED] Could not load pending outbox posts: $e');
       return [];
+    }
+  }
+
+  Future<void> retryQueuedPost(String postId) async {
+    final userId = currentUserId;
+    if (userId == null || communityId == null) return;
+    try {
+      final db = await Get.find<AppDatabase>().database;
+      final rows = await db.query(
+        'post_outbox',
+        columns: ['id'],
+        where: 'user_id = ? AND operation_id = ? AND community_id = ? AND status = ?',
+        whereArgs: [userId, postId, communityId, 'failed'],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await db.update(
+        'post_outbox',
+        {'status': 'pending', 'attempt_count': 0, 'next_retry_at': 0, 'updated_at': DateTime.now().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [rows.first['id']],
+      );
+      if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+        Get.put(CommunityOutboxProcessor());
+      }
+      unawaited(Get.find<CommunityOutboxProcessor>().processPendingPosts());
+      await fetchCommunityFeed(isRefresh: true);
+    } catch (e) {
+      debugPrint('[COMMUNITY_FEED] Retry queued post failed postId=$postId error=$e');
+      Get.snackbar('Réessai impossible', e.toString().replaceFirst('Exception: ', ''), snackPosition: SnackPosition.BOTTOM);
     }
   }
 
