@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/local_storage/structured/app_cache_database.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../externe/repositories/community_repository.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import '../persistence/community_local_dao.dart';
 
 class CommunityOutboxProcessor extends GetxService {
@@ -270,6 +271,8 @@ class CommunityOutboxProcessor extends GetxService {
           List<Map<String, dynamic>> uploadedMedia = [];
 
           final supabaseClient = Supabase.instance.client;
+          final r2MediaRepository = R2MediaRepository(client: supabaseClient);
+          debugPrint('[POST] [Outbox] Selected media count=${localMediaItems.length}');
           for (int i = 0; i < localMediaItems.length; i++) {
             final localPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
@@ -277,55 +280,42 @@ class CommunityOutboxProcessor extends GetxService {
               if (mediaType == 'video') {
                 throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
               }
-              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath});
+              uploadedMedia.add({'type': 'photo', 'storage': 'r2', 'url': localPath});
             } else {
               final file = File(localPath);
               if (file.existsSync()) {
-                final timestamp = DateTime.now().millisecondsSinceEpoch;
                 if (mediaType == 'video') {
-                  final bytes = await file.length();
-                  final mime = localPath.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
-                  final response = await supabaseClient.functions.invoke('r2-media-upload', body: {
-                    'action': 'create-upload-url',
-                    'community_id': communityId,
-                    'media_type': 'video',
-                    'content_type': mime,
-                    'size_bytes': bytes,
+                  final uploaded = await r2MediaRepository.uploadFile(
+                    file: file, category: 'post_media', mediaType: 'video',
+                    communityId: communityId, videoDuration: const Duration(seconds: 30),
+                  );
+                  uploadedMedia.add({
+                    'type': 'video', 'storage': 'r2',
+                    'url': uploaded.publicUrl ?? uploaded.objectKey,
+                    'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
+                    'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
                     'duration_seconds': 30,
-                    'extension': localPath.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4',
                   });
-                  final data = Map<String, dynamic>.from(response.data as Map);
-                  final uploadUrl = Uri.parse(data['upload_url'].toString());
-                  final httpClient = HttpClient();
-                  final request = await httpClient.putUrl(uploadUrl);
-                  request.headers.set(HttpHeaders.contentTypeHeader, mime);
-                  request.contentLength = bytes;
-                  await request.addStream(file.openRead());
-                  final uploadResponse = await request.close();
-                  await uploadResponse.drain<void>();
-                  httpClient.close(force: true);
-                  if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
-                    throw Exception('Échec du transfert vidéo vers Cloudflare R2 (${uploadResponse.statusCode}).');
-                  }
-                  uploadedMedia.add({'type': 'video', 'storage': 'r2', 'url': data['public_url'], 'object_key': data['object_key'], 'duration_seconds': 30, 'mime_type': mime});
-                  continue;
+                  debugPrint('[POST] [Outbox] R2 video uploaded ${i + 1}/${localMediaItems.length} key=${uploaded.objectKey}');
+                } else {
+                  final uploaded = await r2MediaRepository.uploadFile(
+                    file: file, category: 'post_media', mediaType: 'photo', communityId: communityId,
+                  );
+                  uploadedMedia.add({
+                    'type': 'photo', 'storage': 'r2',
+                    'url': uploaded.publicUrl ?? uploaded.objectKey,
+                    'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
+                    'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
+                  });
+                  debugPrint('[POST] [Outbox] R2 photo uploaded ${i + 1}/${localMediaItems.length} key=${uploaded.objectKey}');
                 }
-                final fileName = 'post_${timestamp}_$i.jpg';
-                final storagePath = (communityId != null && communityId.isNotEmpty)
-                    ? 'communities/$communityId/posts/$fileName'
-                    : 'users/$currentUserId/posts/$fileName';
-
-                debugPrint('[POST] [Outbox] Uploading photo $i to bucket community-media at path $storagePath');
-                await supabaseClient.storage.from('community-media').upload(
-                  storagePath,
-                  file,
-                  fileOptions: const FileOptions(upsert: true, contentType: 'image/jpeg'),
-                );
-                final publicUrl = supabaseClient.storage.from('community-media').getPublicUrl(storagePath);
-                debugPrint('[POST] [Outbox] Photo uploaded successfully. Public URL: $publicUrl');
-                uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': publicUrl});
+              } else {
+                throw FileSystemException('Le média sélectionné n’existe plus sur le stockage local.', localPath);
               }
             }
+          }
+          if (uploadedMedia.length != localMediaItems.length) {
+            throw StateError('Téléversement incomplet : ${uploadedMedia.length}/${localMediaItems.length} médias ont été préparés.');
           }
 
           final pId = payload['p_id']?.toString() ?? operationId;
