@@ -14,6 +14,7 @@ class StoriesRepository {
     String? p_background,
     String p_audience = 'public',
     Map<String, dynamic>? p_poll,
+    bool p_allow_reshare = false,
   }) async {
     try {
       debugPrint('[STORY] [Repository] Calling RPC create_story with p_id=$p_id, kind=$p_kind, audience=$p_audience');
@@ -21,6 +22,7 @@ class StoriesRepository {
         'p_id': p_id,
         'p_kind': p_kind,
         'p_audience': p_audience,
+        'p_allow_reshare': p_allow_reshare,
       };
       if (p_content != null && p_content.isNotEmpty) params['p_content'] = p_content;
       if (p_image_url != null && p_image_url.isNotEmpty) params['p_image_url'] = p_image_url;
