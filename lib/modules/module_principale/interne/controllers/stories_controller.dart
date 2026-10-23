@@ -10,6 +10,7 @@ import 'package:scrole/modules/module_principale/externe/repositories/stories_re
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import '../../../../app_controller.dart';
 import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 
 class StoryItem {
   final String id;
@@ -178,6 +179,7 @@ class EventStoryGroup {
 class StoriesController extends GetxController {
   final StoriesRepository _repo = StoriesRepository();
   final StorageRepository _storageRepo = StorageRepository();
+  final R2MediaRepository _r2MediaRepo = R2MediaRepository();
 
   final Rxn<EventStoryGroup> ownGroup = Rxn<EventStoryGroup>();
   final RxList<EventStoryGroup> followingGroups = <EventStoryGroup>[].obs;
@@ -325,16 +327,16 @@ class StoriesController extends GetxController {
         );
 
         final finalFile = compressedBytes != null ? File(compressedBytes.path) : fileToUpload;
-        final userId = Get.find<AppController>().authUser.value?.id ?? 'local_user';
-        final storagePath = 'users/$userId/stories/${pId}.jpg';
-
-        debugPrint('[STORY] [Controller] Uploading story image to storage path=$storagePath');
-        imageUrl = await _storageRepo.uploadFile(
+        debugPrint('[STORY] [Controller] Uploading story image to private Cloudflare R2');
+        final uploaded = await _r2MediaRepo.uploadFile(
           file: finalFile,
-          bucket: 'community-media',
-          path: storagePath,
+          category: 'story_media',
+          mediaType: 'image',
         );
-        debugPrint('[STORY] [Controller] Story image uploaded successfully: $imageUrl');
+        // Store the canonical private R2 object key. The media URL endpoint
+        // checks story visibility before issuing a short-lived signed URL.
+        imageUrl = uploaded.objectKey;
+        debugPrint('[STORY] [Controller] Story image uploaded to R2 object key: $imageUrl');
       } catch (e, st) {
         debugPrint('[STORY] [Controller] Story image compression/upload error: $e\n$st');
         Get.snackbar('Erreur', 'Échec de l\'upload de l\'image', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
