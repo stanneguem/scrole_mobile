@@ -136,7 +136,8 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
                     child: _ChatMediaImage(url: urls[index]),
                   ),
                 ),
-              ),,
+              ),
+            ),
             Positioned(
               top: 4,
               left: 8,
