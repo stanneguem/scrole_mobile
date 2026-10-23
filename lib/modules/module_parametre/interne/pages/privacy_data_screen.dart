@@ -171,7 +171,7 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
                 colors: colors,
               )),
               Obx(() => _switchTile(
-                icon: CupertinoIcons.bell_badge,
+                icon: CupertinoIcons.bell_fill,
                 title: 'settings_notif_push'.tr,
                 subtitle: 'settings_notif_push_desc'.tr,
                 value: preferencesService.preferences.value.notifPush,
