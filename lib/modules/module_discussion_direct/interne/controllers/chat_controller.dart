@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
@@ -31,6 +32,8 @@ class ChatController extends GetxController {
   final RxList<MessageModel> messages = <MessageModel>[].obs;
   final RxBool isTyping = false.obs;
   final RxBool isOtherUserTyping = false.obs;
+  final RxBool blockedByOtherUser = false.obs;
+  final RxBool blockedByMe = false.obs;
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
   final Rxn<MessageModel> editingMessage = Rxn<MessageModel>();
@@ -82,6 +85,7 @@ class ChatController extends GetxController {
   void onInit() {
     super.onInit();
     _loadWallpaper();
+    unawaited(refreshBlockStatus());
     _bindConversation();
     messageController.addListener(_composerChanged);
     _audioSub = audioPlayer.playerStateStream.listen((state) => isPlayingReview.value = state.playing);
@@ -248,6 +252,49 @@ class ChatController extends GetxController {
   void clearReply() => repliedMessage.value = null;
   void onBack() => Get.back();
   void goToOtherUserProfile() { if (otherUserId.isNotEmpty) Get.toNamed(AppPages.externalProfilePath(otherUserId)); }
+
+  Future<void> refreshBlockStatus() async {
+    if (otherUserId.isEmpty) return;
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'scrole_get_direct_block_status',
+        params: {'p_other_user_id': otherUserId},
+      );
+      final row = result is List && result.isNotEmpty ? result.first : result;
+      if (row is Map) {
+        blockedByMe.value = row['blocked_by_me'] == true;
+        blockedByOtherUser.value = row['blocked_me'] == true;
+      }
+    } catch (_) {
+      // Keep the chat available if status lookup fails; server still rejects blocked sends.
+    }
+  }
+
+  Future<void> blockOtherUser() async {
+    if (otherUserId.isEmpty) throw StateError('Utilisateur invalide.');
+    await Supabase.instance.client.rpc(
+      'scrole_block_direct_user',
+      params: {'p_other_user_id': otherUserId},
+    );
+    await refreshBlockStatus();
+  }
+
+  Future<void> reportOtherUser(String reason, String? details) async {
+    if (otherUserId.isEmpty) throw StateError('Utilisateur invalide.');
+    await Supabase.instance.client.rpc('scrole_report_direct_user', params: {
+      'p_reported_user_id': otherUserId,
+      'p_reason': reason,
+      'p_details': details,
+    });
+  }
+
+  Future<void> clearConversationForMe() async {
+    if (conversationId.isEmpty || isDraftConversation) return;
+    final result = await _repository.deleteConversation(conversationId);
+    if (!result.success) throw StateError(result.message);
+    messages.clear();
+  }
+
   Future<void> pickMedia() => pickGalleryMedia();
   Future<void> pickCameraMedia() async { final file = await ImagePicker().pickImage(source: ImageSource.camera); if (file != null) await _sendMedia([file]); }
   Future<void> pickGalleryMedia() async {
