@@ -50,7 +50,10 @@ class R2MediaRepository {
   Future<void> deleteReplacedPublicMedia(String previousUrl) async {
     final uri = Uri.tryParse(previousUrl.trim());
     if (uri == null || !uri.hasAuthority || !["http", "https"].contains(uri.scheme)) return;
-    final segments = uri.pathSegments.map(Uri.decodeComponent).toList();
+    final pathSegments = uri.pathSegments.map(Uri.decodeComponent).toList();
+    final rootIndex = pathSegments.indexWhere((part) => part == "profiles" || part == "communities");
+    if (rootIndex < 0) return;
+    final segments = pathSegments.sublist(rootIndex);
     final key = segments.join("/");
     final userId = _client.auth.currentUser?.id;
     final isOwnedProfileMedia = segments.length == 4 &&
