@@ -366,6 +366,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     child: FeedPostCard(
                       post: post,
                       currentCommunityId: communityId,
+                      onRetryPublishing: () => controller.retryQueuedPost(post.id),
                       onReactionTap: (reaction) => controller.handleReaction(post.id, reaction),
                       onCommentTap: () {
                         showModalBottomSheet(
