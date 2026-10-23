@@ -25,6 +25,7 @@ import '../models/event_guest_invitation_model.dart';
 import '../models/event_statistics_model.dart';
 import '../models/event_sponsor_invitation_model.dart';
 import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../../../modules/module_discussion_direct/interne/controllers/contacts_controller.dart';
 import '../../../../shared/models/interest_model.dart';
 
@@ -1754,18 +1755,15 @@ class EventRepository {
     }
   }
 
-  Future<String> uploadCover(String userId, File file) async {
-    return await _remote.uploadEventCover(userId, file);
+  Future<String> uploadCover(String eventId, File file) async {
+    return _remote.uploadEventCover(eventId, file);
   }
 
   Future<void> deleteEventCover(String publicUrl) async {
-    if (publicUrl.isEmpty) return;
-    try {
-      final storage = StorageRepository();
-      await storage.deletePublicFile(bucket: 'event-media', publicUrl: publicUrl);
-    } catch (e) {
-      debugPrint('[EventRepository] deleteEventCover error: $e');
-    }
+    if (publicUrl.trim().isEmpty) return;
+    // The R2 repository ignores legacy Supabase Storage URLs, so existing
+    // event covers remain untouched until explicitly migrated by a separate task.
+    await R2MediaRepository().deleteReplacedPublicMedia(publicUrl);
   }
 
   Future<void> updateEvent(String id, Map<String, dynamic> data) async {
