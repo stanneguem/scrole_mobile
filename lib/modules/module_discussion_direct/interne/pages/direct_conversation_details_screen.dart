@@ -352,12 +352,17 @@ class _DirectConversationDetailsScreenState
             destructive: true,
             onTap: _confirmClearConversation,
           ),
-          _actionTile(
-            icon: Icons.block_rounded,
-            title: 'direct_details_block'.trParams({'name': _displayName}),
-            destructive: true,
-            onTap: _confirmBlock,
-          ),
+          Obx(() {
+            final blocked = Get.find<DirectConversationController>().blockedByMe.value;
+            return _actionTile(
+              icon: blocked ? Icons.lock_open_rounded : Icons.block_rounded,
+              title: blocked
+                  ? 'Débloquer $_displayName'
+                  : 'direct_details_block'.trParams({'name': _displayName}),
+              destructive: !blocked,
+              onTap: _confirmBlock,
+            );
+          }),
         ],
       ),
     );
@@ -498,64 +503,45 @@ class _DirectConversationDetailsScreenState
   }
 
   void _confirmBlock() {
+    final controller = Get.find<DirectConversationController>();
+    final isBlocked = controller.blockedByMe.value;
+    final action = isBlocked ? 'Débloquer' : 'Bloquer';
     Get.dialog(
       AlertDialog(
-        title: Text(
-          'direct_details_block_title'.trParams({'name': _displayName}),
-        ),
-        content: Text('direct_details_block_message'.tr),
+        title: Text('$action $_displayName ?'),
+        content: Text(isBlocked
+            ? 'Cette personne pourra de nouveau vous envoyer des messages.'
+            : 'Cette personne ne pourra plus vous envoyer de messages.'),
         actions: [
           TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            style: FilledButton.styleFrom(
+              backgroundColor: isBlocked ? AppColors.primary : AppColors.error,
+            ),
             onPressed: () async {
               Get.back();
               try {
-                final controller = Get.find<DirectConversationController>();
-                await controller.blockOtherUser();
+                await controller.toggleBlockOtherUser();
                 if (!mounted) return;
                 Get.back();
                 Get.snackbar(
                   'chats_title'.tr,
-                  '${_displayName} a été bloqué. Cette personne ne pourra plus vous envoyer de messages.',
+                  controller.blockedByMe.value
+                      ? '$_displayName a été bloqué.'
+                      : '$_displayName a été débloqué.',
                   snackPosition: SnackPosition.BOTTOM,
                   margin: const EdgeInsets.all(12),
                 );
               } catch (e) {
-                Get.snackbar('chats_title'.tr, 'Impossible de bloquer cet utilisateur : $e',
-                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Impossible de ${isBlocked ? 'débloquer' : 'bloquer'} cet utilisateur : $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
               }
             },
-            child: Text('direct_details_block_action'.tr),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmClearConversation() {
-    Get.dialog(
-      AlertDialog(
-        title: Text('direct_details_clear_title'.tr),
-        content: Text('direct_details_clear_message'.tr),
-        actions: [
-          TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
-          FilledButton(
-            onPressed: () async {
-              Get.back();
-              try {
-                final controller = Get.find<DirectConversationController>();
-                await controller.clearConversationForMe();
-                if (!mounted) return;
-                Get.back();
-                Get.snackbar('chats_title'.tr, 'Discussion effacée de votre messagerie.',
-                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
-              } catch (e) {
-                Get.snackbar('chats_title'.tr, 'Impossible d’effacer la discussion : $e',
-                    snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
-              }
-            },
-            child: Text('direct_details_clear_action'.tr),
+            child: Text(action),
           ),
         ],
       ),
