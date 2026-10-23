@@ -3,9 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../service_global/supabse_service.dart';
+import 'r2_media_repository.dart';
 
 class StorageRepository {
   final SupabaseClient _client = Get.find<SupabaseService>().client;
+  final R2MediaRepository _r2MediaRepository = R2MediaRepository();
 
   /// Upload un fichier vers un bucket Supabase
   Future<String> uploadFile({
@@ -89,44 +91,32 @@ class StorageRepository {
   /// Upload une photo de profil utilisateur
   /// Structure : profiles/{userId}/avatar_{timestamp}.jpg
   Future<String> uploadProfilePicture(String userId, File file) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'avatar_$timestamp.$extension';
-    final dirPath = 'profiles/$userId';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'avatars', path: path, file: file);
-    
-    // Nettoyage asynchrone (ne bloque pas l'utilisateur)
-    await _cleanOldFiles(
-      bucket: 'avatars', 
-      directoryPath: dirPath, 
-      prefix: 'avatar_', 
-      currentFileName: fileName,
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null || currentUser.id != userId) {
+      throw Exception('Vous ne pouvez téléverser que votre propre photo de profil.');
+    }
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'profile_avatar',
+      mediaType: 'image',
+      entityId: userId,
     );
-
-    return url;
+    return uploaded.publicUrl;
   }
 
-  /// Upload une photo de couverture utilisateur
-  /// Structure : profiles/{userId}/cover_{timestamp}.jpg
+  /// Upload une photo de couverture utilisateur vers Cloudflare R2.
   Future<String> uploadProfileCover(String userId, File file) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'cover_$timestamp.$extension';
-    final dirPath = 'profiles/$userId';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'avatars', path: path, file: file);
-
-    await _cleanOldFiles(
-      bucket: 'avatars', 
-      directoryPath: dirPath, 
-      prefix: 'cover_', 
-      currentFileName: fileName,
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null || currentUser.id != userId) {
+      throw Exception('Vous ne pouvez téléverser que votre propre couverture de profil.');
+    }
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'profile_cover',
+      mediaType: 'image',
+      entityId: userId,
     );
-
-    return url;
+    return uploaded.publicUrl;
   }
 
   /// Upload une photo de profil de communauté
