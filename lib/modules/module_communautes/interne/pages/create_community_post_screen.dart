@@ -40,12 +40,20 @@ class CreateCommunityPostScreen extends StatefulWidget {
   State<CreateCommunityPostScreen> createState() => _CreateCommunityPostScreenState();
 }
 
+class _SelectedPostMedia {
+  final File file;
+  final bool isVideo;
+  const _SelectedPostMedia({required this.file, required this.isVideo});
+}
+
 class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   late final TextEditingController _textController;
-  final List<File> _selectedFiles = [];
-  final List<File> _selectedVideos = [];
+  // Single source of truth: this list preserves the exact order in which media are selected.
+  final List<_SelectedPostMedia> _selectedMedia = [];
+  List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+  List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
-  int get _selectedMediaCount => _selectedFiles.length + _selectedVideos.length;
+  int get _selectedMediaCount => _selectedMedia.length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -480,8 +488,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   Future<void> _publish() async {
     if (!_canPublish) return;
 
-    List<File> filesToPublish = List.from(_selectedFiles);
-    final videosToPublish = List<File>.from(_selectedVideos);
+    final orderedMedia = List<_SelectedPostMedia>.from(_selectedMedia);
+    List<File> filesToPublish = orderedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+    final videosToPublish = orderedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
     if (filesToPublish.isEmpty && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       filesToPublish.add(File(_prefilledUrl!));
     }
@@ -549,6 +558,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         content: postContent,
         imageFiles: filesToPublish,
         videoFiles: videosToPublish,
+        orderedMediaFiles: orderedMedia.map((m) => m.file).toList(),
+        orderedMediaTypes: orderedMedia.map((m) => m.isVideo ? 'video' : 'photo').toList(),
         audience: isCommunity ? 'public' : _audience,
         commentsEnabled: _commentsEnabled,
         sharingEnabled: _sharingEnabled,
@@ -619,10 +630,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         onSelected: (files) {
           if (files.isNotEmpty) {
             setState(() {
-              _selectedFiles.addAll(files.map((f) => File(f.path)));
-              if (_selectedMediaCount > maxPostMedia) {
-                _selectedFiles.removeRange(maxPostMedia - _selectedVideos.length, _selectedFiles.length);
-              }
+              final remaining = maxPostMedia - _selectedMedia.length;
+              _selectedMedia.addAll(files.take(remaining).map((f) => _SelectedPostMedia(file: File(f.path), isVideo: false)));
               _prefilledUrl = null;
             });
           }
@@ -670,7 +679,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _selectedVideos.add(file);
+        _selectedMedia.add(_SelectedPostMedia(file: file, isVideo: true));
         _prefilledUrl = null;
       });
     } catch (e) {
@@ -1019,8 +1028,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           ),
                           itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
-                            final isVideo = index >= _selectedFiles.length;
-                            final file = isVideo ? _selectedVideos[index - _selectedFiles.length] : _selectedFiles[index];
+                            final media = _selectedMedia[index];
+                            final isVideo = media.isVideo;
+                            final file = media.file;
                             return Stack(
                               fit: StackFit.expand,
                               children: [
@@ -1034,7 +1044,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                   top: 6,
                                   right: 6,
                                   child: GestureDetector(
-                                    onTap: () => setState(() => _selectedFiles.removeAt(index)),
+                                    onTap: () => setState(() => _selectedMedia.removeAt(index)),
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(
