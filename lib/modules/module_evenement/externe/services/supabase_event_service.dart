@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../centre/models/checkin_model.dart';
 
 class SupabaseEventService {
@@ -1063,10 +1064,18 @@ class SupabaseEventService {
     return Map<String, dynamic>.from(response as Map);
   }
 
-  Future<String> uploadEventCover(String userId, File file) async {
-    final path = '$userId/events/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await _client.storage.from('event-media').upload(path, file);
-    return _client.storage.from('event-media').getPublicUrl(path);
+  Future<String> uploadEventCover(String eventId, File file) async {
+    final uploaded = await R2MediaRepository(client: _client).uploadFile(
+      file: file,
+      category: 'event_media',
+      mediaType: 'image',
+      entityId: eventId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty) {
+      throw StateError('Cloudflare R2 n’a pas retourné d’URL publique pour la couverture de l’événement.');
+    }
+    return url;
   }
 
   Future<void> updateEvent(String id, Map<String, dynamic> data) async {
