@@ -291,7 +291,7 @@ class ChatController extends GetxController {
   Future<void> clearConversationForMe() async {
     if (conversationId.isEmpty || isDraftConversation) return;
     final result = await _repository.deleteConversation(conversationId);
-    if (!result.success) throw StateError(result.message);
+    if (!result.success) throw StateError(result.message ?? 'Impossible de supprimer la discussion.');
     messages.clear();
   }
 
