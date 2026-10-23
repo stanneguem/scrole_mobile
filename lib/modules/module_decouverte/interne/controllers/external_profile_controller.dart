@@ -47,11 +47,20 @@ class ExternalProfileController extends GetxController {
       update(['profile_initial']);
       return;
     }
-    loadProfile();
-    loadProfileTab(0);
+    unawaited(_initializeProfile());
     _subscribeToRelationshipChanges();
   }
 
+
+  Future<void> _initializeProfile() async {
+    await loadProfile();
+    // Do not request posts/events/liked content until the relationship check
+    // confirms that this profile is visible to the current user.
+    if (profileState.value == ProfileScreenState.loaded &&
+        profile.value?.relationshipState != 'blocked') {
+      await loadProfileTab(0);
+    }
+  }
 
   String _profileTabRpcName(int index) {
     switch (index) {
@@ -155,7 +164,35 @@ class ExternalProfileController extends GetxController {
             profileState.value = ProfileScreenState.loaded;
             profile.value = result.profile;
             final relation = await _repository.getRelationship(userId, forceRefresh: true);
-            final stats = await _repository.getFollowStats(userId: userId);
+            final relationState = (relation['state'] ?? 'none').toString();
+
+            // A blocked profile must not trigger protected tab/stat RPCs. Those
+            // RPCs correctly reject the request, but doing them anyway creates
+            // noisy stack traces and leaves the profile screen in a partial error.
+            if (relationState == 'blocked' || relation['is_blocked'] == true) {
+              final blockedProfile = result.profile!.copyWith(
+                isFollowing: false,
+                isConnected: false,
+                connectionRequestSent: false,
+                followsMe: false,
+                relationshipState: 'blocked',
+                clearRequestId: true,
+                clearRetryAt: true,
+              );
+              profile.value = blockedProfile;
+              isFollowing.value = false;
+              profileTabItems.clear();
+              profileTabErrors.clear();
+              loadedProfileTabs.addAll([0, 1, 2]);
+              return;
+            }
+
+            Map<String, dynamic> stats = <String, dynamic>{};
+            try {
+              stats = await _repository.getFollowStats(userId: userId);
+            } catch (e) {
+              debugPrint('[ExternalProfileController] follow stats unavailable: $e');
+            }
             Map<String, dynamic> engagementStats = <String, dynamic>{};
             double? reputationV2Score;
             try {
@@ -181,7 +218,6 @@ class ExternalProfileController extends GetxController {
             } catch (e) {
               debugPrint('[ExternalProfileController] V2 reputation unavailable; legacy fallback used: $e');
             }
-            final relationState = (relation['state'] ?? 'none').toString();
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
               isConnected: relation['is_friend'] == true,
