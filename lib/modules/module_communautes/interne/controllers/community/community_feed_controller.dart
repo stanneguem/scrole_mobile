@@ -212,6 +212,18 @@ class CommunityFeedController extends GetxController {
 
     try {
       debugPrint('[COMMUNITY_FEED] Fetching posts via get_community_feed for communityId=$communityId, isRefresh=$isRefresh');
+      // Publish the local outbox placeholder before waiting on the network.
+      final userId = currentUserId;
+      final pending = userId == null ? <CommunityPost>[] : await _getPendingOutboxPosts(userId);
+      if (pending.isNotEmpty) {
+        final existingRemote = posts.where((post) => !post.isPublishing).toList();
+        final previewById = <String, CommunityPost>{};
+        for (final post in [...pending, ...existingRemote]) {
+          previewById[post.id] = post;
+        }
+        posts.assignAll(previewById.values);
+        feedState.value = CommunityFeedState.loaded;
+      }
       final result = await _feedRepo.getCommunityFeed(communityId!);
       final items = result['items'] as List<CommunityPost>;
       nextCursor = result['next_cursor']?.toString();
@@ -219,8 +231,6 @@ class CommunityFeedController extends GetxController {
 
       // Keep the local outbox representation visible until the server confirms
       // the same post ID. Deduplicate by ID so confirmation never creates twins.
-      final userId = currentUserId;
-      final pending = userId == null ? <CommunityPost>[] : await _getPendingOutboxPosts(userId);
       final byId = <String, CommunityPost>{};
       for (final post in [...pending, ...items]) {
         byId[post.id] = post.isPublishing ? post : post;
