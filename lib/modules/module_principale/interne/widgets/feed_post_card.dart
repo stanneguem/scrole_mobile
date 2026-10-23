@@ -104,6 +104,7 @@ class FeedPostCard extends StatelessWidget {
   final VoidCallback? onMoreTap;
   final VoidCallback? onHidePost;
   final VoidCallback? onJoinCommunity;
+  final VoidCallback? onRetryPublishing;
   final String? currentCommunityId;
 
   const FeedPostCard({
@@ -115,13 +116,14 @@ class FeedPostCard extends StatelessWidget {
     this.onMoreTap,
     this.onHidePost,
     this.onJoinCommunity,
+    this.onRetryPublishing,
     this.currentCommunityId,
   });
 
   @override
   Widget build(BuildContext context) {
     if (post.isPublishing) {
-      return _PendingPostCard(post: post);
+      return _PendingPostCard(post: post, onRetry: onRetryPublishing);
     }
     if (post.sharedPostId != null || post.sharedPost != null) {
       return _RepublicationPostCard(
@@ -2654,7 +2656,8 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
 /// before the backend confirms the post.
 class _PendingPostCard extends StatelessWidget {
   final CommunityPost post;
-  const _PendingPostCard({required this.post});
+  final VoidCallback? onRetry;
+  const _PendingPostCard({required this.post, this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -2710,10 +2713,21 @@ class _PendingPostCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             failed
-                ? 'Le serveur n’a pas confirmé cette publication. Consulte la connexion puis réessaie.'
+                ? 'Le serveur n’a pas confirmé cette publication. Tu peux relancer l’envoi.'
                 : 'Les interactions seront activées dès la confirmation du serveur.',
             style: TextStyle(fontSize: 11.5, color: colors.onSurfaceVariant),
           ),
+          if (failed && onRetry != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded, size: 17),
+                label: const Text('Réessayer'),
+              ),
+            ),
+          ],
         ],
       ),
     );
