@@ -54,6 +54,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
   int get _selectedMediaCount => _selectedMedia.length;
+  int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -613,11 +614,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = maxPostMedia - _selectedMediaCount;
+    final maxAllowed = [maxPostPhotos - _selectedPhotoCount, maxPostMedia - _selectedMediaCount].reduce((a, b) => a < b ? a : b);
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous ne pouvez pas ajouter plus de $maxPostMedia médias au total.',
+        'Vous pouvez ajouter au maximum $maxPostPhotos photos et $maxPostMedia médias au total.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -634,7 +635,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         onSelected: (files) {
           if (files.isNotEmpty) {
             setState(() {
-              final remaining = maxPostMedia - _selectedMedia.length;
+              final remainingPhotos = maxPostPhotos - _selectedPhotoCount;
+              final remainingTotal = maxPostMedia - _selectedMedia.length;
+              final remaining = remainingPhotos < remainingTotal ? remainingPhotos : remainingTotal;
               _selectedMedia.addAll(files.take(remaining).map((f) => _SelectedPostMedia(file: File(f.path), isVideo: false)));
               _prefilledUrl = null;
             });
