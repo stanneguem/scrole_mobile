@@ -137,7 +137,20 @@ class SupabaseMessagingService {
     return null;
   }
 
-  Future<void> markDelivered(String id) => _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+  Future<void> markDelivered(String id, {bool cleanupMedia = true}) async {
+    await _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+    if (!cleanupMedia) return;
+    try {
+      await _client.functions.invoke(
+        'delete-delivered-message-media',
+        body: {'message_id': id},
+      );
+    } catch (error) {
+      // Delivery remains recorded if R2 is temporarily unavailable.
+      // A later incoming event can retry this idempotent cleanup.
+      debugPrint('[Messaging] Delivered-media cleanup deferred: $error');
+    }
+  }
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
     'p_conversation_id': conversationId,
     'p_last_read_at': at.toUtc().toIso8601String(),
