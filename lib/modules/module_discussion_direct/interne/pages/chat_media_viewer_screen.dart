@@ -133,18 +133,10 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
                   minScale: 0.7,
                   maxScale: 4,
                   child: SizedBox.expand(
-                    child: Image(
-                      image: _ChatImageProvider(urls[index]),
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Center(
-                        child: Icon(Icons.broken_image_outlined,
-                            color: Colors.white70, size: 56),
-                      ),
-                    ),
+                    child: _ChatMediaImage(url: urls[index]),
                   ),
                 ),
-              ),
-            ),
+              ),,
             Positioned(
               top: 4,
               left: 8,
@@ -246,37 +238,50 @@ class _CircleAction extends StatelessWidget {
       );
 }
 
-class _ChatImageProvider extends ImageProvider<_ChatImageProvider> {
-  const _ChatImageProvider(this.url);
+class _ChatMediaImage extends StatelessWidget {
+  const _ChatMediaImage({required this.url});
   final String url;
 
   @override
-  Future<_ChatImageProvider> obtainKey(ImageConfiguration configuration) =>
-      SynchronousFuture<_ChatImageProvider>(this);
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: ChatMediaCache.instance.resolveLocalPath(url),
+      builder: (context, snapshot) {
+        final path = snapshot.data;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        }
+        if (path != null && File(path).existsSync()) {
+          return Image.file(
+            File(path),
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const _UnavailableImage(),
+          );
+        }
+        if (ChatMediaCache.isHttpUrl(url)) {
+          return Image.network(
+            url,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const _UnavailableImage(),
+          );
+        }
+        return const _UnavailableImage();
+      },
+    );
+  }
+}
+
+class _UnavailableImage extends StatelessWidget {
+  const _UnavailableImage();
 
   @override
-  ImageStreamCompleter loadImage(
-    _ChatImageProvider key,
-    ImageDecoderCallback decode,
-  ) {
-    return OneFrameImageStreamCompleter(_load());
-  }
-
-  Future<ImageInfo> _load() async {
-    final local = await ChatMediaCache.instance.resolveLocalPath(url);
-    if (local != null && await File(local).exists()) {
-      final bytes = await File(local).readAsBytes();
-      final codec = await instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      return ImageInfo(image: frame.image);
-    }
-    if (ChatMediaCache.isHttpUrl(url)) {
-      final file = await DefaultCacheManager().getSingleFile(url);
-      final bytes = await file.readAsBytes();
-      final codec = await instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      return ImageInfo(image: frame.image);
-    }
-    throw const FileSystemException('Image de discussion indisponible');
-  }
+  Widget build(BuildContext context) => const Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Colors.white70,
+          size: 56,
+        ),
+      );
 }
