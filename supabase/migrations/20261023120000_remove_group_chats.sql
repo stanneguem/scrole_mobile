@@ -6,6 +6,14 @@ drop policy if exists "group_media_active_members_read" on storage.objects;
 drop policy if exists "group_media_members_upload_own_folder" on storage.objects;
 drop policy if exists "group_media_uploader_delete_own_files" on storage.objects;
 
+-- Remove table policies first because they depend on group_is_active_member().
+drop policy if exists group_conversations_member_read on public.group_conversations;
+drop policy if exists group_members_member_read on public.group_conversation_members;
+drop policy if exists group_invitations_recipient_or_admin_read on public.group_conversation_invitations;
+drop policy if exists group_messages_active_member_read on public.group_messages;
+drop policy if exists group_receipts_active_member_read on public.group_message_receipts;
+drop policy if exists group_wallpaper_owner_read on public.group_member_wallpapers;
+
 -- Remove group invitation trigger and all dedicated RPCs.
 drop trigger if exists group_invitation_notification_trigger on public.group_conversation_invitations;
 drop function if exists public.notify_group_invitation_created();
