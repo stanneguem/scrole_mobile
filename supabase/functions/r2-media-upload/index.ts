@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
   const accountId = Deno.env.get("R2_ACCOUNT_ID");
   const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID");
   const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY");
-  const bucket = Deno.env.get("R2_BUCKET_NAME");
+  const bucket = Deno.env.get("R2_BUCKET_NAME")?.trim();
   const publicBaseUrl = Deno.env.get("R2_PUBLIC_BASE_URL")?.replace(/\/+$/, "");
   if (!supabaseUrl || !anonKey || !serviceKey) return reply(503, { error: "supabase_not_configured" });
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
