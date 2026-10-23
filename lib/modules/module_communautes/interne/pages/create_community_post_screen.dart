@@ -16,6 +16,7 @@ import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 import 'package:scrole/shared/constants/post_media_limits.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
+import 'package:scrole/modules/module_principale/interne/controllers/home_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/modules/module_communautes/centre/models/news/community_hashtag.dart';
 import 'community_poll_composer_screen.dart';
@@ -575,21 +576,31 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         allowPromotion: isCommunity ? _allowPromotion : true,
       );
       if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
-        await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+        final communityIds = _selectedCommunityIds.toList();
+        final eventIds = _selectedEventIds.toList();
+        // Entity mentions are ancillary to the durable post queue; never keep
+        // the composer open while this secondary RPC runs.
+        unawaited(Supabase.instance.client.rpc('save_content_entity_mentions', params: {
           'p_source_type': 'post',
           'p_source_id': postId,
-          'p_community_ids': _selectedCommunityIds.toList(),
-          'p_event_ids': _selectedEventIds.toList(),
-        });
+          'p_community_ids': communityIds,
+          'p_event_ids': eventIds,
+        }).then((_) {}).catchError((Object error) {
+          debugPrint('[POST] Saving entity mentions failed postId=$postId error=$error');
+        }));
       }
       if (!mounted) return;
       Get.back();
-      if (feedController != null) {
-        await feedController.fetchCommunityFeed(isRefresh: true);
+      if (isCommunity) {
+        if (feedController != null) {
+          unawaited(feedController.fetchCommunityFeed(isRefresh: true));
+        }
+      } else if (Get.isRegistered<HomeFeedController>()) {
+        unawaited(Get.find<HomeFeedController>().fetchFeed(refresh: true));
       }
       Get.snackbar(
-        'Publication envoyée',
-        'La publication a été transmise au serveur.',
+        'Publication mise en file',
+        'Ta publication apparaît dans le fil et sera activée après confirmation du serveur.',
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
