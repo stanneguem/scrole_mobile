@@ -926,6 +926,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       'p_community_id': communityId.isEmpty ? null : communityId,
       'p_audience': audience ?? 'public',
       'p_local_media': localMediaPaths,
+      // Versioned payload lets the processor quarantine legacy/stale queue rows safely.
+      'p_outbox_version': 2,
       'p_hashtags': hashtags ?? [],
       'p_mentions': mentions ?? [],
       'p_comments_enabled': commentsEnabled,
