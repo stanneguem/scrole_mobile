@@ -18,7 +18,7 @@ class VideoTrimScreen extends StatefulWidget {
 class _VideoTrimScreenState extends State<VideoTrimScreen> {
   final Trimmer _trimmer = Trimmer();
   double _startValue = 0.0;
-  double _endValue = 0.0;
+  double _endValue = 100.0;
   bool _isPlaying = false;
   bool _progressVisibility = false;
 
