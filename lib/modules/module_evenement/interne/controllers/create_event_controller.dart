@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
 import '../../../../app/service_global/media_service.dart';
@@ -239,16 +240,12 @@ class CreateEventController extends GetxController {
       final userId = Get.find<AuthService>().userId;
       if (userId == null) throw 'err_user_not_connected'.tr;
 
-      String? coverUrl;
-      if (coverFile.value != null) {
-        coverUrl = await _repository.uploadCover(userId, coverFile.value!);
-      }
-
+      final selectedCover = coverFile.value;
       final newEvent = await _repository.createEventOptimistic(userId, {
         'name': nameController.text.trim(),
         'slug': slugController.text.trim(),
         'description': descriptionController.text.trim(),
-        'photo': coverUrl,
+        'photo': null,
         'is_virtual': isVirtual.value,
         'virtual_link': isVirtual.value ? onlineUrlController.text.trim() : null,
         'country_id': !isVirtual.value ? selectedCountry.value?.id : null,
@@ -262,6 +259,17 @@ class CreateEventController extends GetxController {
         'certify_with_subscription': useIncludedCertification.value,
       });
       
+      if (selectedCover != null) {
+        try {
+          // The event must exist in Supabase before R2 authorizes an event_media upload.
+          final coverUrl = await _repository.uploadCover(newEvent.id, selectedCover);
+          await _repository.updateEventOptimistic(newEvent.id, userId, {'photo': coverUrl});
+        } catch (coverError) {
+          debugPrint('[CreateEventController] Event created without cover; R2 upload/sync failed: $coverError');
+          Get.snackbar('Événement créé', 'La couverture n’a pas pu être enregistrée. Tu pourras la modifier ensuite.');
+        }
+      }
+
       Get.back();
       Get.toNamed(AppPages.eventPreview.replaceFirst(':id', newEvent.id), arguments: newEvent);
       
