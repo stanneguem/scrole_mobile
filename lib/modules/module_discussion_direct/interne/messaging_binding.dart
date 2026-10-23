@@ -5,7 +5,6 @@ import 'package:scrole/modules/module_discussion_direct/centre/repositories/mess
 import 'package:scrole/modules/module_discussion_direct/centre/services/social_outbox_processor.dart';
 import 'package:scrole/modules/module_discussion_direct/externe/repositories/social_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/externe/services/fcm_notification_service.dart';
-import 'package:scrole/modules/module_discussion_direct/externe/services/supabase_group_messaging_service.dart';
 import 'package:scrole/modules/module_discussion_direct/externe/services/supabase_messaging_service.dart';
 import 'package:scrole/modules/module_discussion_direct/interne/controllers/direct_conversation_controller.dart';
 import 'package:scrole/modules/module_discussion_direct/interne/controllers/direct_messages_controller.dart';
@@ -17,9 +16,6 @@ class MessagingBinding extends Bindings {
   void dependencies() {
     if (!Get.isRegistered<SupabaseMessagingService>()) {
       Get.lazyPut<SupabaseMessagingService>(() => SupabaseMessagingService(Supabase.instance.client), fenix: true);
-    }
-    if (!Get.isRegistered<SupabaseGroupMessagingService>()) {
-      Get.lazyPut<SupabaseGroupMessagingService>(() => SupabaseGroupMessagingService(Supabase.instance.client), fenix: true);
     }
     if (!Get.isRegistered<MessagingRepository>()) {
       Get.lazyPut<MessagingRepository>(() => MessagingRepository(Get.find<AppDatabase>(), Get.find<SupabaseMessagingService>()), fenix: true);

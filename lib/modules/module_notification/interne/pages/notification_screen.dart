@@ -8,7 +8,6 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../centre/services/notification_db_service.dart';
 import '../../../module_communautes/interne/pages/community_feed_screen.dart';
-import '../../../module_discussion_direct/interne/pages/group_conversations_screen.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationScreen extends GetView<NotificationController> {
@@ -139,11 +138,6 @@ class NotificationScreen extends GetView<NotificationController> {
     }
 
     final type = notification.type.toLowerCase();
-
-    if (type == 'group_invitation') {
-      Get.to(() => const GroupConversationsScreen());
-      return;
-    }
 
     if (type == 'follow_request') {
       Get.toNamed(AppPages.followRequests, arguments: {'requestId': data['request_id']});
