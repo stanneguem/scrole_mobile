@@ -149,5 +149,27 @@ class ContactsController extends GetxController {
     return contacts.where((c) => c.name.toLowerCase().contains(query) || c.username.toLowerCase().contains(query)).toList();
   }
 
+  Future<void> unblockContact(String contactId) async {
+    try {
+      await _client.rpc(
+        'scrole_unblock_direct_user',
+        params: {'p_other_user_id': contactId},
+      );
+      await loadContacts();
+      Get.snackbar(
+        'Utilisateur débloqué',
+        'Cette personne peut de nouveau apparaître parmi vos connexions.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[Contacts] unblock failed: $e');
+      Get.snackbar(
+        'Erreur',
+        'Impossible de débloquer cet utilisateur. Réessayez.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
   void onBack() => Get.back();
 }
