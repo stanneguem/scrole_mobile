@@ -37,6 +37,7 @@ class ChatController extends GetxController {
   final RxBool blockedByMe = false.obs;
   final RxBool conversationNotificationsEnabled = true.obs;
   final RxBool saveIncomingMediaToGallery = true.obs;
+  final RxBool _conversationPreferencesLoaded = false.obs;
   final Set<String> _autoSavedMediaMessageIds = <String>{};
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
@@ -140,12 +141,20 @@ class ChatController extends GetxController {
           .eq('user_id', uid)
           .eq('other_user_id', otherUserId)
           .maybeSingle();
-      if (row == null) return;
+      if (row == null) {
+        _conversationPreferencesLoaded.value = true;
+        return;
+      }
       conversationNotificationsEnabled.value =
           row['notifications_enabled'] as bool? ?? true;
       saveIncomingMediaToGallery.value =
           row['save_media_to_gallery'] as bool? ?? true;
+      _conversationPreferencesLoaded.value = true;
+      if (saveIncomingMediaToGallery.value) {
+        unawaited(_autoSaveIncomingMedia(messages.toList(growable: false)));
+      }
     } catch (e) {
+      _conversationPreferencesLoaded.value = true;
       debugPrint('[ChatPreferences] load failed: $e');
     }
   }
@@ -172,10 +181,12 @@ class ChatController extends GetxController {
         }, onConflict: 'user_id,other_user_id');
     conversationNotificationsEnabled.value = nextNotifications;
     saveIncomingMediaToGallery.value = nextMedia;
+    _conversationPreferencesLoaded.value = true;
+    if (nextMedia) unawaited(_autoSaveIncomingMedia(messages.toList(growable: false)));
   }
 
   Future<void> _autoSaveIncomingMedia(List<MessageModel> currentMessages) async {
-    if (!saveIncomingMediaToGallery.value) return;
+    if (!_conversationPreferencesLoaded.value || !saveIncomingMediaToGallery.value) return;
     for (final message in currentMessages) {
       if (message.senderId == currentUserId ||
           message.type != MessageType.image ||
