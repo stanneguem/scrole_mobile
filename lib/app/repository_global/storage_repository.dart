@@ -90,6 +90,9 @@ class StorageRepository {
 
   /// Upload une photo de profil utilisateur
   /// Structure : profiles/{userId}/avatar_{timestamp}.jpg
+  Future<void> deleteProfileAvatar(String publicUrl) =>
+      _r2MediaRepository.deleteProfileAvatar(publicUrl);
+
   Future<String> uploadProfilePicture(String userId, File file) async {
     final traceId = DateTime.now().millisecondsSinceEpoch.toString();
     debugPrint('[STORAGE_AVATAR][$traceId] START userId=$userId path=${file.path}');
