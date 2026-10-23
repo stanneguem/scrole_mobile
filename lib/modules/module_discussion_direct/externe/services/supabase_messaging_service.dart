@@ -140,16 +140,30 @@ class SupabaseMessagingService {
   Future<void> markDelivered(String id, {bool cleanupMedia = true}) async {
     await _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
     if (!cleanupMedia) return;
-    try {
-      await _client.functions.invoke(
-        'delete-delivered-message-media',
-        body: {'message_id': id},
-      );
-    } catch (error) {
-      // Delivery remains recorded if R2 is temporarily unavailable.
-      // A later incoming event can retry this idempotent cleanup.
-      debugPrint('[Messaging] Delivered-media cleanup deferred: $error');
+
+    Object? lastError;
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        final response = await _client.functions.invoke(
+          'delete-delivered-message-media',
+          body: {'message_id': id},
+        );
+        if (response.status < 200 || response.status >= 300 ||
+            response.data is! Map || (response.data as Map)['deleted'] != true) {
+          throw StateError('Nettoyage média R2 refusé: ${response.data}');
+        }
+        return;
+      } catch (error) {
+        lastError = error;
+        debugPrint('[Messaging] R2 media cleanup attempt $attempt/3 failed for $id: $error');
+        if (attempt < 3) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
     }
+    // Propagate failure so the incoming-message path and future sync/realtime
+    // deliveries can retry instead of silently treating cleanup as complete.
+    throw StateError('Nettoyage R2 différé après 3 tentatives: $lastError');
   }
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
     'p_conversation_id': conversationId,
