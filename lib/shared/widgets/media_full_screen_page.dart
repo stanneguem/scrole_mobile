@@ -468,10 +468,16 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Timer? _hideTimer;
+  bool _autoPlay = true;
 
   @override
   void initState() {
     super.initState();
+    try {
+      if (Get.isRegistered<PreferencesService>()) {
+        _autoPlay = Get.find<PreferencesService>().preferences.value.autoPlayVideos;
+      }
+    } catch (_) {}
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _controller.initialize().then((_) {
       if (!mounted) return;
@@ -479,8 +485,10 @@ class _FullScreenVideoPlayerState extends State<_FullScreenVideoPlayer> {
       _controller.addListener(_onPlayerChanged);
       setState(() => _isInitialized = true);
       _controller.setLooping(true);
-      _controller.play();
-      _scheduleHide();
+      if (_autoPlay) {
+        _controller.play();
+        _scheduleHide();
+      }
     }).catchError((Object error) {
       debugPrint('[MediaFullScreenPage] video initialization failed: $error');
     });
