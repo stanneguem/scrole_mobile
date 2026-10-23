@@ -24,7 +24,6 @@ import '../models/ticket_model.dart';
 import '../models/event_guest_invitation_model.dart';
 import '../models/event_statistics_model.dart';
 import '../models/event_sponsor_invitation_model.dart';
-import '../../../../app/repository_global/storage_repository.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../../../modules/module_discussion_direct/interne/controllers/contacts_controller.dart';
 import '../../../../shared/models/interest_model.dart';
@@ -1477,7 +1476,7 @@ class EventRepository {
       // Delete the previous R2 cover only after the server has accepted the new URL.
       final previousPhoto = (previousLocal?['photo'] ?? previousLocal?['photo_url'])?.toString() ?? '';
       final requestedPhoto = (data['photo'] ?? data['photo_url'])?.toString();
-      if (requestedPhoto != null && requestedPhoto.isNotEmpty &&
+      if (requestedPhoto != null &&
           previousPhoto.isNotEmpty && previousPhoto != requestedPhoto) {
         try {
           await deleteEventCover(previousPhoto);
