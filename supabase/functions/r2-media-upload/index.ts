@@ -145,11 +145,11 @@ Deno.serve(async (req: Request) => {
       try {
         const referenced = new URL(referencedUrl.trim());
         const pathParts = referenced.pathname.split("/").filter(Boolean).map((part) => decodeURIComponent(part));
-        const keyRootIndex = pathParts.findIndex((part) =>
-          (part === "profiles" || part === "communities") && pathParts.length - pathParts.indexOf(part) >= 4
+        const stillReferenced = pathParts.some((part, index) =>
+          (part === "profiles" || part === "communities") &&
+          pathParts.slice(index).join("/") === objectKey
         );
-        const referencedKey = keyRootIndex >= 0 ? pathParts.slice(keyRootIndex).join("/") : "";
-        if (referencedKey === objectKey) return reply(409, { error: "media_still_referenced" });
+        if (stillReferenced) return reply(409, { error: "media_still_referenced" });
       } catch { /* Malformed or legacy URL cannot point to this canonical R2 key. */ }
     }
     try {
