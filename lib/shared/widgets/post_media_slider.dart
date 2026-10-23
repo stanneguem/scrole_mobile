@@ -394,6 +394,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
         return;
       }
       await controller.setLooping(true);
+      // Keep inline feed playback silent; fullscreen playback uses normal volume.
+      await controller.setVolume(0);
       _controller = controller;
       setState(() {});
       await controller.play();
