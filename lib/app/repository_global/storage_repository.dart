@@ -91,17 +91,31 @@ class StorageRepository {
   /// Upload une photo de profil utilisateur
   /// Structure : profiles/{userId}/avatar_{timestamp}.jpg
   Future<String> uploadProfilePicture(String userId, File file) async {
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('[STORAGE_AVATAR][$traceId] START userId=$userId path=${file.path}');
     final currentUser = _client.auth.currentUser;
+    debugPrint('[STORAGE_AVATAR][$traceId] authUserId=${currentUser?.id ?? 'null'} sessionPresent=${_client.auth.currentSession != null}');
     if (currentUser == null || currentUser.id != userId) {
+      debugPrint('[STORAGE_AVATAR][$traceId] DENIED: session absente ou userId différent');
       throw Exception('Vous ne pouvez téléverser que votre propre photo de profil.');
     }
-    final uploaded = await _r2MediaRepository.uploadFile(
-      file: file,
-      category: 'profile_avatar',
-      mediaType: 'image',
-      entityId: userId,
-    );
-    return uploaded.publicUrl;
+    final sizeBytes = await file.length();
+    debugPrint('[STORAGE_AVATAR][$traceId] fileSizeBytes=$sizeBytes extension=${file.path.split('.').last}');
+    try {
+      debugPrint('[STORAGE_AVATAR][$traceId] STEP: R2MediaRepository.uploadFile category=profile_avatar');
+      final uploaded = await _r2MediaRepository.uploadFile(
+        file: file,
+        category: 'profile_avatar',
+        mediaType: 'image',
+        entityId: userId,
+      );
+      debugPrint('[STORAGE_AVATAR][$traceId] SUCCESS objectKey=${uploaded.objectKey} bytes=${uploaded.sizeBytes} contentType=${uploaded.contentType} url=${uploaded.publicUrl}');
+      return uploaded.publicUrl;
+    } catch (e, stack) {
+      debugPrint('[STORAGE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
+      debugPrint('[STORAGE_AVATAR][$traceId] STACK_TRACE\n$stack');
+      rethrow;
+    }
   }
 
   /// Upload une photo de couverture utilisateur vers Cloudflare R2.
