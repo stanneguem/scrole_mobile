@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
+import 'package:sqflite/sqflite.dart';
+import 'package:scrole/app/local_storage/structured/app_cache_database.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -111,6 +114,51 @@ class CommunityFeedController extends GetxController {
     }
   }
 
+  Future<List<CommunityPost>> _getPendingOutboxPosts(String userId) async {
+    try {
+      final db = await Get.find<AppDatabase>().database;
+      final rows = await db.query(
+        'post_outbox',
+        where: 'user_id = ? AND status IN (?, ?) AND community_id = ?',
+        whereArgs: [userId, 'pending', 'failed', communityId],
+        orderBy: 'created_at DESC',
+      );
+      final pending = <CommunityPost>[];
+      for (final row in rows) {
+        try {
+          final raw = jsonDecode(row['payload']?.toString() ?? '{}');
+          if (raw is! Map) continue;
+          final payload = Map<String, dynamic>.from(raw);
+          final id = (payload['p_id'] ?? row['operation_id'] ?? '').toString();
+          if (id.isEmpty) continue;
+          pending.add(CommunityPost(
+            id: id,
+            authorName: 'Moi',
+            authorId: userId,
+            authorColor: Colors.grey,
+            authorRole: CommunityRole.member,
+            timeAgo: row['status'] == 'failed' ? 'Échec de publication' : 'Publication en cours…',
+            content: payload['p_content']?.toString() ?? '',
+            communityId: communityId,
+            isPublishing: true,
+            reactionsEnabled: false,
+            commentsEnabled: false,
+            sharingEnabled: false,
+            reasonSubtitle: row['status'] == 'failed'
+                ? (payload['p_last_error']?.toString() ?? 'Publication à réessayer')
+                : 'Publication en cours…',
+          ));
+        } catch (e) {
+          debugPrint('[COMMUNITY_FEED] Ignoring malformed pending post row: $e');
+        }
+      }
+      return pending;
+    } catch (e) {
+      debugPrint('[COMMUNITY_FEED] Could not load pending outbox posts: $e');
+      return [];
+    }
+  }
+
   Future<void> fetchCommunityFeed({bool isRefresh = false}) async {
     if (communityId == null || communityId!.isEmpty) {
       feedState.value = CommunityFeedState.empty;
@@ -138,7 +186,15 @@ class CommunityFeedController extends GetxController {
       nextCursor = result['next_cursor']?.toString();
       hasMore = result['has_more'] == true;
 
-      posts.value = items;
+      // Keep the local outbox representation visible until the server confirms
+      // the same post ID. Deduplicate by ID so confirmation never creates twins.
+      final userId = currentUserId;
+      final pending = userId == null ? <CommunityPost>[] : await _getPendingOutboxPosts(userId);
+      final byId = <String, CommunityPost>{};
+      for (final post in [...pending, ...items]) {
+        byId[post.id] = post.isPublishing ? post : post;
+      }
+      posts.assignAll(byId.values);
       errorMessage.value = '';
 
       if (items.isEmpty) {
