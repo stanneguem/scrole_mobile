@@ -226,9 +226,16 @@ class ChatController extends GetxController {
                 (result) => result.success ? result.data : null,
               );
           if (localPath == null || !saveIncomingMediaToGallery.value) continue;
+          final rawPath = Uri.tryParse(mediaUrl)?.path ?? mediaUrl;
+          final extension = rawPath.split('/').last.contains('.')
+              ? '.${rawPath.split('/').last.split('.').last.toLowerCase()}'
+              : '.jpg';
+          final safeExtension = const {'.jpg', '.jpeg', '.png', '.webp'}.contains(extension)
+              ? extension
+              : '.jpg';
           await ChatMediaCache.instance.saveToGallery(
             sourcePath: localPath,
-            fileName: 'scrole_chat_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            fileName: 'scrole_chat_${DateTime.now().millisecondsSinceEpoch}$safeExtension',
           );
         } catch (e) {
           debugPrint('[ChatMedia] auto-save failed: $e');
