@@ -11,6 +11,7 @@ import 'package:scrole/app_controller.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
+import 'package:scrole/shared/constants/post_media_limits.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/modules/module_communautes/centre/models/news/community_hashtag.dart';
@@ -464,8 +465,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    if (filesToPublish.length > 4) {
-      Get.snackbar('Limite dépassée', 'Maximum 4 photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
+    if (filesToPublish.length > maxPostPhotos) {
+      Get.snackbar('Limite dépassée', 'Maximum $maxPostPhotos photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
 
@@ -563,11 +564,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = 4 - _selectedFiles.length;
+    final maxAllowed = maxPostPhotos - _selectedFiles.length;
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous ne pouvez pas ajouter plus de 4 photos.',
+        'Vous ne pouvez pas ajouter plus de $maxPostPhotos photos.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -585,8 +586,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           if (files.isNotEmpty) {
             setState(() {
               _selectedFiles.addAll(files.map((f) => File(f.path)));
-              if (_selectedFiles.length > 4) {
-                _selectedFiles.removeRange(4, _selectedFiles.length);
+              if (_selectedFiles.length > maxPostPhotos) {
+                _selectedFiles.removeRange(maxPostPhotos, _selectedFiles.length);
               }
               _prefilledUrl = null;
             });
@@ -922,7 +923,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                         ),
                       ),
 
-                    // Media Preview Grid (Max 4 photos)
+                    // Media Preview Grid (backend limit)
                     if (_selectedFiles.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -935,7 +936,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                             mainAxisSpacing: 8,
                             childAspectRatio: _selectedFiles.length == 1 ? 1.6 : 1.2,
                           ),
-                          itemCount: _selectedFiles.length > 4 ? 4 : _selectedFiles.length,
+                          itemCount: _selectedFiles.length > maxPostPhotos ? maxPostPhotos : _selectedFiles.length,
                           itemBuilder: (context, index) {
                             final file = _selectedFiles[index];
                             return Stack(
@@ -1005,7 +1006,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                   IconButton(
                     onPressed: _openGallery,
                     icon: Icon(Icons.camera_alt_rounded, color: colorScheme.onSurface, size: 24),
-                    tooltip: 'Photos (max 4)',
+                    tooltip: 'Photos (max $maxPostPhotos)',
                   ),
                   IconButton(
                     onPressed: _openPollCreator,
