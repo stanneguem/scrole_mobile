@@ -6,7 +6,6 @@ import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../centre/services/chat_service.dart';
 import '../controllers/contacts_controller.dart';
-import 'create_group_conversation_screen.dart';
 
 class ContactsScreen extends GetView<ContactsController> {
   const ContactsScreen({super.key});
