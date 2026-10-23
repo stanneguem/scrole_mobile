@@ -986,9 +986,19 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       final pending = await db
           .query('post_outbox', where: 'operation_id = ?', whereArgs: [operationId], limit: 1);
       if (pending.isNotEmpty) {
-        final rawError = pending.first['last_error']?.toString().trim();
+        String? rawError;
+        try {
+          final savedPayload = jsonDecode(pending.first['payload']?.toString() ?? '{}');
+          if (savedPayload is Map<String, dynamic>) {
+            rawError = savedPayload['p_last_error']?.toString().trim();
+          } else if (savedPayload is Map) {
+            rawError = savedPayload['p_last_error']?.toString().trim();
+          }
+        } catch (_) {
+          // Preserve the generic message if the queued payload is malformed.
+        }
         final detail = (rawError == null || rawError.isEmpty)
-            ? 'La publication est enregistrée pour une nouvelle tentative.'
+            ? 'La publication est enregistrée pour une nouvelle tentative. Consulte les logs [POST_CREATE] pour identifier l’étape en échec.'
             : rawError;
         debugPrint('[POST_CREATE][COMPOSER] NOT_CONFIRMED operationId=$operationId postId=$postId lastError=${rawError ?? '(none)'} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
         throw Exception('Publication non confirmée : $detail');
