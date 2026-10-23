@@ -106,26 +106,53 @@ Deno.serve(async (req: Request) => {
     const url = await getSignedUrl(privateS3, new GetObjectCommand({ Bucket: privateBucket, Key: key }), { expiresIn: 120 });
     return reply(200, { url, expires_in: 120, is_public: false });
   }
-  if (body.action === "delete-profile-avatar") {
-    const objectKey = typeof body.object_key === "string" ? body.object_key : "";
-    const expectedPrefix = `profiles/${user.id}/avatar/`;
-    if (!objectKey.startsWith(expectedPrefix) || objectKey.includes("..") ||
-        objectKey.includes("\\") || objectKey.split("/").length !== 4 ||
-        !/^[a-f0-9-]+\.(jpg|png|webp|avif)$/i.test(objectKey.split("/").pop() ?? "")) {
-      return reply(403, { error: "avatar_object_not_owned" });
+  if (body.action === "delete-owned-media" || body.action === "delete-profile-avatar") {
+    const objectKey = typeof body.object_key === "string" ? body.object_key.trim() : "";
+    const parts = objectKey.split("/");
+    if (!objectKey || objectKey.startsWith("/") || objectKey.includes("..") || objectKey.includes("\\\\") ||
+        parts.length !== 4 || !/^[a-f0-9-]+\\.(jpg|jpeg|png|webp|avif)$/i.test(parts[3])) {
+      return reply(400, { error: "invalid_media_object_key" });
     }
+
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: profile, error: profileError } = await admin.from("user_profiles")
-      .select("account_status, deleted_at").eq("user_id", user.id).maybeSingle();
-    if (profileError) return reply(500, { error: "profile_check_failed" });
-    if (!profile || profile.account_status !== "active" || profile.deleted_at !== null) return reply(403, { error: "account_unavailable" });
+    let authorized = false;
+    let referencedUrl: string | null = null;
+    if (parts[0] === "profiles" && parts[1] === user.id && ["avatar", "cover"].includes(parts[2])) {
+      const { data: profile, error } = await admin.from("user_profiles")
+        .select("account_status,deleted_at,photo_url,cover_url").eq("user_id", user.id).maybeSingle();
+      if (error) return reply(500, { error: "profile_check_failed" });
+      if (!profile || profile.account_status !== "active" || profile.deleted_at !== null) return reply(403, { error: "account_unavailable" });
+      referencedUrl = parts[2] === "avatar" ? profile.photo_url : profile.cover_url;
+      authorized = true;
+    } else if (parts[0] === "communities" && ["avatar", "cover"].includes(parts[2])) {
+      const communityId = parts[1];
+      const { data: community, error } = await admin.from("communities")
+        .select("creator_id,photo_profile,photo_cover").eq("id", communityId).maybeSingle();
+      if (error) return reply(500, { error: "community_check_failed" });
+      const { data: membership, error: membershipError } = await admin.from("community_members")
+        .select("role").eq("community_id", communityId).eq("user_id", user.id).maybeSingle();
+      if (membershipError) return reply(500, { error: "community_membership_check_failed" });
+      if (!community || (community.creator_id !== user.id &&
+          !["owner", "admin", "moderator"].includes(String(membership?.role ?? "").toLowerCase()))) {
+        return reply(403, { error: "community_manager_required" });
+      }
+      referencedUrl = parts[2] === "avatar" ? community.photo_profile : community.photo_cover;
+      authorized = true;
+    }
+    if (!authorized) return reply(403, { error: "media_object_not_owned" });
+
+    const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
+    const canonicalUrl = `${publicBaseUrl}/${encodedKey}`;
+    if (typeof referencedUrl === "string" && referencedUrl.trim() === canonicalUrl) {
+      return reply(409, { error: "media_still_referenced" });
+    }
     try {
       const s3 = new S3Client({ region: "auto", endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } });
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: objectKey }));
       return reply(200, { deleted: true, object_key: objectKey });
     } catch (error) {
-      console.error("[r2-media-upload] avatar delete failed", { objectKey, error });
-      return reply(500, { error: "avatar_delete_failed" });
+      console.error("[r2-media-upload] owned media delete failed", { objectKey, error });
+      return reply(500, { error: "media_delete_failed" });
     }
   }
   if (body.action !== "create-upload-url") return reply(400, { error: "unsupported_action" });
