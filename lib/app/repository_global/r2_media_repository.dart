@@ -118,6 +118,7 @@ class R2MediaRepository {
     String? entityId,
     String? communityId,
     Duration? videoDuration,
+    String? mediaRole,
   }) async {
     final traceId = DateTime.now().millisecondsSinceEpoch.toString();
     debugPrint('[R2_UPLOAD][$traceId] START category=$category mediaType=$mediaType entityId=$entityId communityId=$communityId');
@@ -151,6 +152,7 @@ class R2MediaRepository {
             'action': 'create-upload-url',
             'category': category,
             'media_type': mediaType,
+            if (mediaRole != null) 'media_role': mediaRole,
             'content_type': contentType,
             'extension': extension,
             'size_bytes': bytes.length,
