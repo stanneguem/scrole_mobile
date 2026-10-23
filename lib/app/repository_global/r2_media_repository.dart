@@ -64,7 +64,11 @@ class R2MediaRepository {
         segments[0] == "communities" &&
         ["avatar", "cover"].contains(segments[2]) &&
         segments[1].isNotEmpty;
-    if (!isOwnedProfileMedia && !isCommunityMedia) {
+    final isEventMedia = segments.length == 4 &&
+        segments[0] == "events" &&
+        segments[1].isNotEmpty &&
+        segments[2] == userId;
+    if (!isOwnedProfileMedia && !isCommunityMedia && !isEventMedia) {
       // Old Supabase Storage URLs and unrelated URLs are not R2 object keys.
       return;
     }
