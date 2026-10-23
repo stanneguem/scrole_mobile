@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
+import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
@@ -40,6 +43,9 @@ class CreateCommunityPostScreen extends StatefulWidget {
 class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   late final TextEditingController _textController;
   final List<File> _selectedFiles = [];
+  final List<File> _selectedVideos = [];
+  final ImagePicker _mediaPicker = ImagePicker();
+  int get _selectedMediaCount => _selectedFiles.length + _selectedVideos.length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -449,13 +455,14 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     if (!_canPublish) return;
 
     List<File> filesToPublish = List.from(_selectedFiles);
+    final videosToPublish = List<File>.from(_selectedVideos);
     if (filesToPublish.isEmpty && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       filesToPublish.add(File(_prefilledUrl!));
     }
 
     final content = _textController.text.trim();
 
-    if (content.isEmpty && filesToPublish.isEmpty && _pollData == null) {
+    if (content.isEmpty && filesToPublish.isEmpty && videosToPublish.isEmpty && _pollData == null) {
       Get.snackbar('Publication vide', 'Une publication doit contenir du texte, un média ou un sondage.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -465,8 +472,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    if (filesToPublish.length > maxPostPhotos) {
-      Get.snackbar('Limite dépassée', 'Maximum $maxPostPhotos photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
+    if (filesToPublish.length + videosToPublish.length > maxPostMedia) {
+      Get.snackbar('Limite dépassée', 'Maximum $maxPostMedia médias autorisés (photos et vidéos confondues).', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
 
@@ -515,6 +522,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         communityId: cId,
         content: postContent,
         imageFiles: filesToPublish,
+        videoFiles: videosToPublish,
         audience: isCommunity ? 'public' : _audience,
         commentsEnabled: _commentsEnabled,
         sharingEnabled: _sharingEnabled,
@@ -564,11 +572,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = maxPostPhotos - _selectedFiles.length;
+    final maxAllowed = maxPostMedia - _selectedMediaCount;
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous ne pouvez pas ajouter plus de $maxPostPhotos photos.',
+        'Vous ne pouvez pas ajouter plus de $maxPostMedia médias au total.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -586,8 +594,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           if (files.isNotEmpty) {
             setState(() {
               _selectedFiles.addAll(files.map((f) => File(f.path)));
-              if (_selectedFiles.length > maxPostPhotos) {
-                _selectedFiles.removeRange(maxPostPhotos, _selectedFiles.length);
+              if (_selectedMediaCount > maxPostMedia) {
+                _selectedFiles.removeRange(maxPostMedia - _selectedVideos.length, _selectedFiles.length);
               }
               _prefilledUrl = null;
             });
@@ -595,6 +603,53 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         },
       ),
     );
+  }
+
+
+  Future<void> _pickVideo() async {
+    if (_pollData != null) {
+      Get.snackbar('Attention', 'Un sondage ne peut pas contenir de vidéo.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+    if (_selectedMediaCount >= maxPostMedia) {
+      Get.snackbar('Limite atteinte', 'Une publication peut contenir au maximum $maxPostMedia médias.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+    try {
+      final picked = await _mediaPicker.pickVideo(source: ImageSource.gallery);
+      if (picked == null || !mounted) return;
+      var file = File(picked.path);
+      final controller = VideoPlayerController.file(file);
+      Duration duration;
+      try {
+        await controller.initialize();
+        duration = controller.value.duration;
+      } finally {
+        await controller.dispose();
+      }
+      if (duration > const Duration(seconds: 30)) {
+        final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: file, maxDuration: const Duration(seconds: 30)));
+        if (trimmed == null || !mounted) return;
+        file = trimmed;
+        final verify = VideoPlayerController.file(file);
+        try {
+          await verify.initialize();
+          if (verify.value.duration > const Duration(seconds: 30)) {
+            Get.snackbar('Vidéo trop longue', 'La séquence publiée doit durer 30 secondes maximum.', backgroundColor: Colors.black87, colorText: Colors.white);
+            return;
+          }
+        } finally {
+          await verify.dispose();
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _selectedVideos.add(file);
+        _prefilledUrl = null;
+      });
+    } catch (e) {
+      if (mounted) Get.snackbar('Vidéo impossible à sélectionner', e.toString(), backgroundColor: Colors.black87, colorText: Colors.white);
+    }
   }
 
   @override
@@ -936,9 +991,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                             mainAxisSpacing: 8,
                             childAspectRatio: _selectedFiles.length == 1 ? 1.6 : 1.2,
                           ),
-                          itemCount: _selectedFiles.length > maxPostPhotos ? maxPostPhotos : _selectedFiles.length,
+                          itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
-                            final file = _selectedFiles[index];
+                            final isVideo = index >= _selectedFiles.length;
+                            final file = isVideo ? _selectedVideos[index - _selectedFiles.length] : _selectedFiles[index];
                             return Stack(
                               fit: StackFit.expand,
                               children: [
@@ -1006,7 +1062,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                   IconButton(
                     onPressed: _openGallery,
                     icon: Icon(Icons.camera_alt_rounded, color: colorScheme.onSurface, size: 24),
-                    tooltip: 'Photos (max $maxPostPhotos)',
+                    tooltip: 'Photos (max $maxPostMedia médias)',
+                  ),
+                  IconButton(
+                    onPressed: _pickVideo,
+                    icon: Icon(Icons.videocam_rounded, color: _selectedVideos.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
+                    tooltip: 'Ajouter une vidéo (30 s max)',
                   ),
                   IconButton(
                     onPressed: _openPollCreator,
