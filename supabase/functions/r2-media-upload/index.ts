@@ -17,7 +17,7 @@ const reply = (status: number, body: Record<string, unknown>) =>
 const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif",
 };
-const VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov" };
+const VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 const AUDIO_TYPES: Record<string, string> = {
   "audio/mp4": "m4a", "audio/aac": "aac", "audio/mpeg": "mp3",
   "audio/ogg": "ogg", "audio/wav": "wav", "audio/webm": "webm",
@@ -229,15 +229,6 @@ Deno.serve(async (req: Request) => {
     default: return reply(501, { error: "category_authorization_not_implemented", category });
   }
 
-  // Safe diagnostics only: never log either credential or the signed URL.
-  console.info("[r2-media-upload] signing upload", {
-    accountId,
-    bucket,
-    category,
-    contentType,
-    sizeBytes,
-  });
-
   try {
     // Keep the signed request minimal. Content-Type is sent by Flutter and must
     // match this value; omit ContentLength to avoid signing a transport header
@@ -250,6 +241,17 @@ Deno.serve(async (req: Request) => {
         "R2_PRIVATE_ACCESS_KEY_ID", "R2_PRIVATE_SECRET_ACCESS_KEY", "R2_PRIVATE_BUCKET_NAME", "R2_PRIVATE_ENDPOINT",
       ] });
     }
+    // Report the actual target selected without logging credentials or signed URLs.
+    console.info("[r2-media-upload] signing upload", {
+      storage: isPrivateObject ? "private" : "public",
+      targetBucket,
+      endpointType: isPrivateObject ? "private_endpoint" : "account_endpoint",
+      category,
+      objectPrefix: key.split("/").slice(0, 2).join("/") + "/",
+      contentType,
+      sizeBytes,
+      privateCredentialsSelected: isPrivateObject,
+    });
     const s3 = new S3Client({
       region: "auto",
       endpoint: isPrivateObject ? privateEndpoint : `https://${accountId}.r2.cloudflarestorage.com`,
