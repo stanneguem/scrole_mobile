@@ -565,7 +565,7 @@ class _DirectConversationDetailsScreenState
   Future<void> _showReportDialog() async {
     final detailsController = TextEditingController();
     String reason = 'Harcèlement ou intimidation';
-    final reasons = <String>[
+    const reasons = <String>[
       'Harcèlement ou intimidation',
       'Contenu haineux',
       'Usurpation d’identité',
@@ -574,45 +574,84 @@ class _DirectConversationDetailsScreenState
       'Autre',
     ];
     final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: Text('Signaler $_displayName'),
-        content: StatefulBuilder(
-          builder: (context, setDialogState) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Choisissez la raison du signalement. Notre équipe pourra l’examiner.'),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: reason,
-                  isExpanded: true,
-                  items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                  onChanged: (value) {
-                    if (value != null) setDialogState(() => reason = value);
-                  },
+      Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: StatefulBuilder(
+          builder: (context, setDialogState) {
+            final colors = Theme.of(context).colorScheme;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(child: Container(
+                      width: 52, height: 52,
+                      decoration: BoxDecoration(color: colors.errorContainer, shape: BoxShape.circle),
+                      child: Icon(CupertinoIcons.flag_fill, color: colors.onErrorContainer, size: 22),
+                    )),
+                    const SizedBox(height: 14),
+                    Text('Signaler $_displayName', textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Text('Pourquoi souhaitez-vous signaler cette personne ? Votre signalement sera transmis à notre équipe pour examen.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.35)),
+                    const SizedBox(height: 20),
+                    Text('MOTIF', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .55), borderRadius: BorderRadius.circular(16)),
+                      child: Column(children: [
+                        for (var i = 0; i < reasons.length; i++) ...[
+                          InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setDialogState(() => reason = reasons[i]),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              child: Row(children: [
+                                Expanded(child: Text(reasons[i], style: Theme.of(context).textTheme.bodyMedium)),
+                                if (reason == reasons[i]) Icon(CupertinoIcons.checkmark_circle_fill, color: colors.primary, size: 20),
+                              ]),
+                            ),
+                          ),
+                          if (i < reasons.length - 1) Divider(height: 1, indent: 12, color: colors.outlineVariant.withValues(alpha: .45)),
+                        ],
+                      ]),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('DÉTAILS (FACULTATIF)', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: detailsController, maxLines: 3, maxLength: 2000,
+                      decoration: InputDecoration(
+                        hintText: 'Ajoutez des précisions utiles…', filled: true,
+                        fillColor: colors.surfaceContainerHighest.withValues(alpha: .45),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: colors.primary, width: 1)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        onPressed: () => Get.back(result: false), child: Text('Annuler', style: TextStyle(color: colors.onSurface)))),
+                      const SizedBox(width: 10),
+                      Expanded(child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError, minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        onPressed: () => Get.back(result: true), child: const Text('Envoyer'))),
+                    ]),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: detailsController,
-                  maxLines: 3,
-                  maxLength: 2000,
-                  decoration: const InputDecoration(
-                    labelText: 'Détails (facultatif)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
-        actions: [
-          TextButton(onPressed: () => Get.back(result: false), child: Text('cancel'.tr)),
-          FilledButton(
-            onPressed: () => Get.back(result: true),
-            child: const Text('Envoyer le signalement'),
-          ),
-        ],
       ),
     );
     if (confirmed != true) {
@@ -623,10 +662,10 @@ class _DirectConversationDetailsScreenState
       final controller = Get.find<DirectConversationController>();
       await controller.reportOtherUser(reason, detailsController.text.trim().isEmpty ? null : detailsController.text.trim());
       Get.snackbar('Signalement envoyé', 'Merci. Votre signalement a été transmis pour examen.',
-          snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
     } catch (e) {
       Get.snackbar('chats_title'.tr, 'Impossible d’envoyer le signalement : $e',
-          snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
     } finally {
       detailsController.dispose();
     }
