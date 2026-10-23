@@ -19,6 +19,7 @@ import 'community_outbox_processor.dart';
 import '../models/news/community_hashtag.dart';
 import '../../interne/controllers/community/community_feed_controller.dart';
 import '../../interne/controllers/community/community_controller.dart';
+import '../../../../shared/constants/post_media_limits.dart';
 
 class CommunityService extends GetxService with WidgetsBindingObserver {
   final CommunityRepository _repo;
@@ -119,7 +120,11 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
       final remoteIds = remoteList.map((m) => m['id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
       final now = DateTime.now().millisecondsSinceEpoch;
-      final userId = _authService.userId ?? 'local_user';
+      if ((imageFiles?.length ?? 0) > maxPostPhotos) {
+      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
+    }
+
+    final userId = _authService.userId ?? 'local_user';
 
       for (final map in remoteList) {
         final id = map['id']?.toString();
@@ -865,7 +870,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     try {
       final appDir = await getApplicationDocumentsDirectory();
       if (imageFiles != null && imageFiles.isNotEmpty) {
-        final filesToProcess = imageFiles.take(4).toList();
+        final filesToProcess = imageFiles.toList();
         for (int i = 0; i < filesToProcess.length; i++) {
           final file = filesToProcess[i];
           if (file.existsSync()) {
