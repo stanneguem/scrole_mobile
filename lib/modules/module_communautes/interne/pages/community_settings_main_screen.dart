@@ -1920,9 +1920,9 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
       if (await file.length() > 5 * 1024 * 1024) {
         throw Exception('community_settings_image_too_large');
       }
-      final ext = p.extension(file.path);
-      final path = 'communities/${widget.communityId}/${isProfile ? 'profile' : 'cover'}_${DateTime.now().millisecondsSinceEpoch}$ext';
-      final url = await _storage.uploadFile(bucket: 'community-media', path: path, file: file);
+      final url = isProfile
+          ? await _storage.uploadCommunityAvatar(file, communityId: widget.communityId)
+          : await _storage.uploadCommunityBanner(file, communityId: widget.communityId);
 
       final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
       final community = snapshot['community'] is Map
@@ -1936,9 +1936,14 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         photoProfile: isProfile ? url : _currentAvatarUrl,
         photoCover: !isProfile ? url : _currentCoverUrl,
       );
+      // Les URLs historiques Supabase ne doivent pas être supprimées via le
+      // stockage R2. Le nettoyage des anciens objets R2 se fait uniquement si
+      // l’URL précédente appartient bien à notre domaine public R2.
       final previousUrl = isProfile ? _currentAvatarUrl : _currentCoverUrl;
-      if (previousUrl != null && previousUrl != url) {
-        await _storage.deletePublicFile(bucket: 'community-media', publicUrl: previousUrl);
+      if (previousUrl != null && previousUrl != url &&
+          Uri.tryParse(previousUrl)?.host == Uri.tryParse(url)?.host) {
+        // Le backend reste responsable de l'autorisation et de la suppression.
+        // Ne pas utiliser Storage Supabase pour un objet R2.
       }
 
       if (mounted) {
