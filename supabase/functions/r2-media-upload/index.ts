@@ -114,17 +114,30 @@ Deno.serve(async (req: Request) => {
     default: return reply(501, { error: "category_authorization_not_implemented", category });
   }
 
+  // Safe diagnostics only: never log either credential or the signed URL.
+  console.info("[r2-media-upload] signing upload", {
+    accountId,
+    bucket,
+    accessKeyIdLength: accessKeyId.length,
+    secretAccessKeyLength: secretAccessKey.length,
+    category,
+    contentType,
+    sizeBytes,
+  });
+
   const s3 = new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
   });
   try {
+    // Keep the signed request minimal. Content-Type is sent by Flutter and must
+    // match this value; omit ContentLength to avoid signing a transport header
+    // that HTTP clients/proxies may normalize differently.
     const command = new PutObjectCommand({
-      Bucket: bucket, Key: key, ContentType: contentType, ContentLength: sizeBytes,
-      // Do not sign x-amz-meta-* headers here: the Flutter PUT request does not send
-      // those headers, which can make the presigned request fail at R2.
-
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType,
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
