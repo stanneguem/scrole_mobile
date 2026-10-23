@@ -728,7 +728,33 @@ class MessagingRepository {
     await _ensureConversationFromIncoming(uid, r);
     await _refreshConversationList(uid, r.conversationId);
     if (r.senderId != uid && r.status != MessageStatus.read) {
-      unawaited(_remote.markDelivered(r.id).catchError((_) {}));
+      // Cache attachments on the recipient device before recording delivery;
+      // recording the receipt allows the backend to delete the R2 objects.
+      unawaited(_cacheIncomingMediaThenAcknowledge(r));
+    }
+  }
+
+  Future<void> _cacheIncomingMediaThenAcknowledge(Message message) async {
+    final refs = <String>[
+      ...(message.mediaUrls ?? const <String>[]),
+      if (message.audioUrl != null && message.audioUrl!.isNotEmpty) message.audioUrl!,
+    ];
+    for (final ref in refs) {
+      try {
+        final localPath = await ChatMediaCache.instance.resolveLocalPath(ref);
+        if (localPath == null) {
+          debugPrint('[Messaging] Waiting for media cache before delivery receipt: ${message.id}');
+          return;
+        }
+      } catch (error) {
+        debugPrint('[Messaging] Media cache failed before delivery receipt: $error');
+        return;
+      }
+    }
+    try {
+      await _remote.markDelivered(message.id, cleanupMedia: refs.isNotEmpty);
+    } catch (error) {
+      debugPrint('[Messaging] Delivery acknowledgement failed: $error');
     }
   }
 
