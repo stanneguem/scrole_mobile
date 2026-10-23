@@ -214,12 +214,21 @@ class SessionService extends GetxService {
     String userId,
     Map<String, dynamic> data,
   ) async {
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('[PROFILE_SAVE][$traceId] START userId=$userId fields=${data.keys.toList()}');
     try {
       final updated = await _userService.updateProfile(userId, data);
-      if (updated != null) profile.value = updated;
+      debugPrint('[PROFILE_SAVE][$traceId] repository result=${updated == null ? 'null' : 'non-null'}');
+      if (updated != null) {
+        profile.value = updated;
+        debugPrint('[PROFILE_SAVE][$traceId] SUCCESS profil en mémoire mis à jour');
+      } else {
+        debugPrint('[PROFILE_SAVE][$traceId] FAILURE: repository returned null');
+      }
       return updated;
-    } catch (e) {
-      debugPrint('Erreur lors de la mise à jour du profil: $e');
+    } catch (e, stack) {
+      debugPrint('[PROFILE_SAVE][$traceId] FAILURE type=${e.runtimeType} error=$e');
+      debugPrint('[PROFILE_SAVE][$traceId] STACK_TRACE\n$stack');
       return null;
     }
   }
