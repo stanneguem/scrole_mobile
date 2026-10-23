@@ -378,28 +378,62 @@ class CommunityOutboxProcessor extends GetxService {
                 throw FileSystemException('La vidéo sélectionnée n’existe plus sur le stockage local.', originalPath);
               }
               final originalBytes = await originalFile.length();
-              debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_START operationId=$operationId index=${i + 1} originalBytes=$originalBytes');
+              final appDir = await getApplicationDocumentsDirectory();
+              final postId = (payload['p_id'] ?? operationId).toString();
+              final originalExtension = p.extension(originalPath).toLowerCase();
+              final safeExtension = RegExp(r'^\.(mp4|mov|m4v|3gp|mkv|webm)$').hasMatch(originalExtension)
+                  ? originalExtension
+                  : '.mp4';
+              final safeSourcePath = p.join(appDir.path, 'posts', postId, 'source_video_$i$safeExtension');
+              await Directory(p.dirname(safeSourcePath)).create(recursive: true);
+
+              // Trimmers can return paths containing ':' and ',' in their
+              // filenames. Copy to a stable internal path before native
+              // transcoding; Android's URI data source can misread such paths.
+              var uploadVideoPath = safeSourcePath;
+              final safeSource = File(safeSourcePath);
+              if (p.normalize(originalPath) != p.normalize(safeSourcePath) ||
+                  !await safeSource.exists() ||
+                  await safeSource.length() != originalBytes) {
+                await originalFile.copy(safeSourcePath);
+              }
+              if (!await safeSource.exists() || await safeSource.length() != originalBytes) {
+                throw StateError('Impossible de préparer la vidéo dans le stockage interne.');
+              }
+              debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_START operationId=$operationId index=${i + 1} originalBytes=$originalBytes safeSourcePath=$safeSourcePath');
               final compressionStartedAt = DateTime.now();
-              final compressedInfo = await VideoCompress.compressVideo(
-                originalPath,
-                quality: VideoQuality.MediumQuality,
-                deleteOrigin: false,
-                includeAudio: true,
-              ).timeout(const Duration(minutes: 5), onTimeout: () {
-                throw TimeoutException('La compression vidéo a dépassé 5 minutes.');
-              });
-              final compressedFile = compressedInfo?.file;
-              if (compressedFile == null || !await compressedFile.exists()) {
-                throw StateError('La compression vidéo n’a pas produit de fichier exploitable.');
+              try {
+                final compressedInfo = await VideoCompress.compressVideo(
+                  safeSourcePath,
+                  quality: VideoQuality.MediumQuality,
+                  deleteOrigin: false,
+                  includeAudio: true,
+                ).timeout(const Duration(minutes: 5), onTimeout: () {
+                  throw TimeoutException('La compression vidéo a dépassé 5 minutes.');
+                });
+                final compressedFile = compressedInfo?.file;
+                if (compressedFile != null &&
+                    await compressedFile.exists() &&
+                    await compressedFile.length() > 0) {
+                  final compressedBytes = await compressedFile.length();
+                  uploadVideoPath = compressedFile.path;
+                  localMediaItems[i]['upload_path'] = uploadVideoPath;
+                  localMediaItems[i]['original_size_bytes'] = originalBytes;
+                  localMediaItems[i]['upload_size_bytes'] = compressedBytes;
+                  debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_SUCCESS operationId=$operationId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes elapsedMs=${DateTime.now().difference(compressionStartedAt).inMilliseconds}');
+                } else {
+                  // Compression is an optimization, not a publication
+                  // prerequisite. Keep publishing with the internal original.
+                  debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_FALLBACK_ORIGINAL operationId=$operationId index=${i + 1} reason=no_valid_compressed_file');
+                }
+              } catch (compressionError) {
+                debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_FALLBACK_ORIGINAL operationId=$operationId index=${i + 1} error=$compressionError');
               }
-              final compressedBytes = await compressedFile.length();
-              if (compressedBytes <= 0) {
-                throw StateError('La vidéo compressée est vide.');
+              if (localMediaItems[i]['upload_path'] == null) {
+                localMediaItems[i]['upload_path'] = safeSourcePath;
+                localMediaItems[i]['original_size_bytes'] = originalBytes;
+                localMediaItems[i]['upload_size_bytes'] = originalBytes;
               }
-              // Cache the compressed path before upload so retry does not recompress.
-              localMediaItems[i]['upload_path'] = compressedFile.path;
-              localMediaItems[i]['original_size_bytes'] = originalBytes;
-              localMediaItems[i]['upload_size_bytes'] = compressedBytes;
               payload['p_local_media'] = localMediaItems;
               await db.update(
                 'post_outbox',
@@ -407,8 +441,9 @@ class CommunityOutboxProcessor extends GetxService {
                 where: 'id = ?',
                 whereArgs: [id],
               );
-              localPath = compressedFile.path;
-              debugPrint('[POST_CREATE][$postKind] VIDEO_COMPRESS_SUCCESS operationId=$operationId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes elapsedMs=${DateTime.now().difference(compressionStartedAt).inMilliseconds}');
+              localPath = uploadVideoPath == safeSourcePath
+                  ? safeSourcePath
+                  : uploadVideoPath;
             }
             if (mediaType == 'photo' &&
                 !localPath.startsWith('http://') &&
