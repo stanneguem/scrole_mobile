@@ -888,10 +888,24 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
           } else {
             final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
             await Directory(p.dirname(targetPath)).create(recursive: true);
+            final originalBytes = await file.length();
             final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
+              file.absolute.path,
+              targetPath,
+              minWidth: 1280,
+              minHeight: 1280,
+              quality: 80,
+              format: CompressFormat.jpeg,
             );
-            localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
+            if (compressed == null || !await File(compressed.path).exists()) {
+              throw StateError('La compression de la photo ${i + 1} a échoué; envoi de l’original interdit.');
+            }
+            final compressedBytes = await File(compressed.path).length();
+            if (compressedBytes <= 0) {
+              throw StateError('La photo compressée ${i + 1} est vide.');
+            }
+            debugPrint('[POST_CREATE][COMPOSER] IMAGE_COMPRESS_SUCCESS postId=$postId index=${i + 1} originalBytes=$originalBytes compressedBytes=$compressedBytes savedPercent=${originalBytes == 0 ? 0 : ((originalBytes - compressedBytes) * 100 / originalBytes).toStringAsFixed(1)}');
+            localMediaPaths.add({'path': compressed.path, 'type': 'photo'});
           }
         }
       } else {
@@ -914,8 +928,9 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
           }
         }
       }
-    } catch (e) {
-      if (videoFiles != null && videoFiles.isNotEmpty) rethrow;
+    } catch (e, st) {
+      debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARE_FAILED postId=$postId error=$e\n$st');
+      rethrow;
     }
 
     debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARED postId=$postId communityId=$communityId mediaCount=${localMediaPaths.length} types=${localMediaPaths.map((m) => m['type']).toList()} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
