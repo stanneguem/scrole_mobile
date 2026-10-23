@@ -62,11 +62,16 @@ Deno.serve(async (req: Request) => {
     return key;
   };
   const raw = [...(Array.isArray(message.media_urls) ? message.media_urls : []), message.audio_url].filter((v) => typeof v === "string" && v.trim()) as string[];
-  const keys = [...new Set(raw.map(toKey).filter((k): k is string => k !== null))];
-  if (keys.length !== raw.length) return respond(409, { error: "media_key_unrecognized", deleted: false });
+  // Legacy Supabase Storage URLs and unknown historical formats are deliberately
+  // skipped. They must never block cleanup of valid new R2 keys in the same message.
+  const recognized = raw.map(toKey);
+  const keys = [...new Set(recognized.filter((k): k is string => k !== null))];
+  const skippedLegacyReferences = recognized.filter((k) => k === null).length;
   try {
-    const s3 = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId: access, secretAccessKey: secret } });
-    for (const key of keys) await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    if (keys.length > 0) {
+      const s3 = new S3Client({ region: "auto", endpoint, credentials: { accessKeyId: access, secretAccessKey: secret } });
+      for (const key of keys) await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    }
   } catch (error) {
     console.error("[delete-delivered-message-media] R2 deletion failed", { messageId, error });
     return respond(502, { error: "r2_delete_failed", deleted: false });
@@ -74,5 +79,5 @@ Deno.serve(async (req: Request) => {
   // Keep the message's media references as metadata. The recipient has already
   // cached the bytes locally before the delivery receipt was recorded; clearing
   // these columns would make the attachment disappear from the conversation UI.
-  return respond(200, { deleted: true, count: keys.length, message_id: messageId });
+  return respond(200, { deleted: true, count: keys.length, skipped_legacy_references: skippedLegacyReferences, message_id: messageId });
 });
