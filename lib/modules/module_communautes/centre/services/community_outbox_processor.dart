@@ -523,24 +523,26 @@ class CommunityOutboxProcessor extends GetxService {
                   final postId = (payload['p_id'] ?? operationId).toString();
                   final thumbnailPath = p.join(appDir.path, 'posts', postId, 'thumbnail_$i.jpg');
                   await Directory(p.dirname(thumbnailPath)).create(recursive: true);
-                  List<int>? thumbnailBytes;
+                  File? generatedThumbnail;
                   for (final framePosition in <int>[1000, 0]) {
                     try {
-                      thumbnailBytes = await VideoCompress.getFileThumbnail(
+                      final candidate = await VideoCompress.getFileThumbnail(
                         localPath,
                         quality: 78,
                         position: framePosition,
                       ).timeout(const Duration(seconds: 30));
-                      if (thumbnailBytes != null && thumbnailBytes.isNotEmpty) break;
+                      if (await candidate.exists() && await candidate.length() > 0) {
+                        generatedThumbnail = candidate;
+                        break;
+                      }
                     } catch (thumbnailError) {
                       debugPrint('[POST_CREATE][$postKind] THUMBNAIL_FRAME_FAILED operationId=$operationId index=$i position=$framePosition error=$thumbnailError');
                     }
                   }
-                  if (thumbnailBytes == null || thumbnailBytes.isEmpty) {
+                  if (generatedThumbnail == null) {
                     throw StateError('Impossible de générer la miniature de la vidéo.');
                   }
-                  final thumbnailFile = File(thumbnailPath);
-                  await thumbnailFile.writeAsBytes(thumbnailBytes, flush: true);
+                  final thumbnailFile = await generatedThumbnail.copy(thumbnailPath);
                   if (!await thumbnailFile.exists() || await thumbnailFile.length() == 0) {
                     throw StateError('La miniature vidéo générée est vide.');
                   }
@@ -598,22 +600,27 @@ class CommunityOutboxProcessor extends GetxService {
             final postId = (payload['p_id'] ?? operationId).toString();
             final thumbnailPath = p.join(appDir.path, 'posts', postId, 'thumbnail_$mediaIndex.jpg');
             await Directory(p.dirname(thumbnailPath)).create(recursive: true);
-            List<int>? bytes;
+            File? generatedThumbnail;
             for (final framePosition in <int>[1000, 0]) {
               try {
-                bytes = await VideoCompress.getFileThumbnail(
+                final candidate = await VideoCompress.getFileThumbnail(
                   sourcePath, quality: 78, position: framePosition,
                 ).timeout(const Duration(seconds: 30));
-                if (bytes != null && bytes.isNotEmpty) break;
+                if (await candidate.exists() && await candidate.length() > 0) {
+                  generatedThumbnail = candidate;
+                  break;
+                }
               } catch (error) {
                 debugPrint('[POST_CREATE][$postKind] THUMBNAIL_RECOVERY_FAILED operationId=$operationId index=$mediaIndex position=$framePosition error=$error');
               }
             }
-            if (bytes == null || bytes.isEmpty) {
+            if (generatedThumbnail == null) {
               throw StateError('Impossible de régénérer la miniature de la vidéo.');
             }
-            final file = File(thumbnailPath);
-            await file.writeAsBytes(bytes, flush: true);
+            final file = await generatedThumbnail.copy(thumbnailPath);
+            if (!await file.exists() || await file.length() == 0) {
+              throw StateError('La miniature vidéo régénérée est vide.');
+            }
             final uploadedThumbnail = await r2MediaRepository.uploadFile(
               file: file, category: 'post_media', mediaType: 'image', communityId: communityId,
             );
