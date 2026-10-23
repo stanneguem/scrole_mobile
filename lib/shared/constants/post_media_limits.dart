@@ -1,7 +1,7 @@
-/// Limits enforced by the Supabase public.create_post RPC.
-/// Keep this client-side value aligned with the Supabase create_post media limit.
-/// Video support will share this same combined media budget.
+/// Maximum number of media items allowed in one post (photos + videos combined).
+/// Keep this value aligned with the create_post RPC and the database constraint.
 const int maxPostMedia = 20;
 
-/// Backward-compatible alias for image-only UI until video selection is implemented.
-const int maxPostPhotos = maxPostMedia;
+/// Maximum number of photos allowed by the post composer.
+/// Photos also count toward [maxPostMedia], so a post cannot exceed 20 total items.
+const int maxPostPhotos = 20;
