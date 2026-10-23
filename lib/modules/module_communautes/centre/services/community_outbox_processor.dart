@@ -505,32 +505,35 @@ class CommunityOutboxProcessor extends GetxService {
                       milliseconds: (await VideoCompress.getMediaInfo(localPath))?.duration?.round() ?? 0,
                     ),
                   );
-                  // Génère une vraie image fixe depuis la vidéo compressée afin que
-                  // le fil n'affiche plus un rectangle noir avant la lecture.
+                  final videoDurationMs = (await VideoCompress.getMediaInfo(localPath))?.duration ?? 0;
+                  final videoMedia = <String, dynamic>{
+                    'type': 'video', 'storage': 'r2',
+                    'url': uploaded.publicUrl ?? uploaded.objectKey,
+                    'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
+                    'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
+                    'duration_seconds': videoDurationMs / 1000,
+                  };
+                  // Persister la clé vidéo tout de suite : si la génération ou
+                  // l'upload de la miniature échoue, la compensation pourra la supprimer.
+                  uploadedMedia.add(videoMedia);
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
+
+                  // Génère une image fixe depuis la vidéo compressée pour le fil.
                   final appDir = await getApplicationDocumentsDirectory();
                   final postId = (payload['p_id'] ?? operationId).toString();
                   final thumbnailPath = p.join(appDir.path, 'posts', postId, 'thumbnail_$i.jpg');
                   await Directory(p.dirname(thumbnailPath)).create(recursive: true);
                   List<int>? thumbnailBytes;
-                  try {
-                    thumbnailBytes = await VideoCompress.getFileThumbnail(
-                      localPath,
-                      quality: 78,
-                      position: 1000,
-                    ).timeout(const Duration(seconds: 30));
-                  } catch (thumbnailError) {
-                    debugPrint('[POST_CREATE][$postKind] THUMBNAIL_FRAME_1_FAILED operationId=$operationId index=$i error=$thumbnailError');
-                  }
-                  // Certains codecs ne décodent pas la frame à 1 s ; tenter le début.
-                  if (thumbnailBytes == null || thumbnailBytes.isEmpty) {
+                  for (final framePosition in <int>[1000, 0]) {
                     try {
                       thumbnailBytes = await VideoCompress.getFileThumbnail(
                         localPath,
                         quality: 78,
-                        position: 0,
+                        position: framePosition,
                       ).timeout(const Duration(seconds: 30));
+                      if (thumbnailBytes != null && thumbnailBytes.isNotEmpty) break;
                     } catch (thumbnailError) {
-                      debugPrint('[POST_CREATE][$postKind] THUMBNAIL_FRAME_0_FAILED operationId=$operationId index=$i error=$thumbnailError');
+                      debugPrint('[POST_CREATE][$postKind] THUMBNAIL_FRAME_FAILED operationId=$operationId index=$i position=$framePosition error=$thumbnailError');
                     }
                   }
                   if (thumbnailBytes == null || thumbnailBytes.isEmpty) {
@@ -551,17 +554,10 @@ class CommunityOutboxProcessor extends GetxService {
                   if (thumbnailUrl == null || thumbnailUrl.isEmpty || !uploadedThumbnail.isPublic) {
                     throw StateError('R2 n’a pas retourné d’URL publique pour la miniature vidéo.');
                   }
-                  final videoDurationMs = (await VideoCompress.getMediaInfo(localPath))?.duration ?? 0;
-                  uploadedMedia.add({
-                    'type': 'video', 'storage': 'r2',
-                    'url': uploaded.publicUrl ?? uploaded.objectKey,
-                    'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
-                    'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
-                    'duration_seconds': videoDurationMs / 1000,
-                    'thumbnail_url': thumbnailUrl,
-                    'thumbnail_storage': 'r2',
-                    'thumbnail_object_key': uploadedThumbnail.objectKey,
-                  });
+                  videoMedia['thumbnail_url'] = thumbnailUrl;
+                  videoMedia['thumbnail_storage'] = 'r2';
+                  videoMedia['thumbnail_object_key'] = uploadedThumbnail.objectKey;
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                   debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=video key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
                   await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 } else {
