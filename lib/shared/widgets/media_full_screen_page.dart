@@ -240,13 +240,14 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                 top: MediaQuery.of(context).padding.top + 10,
                 left: 10,
                 right: 10,
-                child: AnimatedOpacity(
-                  opacity: (_isDragging ||
-                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible))
-                      ? 0.0
-                      : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Row(
+                child: IgnorePointer(
+                  ignoring: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible)),
+                  child: AnimatedOpacity(
+                    opacity: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible)) ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
@@ -258,6 +259,7 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                         icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 26),
                       ),
                     ],
+                    ),
                   ),
                 ),
               ),
@@ -267,13 +269,14 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                 bottom: MediaQuery.of(context).padding.bottom + 16,
                 left: 16,
                 right: 16,
-                child: AnimatedOpacity(
-                  opacity: (_isDragging ||
-                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible))
-                      ? 0.0
-                      : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Row(
+                child: IgnorePointer(
+                  ignoring: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible)),
+                  child: AnimatedOpacity(
+                    opacity: (_isDragging ||
+                      (_items.isNotEmpty && _items[_currentPage].isVideo && !_videoControlsVisible)) ? 0.0 : 1.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Compteur 1 / 4
@@ -431,6 +434,7 @@ class _MediaFullScreenPageState extends State<MediaFullScreenPage> with SingleTi
                         ],
                       ),
                     ],
+                    ),
                   ),
                 ),
               ),
