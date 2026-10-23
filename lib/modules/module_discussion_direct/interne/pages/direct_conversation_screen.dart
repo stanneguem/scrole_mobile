@@ -93,23 +93,28 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             );
           }),
 
-          // 2. Contenu (Messages + Zone de saisie transparente)
-          Column(
-            children: [
-              Expanded(child: _messages(colors)),
-              Obx(
-                () => controller.recordingState.value != RecordingState.idle
-                    ? DirectVoiceRecorderPanel(controller: controller)
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _reply(colors),
-                          _composer(context, colors),
-                          _emoji(),
-                        ],
-                      ),
-              ),
-            ],
+          // 2. Contenu protégé des zones système (navigation Android/iOS).
+          // SafeArea conserve le fond derrière la barre système, mais maintient
+          // les messages et surtout le composeur au-dessus de celle-ci.
+          SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Expanded(child: _messages(colors)),
+                Obx(
+                  () => controller.recordingState.value != RecordingState.idle
+                      ? DirectVoiceRecorderPanel(controller: controller)
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _reply(colors),
+                            _composer(context, colors),
+                            _emoji(),
+                          ],
+                        ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
