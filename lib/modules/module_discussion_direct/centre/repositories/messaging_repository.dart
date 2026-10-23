@@ -767,7 +767,7 @@ class MessagingRepository {
     }
     if (!mediaReady) return;
     try {
-      await _remote.markDelivered(message.id);
+      await _remote.markDelivered(message.id, cleanupMedia: refs.isNotEmpty);
     } catch (error) {
       debugPrint('[Messaging] Delivery acknowledgement failed: $error');
     }
