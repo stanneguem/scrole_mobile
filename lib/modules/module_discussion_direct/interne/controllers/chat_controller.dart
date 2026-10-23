@@ -7,6 +7,7 @@ import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scrole/modules/module_discussion_direct/centre/services/chat_media_cache.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/service_global/notification_service.dart';
@@ -34,6 +35,9 @@ class ChatController extends GetxController {
   final RxBool isOtherUserTyping = false.obs;
   final RxBool blockedByOtherUser = false.obs;
   final RxBool blockedByMe = false.obs;
+  final RxBool conversationNotificationsEnabled = true.obs;
+  final RxBool saveIncomingMediaToGallery = true.obs;
+  final Set<String> _autoSavedMediaMessageIds = <String>{};
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
   final Rxn<MessageModel> editingMessage = Rxn<MessageModel>();
@@ -86,6 +90,7 @@ class ChatController extends GetxController {
     super.onInit();
     _loadWallpaper();
     unawaited(refreshBlockStatus());
+    unawaited(loadConversationPreferences());
     _bindConversation();
     messageController.addListener(_composerChanged);
     _audioSub = audioPlayer.playerStateStream.listen((state) => isPlayingReview.value = state.playing);
@@ -111,6 +116,7 @@ class ChatController extends GetxController {
     _messagesSub = _repository.watchConversation(id).listen((items) {
       final converted = items.map(MessageModel.fromMessage).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       messages.assignAll(converted);
+      unawaited(_autoSaveIncomingMedia(converted));
       _recalculateUnread();
       isLoading.value = false;
     }, onError: (_) => isLoading.value = false);
@@ -122,6 +128,78 @@ class ChatController extends GetxController {
       }
     });
     unawaited(_initialize(id));
+  }
+
+  Future<void> loadConversationPreferences() async {
+    final uid = currentUserId;
+    if (uid == null || otherUserId.isEmpty || uid == otherUserId) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('direct_conversation_preferences')
+          .select('notifications_enabled,save_media_to_gallery')
+          .eq('user_id', uid)
+          .eq('other_user_id', otherUserId)
+          .maybeSingle();
+      if (row == null) return;
+      conversationNotificationsEnabled.value =
+          row['notifications_enabled'] as bool? ?? true;
+      saveIncomingMediaToGallery.value =
+          row['save_media_to_gallery'] as bool? ?? true;
+    } catch (e) {
+      debugPrint('[ChatPreferences] load failed: $e');
+    }
+  }
+
+  Future<void> updateConversationPreference({
+    bool? notificationsEnabled,
+    bool? saveMediaToGallery,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null || otherUserId.isEmpty || uid == otherUserId) {
+      throw StateError('Utilisateur invalide.');
+    }
+    final nextNotifications =
+        notificationsEnabled ?? conversationNotificationsEnabled.value;
+    final nextMedia = saveMediaToGallery ?? saveIncomingMediaToGallery.value;
+    await Supabase.instance.client
+        .from('direct_conversation_preferences')
+        .upsert({
+          'user_id': uid,
+          'other_user_id': otherUserId,
+          'notifications_enabled': nextNotifications,
+          'save_media_to_gallery': nextMedia,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }, onConflict: 'user_id,other_user_id');
+    conversationNotificationsEnabled.value = nextNotifications;
+    saveIncomingMediaToGallery.value = nextMedia;
+  }
+
+  Future<void> _autoSaveIncomingMedia(List<MessageModel> currentMessages) async {
+    if (!saveIncomingMediaToGallery.value) return;
+    for (final message in currentMessages) {
+      if (message.senderId == currentUserId ||
+          message.type != MessageType.image ||
+          message.mediaUrls == null ||
+          message.mediaUrls!.isEmpty ||
+          !_autoSavedMediaMessageIds.add(message.id)) {
+        continue;
+      }
+      for (final mediaUrl in message.mediaUrls!) {
+        try {
+          final localPath = await _repository.resolveLocalMedia(message.id, mediaUrl) ??
+              await _repository.cacheMedia(message.id, mediaUrl).then(
+                (result) => result.success ? result.data : null,
+              );
+          if (localPath == null || !saveIncomingMediaToGallery.value) continue;
+          await ChatMediaCache.instance.saveToGallery(
+            sourcePath: localPath,
+            fileName: 'scrole_chat_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          );
+        } catch (e) {
+          debugPrint('[ChatMedia] auto-save failed: $e');
+        }
+      }
+    }
   }
 
   Future<void> _initialize(String id) async {
