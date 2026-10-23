@@ -1912,6 +1912,9 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
 
   Future<void> _processImageFile({required bool isProfile, required File pickedFile}) async {
     setState(() => _isLoading = true);
+    String? uploadedUrl;
+    final previousUrl = ((isProfile ? _currentAvatarUrl : _currentCoverUrl) ?? '').trim();
+    bool databaseUpdated = false;
     try {
       final file = await _mediaService.compressImage(pickedFile, quality: 75);
       if (file == null) {
@@ -1920,7 +1923,7 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
       if (await file.length() > 5 * 1024 * 1024) {
         throw Exception('community_settings_image_too_large');
       }
-      final url = isProfile
+      uploadedUrl = isProfile
           ? await _storage.uploadCommunityAvatar(file, communityId: widget.communityId)
           : await _storage.uploadCommunityBanner(file, communityId: widget.communityId);
 
@@ -1933,18 +1936,33 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         name: community['name']?.toString() ?? '',
         slogan: community['slogan']?.toString(),
         description: community['description']?.toString() ?? '',
-        photoProfile: isProfile ? url : _currentAvatarUrl,
-        photoCover: !isProfile ? url : _currentCoverUrl,
+        photoProfile: isProfile ? uploadedUrl : _currentAvatarUrl,
+        photoCover: !isProfile ? uploadedUrl : _currentCoverUrl,
       );
+      databaseUpdated = true;
       if (mounted) {
         setState(() {
-          if (isProfile) _currentAvatarUrl = url;
-          else _currentCoverUrl = url;
+          if (isProfile) _currentAvatarUrl = uploadedUrl;
+          else _currentCoverUrl = uploadedUrl;
         });
       }
 
+      // Ne supprimer l'ancienne image qu'après que l'update DB a réussi.
+      // Les anciennes URL Supabase Storage sont ignorées par le repository R2.
+      if (previousUrl.isNotEmpty && previousUrl != uploadedUrl) {
+        try {
+          await _storage.deleteProfileAvatar(previousUrl);
+        } catch (cleanupError) {
+          debugPrint('[CommunityImagesScreen] Old R2 image cleanup deferred: $cleanupError');
+        }
+      }
       Get.snackbar('community_save_success'.tr, '', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
+      if (uploadedUrl != null && !databaseUpdated) {
+        try { await _storage.deleteProfileAvatar(uploadedUrl); } catch (cleanupError) {
+          debugPrint('[CommunityImagesScreen] Orphan R2 upload cleanup deferred: $cleanupError');
+        }
+      }
       debugPrint('[CommunityImagesScreen] Upload failed: $e');
       final rawError = e.toString().replaceFirst('Exception: ', '');
       final userMessage = rawError == 'community_settings_image_too_large' ||
