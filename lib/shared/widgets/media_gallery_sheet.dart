@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import '../constants/post_media_limits.dart';
 
 import '../../app/theme/text_styles.dart';
 
@@ -11,7 +12,7 @@ class MediaGallerySheet extends StatefulWidget {
   const MediaGallerySheet({
     super.key,
     required this.onSelected,
-    this.maxSelection = 15,
+    this.maxSelection = maxPostPhotos,
   });
 
   final Function(List<XFile>) onSelected;
