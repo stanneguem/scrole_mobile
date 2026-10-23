@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'shimmer.dart';
 
 class AppCachedImage extends StatelessWidget {
@@ -34,6 +35,15 @@ class AppCachedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl.isEmpty) return _buildErrorWidget();
+    // Private R2 object keys must be exchanged for short-lived signed URLs.
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') &&
+        (imageUrl.startsWith('private/') || imageUrl.startsWith('messages/') ||
+         imageUrl.startsWith('stories/') || imageUrl.startsWith('bug-reports/'))) {
+      return _R2SignedImage(
+        objectKey: imageUrl, width: width, height: height, fit: fit,
+        borderRadius: borderRadius, placeholder: placeholder, errorWidget: errorWidget,
+      );
+    }
     // Storage object keys (e.g. `{uid}/chat/media/file.jpg`) are not files.
     if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
       final absolute = imageUrl.startsWith('file://')
@@ -217,6 +227,81 @@ class _ProgressiveHighImageState extends State<_ProgressiveHighImage> {
             ),
           ),
       ],
+    );
+  }
+}
+
+
+class _R2SignedImage extends StatefulWidget {
+  const _R2SignedImage({
+    required this.objectKey,
+    this.width,
+    this.height,
+    required this.fit,
+    this.borderRadius,
+    this.placeholder,
+    this.errorWidget,
+  });
+
+  final String objectKey;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final BorderRadius? borderRadius;
+  final Widget? placeholder;
+  final Widget? errorWidget;
+
+  @override
+  State<_R2SignedImage> createState() => _R2SignedImageState();
+}
+
+class _R2SignedImageState extends State<_R2SignedImage> {
+  late Future<String> _urlFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlFuture = _resolveUrl();
+  }
+
+  Future<String> _resolveUrl() async {
+    final response = await Supabase.instance.client.functions.invoke(
+      'r2-media-upload',
+      body: {'action': 'create-download-url', 'object_key': widget.objectKey},
+    );
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      throw StateError('Impossible de résoudre le média privé Cloudflare R2.');
+    }
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final url = data['url']?.toString();
+    if (url == null || url.isEmpty) throw StateError('URL de lecture R2 absente.');
+    return url;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _urlFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return widget.errorWidget ?? Container(
+            width: widget.width, height: widget.height, color: Colors.grey[200],
+            child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+          );
+        }
+        if (!snapshot.hasData) {
+          return widget.placeholder ?? SkeletonShimmer(
+            width: widget.width ?? double.infinity,
+            height: widget.height ?? double.infinity,
+            borderRadius: widget.borderRadius?.topLeft.x ?? 0,
+          );
+        }
+        return AppCachedImage(
+          imageUrl: snapshot.data!, width: widget.width, height: widget.height,
+          fit: widget.fit, borderRadius: widget.borderRadius,
+          placeholder: widget.placeholder, errorWidget: widget.errorWidget,
+        );
+      },
     );
   }
 }
