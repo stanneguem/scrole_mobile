@@ -317,16 +317,29 @@ Deno.serve(async (req: Request) => {
     case "bug_report": key = `bug-reports/${user.id}/${uploadId}.${expectedExtension}`; break;
     case "post_media": {
       const communityId = typeof body.community_id === "string" ? body.community_id.trim() : "";
+      const isVideoThumbnail = body.media_role === "video_thumbnail";
+      if (body.media_role != null && !isVideoThumbnail) {
+        return reply(400, { error: "unsupported_media_role" });
+      }
+      if (isVideoThumbnail && (isVideo || !contentType.startsWith("image/"))) {
+        return reply(400, { error: "invalid_video_thumbnail_format" });
+      }
       let privateCommunity = false;
       if (communityId) {
         const { data: community } = await admin.from("communities").select("visibility").eq("id", communityId).maybeSingle();
         privateCommunity = String(community?.visibility ?? "").toLowerCase() !== "public";
       }
-      key = privateCommunity
-        ? `private/communities/${communityId}/posts/${user.id}/${uploadId}.${expectedExtension}`
-        : communityId
-          ? `communities/${communityId}/posts/${uploadId}.${expectedExtension}`
-          : `posts/${user.id}/${uploadId}.${expectedExtension}`;
+      key = isVideoThumbnail
+        ? privateCommunity
+          ? `private/communities/${communityId}/posts/thumbnails/${user.id}/${uploadId}.${expectedExtension}`
+          : communityId
+            ? `communities/${communityId}/posts/thumbnails/${uploadId}.${expectedExtension}`
+            : `thumbnails/posts/${user.id}/${uploadId}.${expectedExtension}`
+        : privateCommunity
+          ? `private/communities/${communityId}/posts/${user.id}/${uploadId}.${expectedExtension}`
+          : communityId
+            ? `communities/${communityId}/posts/${uploadId}.${expectedExtension}`
+            : `posts/${user.id}/${uploadId}.${expectedExtension}`;
       break;
     }
     case "community_avatar": key = `communities/${entityId}/avatar/${uploadId}.${expectedExtension}`; break;
