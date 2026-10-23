@@ -356,7 +356,12 @@ class MessagingRepository {
         if (_isRemote(path)) {
           out.add(path);
         } else {
-          final url = await _remote.uploadFile(path, 'media', contentType: _mime(path));
+          final url = await _remote.uploadFile(
+            path,
+            'media',
+            contentType: _mime(path),
+            conversationId: m.conversationId,
+          );
           if (url == null) return null;
           out.add(url);
         }
@@ -365,7 +370,12 @@ class MessagingRepository {
     }
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
-      audio = await _remote.uploadFile(audio, 'audio', contentType: _mime(audio));
+      audio = await _remote.uploadFile(
+        audio,
+        'audio',
+        contentType: _mime(audio),
+        conversationId: m.conversationId,
+      );
     }
     if (m.audioUrl != null && audio == null) return null;
     return m.copyWith(mediaUrls: media, audioUrl: audio);
