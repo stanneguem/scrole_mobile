@@ -120,11 +120,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
       final remoteIds = remoteList.map((m) => m['id']?.toString()).where((id) => id != null && id.isNotEmpty).toSet();
       final now = DateTime.now().millisecondsSinceEpoch;
-      if ((imageFiles?.length ?? 0) > maxPostPhotos) {
-      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
-    }
-
-    final userId = _authService.userId ?? 'local_user';
+      final userId = _authService.userId ?? 'local_user';
 
       for (final map in remoteList) {
         final id = map['id']?.toString();
@@ -862,6 +858,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
+    if ((imageFiles?.length ?? 0) > maxPostPhotos) {
+      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
+    }
+
     if ((imageFiles?.length ?? 0) > maxPostPhotos) {
       throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
     }
