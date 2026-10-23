@@ -10,12 +10,14 @@ class R2UploadedMedia {
   const R2UploadedMedia({
     required this.objectKey,
     required this.publicUrl,
+    required this.isPublic,
     required this.contentType,
     required this.sizeBytes,
   });
 
   final String objectKey;
-  final String publicUrl;
+  final String? publicUrl;
+  final bool isPublic;
   final String contentType;
   final int sizeBytes;
 }
@@ -122,9 +124,10 @@ class R2MediaRepository {
     final uploadUrl = data['upload_url'] as String?;
     final objectKey = data['object_key'] as String?;
     final publicUrl = data['public_url'] as String?;
-    if (uploadUrl == null || objectKey == null || publicUrl == null) {
-      debugPrint('[R2_UPLOAD][$traceId] ABORT: réponse incomplète uploadUrl=${uploadUrl != null} objectKey=${objectKey != null} publicUrl=${publicUrl != null}');
-      throw StateError('Réponse R2 incomplète : URL ou clé manquante.');
+    final isPublic = data['is_public'] == true;
+    if (uploadUrl == null || objectKey == null || (isPublic && publicUrl == null) || (!isPublic && !objectKey.startsWith('private/'))) {
+      debugPrint('[R2_UPLOAD][$traceId] ABORT: réponse incomplète uploadUrl=${uploadUrl != null} objectKey=${objectKey != null} publicUrl=${publicUrl != null} isPublic=$isPublic');
+      throw StateError('Réponse R2 incomplète ou incohérente : URL ou clé manquante.');
     }
 
     // Ne jamais journaliser uploadUrl : cette URL contient une signature temporaire.
@@ -165,6 +168,7 @@ class R2MediaRepository {
     return R2UploadedMedia(
       objectKey: objectKey,
       publicUrl: publicUrl,
+      isPublic: isPublic,
       contentType: contentType,
       sizeBytes: bytes.length,
     );
