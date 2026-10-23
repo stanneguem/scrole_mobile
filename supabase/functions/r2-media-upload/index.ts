@@ -39,6 +39,9 @@ Deno.serve(async (req: Request) => {
   const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY");
   const bucket = Deno.env.get("R2_BUCKET_NAME")?.trim();
   const privateBucket = Deno.env.get("R2_PRIVATE_BUCKET_NAME")?.trim();
+  const privateAccessKeyId = Deno.env.get("R2_PRIVATE_ACCESS_KEY_ID")?.trim();
+  const privateSecretAccessKey = Deno.env.get("R2_PRIVATE_SECRET_ACCESS_KEY")?.trim();
+  const privateEndpoint = Deno.env.get("R2_PRIVATE_ENDPOINT")?.trim() || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : "");
   const publicBaseUrl = Deno.env.get("R2_PUBLIC_BASE_URL")?.replace(/\/+$/, "");
   if (!supabaseUrl || !anonKey || !serviceKey) return reply(503, { error: "supabase_not_configured" });
   if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicBaseUrl) {
@@ -67,7 +70,11 @@ Deno.serve(async (req: Request) => {
       const encoded = key.split("/").map(encodeURIComponent).join("/");
       return reply(200, { url: `${publicBaseUrl}/${encoded}`, expires_in: null, is_public: true });
     }
-    if (!privateBucket) return reply(503, { error: "private_media_bucket_not_configured" });
+    if (!privateBucket || !privateAccessKeyId || !privateSecretAccessKey || !privateEndpoint) {
+      return reply(503, { error: "private_media_bucket_not_configured", required_secrets: [
+        "R2_PRIVATE_ACCESS_KEY_ID", "R2_PRIVATE_SECRET_ACCESS_KEY", "R2_PRIVATE_BUCKET_NAME", "R2_PRIVATE_ENDPOINT",
+      ] });
+    }
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     let allowed = false;
     const parts = key.split("/");
@@ -95,7 +102,7 @@ Deno.serve(async (req: Request) => {
       allowed = parts[1] === user.id;
     }
     if (!allowed) return reply(403, { error: "media_access_denied" });
-    const privateS3 = new S3Client({ region: "auto", endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } });
+    const privateS3 = new S3Client({ region: "auto", endpoint: privateEndpoint, credentials: { accessKeyId: privateAccessKeyId, secretAccessKey: privateSecretAccessKey } });
     const url = await getSignedUrl(privateS3, new GetObjectCommand({ Bucket: privateBucket, Key: key }), { expiresIn: 120 });
     return reply(200, { url, expires_in: 120, is_public: false });
   }
@@ -231,11 +238,6 @@ Deno.serve(async (req: Request) => {
     sizeBytes,
   });
 
-  const s3 = new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
-  });
   try {
     // Keep the signed request minimal. Content-Type is sent by Flutter and must
     // match this value; omit ContentLength to avoid signing a transport header
@@ -243,6 +245,18 @@ Deno.serve(async (req: Request) => {
     const isPrivateObject = key.startsWith("private/") || key.startsWith("messages/") || key.startsWith("stories/") || key.startsWith("bug-reports/");
     const targetBucket = isPrivateObject ? privateBucket : bucket;
     if (!targetBucket) return reply(503, { error: "private_media_bucket_not_configured" });
+    if (isPrivateObject && (!privateAccessKeyId || !privateSecretAccessKey || !privateEndpoint)) {
+      return reply(503, { error: "private_media_bucket_not_configured", required_secrets: [
+        "R2_PRIVATE_ACCESS_KEY_ID", "R2_PRIVATE_SECRET_ACCESS_KEY", "R2_PRIVATE_BUCKET_NAME", "R2_PRIVATE_ENDPOINT",
+      ] });
+    }
+    const s3 = new S3Client({
+      region: "auto",
+      endpoint: isPrivateObject ? privateEndpoint : `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: isPrivateObject
+        ? { accessKeyId: privateAccessKeyId!, secretAccessKey: privateSecretAccessKey! }
+        : { accessKeyId, secretAccessKey },
+    });
     const command = new PutObjectCommand({
       Bucket: targetBucket,
       Key: key,
