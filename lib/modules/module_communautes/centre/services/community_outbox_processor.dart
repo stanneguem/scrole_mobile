@@ -265,18 +265,48 @@ class CommunityOutboxProcessor extends GetxService {
         debugPrint('[POST] [Outbox] Processing post operationId=$operationId, communityId=$communityId, attempts=$attempts');
 
         try {
-          final localMediaPaths = List<String>.from(payload['p_local_media'] ?? []);
-          List<Map<String, dynamic>> supabaseMedia = [];
+          final rawLocalMedia = List<dynamic>.from(payload['p_local_media'] ?? []);
+          final localMediaItems = rawLocalMedia.map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{'path': item.toString(), 'type': 'photo'}).toList();
+          List<Map<String, dynamic>> uploadedMedia = [];
 
           final supabaseClient = Supabase.instance.client;
-          for (int i = 0; i < localMediaPaths.length; i++) {
-            final localPath = localMediaPaths[i];
+          for (int i = 0; i < localMediaItems.length; i++) {
+            final localPath = localMediaItems[i]['path'].toString();
+            final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
             if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
-              supabaseMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath});
+              if (mediaType == 'video') {
+                throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
+              }
+              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath});
             } else {
               final file = File(localPath);
               if (file.existsSync()) {
                 final timestamp = DateTime.now().millisecondsSinceEpoch;
+                if (mediaType == 'video') {
+                  final bytes = await file.length();
+                  final mime = localPath.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4';
+                  final response = await supabaseClient.functions.invoke('r2-media-upload', body: {
+                    'action': 'create-upload-url',
+                    'community_id': communityId,
+                    'media_type': 'video',
+                    'content_type': mime,
+                    'size_bytes': bytes,
+                    'duration_seconds': 30,
+                    'extension': localPath.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4',
+                  });
+                  final data = Map<String, dynamic>.from(response.data as Map);
+                  final uploadUrl = Uri.parse(data['upload_url'].toString());
+                  final request = await HttpClient().putUrl(uploadUrl);
+                  request.headers.set(HttpHeaders.contentTypeHeader, mime);
+                  await request.addStream(file.openRead());
+                  final uploadResponse = await request.close();
+                  await uploadResponse.drain<void>();
+                  if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
+                    throw Exception('Échec du transfert vidéo vers Cloudflare R2 (${uploadResponse.statusCode}).');
+                  }
+                  uploadedMedia.add({'type': 'video', 'storage': 'r2', 'url': data['public_url'], 'object_key': data['object_key'], 'duration_seconds': 30, 'mime_type': mime});
+                  continue;
+                }
                 final fileName = 'post_${timestamp}_$i.jpg';
                 final storagePath = (communityId != null && communityId.isNotEmpty)
                     ? 'communities/$communityId/posts/$fileName'
@@ -290,7 +320,7 @@ class CommunityOutboxProcessor extends GetxService {
                 );
                 final publicUrl = supabaseClient.storage.from('community-media').getPublicUrl(storagePath);
                 debugPrint('[POST] [Outbox] Photo uploaded successfully. Public URL: $publicUrl');
-                supabaseMedia.add({'type': 'photo', 'storage': 'supabase', 'url': publicUrl});
+                uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': publicUrl});
               }
             }
           }
@@ -306,14 +336,14 @@ class CommunityOutboxProcessor extends GetxService {
           final poll = payload['p_poll'] is Map ? Map<String, dynamic>.from(payload['p_poll']) : null;
           final allowPromotion = payload['p_allow_promotion'] ?? true;
 
-          debugPrint('[POST] [Outbox] Calling repository createPostRpc with p_id=$pId, communityId=$communityId, audience=$audience, mediaCount=${supabaseMedia.length}');
+          debugPrint('[POST] [Outbox] Calling repository createPostRpc with p_id=$pId, communityId=$communityId, audience=$audience, mediaCount=${uploadedMedia.length}');
 
           await _repository.createPostRpc(
             p_id: pId,
             p_content: content,
             p_community_id: communityId,
             p_audience: audience,
-            p_media: supabaseMedia,
+            p_media: uploadedMedia,
             p_hashtags: hashtags,
             p_mentions: mentions,
             p_comments_enabled: commentsEnabled,
