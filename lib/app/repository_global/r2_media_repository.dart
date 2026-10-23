@@ -43,23 +43,41 @@ class R2MediaRepository {
     'mov': 'video/quicktime',
   };
 
-  Future<void> deleteProfileAvatar(String publicUrl) async {
-    final uri = Uri.tryParse(publicUrl);
-    if (uri == null || !uri.hasAuthority) throw ArgumentError('URL avatar invalide.');
-    final segments = uri.pathSegments;
-    if (segments.length != 4 || segments[0] != 'profiles' || segments[2] != 'avatar') {
-      throw ArgumentError('URL publique de l’avatar non reconnue.');
+  /// Supprime uniquement un ancien objet public R2 appartenant au profil
+  /// ou à la communauté après confirmation que la nouvelle URL est enregistrée.
+  /// Les URL historiques Supabase Storage sont volontairement ignorées.
+  Future<void> deleteReplacedPublicMedia(String previousUrl) async {
+    final uri = Uri.tryParse(previousUrl.trim());
+    if (uri == null || !uri.hasAuthority || !["http", "https"].contains(uri.scheme)) return;
+    final segments = uri.pathSegments.map(Uri.decodeComponent).toList();
+    final key = segments.join("/");
+    final userId = _client.auth.currentUser?.id;
+    final isOwnedProfileMedia = segments.length == 4 &&
+        segments[0] == "profiles" &&
+        segments[1] == userId &&
+        ["avatar", "cover"].contains(segments[2]);
+    final isCommunityMedia = segments.length == 4 &&
+        segments[0] == "communities" &&
+        ["avatar", "cover"].contains(segments[2]) &&
+        segments[1].isNotEmpty;
+    if (!isOwnedProfileMedia && !isCommunityMedia) {
+      // Old Supabase Storage URLs and unrelated URLs are not R2 object keys.
+      return;
     }
-    final objectKey = segments.map(Uri.decodeComponent).join('/');
-    final response = await _client.functions.invoke('r2-media-upload', body: {
-      'action': 'delete-profile-avatar',
-      'object_key': objectKey,
+    final response = await _client.functions.invoke("r2-media-upload", body: {
+      "action": "delete-owned-media",
+      "object_key": key,
     });
     if (response.status < 200 || response.status >= 300 ||
-        response.data is! Map || (response.data as Map)['deleted'] != true) {
-      throw StateError('La suppression de l’ancien avatar R2 a échoué.');
+        response.data is! Map || (response.data as Map)["deleted"] != true) {
+      throw StateError("La suppression de l’ancien média R2 a échoué: ${response.data}");
     }
   }
+
+  /// Compatibilité avec les appels existants : cette méthode ne supprime
+  /// plus les URL Supabase historiques et accepte également les avatars R2.
+  Future<void> deleteProfileAvatar(String publicUrl) =>
+      deleteReplacedPublicMedia(publicUrl);
 
   Future<R2UploadedMedia> uploadFile({
     required File file,
