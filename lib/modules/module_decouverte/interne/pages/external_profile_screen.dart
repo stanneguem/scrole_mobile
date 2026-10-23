@@ -107,14 +107,14 @@ class ExternalProfileScreen extends GetView<ExternalProfileController> {
                   child: backgroundProfileView,
                 ),
                 if (isSuspended)
-                  const _BlockingProfileOverlay(
-                    title: 'Profil temporairement indisponible',
+                  _BlockingProfileOverlay(
+                    title: 'profile_unavailable_title'.tr,
                     message: 'profile_suspended_message'.tr,
                     icon: Icons.pause_circle_outline_rounded,
                     iconColor: Colors.orange,
                   )
                 else if (isBanned)
-                  const _BlockingProfileOverlay(
+                  _BlockingProfileOverlay(
                     title: 'profile_unavailable_title'.tr,
                     message: 'profile_banned_message'.tr,
                     icon: Icons.block_rounded,
