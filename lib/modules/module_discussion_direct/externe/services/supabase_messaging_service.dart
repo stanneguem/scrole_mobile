@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/models/message.dart';
 import '../../centre/models/conversation.dart';
@@ -242,14 +245,78 @@ class SupabaseMessagingService {
     await _client.removeChannel(channel);
   }
 
-  Future<String?> uploadFile(String localPath, String folder, {String? contentType}) async {
+  /// Uploads chat media to Cloudflare R2. Images are compressed on-device first.
+  /// [folder] may be a conversation ID or a descriptive folder; private R2
+  /// authorization is bound to the conversation ID passed as [conversationId].
+  Future<String?> uploadFile(
+    String localPath,
+    String folder, {
+    String? contentType,
+    String? conversationId,
+  }) async {
     final uid = currentUserId;
-    if (uid == null) return null;
-    final file = File(localPath);
-    if (!await file.exists()) return null;
-    final name = file.uri.pathSegments.last;
-    final path = '$uid/chat/$folder/${DateTime.now().microsecondsSinceEpoch}_$name';
-    await _client.storage.from('chat-media').upload(path, file, fileOptions: FileOptions(contentType: contentType, upsert: false));
-    return path;
+    if (uid == null) throw StateError('Authentication required to upload media');
+    final source = File(localPath);
+    if (!await source.exists()) throw FileSystemException('Media file not found', localPath);
+
+    Uint8List bytes = await source.readAsBytes();
+    var resolvedType = (contentType ?? '').toLowerCase().split(';').first.trim();
+    final lowerPath = localPath.toLowerCase();
+    final isImage = resolvedType.startsWith('image/') ||
+        (resolvedType.isEmpty && RegExp(r'\\.(jpe?g|png|webp|heic|heif)
+}
+).hasMatch(lowerPath));
+    String extension = source.uri.pathSegments.last.split('.').last.toLowerCase();
+    if (isImage) {
+      final compressed = await FlutterImageCompress.compressWithList(
+        bytes,
+        minWidth: 1920,
+        minHeight: 1920,
+        quality: 82,
+        format: CompressFormat.jpeg,
+      );
+      if (compressed.isNotEmpty && compressed.length < bytes.length) bytes = compressed;
+      resolvedType = 'image/jpeg';
+      extension = 'jpg';
+    } else if (resolvedType.isEmpty) {
+      if (lowerPath.endsWith('.m4a')) resolvedType = 'audio/mp4';
+      else if (lowerPath.endsWith('.aac')) resolvedType = 'audio/aac';
+      else if (lowerPath.endsWith('.mp4')) resolvedType = 'video/mp4';
+      else if (lowerPath.endsWith('.mov')) resolvedType = 'video/quicktime';
+      else resolvedType = 'application/octet-stream';
+    }
+    final isVideo = resolvedType.startsWith('video/');
+    final category = isVideo ? 'post_media' : 'message_media';
+    final request = <String, dynamic>{
+      'action': 'create-upload-url',
+      'category': category,
+      'media_type': isVideo ? 'video' : 'image',
+      'content_type': resolvedType,
+      'extension': extension,
+      'size_bytes': bytes.length,
+      if (conversationId != null && conversationId.isNotEmpty) 'entity_id': conversationId,
+    };
+    if (category == 'message_media' && (conversationId == null || conversationId.isEmpty)) {
+      throw ArgumentError('conversationId is required for private chat media');
+    }
+    final response = await _client.functions.invoke('r2-media-upload', body: request);
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      throw StateError('R2 upload authorization failed (${response.status}): ${response.data}');
+    }
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final uploadUrl = data['upload_url'] as String?;
+    final objectKey = data['object_key'] as String?;
+    if (uploadUrl == null || objectKey == null) throw StateError('Invalid R2 upload authorization response');
+    final put = await http.put(
+      Uri.parse(uploadUrl),
+      headers: {'Content-Type': resolvedType},
+      body: bytes,
+    );
+    if (put.statusCode < 200 || put.statusCode >= 300) {
+      throw HttpException('Cloudflare R2 upload failed (${put.statusCode})');
+    }
+    // Public assets can be stored as public URLs; private chat assets store only
+    // the object key and are resolved through an authenticated, short-lived URL.
+    return data['is_public'] == true ? (data['public_url'] as String? ?? objectKey) : objectKey;
   }
 }
