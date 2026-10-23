@@ -28,6 +28,7 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
   Future<void> _loadPrivacy() async {
     try {
       await service.loadFromBackend();
+      await preferencesService.syncInitialSettings();
       if (mounted) setState(() => _loadFailed = false);
     } catch (_) {
       if (mounted) setState(() => _loadFailed = true);
