@@ -296,11 +296,14 @@ class CommunityOutboxProcessor extends GetxService {
                   });
                   final data = Map<String, dynamic>.from(response.data as Map);
                   final uploadUrl = Uri.parse(data['upload_url'].toString());
-                  final request = await HttpClient().putUrl(uploadUrl);
+                  final httpClient = HttpClient();
+                  final request = await httpClient.putUrl(uploadUrl);
                   request.headers.set(HttpHeaders.contentTypeHeader, mime);
+                  request.contentLength = bytes;
                   await request.addStream(file.openRead());
                   final uploadResponse = await request.close();
                   await uploadResponse.drain<void>();
+                  httpClient.close(force: true);
                   if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
                     throw Exception('Échec du transfert vidéo vers Cloudflare R2 (${uploadResponse.statusCode}).');
                   }
