@@ -1055,7 +1055,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
                                   child: isVideo
-                                      ? const ColoredBox(color: Colors.black, child: Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 48)))
+                                      ? _SelectedVideoPreview(file: file)
                                       : Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
                                 ),
                                 Positioned(
@@ -1168,6 +1168,104 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// Aperçu vidéo réel dans le compositeur : l'utilisateur peut vérifier le média
+/// et lire/mettre en pause sans quitter l'écran de préparation de publication.
+class _SelectedVideoPreview extends StatefulWidget {
+  final File file;
+  const _SelectedVideoPreview({required this.file});
+
+  @override
+  State<_SelectedVideoPreview> createState() => _SelectedVideoPreviewState();
+}
+
+class _SelectedVideoPreviewState extends State<_SelectedVideoPreview> {
+  late final VideoPlayerController _controller;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file);
+    _controller.initialize().then((_) {
+      if (mounted) setState(() => _ready = true);
+    }).catchError((Object error) {
+      debugPrint('[POST_COMPOSER] video preview initialization failed: $error');
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Colors.black),
+        if (_ready)
+          FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _controller.value.size.width,
+              height: _controller.value.size.height,
+              child: VideoPlayer(_controller),
+            ),
+          )
+        else
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+        Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (!_ready) return;
+                setState(() {
+                  _controller.value.isPlaying ? _controller.pause() : _controller.play();
+                });
+              },
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.48),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white70),
+                  ),
+                  child: Icon(
+                    _ready && _controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 8,
+          bottom: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
+                SizedBox(width: 4),
+                Text('Vidéo', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
