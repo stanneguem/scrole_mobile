@@ -862,6 +862,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
+    if ((imageFiles?.length ?? 0) > maxPostPhotos) {
+      throw Exception('Une publication peut contenir au maximum $maxPostPhotos photos.');
+    }
+
     final userId = _authService.userId ?? 'local_user';
     final postId = requestedPostId ?? _generateUuidV4();
     final operationId = postId;
