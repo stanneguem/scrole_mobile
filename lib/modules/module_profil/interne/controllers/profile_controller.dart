@@ -570,6 +570,8 @@ class ProfileController extends GetxController {
 
   Future<void> pickProfileImage(ImageSource source) async {
     final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    String? uploadedAvatarUrl;
+    bool profileAvatarSaved = false;
     debugPrint('[PROFILE_AVATAR][$traceId] START source=$source userId=${userId.value}');
     try {
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 1: sélection, recadrage et compression');
@@ -591,6 +593,7 @@ class ProfileController extends GetxController {
           : profileImageUrl.value.trim();
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 3: upload via StorageRepository');
       final String uploadedUrl = await _storageRepository.uploadProfilePicture(userId.value, picked);
+      uploadedAvatarUrl = uploadedUrl;
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 4: upload terminé url=$uploadedUrl');
 
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 5: sauvegarde photo_url');
@@ -601,6 +604,7 @@ class ProfileController extends GetxController {
       );
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 6: sauvegarde result=$saved');
       if (!saved) throw StateError('Upload réussi mais enregistrement photo_url échoué.');
+      profileAvatarSaved = true;
       if (previousAvatarUrl.isNotEmpty && previousAvatarUrl != uploadedUrl) {
         try {
           await _storageRepository.deleteProfileAvatar(previousAvatarUrl);
@@ -611,6 +615,11 @@ class ProfileController extends GetxController {
       }
       debugPrint('[PROFILE_AVATAR][$traceId] SUCCESS');
     } catch (e, stack) {
+      if (uploadedAvatarUrl != null && !profileAvatarSaved) {
+        try { await _storageRepository.deleteProfileAvatar(uploadedAvatarUrl); } catch (cleanupError) {
+          debugPrint('[PROFILE_AVATAR][$traceId] ORPHAN_UPLOAD_CLEANUP_WARNING error=$cleanupError');
+        }
+      }
       debugPrint('[PROFILE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
       debugPrint('[PROFILE_AVATAR][$traceId] STACK_TRACE\n$stack');
       Get.snackbar(
