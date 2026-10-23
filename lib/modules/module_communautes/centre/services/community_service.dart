@@ -850,6 +850,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     String? content,
     List<File>? imageFiles,
     List<File>? videoFiles,
+    List<File>? orderedMediaFiles,
+    List<String>? orderedMediaTypes,
     String? audience,
     bool commentsEnabled = true,
     bool sharingEnabled = true,
@@ -871,27 +873,43 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     List<Map<String, String>> localMediaPaths = [];
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      if (imageFiles != null && imageFiles.isNotEmpty) {
-        final filesToProcess = imageFiles.toList();
-        for (int i = 0; i < filesToProcess.length; i++) {
-          final file = filesToProcess[i];
-          if (file.existsSync()) {
+      // New composers supply a unified ordered list. Keep that order in the
+      // durable outbox payload so uploads and the published post use the same sequence.
+      if (orderedMediaFiles != null && orderedMediaTypes != null &&
+          orderedMediaFiles.length == orderedMediaTypes.length) {
+        for (int i = 0; i < orderedMediaFiles.length; i++) {
+          final file = orderedMediaFiles[i];
+          final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
+          if (!file.existsSync()) continue;
+          if (type == 'video') {
+            localMediaPaths.add({'path': file.path, 'type': 'video'});
+          } else {
             final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
             await Directory(p.dirname(targetPath)).create(recursive: true);
             final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path,
-              targetPath,
-              minWidth: 1280,
-              minHeight: 1280,
-              quality: 80,
+              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
             );
             localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
           }
         }
-      }
-      if (videoFiles != null) {
-        for (final video in videoFiles) {
-          if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+      } else {
+        // Backward compatibility for callers that still provide separate lists.
+        if (imageFiles != null) {
+          for (int i = 0; i < imageFiles.length; i++) {
+            final file = imageFiles[i];
+            if (!file.existsSync()) continue;
+            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
+            await Directory(p.dirname(targetPath)).create(recursive: true);
+            final compressed = await FlutterImageCompress.compressAndGetFile(
+              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
+            );
+            localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
+          }
+        }
+        if (videoFiles != null) {
+          for (final video in videoFiles) {
+            if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+          }
         }
       }
     } catch (e) {
