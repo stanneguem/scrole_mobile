@@ -47,15 +47,9 @@ Deno.serve(async (req: Request) => {
   const toKey = (value: unknown): string | null => {
     if (typeof value !== "string" || !value.trim()) return null;
     let key = value.trim();
-    if (/^https?:\/\//i.test(key)) {
-      try {
-        const parsed = new URL(key);
-        const markers = ["/storage/v1/object/public/chat-media/", "/storage/v1/object/sign/chat-media/"];
-        const marker = markers.find((item) => parsed.pathname.includes(item));
-        if (!marker) return null;
-        key = decodeURIComponent(parsed.pathname.split(marker)[1] || "");
-      } catch { return null; }
-    }
+    // Never interpret legacy Supabase Storage URLs as R2 keys. Historical
+    // media stays in its original bucket and is intentionally not deleted here.
+    if (/^https?:\/\//i.test(key)) return null;
     if (key.startsWith("/") || key.includes("..") || key.includes("\\") || !key.startsWith(`messages/${message.conversation_id}/`) || key.split("/").length !== 4) return null;
     const parts = key.split("/");
     if (parts[2] !== message.sender_id || !/^[a-f0-9-]+\.(jpg|png|webp|avif|mp4|mov|m4a|aac|mp3|ogg|wav|webm)$/i.test(parts[3])) return null;
