@@ -94,6 +94,9 @@ Deno.serve(async (req: Request) => {
       try {
         const refs = await Promise.all([
           admin.from("community_posts").select("id").contains("media", [{ object_key: key }]).limit(1),
+          admin.from("community_posts").select("id").contains("media", [{ thumbnail_object_key: key }]).limit(1),
+          admin.from("community_posts").select("id").contains("videos", [{ object_key: key }]).limit(1),
+          admin.from("community_posts").select("id").contains("videos", [{ thumbnail_object_key: key }]).limit(1),
         ]);
         if (refs.some(r => r.error)) throw new Error("media_reference_check_failed");
         let referenced = refs.some(r => (r.data ?? []).length > 0);
@@ -104,6 +107,9 @@ Deno.serve(async (req: Request) => {
             admin.from("community_posts").select("id").contains("photos", [url]).limit(1),
             admin.from("community_posts").select("id").eq("photo", url).limit(1),
             admin.from("community_posts").select("id").eq("video_url", url).limit(1),
+            admin.from("community_posts").select("id").eq("video_thumbnail_url", url).limit(1),
+            admin.from("community_posts").select("id").contains("media", [{ thumbnail_url: url }]).limit(1),
+            admin.from("community_posts").select("id").contains("videos", [{ thumbnail_url: url }]).limit(1),
           ]);
           if (urlRefs.some(r => r.error)) throw new Error("media_reference_check_failed");
           referenced = urlRefs.some(r => (r.data ?? []).length > 0);
