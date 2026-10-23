@@ -13,6 +13,7 @@ class ContactModel {
   final String? avatarUrl;
   final bool isOnline;
   final bool isCertified;
+  final bool isBlockedByMe;
 
   ContactModel({
     required this.id,
@@ -21,6 +22,7 @@ class ContactModel {
     this.avatarUrl,
     this.isOnline = false,
     this.isCertified = false,
+    this.isBlockedByMe = false,
   });
 }
 
@@ -83,8 +85,23 @@ class ContactsController extends GetxController {
   Future<void> _refreshContactsInBackground(String uid, {bool showErrors = false}) async {
     try {
       final list = await _socialRepository.getAcceptedConnections();
-      final fresh = list.map(_fromJson).toList();
-      fresh.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      final blockedList = await _client.rpc('scrole_get_direct_blocked_users');
+      final merged = <String, ContactModel>{};
+
+      for (final row in list) {
+        final contact = _fromJson(row);
+        if (contact.id.isNotEmpty) merged[contact.id] = contact;
+      }
+      if (blockedList is List) {
+        for (final item in blockedList.whereType<Map>()) {
+          final row = Map<String, dynamic>.from(item);
+          final contact = _fromJson(row, isBlockedByMe: true);
+          if (contact.id.isNotEmpty) merged[contact.id] = contact;
+        }
+      }
+
+      final fresh = merged.values.toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
       final db = await _db.database;
       await db.transaction((txn) async {
@@ -110,7 +127,7 @@ class ContactsController extends GetxController {
     }
   }
 
-  ContactModel _fromJson(Map<String, dynamic> json) {
+  ContactModel _fromJson(Map<String, dynamic> json, {bool isBlockedByMe = false}) {
     final first = (json['first_name'] as String? ?? '').trim();
     final last = (json['last_name'] as String? ?? '').trim();
     final username = (json['username'] as String? ?? '').trim();
@@ -122,6 +139,7 @@ class ContactsController extends GetxController {
       username: username,
       avatarUrl: json['photo_url'] as String?,
       isCertified: isCertified,
+      isBlockedByMe: isBlockedByMe,
     );
   }
 
