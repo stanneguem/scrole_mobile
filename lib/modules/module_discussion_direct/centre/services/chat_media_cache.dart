@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 class ChatMediaCache {
   ChatMediaCache._();
@@ -36,6 +37,10 @@ class ChatMediaCache {
   /// Supabase object key stored in `media_urls`, e.g. `{uid}/chat/media/file.jpg`.
   static bool isStorageKey(String value) =>
       value.isNotEmpty && !isHttpUrl(value) && !isFilesystemPath(value);
+
+  static bool _isR2ObjectKey(String value) =>
+      value.startsWith('messages/') || value.startsWith('stories/') ||
+      value.startsWith('private/') || value.startsWith('bug-reports/');
 
   String _fileName(String remoteUrl) {
     final sourcePath = isHttpUrl(remoteUrl)
@@ -119,11 +124,29 @@ class ChatMediaCache {
     if (existing != null) return existing;
 
     try {
-      final storagePath = isHttpUrl(remoteUrl) ? _storagePathFromPublicUrl(remoteUrl) : remoteUrl;
-      final response = await Supabase.instance.client.storage
-          .from('chat-media')
-          .download(storagePath);
-      return cacheBytes(remoteUrl, response);
+      final client = Supabase.instance.client;
+      String downloadUrl;
+      if (isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
+        downloadUrl = remoteUrl;
+      } else if (_isR2ObjectKey(remoteUrl)) {
+        final response = await client.functions.invoke(
+          'r2-media-upload',
+          body: {'action': 'create-download-url', 'object_key': remoteUrl},
+        );
+        if (response.status < 200 || response.status >= 300 || response.data is! Map) return null;
+        final data = Map<String, dynamic>.from(response.data as Map);
+        final resolved = data['url'] as String?;
+        if (resolved == null || resolved.isEmpty) return null;
+        downloadUrl = resolved;
+      } else if (isHttpUrl(remoteUrl)) {
+        downloadUrl = remoteUrl;
+      } else {
+        // Legacy Supabase Storage key support for old messages only.
+        downloadUrl = await client.storage.from('chat-media').createSignedUrl(remoteUrl, 120);
+      }
+      final response = await http.get(Uri.parse(downloadUrl));
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+      return cacheBytes(remoteUrl, response.bodyBytes);
     } catch (_) {
       return null;
     }
