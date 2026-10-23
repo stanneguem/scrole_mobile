@@ -101,12 +101,35 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: item.isVideo
-                        ? Container(
-                            width: double.infinity,
-                            color: Colors.black,
-                            child: const Center(
-                              child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 72),
-                            ),
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (item.thumbnailUrl != null && item.thumbnailUrl!.trim().isNotEmpty)
+                                AppCachedImage(
+                                  imageUrl: item.thumbnailUrl!,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 280,
+                                  progressive: true,
+                                  lowResolutionWidth: 400,
+                                  highResolutionWidth: 1080,
+                                )
+                              else
+                                const ColoredBox(color: Colors.black),
+                              // Overlay lisible au-dessus de la miniature vidéo.
+                              Center(
+                                child: Container(
+                                  width: 68,
+                                  height: 68,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.48),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.5),
+                                  ),
+                                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 48),
+                                ),
+                              ),
+                            ],
                           )
                         : AppCachedImage(
                             imageUrl: item.url,
