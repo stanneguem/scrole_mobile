@@ -253,6 +253,7 @@ class SupabaseMessagingService {
     String folder, {
     String? contentType,
     String? conversationId,
+    double? durationSeconds,
   }) async {
     final uid = currentUserId;
     if (uid == null) throw StateError('Authentication required to upload media');
@@ -286,14 +287,16 @@ class SupabaseMessagingService {
       else resolvedType = 'application/octet-stream';
     }
     final isVideo = resolvedType.startsWith('video/');
-    final category = isVideo ? 'post_media' : 'message_media';
+    final isAudio = resolvedType.startsWith('audio/');
+    final category = 'message_media';
     final request = <String, dynamic>{
       'action': 'create-upload-url',
       'category': category,
-      'media_type': isVideo ? 'video' : 'image',
+      'media_type': isVideo ? 'video' : isAudio ? 'audio' : 'image',
       'content_type': resolvedType,
       'extension': extension,
       'size_bytes': bytes.length,
+      if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (conversationId != null && conversationId.isNotEmpty) 'entity_id': conversationId,
     };
     if (category == 'message_media' && (conversationId == null || conversationId.isEmpty)) {
