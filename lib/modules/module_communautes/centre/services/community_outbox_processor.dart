@@ -498,14 +498,16 @@ class CommunityOutboxProcessor extends GetxService {
               final file = File(localPath);
               if (file.existsSync()) {
                 if (mediaType == 'video') {
+                  final videoDurationMs = (await VideoCompress.getMediaInfo(localPath))?.duration ?? 0;
+                  debugPrint('[POST_CREATE][$postKind] VIDEO_DURATION_CHECK operationId=$operationId index=${i + 1} durationMs=${videoDurationMs.round()} durationSeconds=${(videoDurationMs / 1000).toStringAsFixed(3)}');
+                  if (videoDurationMs > const Duration(seconds: 30).inMilliseconds) {
+                    throw StateError('Cette vidéo dépasse 30 secondes. Sélectionne-la à nouveau et découpe-la à 29 secondes maximum avant de publier.');
+                  }
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'video',
                     communityId: communityId,
-                    videoDuration: Duration(
-                      milliseconds: (await VideoCompress.getMediaInfo(localPath))?.duration?.round() ?? 0,
-                    ),
+                    videoDuration: Duration(milliseconds: videoDurationMs.round()),
                   );
-                  final videoDurationMs = (await VideoCompress.getMediaInfo(localPath))?.duration ?? 0;
                   final videoMedia = <String, dynamic>{
                     'type': 'video', 'storage': 'r2',
                     'url': uploaded.publicUrl ?? uploaded.objectKey,
