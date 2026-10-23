@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/models/message.dart';
 import '../../centre/models/conversation.dart';
