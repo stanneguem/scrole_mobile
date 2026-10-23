@@ -228,7 +228,7 @@ class CommunityFeedController extends GetxController {
       posts.assignAll(byId.values);
       errorMessage.value = '';
 
-      if (items.isEmpty) {
+      if (posts.isEmpty) {
         feedState.value = CommunityFeedState.empty;
       } else {
         feedState.value = CommunityFeedState.loaded;
