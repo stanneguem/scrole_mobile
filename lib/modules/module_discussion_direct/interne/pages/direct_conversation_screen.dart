@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:scrole/shared/models/chat_message.dart'
@@ -767,7 +768,8 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                   children: [
                     if (!editingMode)
                       _CircleIcon(
-                        icon: Icons.add,
+                        icon: null,
+                        assetPath: 'assets/svg_icons/pictures2-svgrepo-com.svg',
                         size: iconSize,
                         color: hasWallpaper ? Colors.white : null,
                         onTap: () => showImageSourceSheet(
