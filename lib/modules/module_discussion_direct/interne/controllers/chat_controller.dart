@@ -270,13 +270,25 @@ class ChatController extends GetxController {
     }
   }
 
-  Future<void> blockOtherUser() async {
+  Future<void> toggleBlockOtherUser() async {
     if (otherUserId.isEmpty) throw StateError('Utilisateur invalide.');
-    await Supabase.instance.client.rpc(
-      'scrole_block_direct_user',
-      params: {'p_other_user_id': otherUserId},
-    );
+    if (blockedByMe.value) {
+      await Supabase.instance.client.rpc(
+        'scrole_unblock_direct_user',
+        params: {'p_other_user_id': otherUserId},
+      );
+    } else {
+      await Supabase.instance.client.rpc(
+        'scrole_block_direct_user',
+        params: {'p_other_user_id': otherUserId},
+      );
+    }
     await refreshBlockStatus();
+    if (!blockedByMe.value && !blockedByOtherUser.value) {
+      // Status is now clear on both sides; the composer can become available again.
+      blockedByMe.refresh();
+      blockedByOtherUser.refresh();
+    }
   }
 
   Future<void> reportOtherUser(String reason, String? details) async {
