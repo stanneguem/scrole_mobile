@@ -318,7 +318,7 @@ class HomeFeedController extends GetxController {
       final db = await _db.database;
       final rows = await db.query(
         'post_outbox',
-        where: 'user_id = ? AND status IN (?, ?)',
+        where: 'user_id = ? AND status IN (?, ?) AND community_id IS NULL',
         whereArgs: [userId, 'pending', 'failed'],
         orderBy: 'created_at DESC',
       );
