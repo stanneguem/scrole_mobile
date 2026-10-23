@@ -61,6 +61,73 @@ Deno.serve(async (req: Request) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return reply(400, { error: "invalid_json" }); }
+  if (body.action === "delete-failed-post-media") {
+    const rawKeys = Array.isArray(body.object_keys) ? body.object_keys : [];
+    const communityId = typeof body.community_id === "string" && body.community_id.trim() ? body.community_id.trim() : "";
+    const keys = [...new Set(rawKeys.filter((v): v is string => typeof v === "string" && v.trim().length > 0).map(v => v.trim()))];
+    if (keys.length === 0 || keys.length > 30) return reply(400, { error: "invalid_object_keys" });
+
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    if (communityId) {
+      const { data: community, error: communityError } = await admin.from("communities").select("creator_id,visibility").eq("id", communityId).maybeSingle();
+      if (communityError) return reply(500, { error: "community_check_failed" });
+      const { data: membership, error: membershipError } = await admin.from("community_members").select("user_id,role").eq("community_id", communityId).eq("user_id", user.id).maybeSingle();
+      if (membershipError) return reply(500, { error: "community_membership_check_failed" });
+      if (!community || (community.creator_id !== user.id && !membership)) return reply(403, { error: "post_media_cleanup_denied" });
+    }
+
+    const deleted: string[] = [];
+    const retained: string[] = [];
+    const failed: Array<{ object_key: string; error: string }> = [];
+    for (const key of keys) {
+      const parts = key.split("/");
+      const filename = parts[parts.length - 1] ?? "";
+      const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4v|webm)$/i.test(filename);
+      const userPostKey = !communityId && parts.length === 3 && parts[0] === "posts" && parts[1] === user.id;
+      const publicCommunityKey = !!communityId && parts.length === 4 && parts[0] === "communities" && parts[1] === communityId && parts[2] === "posts";
+      const privateCommunityKey = !!communityId && parts.length === 6 && parts[0] === "private" && parts[1] === "communities" && parts[2] === communityId && parts[3] === "posts" && parts[4] === user.id;
+      if (!validFilename || key.startsWith("/") || key.includes("..") || key.includes(String.fromCharCode(92)) ||
+          !(userPostKey || publicCommunityKey || privateCommunityKey)) {
+        failed.push({ object_key: key, error: "invalid_or_unauthorized_object_key" });
+        continue;
+      }
+      try {
+        const refs = await Promise.all([
+          admin.from("community_posts").select("id").contains("media", [{ object_key: key }]).limit(1),
+          admin.from("community_posts").select("id").contains("videos", [{ object_key: key }]).limit(1),
+        ]);
+        if (refs.some(r => r.error)) throw new Error("media_reference_check_failed");
+        let referenced = refs.some(r => (r.data ?? []).length > 0);
+        const url = publicBaseUrl ? `${publicBaseUrl}/${key.split("/").map(encodeURIComponent).join("/")}` : null;
+        if (!referenced && url) {
+          const urlRefs = await Promise.all([
+            admin.from("community_posts").select("id").contains("media", [{ url }]).limit(1),
+            admin.from("community_posts").select("id").contains("videos", [{ url }]).limit(1),
+            admin.from("community_posts").select("id").contains("photos", [url]).limit(1),
+            admin.from("community_posts").select("id").eq("photo", url).limit(1),
+            admin.from("community_posts").select("id").eq("video_url", url).limit(1),
+          ]);
+          if (urlRefs.some(r => r.error)) throw new Error("media_reference_check_failed");
+          referenced = urlRefs.some(r => (r.data ?? []).length > 0);
+        }
+        if (referenced) { retained.push(key); continue; }
+
+        const isPrivate = key.startsWith("private/");
+        const targetBucket = isPrivate ? privateBucket : bucket;
+        const targetAccessKey = isPrivate ? privateAccessKeyId : accessKeyId;
+        const targetSecret = isPrivate ? privateSecretAccessKey : secretAccessKey;
+        const targetEndpoint = isPrivate ? privateEndpoint : `https://${accountId}.r2.cloudflarestorage.com`;
+        if (!targetBucket || !targetAccessKey || !targetSecret || !targetEndpoint) throw new Error("r2_bucket_not_configured");
+        const s3 = new S3Client({ region: "auto", endpoint: targetEndpoint, credentials: { accessKeyId: targetAccessKey, secretAccessKey: targetSecret } });
+        await s3.send(new DeleteObjectCommand({ Bucket: targetBucket, Key: key }));
+        deleted.push(key);
+      } catch (error) {
+        failed.push({ object_key: key, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return reply(failed.length ? 502 : 200, { success: failed.length === 0, deleted_count: deleted.length, retained_referenced_count: retained.length, failed });
+  }
+
   if (body.action === "create-download-url") {
     const key = typeof body.object_key === "string" ? body.object_key.trim() : "";
     if (!key || key.includes("..") || key.startsWith("/") || key.includes("\\\\")) return reply(400, { error: "invalid_object_key" });
