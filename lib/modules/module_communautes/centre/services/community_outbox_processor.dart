@@ -280,7 +280,7 @@ class CommunityOutboxProcessor extends GetxService {
               if (mediaType == 'video') {
                 throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
               }
-              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath});
+              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath}); // legacy queued remote URL; new local uploads always go to R2
             } else {
               final file = File(localPath);
               if (file.existsSync()) {
