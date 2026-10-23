@@ -230,8 +230,6 @@ Deno.serve(async (req: Request) => {
   console.info("[r2-media-upload] signing upload", {
     accountId,
     bucket,
-    accessKeyIdLength: accessKeyId.length,
-    secretAccessKeyLength: secretAccessKey.length,
     category,
     contentType,
     sizeBytes,
