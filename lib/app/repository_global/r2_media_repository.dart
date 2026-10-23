@@ -151,7 +151,9 @@ class R2MediaRepository {
     final objectKey = data['object_key'] as String?;
     final publicUrl = data['public_url'] as String?;
     final isPublic = data['is_public'] == true;
-    if (uploadUrl == null || objectKey == null || (isPublic && publicUrl == null) || (!isPublic && !objectKey.startsWith('private/'))) {
+    final privateKeyPrefixes = ['private/', 'stories/', 'messages/', 'bug-reports/', 'comments/'];
+    if (uploadUrl == null || objectKey == null || (isPublic && publicUrl == null) ||
+        (!isPublic && !privateKeyPrefixes.any((prefix) => objectKey.startsWith(prefix)))) {
       debugPrint('[R2_UPLOAD][$traceId] ABORT: réponse incomplète uploadUrl=${uploadUrl != null} objectKey=${objectKey != null} publicUrl=${publicUrl != null} isPublic=$isPublic');
       throw StateError('Réponse R2 incomplète ou incohérente : URL ou clé manquante.');
     }
