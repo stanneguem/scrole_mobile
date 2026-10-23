@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4v|webm)$/i.test(filename);
       const userPostKey = !communityId && parts.length === 3 && parts[0] === "posts" && parts[1] === user.id;
       const publicCommunityKey = !!communityId && parts.length === 4 && parts[0] === "communities" && parts[1] === communityId && parts[2] === "posts";
-      const privateCommunityKey = !!communityId && parts.length === 6 && parts[0] === "private" && parts[1] === "communities" && parts[2] === communityId && parts[3] === "posts" && parts[4] === user.id;
+      const privateCommunityKey = !!communityId && parts.length === 7 && parts[0] === "private" && parts[1] === "communities" && parts[2] === communityId && parts[3] === "posts" && parts[4] === user.id;
       if (!validFilename || key.startsWith("/") || key.includes("..") || key.includes(String.fromCharCode(92)) ||
           !(userPostKey || publicCommunityKey || privateCommunityKey)) {
         failed.push({ object_key: key, error: "invalid_or_unauthorized_object_key" });
