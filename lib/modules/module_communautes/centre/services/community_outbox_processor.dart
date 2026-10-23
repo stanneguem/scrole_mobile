@@ -485,11 +485,13 @@ class CommunityOutboxProcessor extends GetxService {
           final nextRetryAt = terminal ? 0 : DateTime.now().add(retryDelay).millisecondsSinceEpoch;
           debugPrint('[POST_CREATE][$postKind] ${permanentError ? 'PERMANENT_ERROR' : terminal ? 'MAX_ATTEMPTS_REACHED' : 'RETRY_SCHEDULED'} operationId=$operationId attempt=$nextAttempt maxAttempts=$_maxPostAttempts delayMs=${terminal ? 0 : retryDelay.inMilliseconds} nextRetryAt=$nextRetryAt error=$errStr');
 
-          // The installed SQLite post_outbox schema has no last_error column.
-          // Keep the error in logs and update only columns known to exist.
+          // Store the diagnostic in the JSON payload: the deployed SQLite
+          // schema does not expose a last_error column.
+          payload['p_last_error'] = errStr;
           await db.update(
             'post_outbox',
             {
+              'payload': jsonEncode(payload),
               'status': terminal ? 'failed' : 'pending',
               'attempt_count': nextAttempt,
               'next_retry_at': nextRetryAt,
