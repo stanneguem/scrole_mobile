@@ -120,6 +120,9 @@ class FeedPostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (post.isPublishing) {
+      return _PendingPostCard(post: post);
+    }
     if (post.sharedPostId != null || post.sharedPost != null) {
       return _RepublicationPostCard(
         post: post,
@@ -2638,6 +2641,78 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
                     'Partager',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// A deliberately non-interactive placeholder. It does not reuse the live post
+/// widget, so taps on media, author, reactions, comments, or menus cannot fire
+/// before the backend confirms the post.
+class _PendingPostCard extends StatelessWidget {
+  final CommunityPost post;
+  const _PendingPostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final failed = post.timeAgo == 'Échec de publication';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.65)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                failed ? Icons.error_outline_rounded : Icons.cloud_upload_outlined,
+                color: failed ? colors.error : colors.primary,
+                size: 19,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  failed ? 'Publication non confirmée' : 'Publication en cours…',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: failed ? colors.error : colors.primary,
+                  ),
+                ),
+              ),
+              if (!failed)
+                SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary),
+                ),
+            ],
+          ),
+          if (post.content.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              post.content,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colors.onSurface, height: 1.35),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            failed
+                ? 'Le serveur n’a pas confirmé cette publication. Consulte la connexion puis réessaie.'
+                : 'Les interactions seront activées dès la confirmation du serveur.',
+            style: TextStyle(fontSize: 11.5, color: colors.onSurfaceVariant),
           ),
         ],
       ),
