@@ -48,7 +48,12 @@ class R2MediaRepository {
     String? communityId,
     Duration? videoDuration,
   }) async {
-    if (_client.auth.currentUser == null) {
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('[R2_UPLOAD][$traceId] START category=$category mediaType=$mediaType entityId=$entityId communityId=$communityId');
+    final authUser = _client.auth.currentUser;
+    debugPrint('[R2_UPLOAD][$traceId] authUserId=${authUser?.id ?? 'null'} sessionPresent=${_client.auth.currentSession != null}');
+    if (authUser == null) {
+      debugPrint('[R2_UPLOAD][$traceId] ABORT: utilisateur non connecté');
       throw const AuthException('Vous devez être connecté pour envoyer un média.');
     }
 
@@ -56,12 +61,18 @@ class R2MediaRepository {
     final isVideo = mediaType == 'video';
     final contentType = (isVideo ? _videoTypes : _imageTypes)[extension];
     if (contentType == null) {
+      debugPrint('[R2_UPLOAD][$traceId] ABORT: extension non prise en charge .$extension');
       throw ArgumentError('Format de média non pris en charge : .$extension');
     }
 
     final bytes = await file.readAsBytes();
-    if (bytes.isEmpty) throw StateError('Le fichier sélectionné est vide.');
+    debugPrint('[R2_UPLOAD][$traceId] fileRead bytes=${bytes.length} extension=$extension contentType=$contentType');
+    if (bytes.isEmpty) {
+      debugPrint('[R2_UPLOAD][$traceId] ABORT: fichier vide');
+      throw StateError('Le fichier sélectionné est vide.');
+    }
 
+    debugPrint('[R2_UPLOAD][$traceId] STEP 1: appel Edge Function r2-media-upload');
     final response = await _client.functions.invoke(
       'r2-media-upload',
       body: <String, dynamic>{
@@ -78,21 +89,26 @@ class R2MediaRepository {
       },
     );
 
+    debugPrint('[R2_UPLOAD][$traceId] Edge Function status=${response.status} dataType=${response.data.runtimeType}');
     if (response.status < 200 || response.status >= 300 || response.data is! Map) {
       final details = response.data is Map
           ? (response.data as Map)['error']?.toString()
           : null;
+      debugPrint('[R2_UPLOAD][$traceId] EDGE_FUNCTION_FAILURE status=${response.status} details=${details ?? response.data}');
       throw StateError('Autorisation R2 refusée${details == null ? '' : ' : $details'}');
     }
 
     final data = Map<String, dynamic>.from(response.data as Map);
+    debugPrint('[R2_UPLOAD][$traceId] Edge response fields=${data.keys.toList()} objectKey=${data['object_key']} expiresIn=${data['expires_in']}');
     final uploadUrl = data['upload_url'] as String?;
     final objectKey = data['object_key'] as String?;
     final publicUrl = data['public_url'] as String?;
     if (uploadUrl == null || objectKey == null || publicUrl == null) {
+      debugPrint('[R2_UPLOAD][$traceId] ABORT: réponse incomplète uploadUrl=${uploadUrl != null} objectKey=${objectKey != null} publicUrl=${publicUrl != null}');
       throw StateError('Réponse R2 incomplète : URL ou clé manquante.');
     }
 
+    // Ne jamais journaliser uploadUrl : cette URL contient une signature temporaire.
     final request = http.Request('PUT', Uri.parse(uploadUrl))
       ..headers['Content-Type'] = contentType
       ..headers['Content-Length'] = bytes.length.toString()
@@ -100,17 +116,29 @@ class R2MediaRepository {
 
     final client = http.Client();
     try {
+      debugPrint('[R2_UPLOAD][$traceId] STEP 2: PUT vers R2 objectKey=$objectKey bytes=${bytes.length} contentType=$contentType');
       final streamed = await client.send(request);
       final uploadResponse = await http.Response.fromStream(streamed);
+      debugPrint('[R2_UPLOAD][$traceId] R2 PUT status=${uploadResponse.statusCode} responseBytes=${uploadResponse.bodyBytes.length}');
       if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
+        final bodyPreview = uploadResponse.body.length > 500
+            ? uploadResponse.body.substring(0, 500)
+            : uploadResponse.body;
+        debugPrint('[R2_UPLOAD][$traceId] R2_PUT_FAILURE body=$bodyPreview');
         throw HttpException(
           'Échec du téléversement R2 (HTTP ${uploadResponse.statusCode}).',
         );
       }
+    } catch (e, stack) {
+      debugPrint('[R2_UPLOAD][$traceId] PUT_EXCEPTION type=${e.runtimeType} error=$e');
+      debugPrint('[R2_UPLOAD][$traceId] PUT_STACK_TRACE\\n$stack');
+      rethrow;
     } finally {
       client.close();
+      debugPrint('[R2_UPLOAD][$traceId] HTTP client closed');
     }
 
+    debugPrint('[R2_UPLOAD][$traceId] SUCCESS objectKey=$objectKey bytes=${bytes.length}');
     return R2UploadedMedia(
       objectKey: objectKey,
       publicUrl: publicUrl,
