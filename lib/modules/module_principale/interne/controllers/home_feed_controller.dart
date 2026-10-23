@@ -10,6 +10,7 @@ import 'package:scrole/modules/module_principale/externe/repositories/home_feed_
 import 'package:scrole/modules/module_evenement/centre/repositories/event_repository.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/app/local_storage/structured/app_cache_database.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/utils/supabase_error_mapper.dart';
@@ -410,8 +411,10 @@ class HomeFeedController extends GetxController {
         where: 'id = ?',
         whereArgs: [rows.first['id']],
       );
-      final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
-      unawaited(service.processQueuedPosts());
+      if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+        Get.put(CommunityOutboxProcessor());
+      }
+      unawaited(Get.find<CommunityOutboxProcessor>().processPendingPosts());
       await fetchFeed(refresh: true);
     } catch (e) {
       debugPrint('[HOME_FEED] Retry queued post failed postId=$postId error=$e');
