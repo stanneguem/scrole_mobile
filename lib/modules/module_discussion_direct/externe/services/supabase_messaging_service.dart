@@ -316,7 +316,30 @@ class SupabaseMessagingService {
       body: bytes,
     );
     if (put.statusCode < 200 || put.statusCode >= 300) {
-      throw HttpException('Cloudflare R2 upload failed (${put.statusCode})');
+      // Log structured R2 error fields only; never log the presigned URL or headers.
+      final responseBody = put.body;
+      String? xmlField(String name) {
+        final match = RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>', caseSensitive: false)
+            .firstMatch(responseBody);
+        return match?.group(1)?.trim();
+      }
+      final errorCode = xmlField('Code');
+      final errorMessage = xmlField('Message');
+      final requestId = xmlField('RequestId') ?? xmlField('RequestID');
+      final hostId = xmlField('HostId');
+      final trimmedBody = responseBody.trim();
+      final details = <String>[
+        if (errorCode != null && errorCode.isNotEmpty) 'code=$errorCode',
+        if (errorMessage != null && errorMessage.isNotEmpty) 'message=$errorMessage',
+        if (requestId != null && requestId.isNotEmpty) 'requestId=$requestId',
+        if (hostId != null && hostId.isNotEmpty) 'hostId=$hostId',
+        if (errorCode == null && errorMessage == null && trimmedBody.isNotEmpty)
+          'body=${trimmedBody.substring(0, trimmedBody.length.clamp(0, 500))}',
+      ].join(', ');
+      throw HttpException(
+        'Cloudflare R2 upload failed (${put.statusCode})'
+        '${details.isEmpty ? '' : ': $details'}',
+      );
     }
     // Public assets can be stored as public URLs; private chat assets store only
     // the object key and are resolved through an authenticated, short-lived URL.
