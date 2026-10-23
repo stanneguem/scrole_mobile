@@ -269,7 +269,8 @@ class SupabaseMessagingService {
     if (!await file.exists()) return null;
     final resolvedType = contentType ?? 'application/octet-stream';
     final size = await file.length();
-    final extension = file.uri.pathSegments.last.split('.').last.toLowerCase();
+    final rawExtension = file.uri.pathSegments.last.split('.').last.toLowerCase();
+    final extension = rawExtension == 'jpeg' ? 'jpg' : rawExtension;
     final mediaType = resolvedType.startsWith('audio/')
         ? 'audio'
         : resolvedType.startsWith('video/')
@@ -300,6 +301,7 @@ class SupabaseMessagingService {
       try {
         final request = await client.putUrl(Uri.parse(uploadUrl));
         request.headers.set(HttpHeaders.contentTypeHeader, resolvedType);
+        request.contentLength = size;
         await request.addStream(file.openRead());
         final response = await request.close();
         await response.drain<void>();
