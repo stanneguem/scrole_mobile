@@ -122,7 +122,9 @@ Deno.serve(async (req: Request) => {
   try {
     const command = new PutObjectCommand({
       Bucket: bucket, Key: key, ContentType: contentType, ContentLength: sizeBytes,
-      Metadata: { owner: user.id, category },
+      // Do not sign x-amz-meta-* headers here: the Flutter PUT request does not send
+      // those headers, which can make the presigned request fail at R2.
+
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
