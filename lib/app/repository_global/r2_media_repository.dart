@@ -88,6 +88,29 @@ class R2MediaRepository {
   Future<void> deleteProfileAvatar(String publicUrl) =>
       deleteReplacedPublicMedia(publicUrl);
 
+  /// Deletes uploaded R2 objects when post creation is cancelled.
+  /// The Edge Function validates ownership and keeps any object already referenced by a post.
+  Future<void> deleteFailedPostMedia({
+    required List<String> objectKeys,
+    String? communityId,
+  }) async {
+    final keys = objectKeys.map((key) => key.trim()).where((key) => key.isNotEmpty).toSet().toList();
+    if (keys.isEmpty) return;
+    final response = await _client.functions.invoke(
+      'r2-media-upload',
+      body: <String, dynamic>{
+        'action': 'delete-failed-post-media',
+        'object_keys': keys,
+        if (communityId != null && communityId.isNotEmpty) 'community_id': communityId,
+      },
+    );
+    if (response.status < 200 || response.status >= 300 ||
+        response.data is! Map || (response.data as Map)['success'] != true) {
+      throw StateError('Failed to clean up post media: ${response.data}');
+    }
+    debugPrint('[R2_UPLOAD] FAILED_POST_MEDIA_CLEANUP deleted=${(response.data as Map)['deleted_count']}');
+  }
+
   Future<R2UploadedMedia> uploadFile({
     required File file,
     required String category,
@@ -198,6 +221,15 @@ class R2MediaRepository {
     } catch (e, stack) {
       debugPrint('[R2_UPLOAD][$traceId] PUT_EXCEPTION type=${e.runtimeType} error=$e');
       debugPrint('[R2_UPLOAD][$traceId] PUT_STACK_TRACE\\n$stack');
+      // A reset/timeout can happen after R2 received the full PUT. Delete the
+      // known key even when the client never got the successful response.
+      if (category == 'post_media' && objectKey.isNotEmpty) {
+        try {
+          await deleteFailedPostMedia(objectKeys: [objectKey], communityId: communityId);
+        } catch (cleanupError) {
+          debugPrint('[R2_UPLOAD][$traceId] FAILED_PUT_CLEANUP_FAILED objectKey=$objectKey error=$cleanupError');
+        }
+      }
       rethrow;
     } finally {
       client.close();
