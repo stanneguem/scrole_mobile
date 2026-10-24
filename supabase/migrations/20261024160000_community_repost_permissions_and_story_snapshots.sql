@@ -53,6 +53,8 @@ begin
     'viewer_has_shared','shared_comment_id','shared_comment','poll'
   ];
   v_item := v_item || jsonb_build_object(
+    'author_id', null,
+    'author', coalesce(v_item -> 'author', '{}'::jsonb) - 'user_id' - 'id',
     'available', true,
     'can_open_original', false,
     'shared_post_can_open_original', false,
