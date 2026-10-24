@@ -71,6 +71,7 @@ class CommunityPost {
   final String? sharedPostId;
   final CommunityPost? sharedPost;
   final bool sharingEnabled;
+  final bool canOpenOriginal;
   final bool commentsEnabled;
   final bool reactionsEnabled;
   final String audience;
@@ -109,6 +110,7 @@ class CommunityPost {
     this.sharedPostId,
     this.sharedPost,
     this.sharingEnabled = true,
+    this.canOpenOriginal = true,
     this.commentsEnabled = true,
     this.reactionsEnabled = true,
     this.audience = 'public',
@@ -249,6 +251,7 @@ class CommunityPost {
       sharedPostId: map['shared_post_id']?.toString(),
       sharedPost: shared,
       sharingEnabled: map['sharing_enabled'] != false,
+      canOpenOriginal: map['shared_post_can_open_original'] != false && map['can_open_original'] != false,
       commentsEnabled: map['comments_enabled'] != false,
       reactionsEnabled: map['reactions_enabled'] != false,
       audience: map['audience']?.toString() ?? 'public',
@@ -307,6 +310,7 @@ class CommunityPost {
       sharedPostId: sharedPostId,
       sharedPost: sharedPost,
       sharingEnabled: sharingEnabled,
+      canOpenOriginal: canOpenOriginal,
       commentsEnabled: commentsEnabled,
       reactionsEnabled: reactionsEnabled,
       audience: audience ?? this.audience,
