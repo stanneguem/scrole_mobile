@@ -596,6 +596,18 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     return await _repo.getCommunityPendingPosts(communityId, limit: limit, offset: offset);
   }
 
+  Future<Map<String, dynamic>> getCommunitySpamQueue(
+    String communityId, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    return _repo.getCommunitySpamQueue(
+      communityId,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
   Future<void> moderateCommunityPost(String postId, String action, {String? reason}) async {
     await _repo.moderateCommunityPost(postId, action, reason: reason);
   }
