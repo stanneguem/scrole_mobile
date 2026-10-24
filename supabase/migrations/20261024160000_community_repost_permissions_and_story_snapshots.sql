@@ -138,12 +138,22 @@ begin
     if not found or v_post.status <> 'active' or not coalesce(v_post.sharing_enabled, false) then
       return false;
     end if;
-    if v_post.community_id is not null and exists (
-      select 1 from public.community_settings cs
-      where cs.community_id = v_post.community_id
-        and not coalesce(cs.allow_post_sharing, true)
-    ) then
-      return false;
+    if v_post.community_id is not null then
+      if not exists (
+        select 1 from public.communities community
+        where community.id = v_post.community_id
+          and community.status = 'active'
+          and (community.visibility = 'public' or public.is_community_member(community.id))
+      ) then
+        return false;
+      end if;
+      if exists (
+        select 1 from public.community_settings cs
+        where cs.community_id = v_post.community_id
+          and not coalesce(cs.allow_post_sharing, true)
+      ) then
+        return false;
+      end if;
     end if;
     v_current := v_post.shared_post_id;
   end loop;
