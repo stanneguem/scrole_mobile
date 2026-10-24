@@ -88,14 +88,14 @@ async function isR2ObjectReferencedElsewhere(
   adminClient: ReturnType<typeof createClient>, postId: string, object: R2MediaObject,
 ): Promise<boolean> {
   for (const column of ["media", "videos"] as const) {
-    const keyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ object_key: object.key }]).limit(1);
+    const keyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).filter(column, "cs", JSON.stringify([{ object_key: object.key }])).limit(1);
     if (keyQuery.error) throw new Error(`Vérification R2 échouée (${column}.object_key): ${keyQuery.error.message}`);
     if ((keyQuery.data ?? []).length > 0) return true;
-    const thumbnailKeyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ thumbnail_object_key: object.key }]).limit(1);
+    const thumbnailKeyQuery = await adminClient.from("community_posts").select("id").neq("id", postId).filter(column, "cs", JSON.stringify([{ thumbnail_object_key: object.key }])).limit(1);
     if (thumbnailKeyQuery.error) throw new Error(`Vérification R2 échouée (${column}.thumbnail_object_key): ${thumbnailKeyQuery.error.message}`);
     if ((thumbnailKeyQuery.data ?? []).length > 0) return true;
     if (object.url) {
-      const urlQuery = await adminClient.from("community_posts").select("id").neq("id", postId).contains(column, [{ url: object.url }]).limit(1);
+      const urlQuery = await adminClient.from("community_posts").select("id").neq("id", postId).filter(column, "cs", JSON.stringify([{ url: object.url }])).limit(1);
       if (urlQuery.error) throw new Error(`Vérification R2 échouée (${column}.url): ${urlQuery.error.message}`);
       if ((urlQuery.data ?? []).length > 0) return true;
     }
