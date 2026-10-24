@@ -461,7 +461,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 textAlign: TextAlign.center,
                               ),
                             )
-                          else
+                          else ...[
+                            if (!_currentStory.sharedPostCanOpenOriginal)
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  'Aperçu partagé · source réservée aux membres de la communauté',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
                             GestureDetector(
                               onTap: () {
                                 if (_currentStory.sharedPostId != null && _currentStory.sharedPostCanOpenOriginal) {
@@ -493,6 +505,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                 ),
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),
