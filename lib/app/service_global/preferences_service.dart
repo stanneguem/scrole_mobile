@@ -46,10 +46,10 @@ class PreferencesService extends GetxService {
     // Rejoue les changements conservés dans l'outbox dès le retour du réseau.
     try {
       if (Get.isRegistered<ConnectivityService>()) {
-        _connectivitySubscription = Get.find<ConnectivityService>().onStatusChange.listen((status) {
+        _connectivitySubscription = Get.find<ConnectivityService>().onStatusChange.listen((status) async {
           if (status == InternetStatus.connected) {
-            unawaited(flushPending());
-            unawaited(syncInitialSettings());
+            await flushPending();
+            await syncInitialSettings();
           }
         });
       }
