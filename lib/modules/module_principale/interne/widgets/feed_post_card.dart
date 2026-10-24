@@ -143,6 +143,8 @@ class FeedPostCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final username = post.authorObj?.username ?? '';
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final cardHorizontalPadding = screenWidth < 360 ? 10.0 : (screenWidth < 600 ? 14.0 : 18.0);
     final hasCommunity =
         post.communityId != null && post.communityId!.isNotEmpty;
     final isInsideOwnCommunityFeed =
@@ -171,7 +173,7 @@ class FeedPostCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: cardHorizontalPadding, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -439,12 +441,16 @@ class FeedPostCard extends StatelessWidget {
                             // --- Suggéré badge & Rejoindre button si isSuggested ---
                             if (post.isSuggested) ...[
                               const SizedBox(height: 6),
-                              Row(
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                runSpacing: 4,
+                                spacing: 8,
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
-                                      vertical: 2,
+                                      vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
                                       color: colorScheme.primary.withValues(
@@ -461,27 +467,25 @@ class FeedPostCard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  if (hasCommunity) ...[
-                                    const Spacer(),
+                                  if (hasCommunity)
                                     TextButton.icon(
-                                      onPressed:
-                                          onJoinCommunity ??
-                                          () {
-                                            _onCommunityTap(context, post);
-                                          },
+                                      onPressed: onJoinCommunity ??
+                                          () => _onCommunityTap(context, post),
                                       icon: const Icon(
                                         Icons.group_add_rounded,
                                         size: 16,
                                       ),
                                       label: Text(
                                         'home_feed_join_community'.tr,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       style: TextButton.styleFrom(
                                         visualDensity: VisualDensity.compact,
                                         foregroundColor: colorScheme.primary,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                       ),
                                     ),
-                                  ],
                                 ],
                               ),
                             ],
@@ -763,7 +767,9 @@ class FeedPostCard extends StatelessWidget {
               reportAuthor ? 'community_report_author_title'.tr : 'community_report_post_title'.tr,
             ),
             content: SizedBox(
-              width: 420,
+              width: MediaQuery.sizeOf(context).width < 512
+                  ? MediaQuery.sizeOf(context).width * 0.82
+                  : 420,
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
