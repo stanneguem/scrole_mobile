@@ -220,6 +220,7 @@ declare
   v_offset integer := greatest(coalesce(p_offset, 0), 0);
   v_statuses text[];
   v_items jsonb;
+  v_profile_items jsonb;
   v_has_more boolean;
 begin
   if auth.uid() is null then raise exception 'Utilisateur non authentifié'; end if;
@@ -245,6 +246,7 @@ begin
   select
     coalesce(jsonb_agg(jsonb_build_object(
       'id', n.id,
+      'source', 'signalement',
       'target_type', n.target_type::text,
       'target_id', n.target_id,
       'status', n.status::text,
@@ -298,7 +300,43 @@ begin
   into v_items, v_has_more
   from numbered n;
 
-  return jsonb_build_object('items', v_items, 'has_more', coalesce(v_has_more, false));
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', upr.id,
+    'source', 'external_profile',
+    'target_type', 'user',
+    'target_id', upr.reported_user_id,
+    'status', case upr.status when 'pending' then 'en_attente'
+                              when 'reviewing' then 'en_cours'
+                              when 'resolved' then 'resolu'
+                              when 'dismissed' then 'rejete'
+                              else upr.status end,
+    'created_at', upr.created_at,
+    'description', upr.details,
+    'escalated', false,
+    'from_community', false,
+    'community_id', null,
+    'community', null,
+    'reason', jsonb_build_object('code', upr.reason, 'nom', replace(upr.reason, '_', ' ')),
+    'reporter', (select jsonb_build_object('user_id', up.user_id, 'username', up.username,
+                    'first_name', up.first_name, 'last_name', up.last_name, 'photo_url', up.photo_url)
+                 from public.user_profiles up where up.user_id = upr.reporter_user_id),
+    'reports_count', (select count(*) from public.user_profile_reports upr2
+                      where upr2.reported_user_id = upr.reported_user_id
+                        and upr2.status in ('pending', 'reviewing')),
+    'target', (select jsonb_build_object('user_id', up.user_id, 'username', up.username,
+                    'first_name', up.first_name, 'last_name', up.last_name,
+                    'photo_url', up.photo_url, 'account_status', up.account_status)
+               from public.user_profiles up where up.user_id = upr.reported_user_id)
+  ) order by upr.created_at desc), '[]'::jsonb)
+  into v_profile_items
+  from public.user_profile_reports upr
+  where case p_status
+    when 'handled' then upr.status in ('resolved', 'dismissed')
+    when 'all' then upr.status in ('pending', 'reviewing', 'resolved', 'dismissed')
+    else upr.status in ('pending', 'reviewing') end;
+
+  return jsonb_build_object('items', v_items, 'profile_items', v_profile_items,
+                            'has_more', coalesce(v_has_more, false));
 end;
 $function$;
 
