@@ -36,4 +36,4 @@ jobs:
       - name: Analyze community module and shared post widgets
         run: flutter analyze lib/modules/module_communautes lib/modules/module_principale/interne/widgets/feed_post_card.dart lib/modules/module_principale/centre/models/community_post.dart lib/app/translation/app_translation_additions.dart
       - name: Test community flows
-        run: flutter test test/modules/community_management_translations_test.dart test/modules/community_report_and_leave_test.dart test/modules/community_members_rpc_test.dart test/modules/community_open_and_preview_test.dart test/modules/community_local_sync_test.dart
+        run: flutter test test/modules/community_management_translations_test.dart test/modules/community_report_and_leave_test.dart test/modules/community_members_rpc_test.dart test/modules/community_open_and_preview_test.dart test/modules/community_local_sync_test.dart test/modules/community_post_repost_permission_test.dart
