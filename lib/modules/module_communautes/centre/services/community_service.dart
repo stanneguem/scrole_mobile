@@ -19,6 +19,7 @@ import 'community_outbox_processor.dart';
 import '../models/news/community_hashtag.dart';
 import '../../interne/controllers/community/community_feed_controller.dart';
 import '../../interne/controllers/community/community_controller.dart';
+import '../../../../shared/constants/post_media_limits.dart';
 
 class CommunityService extends GetxService with WidgetsBindingObserver {
   final CommunityRepository _repo;
@@ -595,6 +596,22 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     return await _repo.getCommunityPendingPosts(communityId, limit: limit, offset: offset);
   }
 
+  Future<Map<String, dynamic>> getCommunityAlerts(String communityId) async {
+    return _repo.getCommunityAlerts(communityId);
+  }
+
+  Future<Map<String, dynamic>> getCommunitySpamQueue(
+    String communityId, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    return _repo.getCommunitySpamQueue(
+      communityId,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
   Future<void> moderateCommunityPost(String postId, String action, {String? reason}) async {
     await _repo.moderateCommunityPost(postId, action, reason: reason);
   }
@@ -848,6 +865,9 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     String? requestedPostId,
     String? content,
     List<File>? imageFiles,
+    List<File>? videoFiles,
+    List<File>? orderedMediaFiles,
+    List<String>? orderedMediaTypes,
     String? audience,
     bool commentsEnabled = true,
     bool sharingEnabled = true,
@@ -857,32 +877,73 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
+    final startedAt = DateTime.now();
+    debugPrint('[POST_CREATE][COMPOSER] START communityId=$communityId requestedPostId=$requestedPostId audience=$audience contentLength=${content?.length ?? 0} imageCount=${imageFiles?.length ?? 0} videoCount=${videoFiles?.length ?? 0} orderedCount=${orderedMediaFiles?.length ?? 0} pollPresent=${poll != null}');
+    final totalMediaCount = orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0));
+    if (totalMediaCount > maxPostMedia) {
+      throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
+    }
+
     final userId = _authService.userId ?? 'local_user';
     final postId = requestedPostId ?? _generateUuidV4();
     final operationId = postId;
 
-    List<String> localMediaPaths = [];
+    List<Map<String, String>> localMediaPaths = [];
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      if (imageFiles != null && imageFiles.isNotEmpty) {
-        final filesToProcess = imageFiles.take(4).toList();
-        for (int i = 0; i < filesToProcess.length; i++) {
-          final file = filesToProcess[i];
-          if (file.existsSync()) {
-            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
+      // Copy selected files into app-owned storage quickly. Compression and
+      // upload happen in the background processor after the outbox row exists.
+      if (orderedMediaFiles != null && orderedMediaTypes != null &&
+          orderedMediaFiles.length == orderedMediaTypes.length) {
+        for (int i = 0; i < orderedMediaFiles.length; i++) {
+          final file = orderedMediaFiles[i];
+          if (!await file.exists()) continue;
+          final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
+          final extension = p.extension(file.path).isEmpty
+              ? (type == 'video' ? '.mp4' : '.img')
+              : p.extension(file.path);
+          final targetPath = p.join(
+            appDir.path, 'posts', postId,
+            '${type}_$i$extension',
+          );
+          await Directory(p.dirname(targetPath)).create(recursive: true);
+          final stableFile = await file.copy(targetPath);
+          if (await stableFile.length() <= 0) {
+            throw StateError('Le média sélectionné ${i + 1} est vide.');
+          }
+          localMediaPaths.add({'path': stableFile.path, 'type': type});
+        }
+      } else {
+        // Backward compatibility for callers that still provide separate lists.
+        if (imageFiles != null) {
+          for (int i = 0; i < imageFiles.length; i++) {
+            final file = imageFiles[i];
+            if (!await file.exists()) continue;
+            final extension = p.extension(file.path).isEmpty ? '.img' : p.extension(file.path);
+            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i$extension');
             await Directory(p.dirname(targetPath)).create(recursive: true);
-            final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path,
-              targetPath,
-              minWidth: 1280,
-              minHeight: 1280,
-              quality: 80,
-            );
-            localMediaPaths.add(compressed?.path ?? file.path);
+            final stableFile = await file.copy(targetPath);
+            localMediaPaths.add({'path': stableFile.path, 'type': 'photo'});
+          }
+        }
+        if (videoFiles != null) {
+          for (int i = 0; i < videoFiles.length; i++) {
+            final video = videoFiles[i];
+            if (!await video.exists()) continue;
+            final extension = p.extension(video.path).isEmpty ? '.mp4' : p.extension(video.path);
+            final targetPath = p.join(appDir.path, 'posts', postId, 'video_$i$extension');
+            await Directory(p.dirname(targetPath)).create(recursive: true);
+            final stableFile = await video.copy(targetPath);
+            localMediaPaths.add({'path': stableFile.path, 'type': 'video'});
           }
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARE_FAILED postId=$postId error=$e\n$st');
+      rethrow;
+    }
+
+    debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARED postId=$postId communityId=$communityId mediaCount=${localMediaPaths.length} types=${localMediaPaths.map((m) => m['type']).toList()} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
     final payload = {
       'p_id': postId,
@@ -890,6 +951,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       'p_community_id': communityId.isEmpty ? null : communityId,
       'p_audience': audience ?? 'public',
       'p_local_media': localMediaPaths,
+      // Versioned payload lets the processor quarantine legacy/stale queue rows safely.
+      'p_outbox_version': 2,
       'p_hashtags': hashtags ?? [],
       'p_mentions': mentions ?? [],
       'p_comments_enabled': commentsEnabled,
@@ -901,28 +964,49 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
     final db = await Get.find<AppDatabase>().database;
     final now = DateTime.now().toIso8601String();
+
+    // Some installed app_local.db versions have a NOT NULL operation_type
+    // column in post_outbox, while older versions do not. Inspect the actual
+    // local schema so publishing works on both without forcing data deletion.
+    final postOutboxColumns = await db.rawQuery('PRAGMA table_info(post_outbox)');
+    final hasOperationType = postOutboxColumns.any(
+      (column) => column['name']?.toString() == 'operation_type',
+    );
+    final outboxRow = <String, Object?>{
+      'operation_id': operationId,
+      'user_id': userId,
+      'community_id': communityId.isEmpty ? null : communityId,
+      'payload': jsonEncode(payload),
+      'status': 'pending',
+      'attempt_count': 0,
+      'next_retry_at': 0,
+      'created_at': now,
+      'updated_at': now,
+    };
+    if (hasOperationType) {
+      outboxRow['operation_type'] = 'create';
+    }
+
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_START operationId=$operationId postId=$postId communityId=$communityId userId=$userId payloadMediaCount=${localMediaPaths.length} payloadBytes=${jsonEncode(payload).length} hasOperationType=$hasOperationType');
     await db.insert(
       'post_outbox',
-      {
-        'operation_id': operationId,
-        'user_id': userId,
-        'community_id': communityId.isEmpty ? null : communityId,
-        'payload': jsonEncode(payload),
-        'status': 'pending',
-        'attempt_count': 0,
-        'next_retry_at': 0,
-        'created_at': now,
-        'updated_at': now,
-      },
+      outboxRow,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_SUCCESS operationId=$operationId elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
+    // Start the durable outbox processor in the background. The composer only
+    // waits until the payload is safely stored locally, never for media uploads
+    // or the remote RPC to finish.
     try {
       if (!Get.isRegistered<CommunityOutboxProcessor>()) {
         Get.put(CommunityOutboxProcessor());
       }
-      await Get.find<CommunityOutboxProcessor>().processPendingPosts();
-    } catch (_) {}
+      unawaited(Get.find<CommunityOutboxProcessor>().processPendingPosts());
+    } catch (e) {
+      debugPrint('[POST_CREATE][COMPOSER] BACKGROUND_PROCESS_START_FAILED operationId=$operationId postId=$postId error=$e');
+    }
+
   }
 
   String _generateUuidV4() {

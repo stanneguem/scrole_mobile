@@ -10,6 +10,7 @@ import 'package:scrole/modules/module_principale/externe/repositories/stories_re
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import '../../../../app_controller.dart';
 import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 
 class StoryItem {
   final String id;
@@ -30,6 +31,7 @@ class StoryItem {
   bool isLiked;
   final CommunityPost? sharedPost;
   final String? sharedPostId;
+  final bool sharedPostCanOpenOriginal;
 
   StoryItem({
     required this.id,
@@ -50,6 +52,7 @@ class StoryItem {
     this.isLiked = false,
     this.sharedPost,
     this.sharedPostId,
+    this.sharedPostCanOpenOriginal = true,
   });
 
   String? get mediaUrl => imageUrl;
@@ -102,6 +105,7 @@ class StoryItem {
                map['liked'] == 1,
       sharedPost: shared,
       sharedPostId: map['shared_post_id']?.toString(),
+      sharedPostCanOpenOriginal: map['shared_post_can_open_original'] == true || map['shared_post_can_open_original'] == null,
     );
   }
 }
@@ -178,6 +182,7 @@ class EventStoryGroup {
 class StoriesController extends GetxController {
   final StoriesRepository _repo = StoriesRepository();
   final StorageRepository _storageRepo = StorageRepository();
+  final R2MediaRepository _r2MediaRepo = R2MediaRepository();
 
   final Rxn<EventStoryGroup> ownGroup = Rxn<EventStoryGroup>();
   final RxList<EventStoryGroup> followingGroups = <EventStoryGroup>[].obs;
@@ -246,6 +251,21 @@ class StoriesController extends GetxController {
     }
   }
 
+  void refreshGroupViewedState(EventStoryGroup group) {
+    group.hasUnseen = group.stories.any((story) => !story.viewed);
+    if (ownGroup.value?.author.userId == group.author.userId) {
+      ownGroup.refresh();
+      return;
+    }
+    if (followingGroups.any((item) => item.author.userId == group.author.userId)) {
+      followingGroups.refresh();
+      return;
+    }
+    if (suggestedGroups.any((item) => item.author.userId == group.author.userId)) {
+      suggestedGroups.refresh();
+    }
+  }
+
   Future<void> markStoriesViewed(List<String> storyIds) async {
     if (storyIds.isEmpty) return;
     try {
@@ -287,6 +307,7 @@ class StoriesController extends GetxController {
     String? background,
     String audience = 'public',
     Map<String, dynamic>? poll,
+    bool allowReshare = false,
   }) async {
     final pId = const Uuid().v4();
     debugPrint('[STORY] [Controller] Creating story p_id=$pId, kind=$kind');
@@ -309,16 +330,16 @@ class StoriesController extends GetxController {
         );
 
         final finalFile = compressedBytes != null ? File(compressedBytes.path) : fileToUpload;
-        final userId = Get.find<AppController>().authUser.value?.id ?? 'local_user';
-        final storagePath = 'users/$userId/stories/${pId}.jpg';
-
-        debugPrint('[STORY] [Controller] Uploading story image to storage path=$storagePath');
-        imageUrl = await _storageRepo.uploadFile(
+        debugPrint('[STORY] [Controller] Uploading story image to private Cloudflare R2');
+        final uploaded = await _r2MediaRepo.uploadFile(
           file: finalFile,
-          bucket: 'community-media',
-          path: storagePath,
+          category: 'story_media',
+          mediaType: 'image',
         );
-        debugPrint('[STORY] [Controller] Story image uploaded successfully: $imageUrl');
+        // Store the canonical private R2 object key. The media URL endpoint
+        // checks story visibility before issuing a short-lived signed URL.
+        imageUrl = uploaded.objectKey;
+        debugPrint('[STORY] [Controller] Story image uploaded to R2 object key: $imageUrl');
       } catch (e, st) {
         debugPrint('[STORY] [Controller] Story image compression/upload error: $e\n$st');
         Get.snackbar('Erreur', 'Échec de l\'upload de l\'image', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
@@ -335,6 +356,7 @@ class StoriesController extends GetxController {
         p_background: background,
         p_audience: audience,
         p_poll: poll,
+        p_allow_reshare: allowReshare,
       );
 
       await fetchStories();

@@ -8,10 +8,16 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/image_source_sheet.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/profile_post_detail_screen.dart';
 import 'package:scrole/modules/module_profil/interne/controllers/profile_controller.dart';
 import 'package:scrole/modules/module_profil/interne/widgets/circle_button_widget.dart';
+
+String _formatReputation(num value) {
+  final rounded = (value.clamp(0, 5) * 10).round() / 10;
+  return rounded.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+}
 
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
@@ -149,16 +155,6 @@ class ProfileScreen extends GetView<ProfileController> {
                 Row(
                   children: [
                     CircleButtonWidget(
-                      icon: Icons.people_outline_rounded,
-                      onTap: () => Get.toNamed(AppPages.myContacts),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleButtonWidget(
-                      icon: Icons.mail_outline_rounded,
-                      onTap: () => Get.toNamed(AppPages.eventInvitations),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleButtonWidget(
                       icon: Icons.calendar_today_outlined,
                       onTap: () => Get.toNamed(AppPages.userAgenda),
                     ),
@@ -169,8 +165,8 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     const SizedBox(width: 8),
                     CircleButtonWidget(
-                      icon: Icons.settings_rounded,
-                      onTap: () => Get.toNamed(AppPages.setting),
+                      icon: Icons.share_rounded,
+                      onTap: () => Get.toNamed(AppPages.shareMyProfile),
                     ),
                   ],
                 ),
@@ -272,9 +268,17 @@ class ProfileScreen extends GetView<ProfileController> {
                     ),
                     Obx(() {
                       if (!controller.isVerified.value) return const SizedBox.shrink();
-                      return const Padding(
-                        padding: EdgeInsets.only(left: 6),
-                        child: UserCertifiedBadge(size: 20),
+                      final level = controller.certificationLevel.value;
+                      final badgeType = switch (level) {
+                        'premium' => CertificationBadgeType.premium,
+                        'pro' => CertificationBadgeType.pro,
+                        'basique' => CertificationBadgeType.basic,
+                        _ => null,
+                      };
+                      if (badgeType == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: UserCertifiedBadge(size: 20, type: badgeType),
                       );
                     }),
                   ],
@@ -329,7 +333,7 @@ class ProfileScreen extends GetView<ProfileController> {
           ),
           Expanded(
             child: _engagementStat(
-              controller.reputation.value.toStringAsFixed(1),
+              _formatReputation(controller.reputation.value),
               'profile_stat_reputation'.tr,
               colorScheme,
             ),
@@ -349,7 +353,7 @@ class ProfileScreen extends GetView<ProfileController> {
         runSpacing: 12,
         children: [
           _engagementStat(controller.postsCount.value.toString(), 'profile_stat_posts'.tr, colors),
-          _engagementStat(controller.reputation.value.toStringAsFixed(1), 'profile_stat_reputation'.tr, colors),
+          _engagementStat(_formatReputation(controller.reputation.value), 'profile_stat_reputation'.tr, colors),
         ],
       )),
     );
@@ -519,7 +523,12 @@ class ProfileScreen extends GetView<ProfileController> {
           final post = posts[index];
           final imageUrl = post.media.isNotEmpty ? (post.media.first.isVideo ? (post.media.first.thumbnailUrl ?? '') : post.media.first.url) : '';
           return GestureDetector(
-            onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
+            onTap: () async {
+              final deleted = await Get.to<bool>(() => ProfilePostDetailScreen(post: post));
+              if (deleted == true) {
+                await controller.refreshProfile();
+              }
+            },
             child: Stack(fit: StackFit.expand, children: [
               Container(
                 color: colorScheme.surfaceContainerHighest,
@@ -619,6 +628,7 @@ class ProfileScreen extends GetView<ProfileController> {
                   Row(children: [
                     Expanded(child: Text((ev['name'] ?? 'Événement').toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colorScheme.onSurface))),
+                    EntityCertifiedBadge(entityType: 'event', entityId: (ev['id'] ?? '').toString(), size: 16),
                     if (role.isNotEmpty) Text(role, style: TextStyle(fontSize: 11, color: colorScheme.primary)),
                   ]),
                   if (date.isNotEmpty) ...[

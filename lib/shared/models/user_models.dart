@@ -4,18 +4,55 @@ class AppPreferences {
   final String language;
   final String theme;
   final bool notificationsEnabled;
+  final bool notifPush;
+  final bool notifMessages;
+  final bool notifEvenements;
+  final bool notifCommunautes;
+  final bool notifSocial;
+  final bool autoPlayVideos;
 
-  AppPreferences({required this.language, required this.theme, required this.notificationsEnabled});
+  AppPreferences({
+    required this.language,
+    required this.theme,
+    required this.notificationsEnabled,
+    this.notifPush = true,
+    this.notifMessages = true,
+    this.notifEvenements = true,
+    this.notifCommunautes = true,
+    this.notifSocial = true,
+    this.autoPlayVideos = true,
+  });
 
   factory AppPreferences.fromJson(Map<String, dynamic> json) => AppPreferences(
-    language: json['language'] ?? _getDeviceLanguage(),
-    theme: json['theme'] ?? 'system',
-    notificationsEnabled: json['notifications_enabled'] ?? true,
+    language: json['language']?.toString() ?? _getDeviceLanguage(),
+    theme: json['theme']?.toString() ?? 'system',
+    notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
+    notifPush: json['notif_push'] as bool? ?? true,
+    notifMessages: json['notif_messages'] as bool? ?? true,
+    notifEvenements: json['notif_evenements'] as bool? ?? true,
+    notifCommunautes: json['notif_communautes'] as bool? ?? true,
+    notifSocial: json['notif_social'] as bool? ?? true,
+    autoPlayVideos: json['auto_play_videos'] as bool? ?? true,
   );
 
-  Map<String, dynamic> toJson() => {'language': language, 'theme': theme, 'notifications_enabled': notificationsEnabled};
+  Map<String, dynamic> toJson() => {
+    'language': language,
+    'theme': theme,
+    'notifications_enabled': notificationsEnabled,
+    'notif_push': notifPush,
+    'notif_messages': notifMessages,
+    'notif_evenements': notifEvenements,
+    'notif_communautes': notifCommunautes,
+    'notif_social': notifSocial,
+    'auto_play_videos': autoPlayVideos,
+  };
 
-  factory AppPreferences.defaultValues() => AppPreferences(language: _getDeviceLanguage(), theme: 'system', notificationsEnabled: true);
+  factory AppPreferences.defaultValues() => AppPreferences(
+    language: _getDeviceLanguage(),
+    theme: 'system',
+    notificationsEnabled: true,
+    autoPlayVideos: true,
+  );
 
   static String _getDeviceLanguage() => Get.deviceLocale?.languageCode ?? 'fr';
 }
@@ -27,8 +64,9 @@ class AppPrivacy {
   final bool afficherPays;
   final bool afficherVille;
   final bool afficherDerniereConnexion;
+  final String eventItineraryVisibility;
 
-  AppPrivacy({required this.profileVisibility, required this.showOnlineStatus, required this.allowMessagesFrom, required this.afficherPays, required this.afficherVille, required this.afficherDerniereConnexion});
+  AppPrivacy({required this.profileVisibility, required this.showOnlineStatus, required this.allowMessagesFrom, required this.afficherPays, required this.afficherVille, required this.afficherDerniereConnexion, this.eventItineraryVisibility = 'only_me'});
 
   factory AppPrivacy.fromJson(Map<String, dynamic> json) => AppPrivacy(
     profileVisibility: json['profile_visibility'] ?? 'public',
@@ -37,11 +75,30 @@ class AppPrivacy {
     afficherPays: json['afficher_pays'] ?? true,
     afficherVille: json['afficher_ville'] ?? true,
     afficherDerniereConnexion: json['afficher_derniere_connexion'] ?? true,
+    eventItineraryVisibility: json['event_itinerary_visibility'] ?? 'only_me',
   );
 
-  Map<String, dynamic> toJson() => {'profile_visibility': profileVisibility, 'show_online_status': showOnlineStatus, 'allow_messages_from': allowMessagesFrom, 'afficher_pays': afficherPays, 'afficher_ville': afficherVille, 'afficher_derniere_connexion': afficherDerniereConnexion};
+  Map<String, dynamic> toJson() => {'profile_visibility': profileVisibility, 'show_online_status': showOnlineStatus, 'allow_messages_from': allowMessagesFrom, 'afficher_pays': afficherPays, 'afficher_ville': afficherVille, 'afficher_derniere_connexion': afficherDerniereConnexion, 'event_itinerary_visibility': eventItineraryVisibility};
 
-  factory AppPrivacy.defaultValues() => AppPrivacy(profileVisibility: 'public', showOnlineStatus: true, allowMessagesFrom: 'everyone', afficherPays: true, afficherVille: true, afficherDerniereConnexion: true);
+  AppPrivacy copyWith({
+    String? profileVisibility,
+    bool? showOnlineStatus,
+    String? allowMessagesFrom,
+    bool? afficherPays,
+    bool? afficherVille,
+    bool? afficherDerniereConnexion,
+    String? eventItineraryVisibility,
+  }) => AppPrivacy(
+    profileVisibility: profileVisibility ?? this.profileVisibility,
+    showOnlineStatus: showOnlineStatus ?? this.showOnlineStatus,
+    allowMessagesFrom: allowMessagesFrom ?? this.allowMessagesFrom,
+    afficherPays: afficherPays ?? this.afficherPays,
+    afficherVille: afficherVille ?? this.afficherVille,
+    afficherDerniereConnexion: afficherDerniereConnexion ?? this.afficherDerniereConnexion,
+    eventItineraryVisibility: eventItineraryVisibility ?? this.eventItineraryVisibility,
+  );
+
+  factory AppPrivacy.defaultValues() => AppPrivacy(profileVisibility: 'public', showOnlineStatus: true, allowMessagesFrom: 'everyone', afficherPays: true, afficherVille: true, afficherDerniereConnexion: true, eventItineraryVisibility: 'only_me');
 }
 
 class DeviceInfos {

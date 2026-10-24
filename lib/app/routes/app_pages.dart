@@ -10,6 +10,7 @@ class AppPages {
   static const followLists = "/user/follow-lists";
   static const followRequests = "/user/follow-requests";
   static const userQrCode = "/user/qr";
+  static const shareMyProfile = "/user/profile/share";
   static const setting = "/setting";
   static const notification = "/notification";
   static const scanner = "/scanner";

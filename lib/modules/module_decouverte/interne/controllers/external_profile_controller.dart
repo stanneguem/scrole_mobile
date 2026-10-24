@@ -47,11 +47,20 @@ class ExternalProfileController extends GetxController {
       update(['profile_initial']);
       return;
     }
-    loadProfile();
-    loadProfileTab(0);
+    unawaited(_initializeProfile());
     _subscribeToRelationshipChanges();
   }
 
+
+  Future<void> _initializeProfile() async {
+    await loadProfile();
+    // Do not request posts/events/liked content until the relationship check
+    // confirms that this profile is visible to the current user.
+    if (profileState.value == ProfileScreenState.loaded &&
+        profile.value?.relationshipState != 'blocked') {
+      await loadProfileTab(0);
+    }
+  }
 
   String _profileTabRpcName(int index) {
     switch (index) {
@@ -73,6 +82,12 @@ class ExternalProfileController extends GetxController {
 
   Future<void> loadProfileTab(int index, {bool forceRefresh = false}) async {
     if (userId.isEmpty || loadingProfileTabs.contains(index)) return;
+    if (profile.value?.relationshipState == 'blocked') {
+      profileTabItems.remove(index);
+      profileTabErrors.remove(index);
+      loadedProfileTabs.add(index);
+      return;
+    }
     if (!forceRefresh && loadedProfileTabs.contains(index)) return;
 
     loadingProfileTabs.add(index);
@@ -155,8 +170,37 @@ class ExternalProfileController extends GetxController {
             profileState.value = ProfileScreenState.loaded;
             profile.value = result.profile;
             final relation = await _repository.getRelationship(userId, forceRefresh: true);
-            final stats = await _repository.getFollowStats(userId: userId);
+            final relationState = (relation['state'] ?? 'none').toString();
+
+            // A blocked profile must not trigger protected tab/stat RPCs. Those
+            // RPCs correctly reject the request, but doing them anyway creates
+            // noisy stack traces and leaves the profile screen in a partial error.
+            if (relationState == 'blocked' || relation['is_blocked'] == true) {
+              final blockedProfile = result.profile!.copyWith(
+                isFollowing: false,
+                isConnected: false,
+                connectionRequestSent: false,
+                followsMe: false,
+                relationshipState: 'blocked',
+                clearRequestId: true,
+                clearRetryAt: true,
+              );
+              profile.value = blockedProfile;
+              isFollowing.value = false;
+              profileTabItems.clear();
+              profileTabErrors.clear();
+              loadedProfileTabs.addAll([0, 1, 2]);
+              return;
+            }
+
+            Map<String, dynamic> stats = <String, dynamic>{};
+            try {
+              stats = await _repository.getFollowStats(userId: userId);
+            } catch (e) {
+              debugPrint('[ExternalProfileController] follow stats unavailable: $e');
+            }
             Map<String, dynamic> engagementStats = <String, dynamic>{};
+            double? reputationV2Score;
             try {
               final rawStats = await Supabase.instance.client.rpc(
                 'get_profile_engagement_stats',
@@ -168,11 +212,22 @@ class ExternalProfileController extends GetxController {
             } catch (e) {
               debugPrint('[ExternalProfileController] engagement stats unavailable: $e');
             }
-            final relationState = (relation['state'] ?? 'none').toString();
+            try {
+              final rawReputation = await Supabase.instance.client.rpc(
+                'get_user_reputation',
+                params: {'p_user_id': userId, 'p_community_id': null},
+              );
+              if (rawReputation is Map) {
+                reputationV2Score = ((rawReputation['score'] as num?)?.toDouble() ?? 0.0)
+                    .clamp(0.0, 5.0).toDouble();
+              }
+            } catch (e) {
+              debugPrint('[ExternalProfileController] V2 reputation unavailable; legacy fallback used: $e');
+            }
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
               isConnected: relation['is_friend'] == true,
-              canMessage: relation['is_friend'] == true,
+              canMessage: result.profile!.canMessage,
               connectionRequestSent: relationState == 'requested',
               followsMe: relation['follows_me'] == true,
               relationshipState: relationState,
@@ -184,7 +239,7 @@ class ExternalProfileController extends GetxController {
               followersCount: (stats['followers_count'] as num?)?.toInt() ?? result.profile!.followersCount,
               followingCount: (stats['following_count'] as num?)?.toInt() ?? result.profile!.followingCount,
               friendsCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendsCount,
-              rating: (engagementStats['reputation'] as num?)?.toDouble() ?? result.profile!.rating,
+              rating: reputationV2Score ?? ((engagementStats['reputation'] as num?)?.toDouble() ?? result.profile!.rating).clamp(0.0, 5.0).toDouble(),
               postsCount: (engagementStats['posts_count'] as num?)?.toInt() ?? result.profile!.postsCount,
               totalLikesReceived: (engagementStats['total_likes_received'] as num?)?.toInt() ?? result.profile!.totalLikesReceived,
               totalDislikesReceived: (engagementStats['total_dislikes_received'] as num?)?.toInt() ?? result.profile!.totalDislikesReceived,
@@ -237,6 +292,7 @@ class ExternalProfileController extends GetxController {
       if (state == 'blocked' || state == 'self') return;
       final result = await _repository.follow(current.userId);
       final freshRelation = await _repository.getRelationship(current.userId, forceRefresh: true);
+      final refreshedProfile = await _repository.getProfileResult(current.userId);
       final nextState = (freshRelation['state'] ?? (result ? 'following' : state)).toString();
       final updated = current.copyWith(
         isFollowing: freshRelation['is_following'] == true || nextState == 'following' || nextState == 'friends',
@@ -248,7 +304,7 @@ class ExternalProfileController extends GetxController {
           clearRequestId: freshRelation['request_id'] == null,
         retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
           clearRetryAt: freshRelation['retry_at'] == null,
-        canMessage: freshRelation['is_friend'] == true || nextState == 'friends',
+        canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
       );
       profile.value = updated;
       isFollowing.value = updated.isFollowing;
@@ -306,9 +362,11 @@ class ExternalProfileController extends GetxController {
         await _repository.getRelationship(current.userId, forceRefresh: true);
         await _repository.cancelConnection(current.userId);
         final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final refreshedProfile = await _repository.getProfileResult(current.userId);
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
+          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
           connectionRequestSent: false,
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
@@ -354,7 +412,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: relation['is_friend'] == true,
+          canMessage: current.canMessage,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
@@ -392,10 +450,11 @@ class ExternalProfileController extends GetxController {
       try {
         await _repository.respondConnectionRequest(requestId, true, targetUserId: current.userId);
         final relation = await _repository.getRelationship(current.userId, forceRefresh: true);
+        final refreshedProfile = await _repository.getProfileResult(current.userId);
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: relation['is_friend'] == true,
+          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),

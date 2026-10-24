@@ -1,0 +1,32 @@
+name: Direct messaging validation
+
+on:
+  pull_request:
+    branches: [relationship, feature/story-comment-interactions]
+    paths:
+      - 'lib/modules/module_discussion_direct/**'
+      - 'test/modules/module_discussion_direct/**'
+      - 'supabase/migrations/*group_chat*'
+      - '.github/workflows/group-chat-validation.yml'
+  push:
+    branches: [feature/group-chats]
+    paths:
+      - 'lib/modules/module_discussion_direct/**'
+      - 'test/modules/module_discussion_direct/**'
+      - 'supabase/migrations/*group_chat*'
+      - '.github/workflows/group-chat-validation.yml'
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format current direct messaging Dart files
+        run: dart format lib/modules/module_discussion_direct/centre/models/conversation.dart lib/modules/module_discussion_direct/centre/models/conversation_model.dart lib/modules/module_discussion_direct/centre/models/message.dart lib/modules/module_discussion_direct/centre/models/message_model.dart lib/modules/module_discussion_direct/externe/services/supabase_messaging_service.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart lib/modules/module_discussion_direct/interne/pages/direct_conversation_screen.dart
+      - name: Analyze current direct messaging files
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/modules/module_discussion_direct/centre/models/conversation.dart lib/modules/module_discussion_direct/centre/models/conversation_model.dart lib/modules/module_discussion_direct/centre/models/message.dart lib/modules/module_discussion_direct/centre/models/message_model.dart lib/modules/module_discussion_direct/externe/services/supabase_messaging_service.dart lib/modules/module_discussion_direct/interne/messaging_binding.dart lib/modules/module_discussion_direct/interne/pages/direct_messages_screen.dart lib/modules/module_discussion_direct/interne/pages/direct_conversation_screen.dart

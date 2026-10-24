@@ -5,13 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:video_player/video_player.dart';
+import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
+import 'package:scrole/shared/constants/post_media_limits.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
+import 'package:scrole/modules/module_principale/interne/controllers/home_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/modules/module_communautes/centre/models/news/community_hashtag.dart';
 import 'community_poll_composer_screen.dart';
@@ -36,9 +42,21 @@ class CreateCommunityPostScreen extends StatefulWidget {
   State<CreateCommunityPostScreen> createState() => _CreateCommunityPostScreenState();
 }
 
+class _SelectedPostMedia {
+  final File file;
+  final bool isVideo;
+  const _SelectedPostMedia({required this.file, required this.isVideo});
+}
+
 class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   late final TextEditingController _textController;
-  final List<File> _selectedFiles = [];
+  // Single source of truth: this list preserves the exact order in which media are selected.
+  final List<_SelectedPostMedia> _selectedMedia = [];
+  List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+  List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
+  final ImagePicker _mediaPicker = ImagePicker();
+  int get _selectedMediaCount => _selectedMedia.length;
+  int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -47,7 +65,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   bool _sharingEnabled = true;
   bool _reactionsEnabled = true;
   String _audience = 'public'; // 'public' | 'followers' | 'friends'
-  bool _allowPromotion = true; // For community posts: toggle "Garder ce post uniquement dans la communauté" -> p_allow_promotion: false
+  bool _allowPromotion = true; // false keeps the post exclusive to its community
 
   final List<CommunityHashtag> _selectedHashtags = [];
   List<Map<String, dynamic>> _selectedMentions = [];
@@ -86,7 +104,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
   bool get _canPublish =>
       _textController.text.trim().isNotEmpty ||
-      _selectedFiles.isNotEmpty ||
+      _selectedMedia.isNotEmpty ||
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
 
@@ -149,12 +167,38 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       final client = Supabase.instance.client;
       List<Map<String, dynamic>> results = [];
       if (type == 'user') {
-        final rows = await client.from('user_profiles')
-            .select('user_id, username, first_name, last_name, photo_url, is_verified')
-            .eq('account_status', 'active').isFilter('deleted_at', null)
-            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
-            .order('username').limit(7);
-        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+        final userId = client.auth.currentUser?.id;
+        if (userId != null) {
+          final allowedIds = <String>{};
+          final communityId = widget.communityId;
+          if (communityId != null && communityId.isNotEmpty) {
+            final members = await client.from('community_members')
+                .select('user_id').eq('community_id', communityId).limit(1000);
+            allowedIds.addAll(members.map((m) => m['user_id'].toString()));
+          } else {
+            final friendships = await client.from('friendships').select('user_a_id,user_b_id')
+                .or('user_a_id.eq.$userId,user_b_id.eq.$userId').limit(500);
+            for (final relation in friendships) {
+              final other = relation['user_a_id']?.toString() == userId
+                  ? relation['user_b_id']?.toString() : relation['user_a_id']?.toString();
+              if (other != null && other.isNotEmpty) allowedIds.add(other);
+            }
+            final followers = await client.from('user_follows').select('follower_id')
+                .eq('followed_id', userId).limit(1000);
+            allowedIds.addAll(followers.map((r) => r['follower_id'].toString()));
+          }
+          allowedIds.remove(userId);
+          if (allowedIds.isNotEmpty) {
+            final safeQuery = query.replaceAll(',', '').replaceAll('%', '').replaceAll('_', r'\_');
+            final rows = await client.from('user_profiles')
+                .select('user_id, username, first_name, last_name, photo_url, is_verified')
+                .inFilter('user_id', allowedIds.toList())
+                .eq('account_status', 'active').isFilter('deleted_at', null)
+                .or('username.ilike.%$safeQuery%,first_name.ilike.%$safeQuery%,last_name.ilike.%$safeQuery%')
+                .order('username').limit(7);
+            results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+          }
+        }
       } else if (type == 'community') {
         final rows = await client.from('communities')
             .select('id, name, photo_profile, visibility')
@@ -432,7 +476,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
 
   Future<void> _openPollCreator() async {
-    if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
+    if (_selectedMedia.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
       Get.snackbar('Attention', 'Un sondage ne peut pas contenir de photos.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -444,17 +488,23 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
   }
 
-  void _publish() {
+  Future<void> _publish() async {
     if (!_canPublish) return;
 
-    List<File> filesToPublish = List.from(_selectedFiles);
+    final orderedMedia = List<_SelectedPostMedia>.from(_selectedMedia);
+    List<File> filesToPublish = orderedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+    final videosToPublish = orderedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
+    final orderedFilesForService = orderedMedia.map((m) => m.file).toList();
+    final orderedTypesForService = orderedMedia.map((m) => m.isVideo ? 'video' : 'photo').toList();
     if (filesToPublish.isEmpty && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       filesToPublish.add(File(_prefilledUrl!));
+      orderedFilesForService.add(File(_prefilledUrl!));
+      orderedTypesForService.add('photo');
     }
 
     final content = _textController.text.trim();
 
-    if (content.isEmpty && filesToPublish.isEmpty && _pollData == null) {
+    if (content.isEmpty && filesToPublish.isEmpty && videosToPublish.isEmpty && _pollData == null) {
       Get.snackbar('Publication vide', 'Une publication doit contenir du texte, un média ou un sondage.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -464,12 +514,13 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    if (filesToPublish.length > 4) {
-      Get.snackbar('Limite dépassée', 'Maximum 4 photos autorisées.', backgroundColor: Colors.black87, colorText: Colors.white);
+    if (filesToPublish.length + videosToPublish.length > maxPostMedia) {
+      Get.snackbar('Limite dépassée', 'Maximum $maxPostMedia médias autorisés (photos et vidéos confondues).', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
 
-    Get.back();
+    if (_isPublishing) return;
+    setState(() => _isPublishing = true);
 
     CommunityFeedController? feedController;
     try {
@@ -507,30 +558,66 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
-    unawaited(() async {
-      try {
-        await service.createCommunityPost(
-      requestedPostId: postId,
-      communityId: cId,
-      content: postContent,
-      imageFiles: filesToPublish,
-      audience: isCommunity ? 'public' : _audience,
-      commentsEnabled: _commentsEnabled,
-      sharingEnabled: _sharingEnabled,
-      reactionsEnabled: _reactionsEnabled,
-      hashtags: hashtagsList,
-      mentions: mentionsList,
-      poll: _pollData,
-      allowPromotion: isCommunity ? _allowPromotion : true,
-        );
-        if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
-          await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
-            'p_source_type': 'post', 'p_source_id': postId,
-            'p_community_ids': _selectedCommunityIds.toList(), 'p_event_ids': _selectedEventIds.toList(),
-          });
+    try {
+      await service.createCommunityPost(
+        requestedPostId: postId,
+        communityId: cId,
+        content: postContent,
+        imageFiles: filesToPublish,
+        videoFiles: videosToPublish,
+        orderedMediaFiles: orderedFilesForService,
+        orderedMediaTypes: orderedTypesForService,
+        audience: isCommunity ? 'public' : _audience,
+        commentsEnabled: _commentsEnabled,
+        sharingEnabled: _sharingEnabled,
+        reactionsEnabled: _reactionsEnabled,
+        hashtags: hashtagsList,
+        mentions: mentionsList,
+        poll: _pollData,
+        allowPromotion: isCommunity ? _allowPromotion : true,
+      );
+      if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
+        final communityIds = _selectedCommunityIds.toList();
+        final eventIds = _selectedEventIds.toList();
+        // Entity mentions are ancillary to the durable post queue; never keep
+        // the composer open while this secondary RPC runs.
+        unawaited(Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+          'p_source_type': 'post',
+          'p_source_id': postId,
+          'p_community_ids': communityIds,
+          'p_event_ids': eventIds,
+        }).then((_) {}).catchError((Object error) {
+          debugPrint('[POST] Saving entity mentions failed postId=$postId error=$error');
+        }));
+      }
+      if (!mounted) return;
+      Get.back();
+      if (isCommunity) {
+        if (feedController != null) {
+          unawaited(feedController.fetchCommunityFeed(isRefresh: true));
         }
-      } catch (e) { debugPrint('[MENTIONS] Post publish/entity mention error: $e'); }
-    }());
+      } else if (Get.isRegistered<HomeFeedController>()) {
+        unawaited(Get.find<HomeFeedController>().fetchFeed(refresh: true));
+      }
+      Get.snackbar(
+        'Publication mise en file',
+        'Ta publication apparaît dans le fil et sera activée après confirmation du serveur.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+      if (mounted) {
+        setState(() => _isPublishing = false);
+        Get.snackbar(
+          'Publication non confirmée',
+          e.toString().replaceFirst('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 6),
+        );
+      }
+    }
   }
 
   Future<void> _openGallery() async {
@@ -539,11 +626,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = 4 - _selectedFiles.length;
+    final maxAllowed = maxPostMedia - _selectedMediaCount;
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous ne pouvez pas ajouter plus de 4 photos.',
+        'Vous pouvez ajouter au maximum $maxPostMedia médias, dont $maxPostPhotos photos.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -557,19 +644,110 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => MediaGallerySheet(
         maxSelection: maxAllowed,
-        onSelected: (files) {
-          if (files.isNotEmpty) {
-            setState(() {
-              _selectedFiles.addAll(files.map((f) => File(f.path)));
-              if (_selectedFiles.length > 4) {
-                _selectedFiles.removeRange(4, _selectedFiles.length);
-              }
-              _prefilledUrl = null;
-            });
-          }
-        },
+        onSelected: _handleGallerySelection,
       ),
     );
+  }
+
+
+  Future<void> _handleGallerySelection(List<XFile> files) async {
+    for (final picked in files) {
+      if (!mounted || _selectedMediaCount >= maxPostMedia) break;
+      final file = File(picked.path);
+      final extension = p.extension(picked.path).replaceFirst('.', '').toLowerCase();
+      final isVideo = const {'mp4', 'mov'}.contains(extension);
+      if (!isVideo) {
+        if (_selectedPhotoCount >= maxPostPhotos) {
+          Get.snackbar('Limite de photos atteinte', 'Vous pouvez ajouter au maximum $maxPostPhotos photos par publication.');
+          continue;
+        }
+        setState(() {
+          _selectedMedia.add(_SelectedPostMedia(file: file, isVideo: false));
+          _prefilledUrl = null;
+        });
+        continue;
+      }
+      try {
+        var videoFile = file;
+        final controller = VideoPlayerController.file(videoFile);
+        Duration duration;
+        try {
+          await controller.initialize();
+          duration = controller.value.duration;
+        } finally {
+          await controller.dispose();
+        }
+        if (duration > const Duration(seconds: 29)) {
+          final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: videoFile, maxDuration: const Duration(seconds: 29)));
+          if (trimmed == null || !mounted) continue;
+          videoFile = trimmed;
+          final verify = VideoPlayerController.file(videoFile);
+          try {
+            await verify.initialize();
+            if (verify.value.duration > const Duration(seconds: 29)) {
+              Get.snackbar('Découpage insuffisant', 'La vidéo doit durer 29 secondes maximum.');
+              continue;
+            }
+          } finally {
+            await verify.dispose();
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _selectedMedia.add(_SelectedPostMedia(file: videoFile, isVideo: true));
+          _prefilledUrl = null;
+        });
+      } catch (e) {
+        if (mounted) Get.snackbar('Vidéo incompatible', 'Cette vidéo ne peut pas être lue par Scrole. Choisissez un MP4 ou MOV compatible.');
+        debugPrint('[POST_COMPOSER] incompatible gallery video: $e');
+      }
+    }
+  }
+
+  Future<void> _pickVideo() async {
+    if (_pollData != null) {
+      Get.snackbar('Attention', 'Un sondage ne peut pas contenir de vidéo.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+    if (_selectedMediaCount >= maxPostMedia) {
+      Get.snackbar('Limite atteinte', 'Une publication peut contenir au maximum $maxPostMedia médias.', backgroundColor: Colors.black87, colorText: Colors.white);
+      return;
+    }
+    try {
+      final picked = await _mediaPicker.pickVideo(source: ImageSource.gallery);
+      if (picked == null || !mounted) return;
+      var file = File(picked.path);
+      final controller = VideoPlayerController.file(file);
+      Duration duration;
+      try {
+        await controller.initialize();
+        duration = controller.value.duration;
+      } finally {
+        await controller.dispose();
+      }
+      if (duration > const Duration(seconds: 29)) {
+        final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: file, maxDuration: const Duration(seconds: 29)));
+        if (trimmed == null || !mounted) return;
+        file = trimmed;
+        final verify = VideoPlayerController.file(file);
+        try {
+          await verify.initialize();
+          if (verify.value.duration > const Duration(seconds: 29)) {
+            Get.snackbar('Découpage insuffisant', 'La vidéo découpée doit durer 29 secondes maximum. Recommence le découpage.', backgroundColor: Colors.black87, colorText: Colors.white);
+            return;
+          }
+        } finally {
+          await verify.dispose();
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _selectedMedia.add(_SelectedPostMedia(file: file, isVideo: true));
+        _prefilledUrl = null;
+      });
+    } catch (e) {
+      if (mounted) Get.snackbar('Vidéo impossible à sélectionner', e.toString(), backgroundColor: Colors.black87, colorText: Colors.white);
+    }
   }
 
   @override
@@ -721,19 +899,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       ),
                     ),
 
-                    // Community Promotion Toggle if community post
-                    if (isCommunity)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: SwitchListTile(
-                          title: const Text('Garder ce post uniquement dans la communauté', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                          value: !_allowPromotion,
-                          onChanged: (val) => setState(() => _allowPromotion = !val),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-
                     // Champ de texte
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -805,18 +970,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.primary.withValues(alpha: 0.09),
-                                colorScheme.tertiary.withValues(alpha: 0.06),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.28)),
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: .55)),
+                            boxShadow: [BoxShadow(color: colorScheme.shadow.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .08 : .04), blurRadius: 22, offset: const Offset(0, 7))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,12 +1032,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                 final isCorrect = _pollData!['kind'] == 'quiz' &&
                                     rawOption is Map && rawOption['is_correct'] == true;
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 7),
+                                  padding: const EdgeInsets.only(bottom: 9),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: colorScheme.surface.withValues(alpha: 0.9),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(15),
                                       border: Border.all(
                                         color: isCorrect ? Colors.green.withValues(alpha: 0.7) : colorScheme.outlineVariant.withValues(alpha: 0.55),
                                       ),
@@ -904,34 +1063,38 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                         ),
                       ),
 
-                    // Media Preview Grid (Max 4 photos)
-                    if (_selectedFiles.isNotEmpty)
+                    // Media Preview Grid (backend limit)
+                    if (_selectedMediaCount > 0)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: _selectedFiles.length == 1 ? 1 : 2,
+                            crossAxisCount: _selectedMediaCount == 1 ? 1 : 2,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
-                            childAspectRatio: _selectedFiles.length == 1 ? 1.6 : 1.2,
+                            childAspectRatio: _selectedMediaCount == 1 ? 1.6 : 1.2,
                           ),
-                          itemCount: _selectedFiles.length > 4 ? 4 : _selectedFiles.length,
+                          itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
-                            final file = _selectedFiles[index];
+                            final media = _selectedMedia[index];
+                            final isVideo = media.isVideo;
+                            final file = media.file;
                             return Stack(
                               fit: StackFit.expand,
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                  child: isVideo
+                                      ? _SelectedVideoPreview(file: file)
+                                      : Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
                                 ),
                                 Positioned(
                                   top: 6,
                                   right: 6,
                                   child: GestureDetector(
-                                    onTap: () => setState(() => _selectedFiles.removeAt(index)),
+                                    onTap: () => setState(() => _selectedMedia.removeAt(index)),
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(
@@ -987,7 +1150,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                   IconButton(
                     onPressed: _openGallery,
                     icon: Icon(Icons.camera_alt_rounded, color: colorScheme.onSurface, size: 24),
-                    tooltip: 'Photos (max 4)',
+                    tooltip: 'Galerie photos et vidéos (max $maxPostMedia médias)',
                   ),
                   IconButton(
                     onPressed: _openPollCreator,
@@ -1015,11 +1178,14 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       final result = await Get.to<Map<String, dynamic>>(() => CommunityPostSettingsScreen(
                         initialCommentsEnabled: _commentsEnabled,
                         initialSharingEnabled: _sharingEnabled,
+                        isCommunityPost: isCommunity,
+                        initialAllowPromotion: _allowPromotion,
                       ));
                       if (result != null) {
                         setState(() {
                           _commentsEnabled = result['commentsEnabled'] ?? true;
                           _sharingEnabled = result['sharingEnabled'] ?? true;
+                          _allowPromotion = result['allowPromotion'] ?? _allowPromotion;
                         });
                       }
                     },
@@ -1032,6 +1198,104 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// Aperçu vidéo réel dans le compositeur : l'utilisateur peut vérifier le média
+/// et lire/mettre en pause sans quitter l'écran de préparation de publication.
+class _SelectedVideoPreview extends StatefulWidget {
+  final File file;
+  const _SelectedVideoPreview({required this.file});
+
+  @override
+  State<_SelectedVideoPreview> createState() => _SelectedVideoPreviewState();
+}
+
+class _SelectedVideoPreviewState extends State<_SelectedVideoPreview> {
+  late final VideoPlayerController _controller;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(widget.file);
+    _controller.initialize().then((_) {
+      if (mounted) setState(() => _ready = true);
+    }).catchError((Object error) {
+      debugPrint('[POST_COMPOSER] video preview initialization failed: $error');
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Colors.black),
+        if (_ready)
+          FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _controller.value.size.width,
+              height: _controller.value.size.height,
+              child: VideoPlayer(_controller),
+            ),
+          )
+        else
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+        Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (!_ready) return;
+                setState(() {
+                  _controller.value.isPlaying ? _controller.pause() : _controller.play();
+                });
+              },
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.48),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white70),
+                  ),
+                  child: Icon(
+                    _ready && _controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 8,
+          bottom: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+            decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
+                SizedBox(width: 4),
+                Text('Vidéo', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -38,6 +38,7 @@ class _DirectConversationDetailsScreenState
 
   bool _notificationsEnabled = true;
   bool _mediaVisibilityEnabled = true;
+  bool _savingPreferences = false;
   ExternalProfileModel? _profile;
 
   String get _displayName {
@@ -64,6 +65,62 @@ class _DirectConversationDetailsScreenState
   void initState() {
     super.initState();
     _loadProfile();
+    _loadConversationPreferences();
+  }
+
+  Future<void> _loadConversationPreferences() async {
+    final controller = Get.isRegistered<DirectConversationController>()
+        ? Get.find<DirectConversationController>()
+        : null;
+    if (controller == null) return;
+    await controller.loadConversationPreferences();
+    if (!mounted) return;
+    setState(() {
+      _notificationsEnabled = controller.conversationNotificationsEnabled.value;
+      _mediaVisibilityEnabled = controller.saveIncomingMediaToGallery.value;
+    });
+  }
+
+  Future<void> _updatePreference({
+    bool? notificationsEnabled,
+    bool? mediaVisibilityEnabled,
+  }) async {
+    if (_savingPreferences) return;
+    final controller = Get.find<DirectConversationController>();
+    final previousNotifications = _notificationsEnabled;
+    final previousMedia = _mediaVisibilityEnabled;
+    setState(() {
+      _savingPreferences = true;
+      if (notificationsEnabled != null) _notificationsEnabled = notificationsEnabled;
+      if (mediaVisibilityEnabled != null) _mediaVisibilityEnabled = mediaVisibilityEnabled;
+    });
+    try {
+      await controller.updateConversationPreference(
+        notificationsEnabled: notificationsEnabled,
+        saveMediaToGallery: mediaVisibilityEnabled,
+      );
+      if (!mounted) return;
+      Get.snackbar(
+        'chats_title'.tr,
+        'Préférences de discussion enregistrées.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _notificationsEnabled = previousNotifications;
+        _mediaVisibilityEnabled = previousMedia;
+      });
+      Get.snackbar(
+        'Erreur',
+        'Impossible d’enregistrer ce réglage. Réessaie.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } finally {
+      if (mounted) setState(() => _savingPreferences = false);
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -231,8 +288,11 @@ class _DirectConversationDetailsScreenState
                       ),
                     ),
                     if (_isVerified) ...[
-                      const SizedBox(width: 6),
-                      const UserCertifiedBadge(size: 20),
+                      const SizedBox(width: 5),
+                      UserCertifiedBadge(
+                        userId: widget.userId,
+                        size: 20,
+                      ),
                     ],
                   ],
                 ),
@@ -287,16 +347,14 @@ class _DirectConversationDetailsScreenState
             icon: Icons.notifications_none_rounded,
             title: 'direct_details_notifications'.tr,
             value: _notificationsEnabled,
-            onChanged: (value) =>
-                setState(() => _notificationsEnabled = value),
+            onChanged: (value) => _updatePreference(notificationsEnabled: value),
           ),
           _switchTile(
             icon: Icons.photo_library_outlined,
             title: 'direct_details_media_visibility'.tr,
             subtitle: 'direct_details_media_visibility_subtitle'.tr,
             value: _mediaVisibilityEnabled,
-            onChanged: (value) =>
-                setState(() => _mediaVisibilityEnabled = value),
+            onChanged: (value) => _updatePreference(mediaVisibilityEnabled: value),
           ),
         ],
       ),
@@ -318,7 +376,7 @@ class _DirectConversationDetailsScreenState
           _actionTile(
             icon: Icons.wallpaper_rounded,
             title: 'direct_details_wallpaper'.tr,
-            subtitle: 'direct_details_wallpaper_subtitle'.tr,
+            subtitle: 'Personnalise le fond de cette discussion sur ton appareil.',
             onTap: () {
               Get.to(
                 () => ChatWallpaperSelectionScreen(
@@ -326,7 +384,8 @@ class _DirectConversationDetailsScreenState
                   userName: _displayName,
                   userColor: widget.userColor,
                   userAvatar: _avatarUrl,
-                  onApply: (wallpaperKey) => controller.setWallpaper(wallpaperKey),
+                  onApply: (wallpaperKey) =>
+                      controller.setWallpaper(wallpaperKey),
                 ),
               );
             },
@@ -348,12 +407,17 @@ class _DirectConversationDetailsScreenState
             destructive: true,
             onTap: _confirmClearConversation,
           ),
-          _actionTile(
-            icon: Icons.block_rounded,
-            title: 'direct_details_block'.trParams({'name': _displayName}),
-            destructive: true,
-            onTap: _confirmBlock,
-          ),
+          Obx(() {
+            final blocked = Get.find<DirectConversationController>().blockedByMe.value;
+            return _actionTile(
+              icon: blocked ? Icons.lock_open_rounded : Icons.block_rounded,
+              title: blocked
+                  ? 'Débloquer $_displayName'
+                  : 'direct_details_block'.trParams({'name': _displayName}),
+              destructive: !blocked,
+              onTap: _confirmBlock,
+            );
+          }),
         ],
       ),
     );
@@ -369,7 +433,7 @@ class _DirectConversationDetailsScreenState
             icon: Icons.flag_outlined,
             title: 'direct_details_report'.trParams({'name': _displayName}),
             destructive: true,
-            onTap: () => _comingSoon('direct_details_report_action'.tr),
+            onTap: _showReportDialog,
           ),
         ],
       ),
@@ -493,45 +557,205 @@ class _DirectConversationDetailsScreenState
     );
   }
 
-  void _confirmBlock() {
+  void _confirmClearConversation() {
     Get.dialog(
       AlertDialog(
-        title: Text(
-          'direct_details_block_title'.trParams({'name': _displayName}),
+        title: Text('direct_details_clear'.tr),
+        content: const Text(
+          'Cette action efface la discussion de votre messagerie. Elle ne supprime pas les messages chez l’autre personne.',
         ),
-        content: Text('direct_details_block_message'.tr),
         actions: [
-          TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('cancel'.tr),
+          ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () {
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () async {
               Get.back();
-              _comingSoon('direct_details_block_user'.tr);
+              try {
+                await Get.find<DirectConversationController>()
+                    .clearConversationForMe();
+                if (!mounted) return;
+                Get.back();
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Discussion effacée de votre messagerie.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              } catch (e) {
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Impossible d’effacer la discussion : $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              }
             },
-            child: Text('direct_details_block_action'.tr),
+            child: const Text('Effacer'),
           ),
         ],
       ),
     );
   }
 
-  void _confirmClearConversation() {
+  void _confirmBlock() {
+    final controller = Get.find<DirectConversationController>();
+    final isBlocked = controller.blockedByMe.value;
+    final action = isBlocked ? 'Débloquer' : 'Bloquer';
     Get.dialog(
       AlertDialog(
-        title: Text('direct_details_clear_title'.tr),
-        content: Text('direct_details_clear_message'.tr),
+        title: Text('$action $_displayName ?'),
+        content: Text(isBlocked
+            ? 'Cette personne pourra de nouveau vous envoyer des messages.'
+            : 'Cette personne ne pourra plus vous envoyer de messages.'),
         actions: [
           TextButton(onPressed: Get.back, child: Text('cancel'.tr)),
           FilledButton(
-            onPressed: () {
+            style: FilledButton.styleFrom(
+              backgroundColor: isBlocked ? AppColors.primary : AppColors.error,
+            ),
+            onPressed: () async {
               Get.back();
-              _comingSoon('direct_details_clear_history'.tr);
+              try {
+                await controller.toggleBlockOtherUser();
+                if (!mounted) return;
+                Get.back();
+                Get.snackbar(
+                  'chats_title'.tr,
+                  controller.blockedByMe.value
+                      ? '$_displayName a été bloqué.'
+                      : '$_displayName a été débloqué.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              } catch (e) {
+                Get.snackbar(
+                  'chats_title'.tr,
+                  'Impossible de ${isBlocked ? 'débloquer' : 'bloquer'} cet utilisateur : $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                  margin: const EdgeInsets.all(12),
+                );
+              }
             },
-            child: Text('direct_details_clear_action'.tr),
+            child: Text(action),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showReportDialog() async {
+    final detailsController = TextEditingController();
+    String reason = 'Harcèlement ou intimidation';
+    const reasons = <String>[
+      'Harcèlement ou intimidation',
+      'Contenu haineux',
+      'Usurpation d’identité',
+      'Spam ou arnaque',
+      'Contenu inapproprié',
+      'Autre',
+    ];
+    final confirmed = await Get.dialog<bool>(
+      Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        child: StatefulBuilder(
+          builder: (context, setDialogState) {
+            final colors = Theme.of(context).colorScheme;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(child: Container(
+                      width: 52, height: 52,
+                      decoration: BoxDecoration(color: colors.errorContainer, shape: BoxShape.circle),
+                      child: Icon(CupertinoIcons.flag_fill, color: colors.onErrorContainer, size: 22),
+                    )),
+                    const SizedBox(height: 14),
+                    Text('Signaler $_displayName', textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Text('Pourquoi souhaitez-vous signaler cette personne ? Votre signalement sera transmis à notre équipe pour examen.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant, height: 1.35)),
+                    const SizedBox(height: 20),
+                    Text('MOTIF', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .55), borderRadius: BorderRadius.circular(16)),
+                      child: Column(children: [
+                        for (var i = 0; i < reasons.length; i++) ...[
+                          InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setDialogState(() => reason = reasons[i]),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              child: Row(children: [
+                                Expanded(child: Text(reasons[i], style: Theme.of(context).textTheme.bodyMedium)),
+                                if (reason == reasons[i]) Icon(CupertinoIcons.checkmark_circle_fill, color: colors.primary, size: 20),
+                              ]),
+                            ),
+                          ),
+                          if (i < reasons.length - 1) Divider(height: 1, indent: 12, color: colors.outlineVariant.withValues(alpha: .45)),
+                        ],
+                      ]),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('DÉTAILS (FACULTATIF)', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant, letterSpacing: 1.1, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: detailsController, maxLines: 3, maxLength: 2000,
+                      decoration: InputDecoration(
+                        hintText: 'Ajoutez des précisions utiles…', filled: true,
+                        fillColor: colors.surfaceContainerHighest.withValues(alpha: .45),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: colors.primary, width: 1)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        onPressed: () => Get.back(result: false), child: Text('Annuler', style: TextStyle(color: colors.onSurface)))),
+                      const SizedBox(width: 10),
+                      Expanded(child: FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: colors.error, foregroundColor: colors.onError, minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        onPressed: () => Get.back(result: true), child: const Text('Envoyer'))),
+                    ]),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    if (confirmed != true) {
+      detailsController.dispose();
+      return;
+    }
+    try {
+      final controller = Get.find<DirectConversationController>();
+      await controller.reportOtherUser(reason, detailsController.text.trim().isEmpty ? null : detailsController.text.trim());
+      Get.snackbar('Signalement envoyé', 'Merci. Votre signalement a été transmis pour examen.',
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+    } catch (e) {
+      Get.snackbar('chats_title'.tr, 'Impossible d’envoyer le signalement : $e',
+        snackPosition: SnackPosition.BOTTOM, margin: const EdgeInsets.all(12));
+    } finally {
+      detailsController.dispose();
+    }
   }
 
   void _comingSoon(String feature) {

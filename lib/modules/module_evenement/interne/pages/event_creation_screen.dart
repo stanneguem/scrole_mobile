@@ -341,17 +341,44 @@ class _DatesStep extends GetView<CreateEventController> {
         children: [
           Text('event_create_dates'.tr, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 24),
-          _DateTimePicker(
+          Obx(() => controller.canUseIncludedCertification.value
+              ? CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: controller.useIncludedCertification.value,
+                  onChanged: (value) {
+                    if (value != null) controller.setUseIncludedCertification(value);
+                  },
+                  title: const Text('Utiliser une certification d’événement incluse'),
+                  subtitle: Text(
+                    '${controller.remainingIncludedEvents.value} certification(s) incluse(s) restante(s). '
+                    'Horizon : ${controller.certifiedEventHorizonMonths.value} mois.',
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                )
+              : const SizedBox.shrink()),
+          Obx(() => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              controller.useIncludedCertification.value
+                  ? 'Événement certifié : la certification incluse sera consommée lors de la création. Horizon maximal ${controller.certifiedEventHorizonMonths.value} mois.'
+                  : 'Événement non certifié : planification dans les ${controller.noncertEventHorizonMonths.value} prochains mois, durée maximale ${controller.noncertEventMaxDurationDays.value} jours.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          )),
+          Obx(() => _DateTimePicker(
             label: 'event_create_start'.tr,
-            onSelected: (d) => controller.startDate.value = d,
+            onSelected: controller.selectStartDate,
             selectedDate: controller.startDate,
-          ),
+            lastDate: controller.maxStartDate,
+          )),
           const SizedBox(height: 16),
-          _DateTimePicker(
+          Obx(() => _DateTimePicker(
             label: 'event_create_end'.tr,
             onSelected: (d) => controller.endDate.value = d,
             selectedDate: controller.endDate,
-          ),
+            firstDate: controller.startDate.value ?? DateTime.now(),
+            lastDate: controller.maxEndDate,
+          )),
         ],
       ),
     );
@@ -359,19 +386,33 @@ class _DatesStep extends GetView<CreateEventController> {
 }
 
 class _DateTimePicker extends StatelessWidget {
-  const _DateTimePicker({required this.label, required this.onSelected, required this.selectedDate, this.showTime = true});
+  const _DateTimePicker({
+    required this.label,
+    required this.onSelected,
+    required this.selectedDate,
+    this.showTime = true,
+    this.firstDate,
+    this.lastDate,
+  });
   final String label;
   final Function(DateTime) onSelected;
   final Rx<DateTime?> selectedDate;
   final bool showTime;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
 
   Future<void> _pickDateTime(BuildContext context) async {
-    final initial = selectedDate.value ?? DateTime.now();
+    final minDate = firstDate ?? DateTime(1900);
+    final maxDate = lastDate ?? DateTime.now().add(const Duration(days: 365 * 10));
+    final candidate = selectedDate.value ?? DateTime.now();
+    final initial = candidate.isBefore(minDate)
+        ? minDate
+        : candidate.isAfter(maxDate) ? maxDate : candidate;
     final d = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
+      firstDate: minDate,
+      lastDate: maxDate,
     );
     if (d == null || !context.mounted) return;
 

@@ -3,9 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../service_global/supabse_service.dart';
+import 'r2_media_repository.dart';
 
 class StorageRepository {
   final SupabaseClient _client = Get.find<SupabaseService>().client;
+  final R2MediaRepository _r2MediaRepository = R2MediaRepository();
 
   /// Upload un fichier vers un bucket Supabase
   Future<String> uploadFile({
@@ -88,93 +90,87 @@ class StorageRepository {
 
   /// Upload une photo de profil utilisateur
   /// Structure : profiles/{userId}/avatar_{timestamp}.jpg
+  Future<void> deleteProfileAvatar(String publicUrl) =>
+      _r2MediaRepository.deleteProfileAvatar(publicUrl);
+
   Future<String> uploadProfilePicture(String userId, File file) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'avatar_$timestamp.$extension';
-    final dirPath = 'profiles/$userId';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'avatars', path: path, file: file);
-    
-    // Nettoyage asynchrone (ne bloque pas l'utilisateur)
-    await _cleanOldFiles(
-      bucket: 'avatars', 
-      directoryPath: dirPath, 
-      prefix: 'avatar_', 
-      currentFileName: fileName,
-    );
-
-    return url;
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('[STORAGE_AVATAR][$traceId] START userId=$userId path=${file.path}');
+    final currentUser = _client.auth.currentUser;
+    debugPrint('[STORAGE_AVATAR][$traceId] authUserId=${currentUser?.id ?? 'null'} sessionPresent=${_client.auth.currentSession != null}');
+    if (currentUser == null || currentUser.id != userId) {
+      debugPrint('[STORAGE_AVATAR][$traceId] DENIED: session absente ou userId différent');
+      throw Exception('Vous ne pouvez téléverser que votre propre photo de profil.');
+    }
+    final sizeBytes = await file.length();
+    debugPrint('[STORAGE_AVATAR][$traceId] fileSizeBytes=$sizeBytes extension=${file.path.split('.').last}');
+    try {
+      debugPrint('[STORAGE_AVATAR][$traceId] STEP: R2MediaRepository.uploadFile category=profile_avatar');
+      final uploaded = await _r2MediaRepository.uploadFile(
+        file: file,
+        category: 'profile_avatar',
+        mediaType: 'image',
+        entityId: userId,
+      );
+      final url = uploaded.publicUrl;
+      if (url == null || url.isEmpty || !uploaded.isPublic) {
+        throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la photo de profil.');
+      }
+      debugPrint('[STORAGE_AVATAR][$traceId] SUCCESS objectKey=${uploaded.objectKey} bytes=${uploaded.sizeBytes} contentType=${uploaded.contentType}');
+      return url;
+    } catch (e, stack) {
+      debugPrint('[STORAGE_AVATAR][$traceId] FAILURE type=${e.runtimeType} error=$e');
+      debugPrint('[STORAGE_AVATAR][$traceId] STACK_TRACE\n$stack');
+      rethrow;
+    }
   }
 
-  /// Upload une photo de couverture utilisateur
-  /// Structure : profiles/{userId}/cover_{timestamp}.jpg
+  /// Upload une photo de couverture utilisateur vers Cloudflare R2.
   Future<String> uploadProfileCover(String userId, File file) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'cover_$timestamp.$extension';
-    final dirPath = 'profiles/$userId';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'avatars', path: path, file: file);
-
-    await _cleanOldFiles(
-      bucket: 'avatars', 
-      directoryPath: dirPath, 
-      prefix: 'cover_', 
-      currentFileName: fileName,
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null || currentUser.id != userId) {
+      throw Exception('Vous ne pouvez téléverser que votre propre couverture de profil.');
+    }
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'profile_cover',
+      mediaType: 'image',
+      entityId: userId,
     );
-
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la couverture du profil.');
+    }
     return url;
   }
 
-  /// Upload une photo de profil de communauté
-  /// Structure : communities/{id}/avatar_{timestamp}.jpg
-  Future<String> uploadCommunityAvatar(File file, {String? communityId}) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'avatar_$timestamp.$extension';
-    
-    // Si on a l'ID (update), on range dans un dossier dédié pour nettoyer
-    final dirPath = communityId != null ? 'communities/$communityId' : 'communities/temp_avatars';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'community-media', path: path, file: file);
-
-    if (communityId != null) {
-      _cleanOldFiles(
-        bucket: 'community-media', 
-        directoryPath: dirPath, 
-        prefix: 'avatar_', 
-        currentFileName: fileName,
-      );
+  /// Upload une photo de profil de communauté vers Cloudflare R2.
+  Future<String> uploadCommunityAvatar(File file, {required String communityId}) async {
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'community_avatar',
+      mediaType: 'image',
+      entityId: communityId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour l’avatar de communauté.');
     }
-
     return url;
   }
 
-  /// Upload une bannière de communauté
-  /// Structure : communities/{id}/banner_{timestamp}.jpg
-  Future<String> uploadCommunityBanner(File file, {String? communityId}) async {
-    final extension = file.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final fileName = 'banner_$timestamp.$extension';
-    
-    final dirPath = communityId != null ? 'communities/$communityId' : 'communities/temp_banners';
-    final path = '$dirPath/$fileName';
-    
-    final url = await uploadFile(bucket: 'community-media', path: path, file: file);
-
-    if (communityId != null) {
-      _cleanOldFiles(
-        bucket: 'community-media', 
-        directoryPath: dirPath,
-        prefix: 'banner_',
-        currentFileName: fileName,
-      );
+  /// Upload une couverture de communauté vers Cloudflare R2.
+  Future<String> uploadCommunityBanner(File file, {required String communityId}) async {
+    final uploaded = await _r2MediaRepository.uploadFile(
+      file: file,
+      category: 'community_cover',
+      mediaType: 'image',
+      entityId: communityId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour la couverture de communauté.');
     }
-
     return url;
   }
 

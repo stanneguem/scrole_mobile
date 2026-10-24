@@ -56,11 +56,13 @@ class _MentionHighlightingController extends TextEditingController {
 class CommunityCommentsSheet extends StatefulWidget {
   final CommunityPost post;
   final dynamic controller;
+  final String? targetCommentId;
 
   const CommunityCommentsSheet({
     super.key,
     required this.post,
     required this.controller,
+    this.targetCommentId,
   });
 
   @override
@@ -77,6 +79,9 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   String? _nextCursor;
   bool _hasMore = false;
 
+  final ScrollController _commentsScrollController = ScrollController();
+  final Map<String, GlobalKey> _commentKeys = <String, GlobalKey>{};
+  bool _targetCommentNavigationStarted = false;
   final Map<String, List<Map<String, dynamic>>> _repliesMap = {};
   final Map<String, bool> _expandedReplies = {};
   final Map<String, bool> _loadingReplies = {};
@@ -145,7 +150,11 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
   @override
   void initState() {
     super.initState();
-    _loadComments();
+    _loadComments().then((_) {
+      if (widget.targetCommentId != null && widget.targetCommentId!.isNotEmpty) {
+        unawaited(_navigateToTargetComment());
+      }
+    });
   }
 
   @override
@@ -154,7 +163,74 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
     _mentionSearchDebounce?.cancel();
     _commentController.dispose();
     _commentFocusNode.dispose();
+    _commentsScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _navigateToTargetComment() async {
+    if (_targetCommentNavigationStarted || widget.targetCommentId == null) return;
+    _targetCommentNavigationStarted = true;
+    try {
+      var attempts = 0;
+      while (mounted &&
+          !_comments.any((comment) => comment['id']?.toString() == widget.targetCommentId) &&
+          _hasMore &&
+          attempts < 10) {
+        final previousCount = _comments.length;
+        await _loadComments(loadMore: true);
+        attempts++;
+        if (_comments.length == previousCount) break;
+      }
+      if (!mounted) return;
+      var index = _comments.indexWhere((comment) => comment['id']?.toString() == widget.targetCommentId);
+      if (index < 0) {
+        // The target may be a reply rather than a top-level comment. Expand
+        // each parent until the reply is found, then scroll to its parent.
+        for (var i = 0; i < _comments.length; i++) {
+          final parentId = _comments[i]['id']?.toString();
+          if (parentId == null) continue;
+          await _loadReplies(parentId);
+          final replies = _repliesMap[parentId] ?? const <Map<String, dynamic>>[];
+          if (replies.any((reply) => reply['id']?.toString() == widget.targetCommentId)) {
+            index = i;
+            break;
+          }
+        }
+      }
+      if (index < 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ce commentaire n’est plus disponible.')),
+          );
+        }
+        return;
+      }
+      final targetId = _comments[index]['id']?.toString();
+      if (targetId == null) return;
+      await WidgetsBinding.instance.endOfFrame;
+      for (var attempt = 0; attempt < 4; attempt++) {
+        final targetContext = _commentKeys[targetId]?.currentContext;
+        if (targetContext != null) {
+          await Scrollable.ensureVisible(
+            targetContext,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            alignment: 0.15,
+          );
+          break;
+        }
+        if (!_commentsScrollController.hasClients) break;
+        _commentsScrollController.jumpTo(
+          (index * 180.0)
+              .clamp(0.0, _commentsScrollController.position.maxScrollExtent)
+              .toDouble(),
+        );
+        await WidgetsBinding.instance.endOfFrame;
+      }
+    } catch (e, st) {
+      debugPrint('[CommunityCommentsSheet] Target comment navigation failed: $e');
+      debugPrintStack(stackTrace: st);
+    }
   }
 
   Future<void> _loadComments({bool loadMore = false}) async {
@@ -263,11 +339,53 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       final client = Supabase.instance.client;
       List<Map<String, dynamic>> results = [];
       if (type == 'user') {
-        final rows = await client.from('user_profiles').select('user_id, username, first_name, last_name, photo_url, is_verified')
-            .eq('account_status', 'active').isFilter('deleted_at', null)
-            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
-            .order('username').limit(7);
-        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+        final uid = client.auth.currentUser?.id;
+        if (uid == null) {
+          results = [];
+        } else {
+          final allowedIds = <String>{};
+          // Personal-feed comments: friends only, never followers.
+          final friendshipRows = await client.from('friendships')
+              .select('user_a_id,user_b_id')
+              .or('user_a_id.eq.$uid,user_b_id.eq.$uid')
+              .limit(500);
+          for (final row in friendshipRows) {
+            final other = row['user_a_id']?.toString() == uid
+                ? row['user_b_id']?.toString()
+                : row['user_a_id']?.toString();
+            if (other != null && other.isNotEmpty && other != uid) allowedIds.add(other);
+          }
+
+          // On a private community post, only its current members can be
+          // suggested. On a public community post, members are added to friends.
+          final communityId = widget.post.communityId;
+          if (communityId != null && communityId.isNotEmpty) {
+            final community = await client.from('communities')
+                .select('visibility')
+                .eq('id', communityId)
+                .maybeSingle();
+            final visibility = (community?['visibility'] ?? 'private').toString().toLowerCase();
+            if (visibility == 'private') {
+              allowedIds.clear();
+            }
+            final members = await client.from('community_members')
+                .select('user_id')
+                .eq('community_id', communityId)
+                .limit(1000);
+            allowedIds.addAll(members.map((m) => m['user_id'].toString()));
+          }
+          allowedIds.remove(uid);
+          if (allowedIds.isNotEmpty) {
+            final rows = await client.from('user_profiles')
+                .select('user_id, username, first_name, last_name, photo_url, is_verified')
+                .inFilter('user_id', allowedIds.toList())
+                .eq('account_status', 'active')
+                .isFilter('deleted_at', null)
+                .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
+                .order('username').limit(7);
+            results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+          }
+        }
       } else if (type == 'community') {
         final rows = await client.from('communities').select('id, name, photo_profile, visibility')
             .eq('status', 'active').ilike('name', '%$query%').order('name').limit(7);
@@ -594,6 +712,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                         : RefreshIndicator(
                             onRefresh: () => _loadComments(),
                             child: ListView.builder(
+                              controller: _commentsScrollController,
                               itemCount: _comments.length + (_hasMore ? 1 : 0),
                               itemBuilder: (context, index) {
                                 if (index >= _comments.length) {
@@ -609,7 +728,12 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                                 }
 
                                 final comment = _comments[index];
-                                return _buildCommentItem(comment, isReply: false, parentId: null);
+                                final commentId = comment['id']?.toString() ?? 'comment_$index';
+                                final commentKey = _commentKeys.putIfAbsent(commentId, () => GlobalKey());
+                                return KeyedSubtree(
+                                  key: commentKey,
+                                  child: _buildCommentItem(comment, isReply: false, parentId: null),
+                                );
                               },
                             ),
                           ),
@@ -804,6 +928,7 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
                 username: username,
                 avatarUrl: avatar,
                 isCertified: isCertified,
+                userId: author['user_id']?.toString() ?? comment['author_id']?.toString(),
                 avatarRadius: isReply ? 15 : 18,
                 subtitle: '· ${_formatTime(comment['created_at']?.toString() ?? '')}',
                 nameStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: isReply ? 13 : 14, color: colorScheme.onSurface),

@@ -1,5 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/models/message.dart';
 import '../../centre/models/conversation.dart';
@@ -80,14 +84,14 @@ class SupabaseMessagingService {
       final preview = json['last_message_text'] == null || at == null
           ? null
           : Message(
-              id: '${json['last_message_id'] ?? ''}',
-              localId: '${json['last_message_id'] ?? ''}',
-              conversationId: '${json['id']}',
-              senderId: '${json['last_message_sender_id'] ?? ''}',
-              content: json['last_message_text'] as String?,
-              type: MessageType.values.firstWhere((e) => e.name == json['last_message_type'], orElse: () => MessageType.text),
-              sentAt: DateTime.parse(at).toUtc(),
-            );
+        id: '${json['last_message_id'] ?? ''}',
+        localId: '${json['last_message_id'] ?? ''}',
+        conversationId: '${json['id']}',
+        senderId: '${json['last_message_sender_id'] ?? ''}',
+        content: json['last_message_text'] as String?,
+        type: MessageType.values.firstWhere((e) => e.name == json['last_message_type'], orElse: () => MessageType.text),
+        sentAt: DateTime.parse(at).toUtc(),
+      );
       return Conversation(
         id: '${json['id']}',
         participantIds: [other],
@@ -134,12 +138,39 @@ class SupabaseMessagingService {
     return null;
   }
 
-  Future<void> markDelivered(String id) => _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+  Future<void> markDelivered(String id, {bool cleanupMedia = true}) async {
+    await _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+    if (!cleanupMedia) return;
+
+    Object? lastError;
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      try {
+        final response = await _client.functions.invoke(
+          'delete-delivered-message-media',
+          body: {'message_id': id},
+        );
+        if (response.status < 200 || response.status >= 300 ||
+            response.data is! Map || (response.data as Map)['deleted'] != true) {
+          throw StateError('Nettoyage média R2 refusé: ${response.data}');
+        }
+        return;
+      } catch (error) {
+        lastError = error;
+        debugPrint('[Messaging] R2 media cleanup attempt $attempt/3 failed for $id: $error');
+        if (attempt < 3) {
+          await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
+    }
+    // Propagate failure so the incoming-message path and future sync/realtime
+    // deliveries can retry instead of silently treating cleanup as complete.
+    throw StateError('Nettoyage R2 différé après 3 tentatives: $lastError');
+  }
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
-        'p_conversation_id': conversationId,
-        'p_last_read_at': at.toUtc().toIso8601String(),
-        'p_last_read_message_id': id
-      });
+    'p_conversation_id': conversationId,
+    'p_last_read_at': at.toUtc().toIso8601String(),
+    'p_last_read_message_id': id
+  });
 
   Future<void> sendTyping(RealtimeChannel channel, bool typing) async {
     final ready = _typingReady[channel];
@@ -168,12 +199,12 @@ class SupabaseMessagingService {
   }
 
   RealtimeChannel subscribeMessages(
-    String conversationId,
-    void Function(Message) onMessage, {
-    void Function(String messageId)? onDeleted,
-    void Function(Map<String, dynamic>)? onReceipt,
-    void Function(RealtimeSubscribeStatus status, Object? error)? onStatus,
-  }) {
+      String conversationId,
+      void Function(Message) onMessage, {
+        void Function(String messageId)? onDeleted,
+        void Function(Map<String, dynamic>)? onReceipt,
+        void Function(RealtimeSubscribeStatus status, Object? error)? onStatus,
+      }) {
     final channel = _client.channel('messaging:$conversationId');
     _bindMessageChanges(
       channel,
@@ -196,11 +227,11 @@ class SupabaseMessagingService {
   }
 
   void _bindMessageChanges(
-    RealtimeChannel channel, {
-    required void Function(Message) onMessage,
-    void Function(String messageId)? onDeleted,
-    String? conversationId,
-  }) {
+      RealtimeChannel channel, {
+        required void Function(Message) onMessage,
+        void Function(String messageId)? onDeleted,
+        String? conversationId,
+      }) {
     channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -242,14 +273,85 @@ class SupabaseMessagingService {
     await _client.removeChannel(channel);
   }
 
-  Future<String?> uploadFile(String localPath, String folder, {String? contentType}) async {
+  /// Uploads chat media to Cloudflare R2. Images are compressed on-device first.
+  /// [folder] may be a conversation ID or a descriptive folder; private R2
+  /// authorization is bound to the conversation ID passed as [conversationId].
+  Future<String?> uploadFile(
+      String localPath,
+      String folder, {
+        String? contentType,
+        String? conversationId,
+        double? durationSeconds,
+      }) async {
     final uid = currentUserId;
-    if (uid == null) return null;
-    final file = File(localPath);
-    if (!await file.exists()) return null;
-    final name = file.uri.pathSegments.last;
-    final path = '$uid/chat/$folder/${DateTime.now().microsecondsSinceEpoch}_$name';
-    await _client.storage.from('chat-media').upload(path, file, fileOptions: FileOptions(contentType: contentType, upsert: false));
-    return path;
+    if (uid == null) throw StateError('Authentication required to upload media');
+    if (conversationId == null || conversationId.isEmpty) {
+      throw ArgumentError('conversationId is required for private chat media');
+    }
+    final source = File(localPath);
+    if (!await source.exists()) throw FileSystemException('Media file not found', localPath);
+
+    Uint8List bytes = await source.readAsBytes();
+    var resolvedType = (contentType ?? '').toLowerCase().split(';').first.trim();
+    final lowerPath = localPath.toLowerCase();
+    final isImage = resolvedType.startsWith('image/') ||
+        (resolvedType.isEmpty && RegExp(r'\.(jpe?g|png|webp|heic|heif)$').hasMatch(lowerPath));
+    String extension = source.uri.pathSegments.last.split('.').last.toLowerCase();
+    if (isImage) {
+      final compressed = await FlutterImageCompress.compressWithList(
+        bytes,
+        minWidth: 1920,
+        minHeight: 1920,
+        quality: 82,
+        format: CompressFormat.jpeg,
+      );
+      if (compressed.isNotEmpty) bytes = compressed;
+      resolvedType = 'image/jpeg';
+      extension = 'jpg';
+    } else if (resolvedType.isEmpty) {
+      if (lowerPath.endsWith('.m4a')) {
+        resolvedType = 'audio/mp4';
+      } else if (lowerPath.endsWith('.aac')) {
+        resolvedType = 'audio/aac';
+      } else if (lowerPath.endsWith('.mp4')) {
+        resolvedType = 'video/mp4';
+      } else if (lowerPath.endsWith('.mov')) {
+        resolvedType = 'video/quicktime';
+      } else {
+        resolvedType = 'application/octet-stream';
+      }
+    }
+    final isVideo = resolvedType.startsWith('video/');
+    final isAudio = resolvedType.startsWith('audio/');
+    const category = 'message_media';
+    final request = <String, dynamic>{
+      'action': 'create-upload-url',
+      'category': category,
+      'media_type': isVideo ? 'video' : isAudio ? 'audio' : 'image',
+      'content_type': resolvedType,
+      'extension': extension,
+      'size_bytes': bytes.length,
+      if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      'entity_id': conversationId,
+    };
+    final response = await _client.functions.invoke('r2-media-upload', body: request);
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      throw StateError('R2 upload authorization failed (${response.status}): ${response.data}');
+    }
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final uploadUrl = data['upload_url'] as String?;
+    final objectKey = data['object_key'] as String?;
+    if (uploadUrl == null || objectKey == null) throw StateError('Invalid R2 upload authorization response');
+    final put = await http.put(
+      Uri.parse(uploadUrl),
+      headers: {'Content-Type': resolvedType},
+      body: bytes,
+    );
+    if (put.statusCode < 200 || put.statusCode >= 300) {
+      throw HttpException('Cloudflare R2 upload failed (${put.statusCode})');
+    }
+    // Public assets can be stored as public URLs; private chat assets store only
+    // the object key and are resolved through an authenticated, short-lived URL.
+    return data['is_public'] == true ? (data['public_url'] as String? ?? objectKey) : objectKey;
   }
 }

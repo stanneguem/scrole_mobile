@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
 import 'package:video_player/video_player.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
@@ -16,6 +18,50 @@ class ProfilePostDetailScreen extends StatefulWidget {
 class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _deleting = false;
+
+  bool get _isOwnPost {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    return currentUserId != null && currentUserId.isNotEmpty && widget.post.authorId == currentUserId;
+  }
+
+  Future<void> _confirmAndDeletePost() async {
+    if (!_isOwnPost || _deleting) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: Icon(Icons.delete_outline_rounded, color: Theme.of(dialogContext).colorScheme.error, size: 30),
+        title: const Text('Supprimer la publication ?'),
+        content: const Text('Cette action est définitive. La publication et ses médias associés seront supprimés.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Annuler')),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(dialogContext).colorScheme.error),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await HomeFeedRepository().deletePost(widget.post.id);
+      if (!mounted) return;
+      Get.snackbar('Succès', 'Publication supprimée', snackPosition: SnackPosition.BOTTOM);
+      Get.back(result: true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      Get.snackbar(
+        'Suppression impossible',
+        error.toString().replaceFirst('Exception: ', '').replaceAll('delete_unauthorized_error', 'Tu ne peux pas supprimer cette publication.'),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
 
   void _goToPage(int delta) {
     final target = (_currentPage + delta).clamp(0, widget.post.media.length - 1);
@@ -54,6 +100,22 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
         ),
         elevation: 0,
         scrolledUnderElevation: 0,
+        actions: [
+          if (_isOwnPost)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _deleting
+                  ? const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                    )
+                  : IconButton(
+                      tooltip: 'Supprimer la publication',
+                      onPressed: _confirmAndDeletePost,
+                      icon: Icon(Icons.delete_outline_rounded, color: colors.error),
+                    ),
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),

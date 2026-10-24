@@ -138,21 +138,40 @@ class ContactsScreen extends GetView<ContactsController> {
                   ),
                   if (contact.isCertified) ...[
                     const SizedBox(width: 4),
-                    const UserCertifiedBadge(size: 14),
+                    UserCertifiedBadge(size: 14, userId: contact.id)
                   ],
                 ],
               ),
-              subtitle: Text('@${contact.username}', style: TextStyle(color: Colors.grey[500])),
-              trailing: contact.isOnline
-                  ? Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
+              subtitle: Text(
+                contact.isBlockedByMe
+                    ? '${contact.username.isEmpty ? '' : '@${contact.username} · '}Bloqué par vous'
+                    : '@${contact.username}',
+                style: TextStyle(
+                  color: contact.isBlockedByMe
+                      ? colorScheme.error
+                      : Colors.grey[500],
+                ),
+              ),
+              trailing: contact.isBlockedByMe
+                  ? TextButton.icon(
+                      onPressed: () => controller.unblockContact(contact.id),
+                      icon: const Icon(Icons.lock_open_rounded, size: 17),
+                      label: const Text('Débloquer'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                     )
-                  : null,
+                  : contact.isOnline
+                      ? Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        )
+                      : null,
               onTap: () => _openConversation(contact.id, contact.name, contact.avatarUrl),
             );
           },
@@ -182,7 +201,6 @@ class ContactsScreen extends GetView<ContactsController> {
       return;
     }
 
-    Get.back();
     await Get.toNamed(
       AppPages.conversation,
       arguments: {

@@ -24,7 +24,7 @@ import '../models/ticket_model.dart';
 import '../models/event_guest_invitation_model.dart';
 import '../models/event_statistics_model.dart';
 import '../models/event_sponsor_invitation_model.dart';
-import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../../../modules/module_discussion_direct/interne/controllers/contacts_controller.dart';
 import '../../../../shared/models/interest_model.dart';
 
@@ -706,6 +706,41 @@ class EventRepository {
     }
   }
 
+
+  Future<Map<String, Map<String, dynamic>>> getMyEventItineraryPlans(String eventId) async {
+    try {
+      final rows = await _remote.getMyEventItineraryPlans(eventId);
+      return {
+        for (final row in rows)
+          (row['planned_date'] ?? '').toString(): Map<String, dynamic>.from(
+            row['plan'] is Map ? row['plan'] as Map : <String, dynamic>{},
+          ),
+      };
+    } catch (e) {
+      debugPrint('[EventRepository] getMyEventItineraryPlans error: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getExternalEventItinerary({
+    required String userId,
+    required String eventId,
+  }) async {
+    return _remote.getExternalEventItinerary(userId: userId, eventId: eventId);
+  }
+
+  Future<void> saveMyEventItineraryPlan({
+    required String eventId,
+    required String plannedDate,
+    required Map<String, dynamic> plan,
+  }) async {
+    await _remote.saveMyEventItineraryPlan(
+      eventId: eventId,
+      plannedDate: plannedDate,
+      plan: plan,
+    );
+  }
+
   Future<List<EventDayAttendance>> getEventDayAttendance(String eventId) async {
     try {
       final rawList = await _remote.getEventDayAttendance(eventId);
@@ -1341,6 +1376,20 @@ class EventRepository {
       if (realCreatedAt != null && realCreatedAt.isNotEmpty) 'p_real_created_at': realCreatedAt,
     };
 
+    // Une certification incluse doit être confirmée par le serveur avant
+    // de considérer l'événement comme certifié. On ne met pas cette action en outbox :
+    // une création hors ligne ne doit jamais consommer ou simuler un quota.
+    if (data['certify_with_subscription'] == true) {
+      try {
+        final response = await _remote.createCertifiedEvent(rpcParams);
+        await _dao.saveEventStructured(response, syncStatus: 'synced');
+        return EventModel.fromJson(response);
+      } catch (e) {
+        await _dao.deleteEvent(id);
+        rethrow;
+      }
+    }
+
     // 2. Enfilement outbox
     await _dao.enqueueOutbox(
       userId: userId,
@@ -1423,6 +1472,18 @@ class EventRepository {
     try {
       await _remote.updateEvent(id, data);
       await _dao.updateEventSyncStatusStructured(id, 'synced');
+
+      // Delete the previous R2 cover only after the server has accepted the new URL.
+      final previousPhoto = (previousLocal?['photo'] ?? previousLocal?['photo_url'])?.toString() ?? '';
+      final requestedPhoto = (data['photo'] ?? data['photo_url'])?.toString();
+      if (requestedPhoto != null &&
+          previousPhoto.isNotEmpty && previousPhoto != requestedPhoto) {
+        try {
+          await deleteEventCover(previousPhoto);
+        } catch (cleanupError) {
+          debugPrint('[EventRepository] Replaced event cover cleanup deferred: $cleanupError');
+        }
+      }
 
       try {
         final freshData = await _remote.fetchEventById(id);
@@ -1705,18 +1766,15 @@ class EventRepository {
     }
   }
 
-  Future<String> uploadCover(String userId, File file) async {
-    return await _remote.uploadEventCover(userId, file);
+  Future<String> uploadCover(String eventId, File file) async {
+    return _remote.uploadEventCover(eventId, file);
   }
 
   Future<void> deleteEventCover(String publicUrl) async {
-    if (publicUrl.isEmpty) return;
-    try {
-      final storage = StorageRepository();
-      await storage.deletePublicFile(bucket: 'event-media', publicUrl: publicUrl);
-    } catch (e) {
-      debugPrint('[EventRepository] deleteEventCover error: $e');
-    }
+    if (publicUrl.trim().isEmpty) return;
+    // The R2 repository ignores legacy Supabase Storage URLs, so existing
+    // event covers remain untouched until explicitly migrated by a separate task.
+    await R2MediaRepository().deleteReplacedPublicMedia(publicUrl);
   }
 
   Future<void> updateEvent(String id, Map<String, dynamic> data) async {
@@ -1728,38 +1786,24 @@ class EventRepository {
   }
 
   Future<EventStatisticsModel> getEventStatistics(String eventId, {bool forceRefresh = false}) async {
-    final userId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
-    final cacheKey = 'event_statistics_${userId}_$eventId';
-
-    if (!forceRefresh) {
-      final cached = await _dao.getDiscoveryCache(cacheKey);
-      if (cached != null) {
-        final (payload, cachedAt) = cached;
-        final age = DateTime.now().difference(cachedAt);
-        if (age < const Duration(minutes: 30)) {
-          final Map<String, dynamic> json = jsonDecode(payload);
-          return EventStatisticsModel.fromJson(json);
-        }
-      }
-    }
-
+    // Les statistiques sont une fonctionnalité protégée par la certification active.
+    // Ne jamais servir un cache local avant la validation serveur : la certification
+    // peut avoir expiré ou avoir été suspendue depuis le dernier affichage.
     try {
       final data = await _remote.getEventStatistics(eventId: eventId);
       if (data.isNotEmpty) {
+        final userId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
+        final cacheKey = 'event_statistics_${userId}_$eventId';
         await _dao.saveDiscoveryCache(cacheKey, jsonEncode(data));
         return EventStatisticsModel.fromJson(data);
       }
+      throw Exception('Aucune statistique disponible pour cet événement.');
     } catch (e) {
-      debugPrint('[Error] getEventStatistics RPC failed for $eventId: $e');
+      debugPrint('[Error] getEventStatistics refused or unavailable for $eventId: $e');
+      // Pas de repli vers le cache : il pourrait révéler des statistiques après
+      // expiration/suspension de la certification ou changement des droits.
+      rethrow;
     }
-
-    final cached = await _dao.getDiscoveryCache(cacheKey);
-    if (cached != null) {
-      final Map<String, dynamic> json = jsonDecode(cached.$1);
-      return EventStatisticsModel.fromJson(json);
-    }
-
-    throw Exception('Impossible de charger les statistiques de l\'événement.');
   }
 
   Future<void> updateEventPricing({required String eventId, required bool isFree}) async {

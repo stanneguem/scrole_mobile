@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/service_global/supabse_service.dart';
+import '../../../../app/utils/supabase_error_mapper.dart';
 
 class AuthRepository {
   final SupabaseService _supabase = Get.find();
@@ -22,8 +23,10 @@ class AuthRepository {
             : 'com.scrole.app://login-callback',
       );
       return true;
-    } catch (e) {
-      Get.snackbar("Erreur", e.toString());
+    } catch (e, stackTrace) {
+      if (kDebugMode) debugPrint('[AuthRepository] OAuth sign-in failed: $e\n$stackTrace');
+      final appError = mapSupabaseError(e);
+      Get.snackbar(appError.title, appError.message);
       return false;
     }
   }

@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import '../constants/post_media_limits.dart';
 
 import '../../app/theme/text_styles.dart';
 
@@ -11,7 +13,7 @@ class MediaGallerySheet extends StatefulWidget {
   const MediaGallerySheet({
     super.key,
     required this.onSelected,
-    this.maxSelection = 15,
+    this.maxSelection = maxPostPhotos,
   });
 
   final Function(List<XFile>) onSelected;
@@ -31,6 +33,13 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
   static const int _pageSize = 60;
   
   bool _isOpeningMedia = false;
+  static const Set<String> _videoExtensions = {'mp4', 'mov'};
+  bool _isSupportedAsset(AssetEntity asset) {
+    if (asset.type == AssetType.image) return true;
+    if (asset.type != AssetType.video) return false;
+    final title = asset.title ?? '';
+    return _videoExtensions.contains(p.extension(title).replaceFirst('.', '').toLowerCase());
+  }
   AssetPathEntity? _currentPath;
 
   @override
@@ -44,7 +53,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (ps.isAuth || ps == PermissionState.limited) {
         final paths = await PhotoManager.getAssetPathList(
-          type: RequestType.image,
+          type: RequestType.common,
           onlyAll: true,
           filterOption: FilterOptionGroup(
             containsLivePhotos: false,
@@ -60,7 +69,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
           if (mounted) {
             setState(() {
               _allAssets.clear();
-              _allAssets.addAll(entities);
+              _allAssets.addAll(entities.where(_isSupportedAsset));
               _hasMore = entities.length == _pageSize;
               _isLoading = false;
             });
@@ -220,7 +229,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
         } else {
           Get.snackbar(
             'Limite atteinte',
-            'Vous ne pouvez sélectionner que ${widget.maxSelection} images.',
+            'Vous ne pouvez sélectionner que ${widget.maxSelection} médias compatibles.',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -230,19 +239,33 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
 
   Future<void> _confirmSelection() async {
     if (_selectedAssets.isEmpty) return;
+    final expectedCount = _selectedAssets.length;
     setState(() => _isOpeningMedia = true);
 
     try {
       final List<XFile> xFiles = [];
       for (final asset in _selectedAssets) {
         final file = await asset.file;
-        if (file != null) {
-          xFiles.add(XFile(file.path));
+        if (file == null || !await file.exists()) {
+          throw StateError('Un des fichiers sélectionnés est inaccessible.');
         }
+        xFiles.add(XFile(file.path));
+      }
+
+      debugPrint('[MEDIA_GALLERY] Selection resolved: selected=$expectedCount resolved=${xFiles.length}');
+      if (xFiles.length != expectedCount) {
+        throw StateError('Sélection incomplète : $expectedCount médias choisis, ${xFiles.length} accessibles.');
       }
       widget.onSelected(xFiles);
+      if (mounted) Navigator.of(context).pop();
+    } catch (error, stack) {
+      debugPrint('[MEDIA_GALLERY] Selection failed: $error\n$stack');
       if (mounted) {
-        Navigator.of(context).pop();
+        Get.snackbar(
+          'Sélection incomplète',
+          'Certains médias ne sont pas accessibles. Rien n’a été ajouté : réessaie avec d’autres fichiers.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } finally {
       if (mounted) setState(() => _isOpeningMedia = false);
@@ -278,6 +301,33 @@ class _AssetItem extends StatelessWidget {
             thumbnailSize: const ThumbnailSize.square(200),
             fit: BoxFit.cover,
           ),
+          if (asset.type == AssetType.video)
+            Positioned(
+              left: 5,
+              bottom: 5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, color: Colors.white, size: 13),
+                    SizedBox(width: 2),
+                    Text(
+                      'Vidéo',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (isSelected)
             Container(
               color: Colors.black26,

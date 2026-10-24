@@ -13,6 +13,7 @@ import '../pages/credits_screen.dart';
 import '../pages/help_center_screen.dart';
 import '../pages/language_screen.dart';
 import '../pages/privacy_data_screen.dart';
+import '../pages/preferences_screen.dart';
 import '../pages/whats_new_screen.dart';
 
 /// Contrôleur de [SettingsScreen].
@@ -61,6 +62,7 @@ class SettingsController extends GetxController {
   void openPremium() => Get.to(() => const CertificationPlansScreen());
   void openMyAccount() {}
   void openPrivacyData() => Get.to(() => const PrivacyDataScreen());
+  void openPreferences() => Get.to(() => const PreferencesScreen());
   void openConnectedDevices() => Get.to(() => const ConnectedDevicesScreen());
   void openScanQr() {}
   void openChats() {}

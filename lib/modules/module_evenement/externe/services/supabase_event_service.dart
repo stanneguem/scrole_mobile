@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import '../../centre/models/checkin_model.dart';
 
 class SupabaseEventService {
@@ -504,6 +505,47 @@ class SupabaseEventService {
     }
   }
 
+
+  Future<List<Map<String, dynamic>>> getMyEventItineraryPlans(String eventId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Vous devez être connecté pour consulter votre planning.');
+    final response = await _client
+        .from('event_itinerary_plans')
+        .select('planned_date, plan')
+        .eq('event_id', eventId)
+        .eq('user_id', user.id)
+        .order('planned_date');
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<Map<String, dynamic>> getExternalEventItinerary({
+    required String userId,
+    required String eventId,
+  }) async {
+    final response = await _client.rpc('get_external_event_itinerary', params: {
+      'p_user_id': userId,
+      'p_event_id': eventId,
+    });
+    if (response is Map) return Map<String, dynamic>.from(response);
+    throw StateError('Réponse de planning invalide.');
+  }
+
+  Future<void> saveMyEventItineraryPlan({
+    required String eventId,
+    required String plannedDate,
+    required Map<String, dynamic> plan,
+  }) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Vous devez être connecté pour enregistrer un planning.');
+    await _client.from('event_itinerary_plans').upsert({
+      'user_id': user.id,
+      'event_id': eventId,
+      'planned_date': plannedDate,
+      'plan': plan,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id,event_id,planned_date');
+  }
+
   Future<List<Map<String, dynamic>>> getEventDayAttendance(String eventId) async {
     try {
       final response = await _client.rpc('get_event_day_attendance', params: {'p_event_id': eventId});
@@ -1002,6 +1044,17 @@ class SupabaseEventService {
     });
   }
 
+  Future<Map<String, dynamic>> createCertifiedEvent(Map<String, dynamic> params) async {
+    final response = await _client.rpc('create_certified_event_with_subscription', params: params);
+    if (response == null) {
+      throw Exception('Erreur lors de la création de l’événement certifié');
+    }
+    if (response is List && response.isNotEmpty) {
+      return Map<String, dynamic>.from(response.first as Map);
+    }
+    return Map<String, dynamic>.from(response as Map);
+  }
+
   Future<Map<String, dynamic>> createEvent(Map<String, dynamic> params) async {
     final response = await _client.rpc('create_event', params: params);
     if (response == null) throw Exception('Erreur lors de la création de l\'événement');
@@ -1011,10 +1064,18 @@ class SupabaseEventService {
     return Map<String, dynamic>.from(response as Map);
   }
 
-  Future<String> uploadEventCover(String userId, File file) async {
-    final path = '$userId/events/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await _client.storage.from('event-media').upload(path, file);
-    return _client.storage.from('event-media').getPublicUrl(path);
+  Future<String> uploadEventCover(String eventId, File file) async {
+    final uploaded = await R2MediaRepository(client: _client).uploadFile(
+      file: file,
+      category: 'event_media',
+      mediaType: 'image',
+      entityId: eventId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty) {
+      throw StateError('Cloudflare R2 n’a pas retourné d’URL publique pour la couverture de l’événement.');
+    }
+    return url;
   }
 
   Future<void> updateEvent(String id, Map<String, dynamic> data) async {
@@ -1283,6 +1344,7 @@ class SupabaseEventService {
       await _client.rpc('remove_event_from_calendar', params: {'p_event_id': eventId});
     } catch (e) {
       debugPrint('[Error] removeEventFromCalendar RPC: $e');
+      rethrow;
     }
   }
 

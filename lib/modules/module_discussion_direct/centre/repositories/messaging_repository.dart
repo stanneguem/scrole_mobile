@@ -151,7 +151,7 @@ class MessagingRepository {
           : await InternetConnection().hasInternetAccess;
       if (!connected) return const MessagingResult.failure('offline_conversation_unavailable', 'Cette nouvelle discussion nécessite une connexion Internet.');
 
-      return _persistPeerConversation(
+      return await _persistPeerConversation(
         uid,
         otherUserId,
         otherUserName: otherUserName,
@@ -170,16 +170,16 @@ class MessagingRepository {
     final uid = currentUserId;
     if (uid == null) return const MessagingResult.failure('not_authenticated', 'Utilisateur non authentifié.');
     if (otherUserId.isEmpty) return const MessagingResult.failure('invalid_user', 'Utilisateur invalide.');
-    try {
-      return _persistPeerConversation(
-        uid,
-        otherUserId,
-        otherUserName: otherUserName,
-        otherUserAvatar: otherUserAvatar,
+    // Opening a contact must never create a server conversation. Creation is
+    // deferred to resolveConversationForFirstMessage(), called by send actions.
+    final existing = await _conversations.getByOtherUser(uid, otherUserId);
+    if (existing == null || existing.lastMessagePreview == null) {
+      return const MessagingResult.failure(
+        'conversation_not_found',
+        'Aucune conversation existante. Envoyez un premier message pour la créer.',
       );
-    } catch (e) {
-      return MessagingResult.failure('conversation_failed', e.toString());
     }
+    return MessagingResult.success(existing);
   }
 
   Future<MessagingResult<Conversation>> _persistPeerConversation(
@@ -356,7 +356,7 @@ class MessagingRepository {
         if (_isRemote(path)) {
           out.add(path);
         } else {
-          final url = await _remote.uploadFile(path, 'media', contentType: _mime(path));
+          final url = await _remote.uploadFile(path, 'media', contentType: _mime(path), conversationId: m.conversationId);
           if (url == null) return null;
           out.add(url);
         }
@@ -365,7 +365,7 @@ class MessagingRepository {
     }
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
-      audio = await _remote.uploadFile(audio, 'audio', contentType: _mime(audio));
+      audio = await _remote.uploadFile(audio, 'audio', contentType: _mime(audio), conversationId: m.conversationId);
     }
     if (m.audioUrl != null && audio == null) return null;
     return m.copyWith(mediaUrls: media, audioUrl: audio);
@@ -728,7 +728,33 @@ class MessagingRepository {
     await _ensureConversationFromIncoming(uid, r);
     await _refreshConversationList(uid, r.conversationId);
     if (r.senderId != uid && r.status != MessageStatus.read) {
-      unawaited(_remote.markDelivered(r.id).catchError((_) {}));
+      // Cache attachments on the recipient device before recording delivery;
+      // recording the receipt allows the backend to delete the R2 objects.
+      unawaited(_cacheIncomingMediaThenAcknowledge(r));
+    }
+  }
+
+  Future<void> _cacheIncomingMediaThenAcknowledge(Message message) async {
+    final refs = <String>[
+      ...(message.mediaUrls ?? const <String>[]),
+      if (message.audioUrl != null && message.audioUrl!.isNotEmpty) message.audioUrl!,
+    ];
+    for (final ref in refs) {
+      try {
+        final localPath = await ChatMediaCache.instance.resolveLocalPath(ref);
+        if (localPath == null) {
+          debugPrint('[Messaging] Waiting for media cache before delivery receipt: ${message.id}');
+          return;
+        }
+      } catch (error) {
+        debugPrint('[Messaging] Media cache failed before delivery receipt: $error');
+        return;
+      }
+    }
+    try {
+      await _remote.markDelivered(message.id, cleanupMedia: refs.isNotEmpty);
+    } catch (error) {
+      debugPrint('[Messaging] Delivery acknowledgement failed: $error');
     }
   }
 

@@ -7,8 +7,9 @@ import '../../app/theme/app_colors.dart';
 
 class VideoTrimScreen extends StatefulWidget {
   final File videoFile;
+  final Duration maxDuration;
 
-  const VideoTrimScreen({super.key, required this.videoFile});
+  const VideoTrimScreen({super.key, required this.videoFile, this.maxDuration = const Duration(seconds: 30)});
 
   @override
   State<VideoTrimScreen> createState() => _VideoTrimScreenState();
@@ -17,7 +18,7 @@ class VideoTrimScreen extends StatefulWidget {
 class _VideoTrimScreenState extends State<VideoTrimScreen> {
   final Trimmer _trimmer = Trimmer();
   double _startValue = 0.0;
-  double _endValue = 0.0;
+  double _endValue = 100.0;
   bool _isPlaying = false;
   bool _progressVisibility = false;
 
@@ -46,10 +47,12 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
               _progressVisibility = false;
             });
           }
-          if (outputPath != null) {
+          if (outputPath != null && outputPath.trim().isNotEmpty && File(outputPath).existsSync()) {
+            debugPrint('[VideoTrimScreen] TRIM_SUCCESS outputPath=$outputPath');
             Get.back(result: File(outputPath));
           } else {
-            Get.back(result: widget.videoFile);
+            debugPrint('[VideoTrimScreen] TRIM_FAILED reason=empty_output_path');
+            Get.back<File?>(result: null);
           }
         },
       );
@@ -60,7 +63,9 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
           _progressVisibility = false;
         });
       }
-      Get.back(result: widget.videoFile);
+      // Ne jamais renvoyer la vidéo originale quand le découpage a échoué :
+      // elle pourrait dépasser la limite et faire annuler toute la publication.
+      Get.back<File?>(result: null);
     }
   }
 
@@ -72,7 +77,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: Text(
-          'Découper la vidéo (max 2 min)',
+          'Découper la vidéo (max ${widget.maxDuration.inSeconds} s)',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
@@ -110,7 +115,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
                     trimmer: _trimmer,
                     viewerHeight: 50.0,
                     viewerWidth: MediaQuery.of(context).size.width,
-                    maxVideoLength: const Duration(minutes: 2),
+                    maxVideoLength: widget.maxDuration,
                     onChangeStart: (value) => _startValue = value,
                     onChangeEnd: (value) => _endValue = value,
                     onChangePlaybackState: (value) => setState(() => _isPlaying = value),

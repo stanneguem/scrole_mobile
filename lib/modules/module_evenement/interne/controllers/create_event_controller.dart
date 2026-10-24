@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
 import '../../../../app/service_global/media_service.dart';
@@ -47,15 +49,93 @@ class CreateEventController extends GetxController {
   final Rx<DateTime?> endDate = Rx<DateTime?>(null);
   
   final RxBool isLoading = false.obs;
+  final RxInt noncertEventHorizonMonths = 2.obs;
+  final RxInt noncertEventMaxDurationDays = 2.obs;
+  final RxInt certifiedEventHorizonMonths = 6.obs;
+  final RxInt remainingIncludedEvents = 0.obs;
+  final RxBool canUseIncludedCertification = false.obs;
+  final RxBool useIncludedCertification = false.obs;
 
   @override
   void onInit() {
     super.onInit();
     _loadCountries();
+    _loadQuotaRules();
     
     // Ajout de listeners pour forcer la mise à jour de l'UI (Obx) quand le texte change
     nameController.addListener(() => name.value = nameController.text);
     slugController.addListener(() => slug.value = slugController.text);
+  }
+
+  DateTime _addMonthsClamped(DateTime date, int months) {
+    final targetMonth = date.month + months;
+    final lastDay = DateTime(date.year, targetMonth + 1, 0).day;
+    return DateTime(date.year, targetMonth, date.day > lastDay ? lastDay : date.day,
+        date.hour, date.minute);
+  }
+
+  DateTime get maxStartDate => _addMonthsClamped(
+      DateTime.now(), useIncludedCertification.value
+          ? certifiedEventHorizonMonths.value
+          : noncertEventHorizonMonths.value);
+
+  DateTime get maxEndDate {
+    final start = startDate.value;
+    if (useIncludedCertification.value) return DateTime.now().add(const Duration(days: 3650));
+    if (start == null) return maxStartDate;
+    return start.add(Duration(days: noncertEventMaxDurationDays.value));
+  }
+
+  Future<void> _loadQuotaRules() async {
+    try {
+      final client = Supabase.instance.client;
+      final result = await client.rpc('get_scrole_public_quota_settings');
+      if (result is Map) {
+        noncertEventHorizonMonths.value =
+            (result['noncert_event_horizon_months'] as num?)?.toInt() ?? 2;
+        noncertEventMaxDurationDays.value =
+            (result['noncert_event_max_duration_days'] as num?)?.toInt() ?? 2;
+        certifiedEventHorizonMonths.value =
+            (result['certified_event_horizon_months'] as num?)?.toInt() ?? 6;
+      }
+      final entitlements = await client.rpc('scrole_get_my_subscription_entitlements');
+      if (entitlements is Map && entitlements['active'] == true) {
+        remainingIncludedEvents.value =
+            (entitlements['event_remaining'] as num?)?.toInt() ?? 0;
+        canUseIncludedCertification.value = remainingIncludedEvents.value > 0;
+      } else {
+        remainingIncludedEvents.value = 0;
+        canUseIncludedCertification.value = false;
+      }
+    } catch (e) {
+      // Le serveur reste autoritaire. Les valeurs par défaut reflètent la configuration initiale.
+      print('[Quota] Impossible de charger les limites : $e');
+    }
+  }
+
+  void setUseIncludedCertification(bool enabled) {
+    if (enabled && !canUseIncludedCertification.value) return;
+    useIncludedCertification.value = enabled;
+    final start = startDate.value;
+    if (start != null && start.isAfter(maxStartDate)) {
+      startDate.value = null;
+      endDate.value = null;
+      return;
+    }
+    final end = endDate.value;
+    if (!enabled && start != null && end != null &&
+        end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) {
+      endDate.value = null;
+    }
+  }
+
+  void selectStartDate(DateTime date) {
+    startDate.value = date;
+    final end = endDate.value;
+    if (!useIncludedCertification.value && end != null &&
+        end.difference(date) > Duration(days: noncertEventMaxDurationDays.value)) {
+      endDate.value = null;
+    }
   }
 
   Future<void> _loadCountries() async {
@@ -142,9 +222,15 @@ class CreateEventController extends GetxController {
     (isVirtual.value && onlineUrlController.text.trim().isNotEmpty) ||
     (!isVirtual.value && selectedCountry.value != null && selectedCity.value != null && addressController.text.trim().isNotEmpty);
 
-  bool get isDatesValid => 
-    startDate.value != null &&
-    (endDate.value == null || endDate.value!.isAfter(startDate.value!));
+  bool get isDatesValid {
+    final start = startDate.value;
+    final end = endDate.value;
+    if (start == null || (end != null && !end.isAfter(start))) return false;
+    if (start.isAfter(maxStartDate)) return false;
+    if (!useIncludedCertification.value && end != null &&
+        end.difference(start) > Duration(days: noncertEventMaxDurationDays.value)) return false;
+    return true;
+  }
 
   Future<void> createEvent() async {
     if (isLoading.value) return;
@@ -154,16 +240,12 @@ class CreateEventController extends GetxController {
       final userId = Get.find<AuthService>().userId;
       if (userId == null) throw 'err_user_not_connected'.tr;
 
-      String? coverUrl;
-      if (coverFile.value != null) {
-        coverUrl = await _repository.uploadCover(userId, coverFile.value!);
-      }
-
+      final selectedCover = coverFile.value;
       final newEvent = await _repository.createEventOptimistic(userId, {
         'name': nameController.text.trim(),
         'slug': slugController.text.trim(),
         'description': descriptionController.text.trim(),
-        'photo': coverUrl,
+        'photo': null,
         'is_virtual': isVirtual.value,
         'virtual_link': isVirtual.value ? onlineUrlController.text.trim() : null,
         'country_id': !isVirtual.value ? selectedCountry.value?.id : null,
@@ -174,8 +256,20 @@ class CreateEventController extends GetxController {
         'is_free': isFree.value,
         'is_public': isPublic.value,
         'real_created_at': isRecent.value ? realCreatedAt.value?.toUtc().toIso8601String() : null,
+        'certify_with_subscription': useIncludedCertification.value,
       });
       
+      if (selectedCover != null) {
+        try {
+          // The event must exist in Supabase before R2 authorizes an event_media upload.
+          final coverUrl = await _repository.uploadCover(newEvent.id, selectedCover);
+          await _repository.updateEventOptimistic(newEvent.id, userId, {'photo': coverUrl});
+        } catch (coverError) {
+          debugPrint('[CreateEventController] Event created without cover; R2 upload/sync failed: $coverError');
+          Get.snackbar('Événement créé', 'La couverture n’a pas pu être enregistrée. Tu pourras la modifier ensuite.');
+        }
+      }
+
       Get.back();
       Get.toNamed(AppPages.eventPreview.replaceFirst(':id', newEvent.id), arguments: newEvent);
       

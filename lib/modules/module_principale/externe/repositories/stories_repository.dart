@@ -14,6 +14,7 @@ class StoriesRepository {
     String? p_background,
     String p_audience = 'public',
     Map<String, dynamic>? p_poll,
+    bool p_allow_reshare = false,
   }) async {
     try {
       debugPrint('[STORY] [Repository] Calling RPC create_story with p_id=$p_id, kind=$p_kind, audience=$p_audience');
@@ -21,6 +22,7 @@ class StoriesRepository {
         'p_id': p_id,
         'p_kind': p_kind,
         'p_audience': p_audience,
+        'p_allow_reshare': p_allow_reshare,
       };
       if (p_content != null && p_content.isNotEmpty) params['p_content'] = p_content;
       if (p_image_url != null && p_image_url.isNotEmpty) params['p_image_url'] = p_image_url;
@@ -144,6 +146,35 @@ class StoriesRepository {
       return {'items': [], 'total': 0, 'has_more': false};
     } catch (e) {
       debugPrint('[STORY] [Repository] Error in getStoryComments: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getStoryCommentReplies(
+    String storyId,
+    String commentId, {
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    final response = await client.rpc('get_story_comment_replies', params: {
+      'p_story_id': storyId,
+      'p_comment_id': commentId,
+      'p_limit': limit,
+      'p_offset': offset,
+    });
+    if (response is Map) return Map<String, dynamic>.from(response);
+    return {'items': [], 'total': 0, 'has_more': false};
+  }
+  Future<String?> setStoryCommentReaction(String commentId, String? reaction) async {
+    try {
+      final normalized = reaction == null || reaction == 'none' ? 'none' : reaction;
+      final response = await client.rpc('set_story_comment_reaction', params: {
+        'p_comment_id': commentId,
+        'p_reaction': normalized,
+      });
+      return response?.toString();
+    } catch (e, st) {
+      debugPrint('[STORY] Error setting story comment reaction: $e\n$st');
       rethrow;
     }
   }

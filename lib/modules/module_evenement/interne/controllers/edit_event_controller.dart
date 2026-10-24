@@ -182,7 +182,7 @@ class EditEventController extends GetxController {
       // 1. Upload new photo if selected
       if (coverFile.value != null) {
         try {
-          newUploadedPhotoUrl = await _repository.uploadCover(userId, coverFile.value!);
+          newUploadedPhotoUrl = await _repository.uploadCover(event.id, coverFile.value!);
           isNewPhotoUploaded = true;
         } catch (uploadError) {
           Get.snackbar('Erreur d\'upload', 'Impossible de téléverser la nouvelle photo: $uploadError');
@@ -234,15 +234,7 @@ class EditEventController extends GetxController {
         rethrow;
       }
 
-      // 3. Clean up old photo if it was replaced or removed
-      final String finalPhotoUrl = updates.containsKey('photo') ? (updates['photo'] as String) : oldPhotoUrl;
-      if (oldPhotoUrl.isNotEmpty && oldPhotoUrl != finalPhotoUrl) {
-        try {
-          await _repository.deleteEventCover(oldPhotoUrl);
-        } catch (cleanupError) {
-          debugPrint('[EditEventController] Failed to delete old photo: $cleanupError');
-        }
-      }
+      // Old-media cleanup is performed only after the backend confirms the update.
 
       if (selectedInterestIds.isNotEmpty) {
         await _repository.updateEventInterestsOptimistic(

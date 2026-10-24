@@ -7,6 +7,7 @@ import 'package:scrole/app/utils/boot_timing.dart';
 import '../../../../../app/theme/app_colors.dart';
 import '../../../../../app/theme/text_styles.dart';
 import '../../../../../shared/widgets/app_cached_image.dart';
+import '../../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../../shared/widgets/shimmer.dart';
 import '../../centre/models/event_model.dart';
 import '../controllers/event_controller.dart';
@@ -643,12 +644,15 @@ class _SuggestionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    event.name,
-                    style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Row(children: [
+                    Expanded(child: Text(
+                      event.name,
+                      style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
+                    EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                  ]),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('EEE d MMM · HH:mm').format(event.startsAt),
@@ -741,12 +745,15 @@ class _SuggestionListTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    event.name,
-                    style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  Row(children: [
+                    Expanded(child: Text(
+                      event.name,
+                      style: AppTextStyles.labelLarge.copyWith(color: colorScheme.onSurface),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    )),
+                    EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
+                  ]),
                   const SizedBox(height: 4),
                   Text(
                     DateFormat('EEEE d MMMM · HH:mm').format(event.startsAt),

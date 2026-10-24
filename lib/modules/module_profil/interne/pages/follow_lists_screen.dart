@@ -253,7 +253,7 @@ class _FollowListTabState extends State<_FollowListTab> {
                           final display = '$first $last'.trim();
                           final pseudo = (item['pseudo'] ?? item['username'] ?? '').toString();
                           final photo = item['photo_url']?.toString();
-                          final certified = item['is_certified'] == true;
+                          final certified = item['is_certified'] == true || item['is_certified'] == 1 || item['is_certified']?.toString().toLowerCase() == 'true';
                           final isCurrentUser = id.isNotEmpty && id == Supabase.instance.client.auth.currentUser?.id;
                           final isFollowing = item['i_follow'] == true;
                           final label = _buttonLabel(item);
@@ -271,7 +271,7 @@ class _FollowListTabState extends State<_FollowListTab> {
                               Flexible(child: Text(display.isEmpty ? pseudo : display, maxLines: 1, overflow: TextOverflow.ellipsis)),
                               if (certified) ...[
                                 const SizedBox(width: 4),
-                                const UserCertifiedBadge(size: 16, showTooltip: true),
+                                UserCertifiedBadge(size: 16, showTooltip: true, userId: id),
                               ],
                             ]),
                             subtitle: Text(pseudo.startsWith('@') ? pseudo : '@$pseudo'),

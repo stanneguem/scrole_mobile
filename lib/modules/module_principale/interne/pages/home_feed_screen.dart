@@ -6,6 +6,7 @@ import '../controllers/home_feed_controller.dart';
 import '../controllers/main_layout_controller.dart';
 import '../controllers/stories_controller.dart';
 import '../widgets/feed_post_card.dart';
+import '../../../../shared/widgets/post_media_slider.dart';
 import '../widgets/community_comments_sheet.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
@@ -14,6 +15,8 @@ import 'story_viewer_screen.dart';
 import 'create_story_screen.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -113,7 +116,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
                     const _StoriesRow(),
-                    const Divider(height: 1, thickness: 0.5),
                     const _SuggestedProfilesCarousel(),
                     const _SuggestedEventsCarousel(),
                     SizedBox(
@@ -152,7 +154,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const _StoriesRow(),
-                        Divider(height: 1, thickness: 0.5, color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+                        // Preserve the layout boundary while making the separator
+                        // visually imperceptible, as requested.
+                        Container(
+                          height: 1,
+                          width: double.infinity,
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.01),
+                        ),
                       ],
                     );
                   }
@@ -182,27 +190,35 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   return VisibilityDetector(
                     key: Key('post_vis_${post.id}'),
                     onVisibilityChanged: (info) {
-                      if (info.visibleFraction >= 0.5) {
+                      final eligible = info.visibleFraction >= 0.50;
+                      FeedVideoAutoplayGate.updatePostVisibility(post.id, eligible);
+                      if (eligible) {
                         feedController.queuePostView(post);
                       }
                     },
-                    child: FeedPostCard(
-                      post: post,
-                      onReactionTap: (reaction) => feedController.handleReaction(post.id, reaction),
-                      onCommentTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => CommunityCommentsSheet(
-                            post: post,
-                            controller: Get.isRegistered<CommunityFeedController>()
-                                ? Get.find<CommunityFeedController>()
-                                : Get.put(CommunityFeedController(null, post.eventId)),
-                          ),
-                        );
-                      },
-                      onHidePost: () => feedController.hidePost(post.id),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: FeedPostCard(
+                          post: post,
+                          onRetryPublishing: () => feedController.retryQueuedPost(post.id),
+                          onReactionTap: (reaction) => feedController.handleReaction(post.id, reaction),
+                          onCommentTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => CommunityCommentsSheet(
+                                post: post,
+                                controller: Get.isRegistered<CommunityFeedController>()
+                                    ? Get.find<CommunityFeedController>()
+                                    : Get.put(CommunityFeedController(null, post.eventId)),
+                              ),
+                            );
+                          },
+                          onHidePost: () => feedController.hidePost(post.id),
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -254,14 +270,18 @@ class _StoriesRow extends GetView<StoriesController> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return SizedBox(
-      height: 108,
+      height: 116,
       child: Obx(() {
         final own = controller.ownGroup.value;
         final hasOwnStory = own != null && own.stories.isNotEmpty;
-        final otherGroups = [
+        // Unseen stories first, then most recently active authors.
+        final otherGroups = <EventStoryGroup>[
           ...controller.followingGroups,
           ...controller.suggestedGroups,
-        ];
+        ]..sort((a, b) {
+            if (a.hasUnseen != b.hasUnseen) return a.hasUnseen ? -1 : 1;
+            return b.latestAt.compareTo(a.latestAt);
+          });
         final allGroupsForViewer = [
           if (hasOwnStory) own,
           ...otherGroups,
@@ -269,7 +289,7 @@ class _StoriesRow extends GetView<StoriesController> {
 
         return ListView.builder(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: otherGroups.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
@@ -293,7 +313,7 @@ class _StoriesRow extends GetView<StoriesController> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: hasOwnStory
-                                  ? Border.all(color: own.hasUnseen ? colorScheme.primary : colorScheme.outlineVariant, width: 2.5)
+                                  ? Border.all(color: own.hasUnseen ? Colors.blue : Colors.grey.shade500, width: 2.5)
                                   : null,
                             ),
                             child: CircleAvatar(
@@ -325,7 +345,7 @@ class _StoriesRow extends GetView<StoriesController> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      const Text('Ta story', style: TextStyle(fontSize: 11)),
+                      const Text('Ma story', style: TextStyle(fontSize: 11)),
                     ],
                   ),
                 ),
@@ -339,7 +359,6 @@ class _StoriesRow extends GetView<StoriesController> {
               padding: const EdgeInsets.only(right: 12),
               child: GestureDetector(
                 onTap: () {
-                  controller.markAsViewed(group.author.userId);
                   final viewerIndex = hasOwnStory ? index : index - 1;
                   Get.to(() => StoryViewerScreen(groups: allGroupsForViewer, initialGroupIndex: viewerIndex));
                 },
@@ -351,7 +370,7 @@ class _StoriesRow extends GetView<StoriesController> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: hasUnviewed ? colorScheme.primary : colorScheme.outlineVariant,
+                          color: hasUnviewed ? Colors.blue : Colors.grey.shade500,
                           width: 2.5,
                         ),
                       ),
@@ -368,12 +387,28 @@ class _StoriesRow extends GetView<StoriesController> {
                     const SizedBox(height: 4),
                     SizedBox(
                       width: 64,
-                      child: Text(
-                        group.author.displayName,
-                        style: const TextStyle(fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              group.author.displayName,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: hasUnviewed ? FontWeight.w700 : FontWeight.w400,
+                                color: colorScheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          if (group.author.isCertified) ...[
+                            const SizedBox(width: 3),
+                            UserCertifiedBadge(size: 11, showTooltip: false, userId: group.author.userId),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -571,7 +606,10 @@ class _SuggestedEventsCarousel extends GetView<HomeFeedController> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(ev.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              Row(children: [
+                                Expanded(child: Text(ev.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                EntityCertifiedBadge(entityType: 'event', entityId: ev.id, size: 15),
+                              ]),
                               const SizedBox(height: 3),
                               Row(
                                 children: [

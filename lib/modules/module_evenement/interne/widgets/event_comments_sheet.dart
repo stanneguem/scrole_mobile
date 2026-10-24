@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/widgets/scrole_bottom_sheet.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 
 /// BottomSheet de consultation et rédaction de commentaires événementiels.
 class EventCommentsSheet extends StatefulWidget {
@@ -51,9 +52,19 @@ class _EventCommentsSheetState extends State<EventCommentsSheet> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            widget.eventName,
-            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  widget.eventName,
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              EntityCertifiedBadge(entityType: 'event', entityId: widget.eventId, size: 14),
+            ],
           ),
           const SizedBox(height: 16),
 

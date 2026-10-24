@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:scrole/modules/module_discussion_direct/centre/services/chat_media_cache.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/service_global/notification_service.dart';
@@ -31,6 +33,15 @@ class ChatController extends GetxController {
   final RxList<MessageModel> messages = <MessageModel>[].obs;
   final RxBool isTyping = false.obs;
   final RxBool isOtherUserTyping = false.obs;
+  final RxBool blockedByOtherUser = false.obs;
+  final RxBool blockedByMe = false.obs;
+  final RxBool conversationNotificationsEnabled = true.obs;
+  final RxBool saveIncomingMediaToGallery = true.obs;
+  final RxBool _conversationPreferencesLoaded = false.obs;
+  final Set<String> _autoSavedMediaMessageIds = <String>{};
+  final Set<String> _knownMessageIds = <String>{};
+  bool _hasInitialMessageSnapshot = false;
+  final List<MessageModel> _pendingIncomingMedia = <MessageModel>[];
   final RxBool showEmojiPicker = false.obs;
   final Rxn<MessageModel> repliedMessage = Rxn<MessageModel>();
   final Rxn<MessageModel> editingMessage = Rxn<MessageModel>();
@@ -66,21 +77,15 @@ class ChatController extends GetxController {
     final cache = Get.find<FastCacheService>();
     final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
     if (targetId.isEmpty) return;
-    final key = 'chat_wallpaper_$targetId';
-    final saved = cache.get<String>(key);
-    selectedWallpaper.value = saved ?? 'fond1';
+    selectedWallpaper.value = cache.get<String>('chat_wallpaper_$targetId') ?? 'fond1';
   }
 
   Future<void> setWallpaper(String wallpaperKey) async {
     selectedWallpaper.value = wallpaperKey;
     selectedWallpaper.refresh();
-    if (Get.isRegistered<FastCacheService>()) {
-      final cache = Get.find<FastCacheService>();
-      final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
-      if (targetId.isNotEmpty) {
-        final key = 'chat_wallpaper_$targetId';
-        await cache.set(key, wallpaperKey);
-      }
+    final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
+    if (Get.isRegistered<FastCacheService>() && targetId.isNotEmpty) {
+      await Get.find<FastCacheService>().set('chat_wallpaper_$targetId', wallpaperKey);
     }
   }
 
@@ -88,6 +93,8 @@ class ChatController extends GetxController {
   void onInit() {
     super.onInit();
     _loadWallpaper();
+    unawaited(refreshBlockStatus());
+    unawaited(loadConversationPreferences());
     _bindConversation();
     messageController.addListener(_composerChanged);
     _audioSub = audioPlayer.playerStateStream.listen((state) => isPlayingReview.value = state.playing);
@@ -112,7 +119,15 @@ class ChatController extends GetxController {
     isLoading.value = true;
     _messagesSub = _repository.watchConversation(id).listen((items) {
       final converted = items.map(MessageModel.fromMessage).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final newlyReceived = converted
+          .where((message) => _knownMessageIds.add(message.id))
+          .toList(growable: false);
       messages.assignAll(converted);
+      if (_hasInitialMessageSnapshot && newlyReceived.isNotEmpty) {
+        _pendingIncomingMedia.addAll(newlyReceived);
+        unawaited(_autoSaveIncomingMedia(newlyReceived));
+      }
+      _hasInitialMessageSnapshot = true;
       _recalculateUnread();
       isLoading.value = false;
     }, onError: (_) => isLoading.value = false);
@@ -124,6 +139,109 @@ class ChatController extends GetxController {
       }
     });
     unawaited(_initialize(id));
+  }
+
+  Future<void> loadConversationPreferences() async {
+    final uid = currentUserId;
+    if (uid == null || otherUserId.isEmpty || uid == otherUserId) return;
+    try {
+      final row = await Supabase.instance.client
+          .from('direct_conversation_preferences')
+          .select('notifications_enabled,save_media_to_gallery')
+          .eq('user_id', uid)
+          .eq('other_user_id', otherUserId)
+          .maybeSingle();
+      if (row == null) {
+        _conversationPreferencesLoaded.value = true;
+        if (_pendingIncomingMedia.isNotEmpty) {
+          final pending = List<MessageModel>.from(_pendingIncomingMedia);
+          _pendingIncomingMedia.clear();
+          unawaited(_autoSaveIncomingMedia(pending));
+        }
+        return;
+      }
+      conversationNotificationsEnabled.value =
+          row['notifications_enabled'] as bool? ?? true;
+      saveIncomingMediaToGallery.value =
+          row['save_media_to_gallery'] as bool? ?? true;
+      _conversationPreferencesLoaded.value = true;
+      if (saveIncomingMediaToGallery.value && _pendingIncomingMedia.isNotEmpty) {
+        final pending = List<MessageModel>.from(_pendingIncomingMedia);
+        _pendingIncomingMedia.clear();
+        unawaited(_autoSaveIncomingMedia(pending));
+      } else {
+        _pendingIncomingMedia.clear();
+      }
+    } catch (e) {
+      _conversationPreferencesLoaded.value = false;
+      _pendingIncomingMedia.clear();
+      debugPrint('[ChatPreferences] load failed: $e');
+    }
+  }
+
+  Future<void> updateConversationPreference({
+    bool? notificationsEnabled,
+    bool? saveMediaToGallery,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null || otherUserId.isEmpty || uid == otherUserId) {
+      throw StateError('Utilisateur invalide.');
+    }
+    final nextNotifications =
+        notificationsEnabled ?? conversationNotificationsEnabled.value;
+    final nextMedia = saveMediaToGallery ?? saveIncomingMediaToGallery.value;
+    await Supabase.instance.client
+        .from('direct_conversation_preferences')
+        .upsert({
+          'user_id': uid,
+          'other_user_id': otherUserId,
+          'notifications_enabled': nextNotifications,
+          'save_media_to_gallery': nextMedia,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        }, onConflict: 'user_id,other_user_id');
+    conversationNotificationsEnabled.value = nextNotifications;
+    saveIncomingMediaToGallery.value = nextMedia;
+    _conversationPreferencesLoaded.value = true;
+  }
+
+  Future<void> _autoSaveIncomingMedia(List<MessageModel> currentMessages) async {
+    if (!_conversationPreferencesLoaded.value) return;
+    if (!saveIncomingMediaToGallery.value) {
+      _pendingIncomingMedia.clear();
+      return;
+    }
+    for (final message in currentMessages) {
+      if (message.senderId == currentUserId ||
+          message.type != MessageType.image ||
+          message.mediaUrls == null ||
+          message.mediaUrls!.isEmpty ||
+          !_autoSavedMediaMessageIds.add(message.id)) {
+        continue;
+      }
+      _pendingIncomingMedia.removeWhere((pending) => pending.id == message.id);
+      for (final mediaUrl in message.mediaUrls!) {
+        try {
+          final localPath = await _repository.resolveLocalMedia(message.id, mediaUrl) ??
+              await _repository.cacheMedia(message.id, mediaUrl).then(
+                (result) => result.success ? result.data : null,
+              );
+          if (localPath == null || !saveIncomingMediaToGallery.value) continue;
+          final rawPath = Uri.tryParse(mediaUrl)?.path ?? mediaUrl;
+          final extension = rawPath.split('/').last.contains('.')
+              ? '.${rawPath.split('/').last.split('.').last.toLowerCase()}'
+              : '.jpg';
+          final safeExtension = const {'.jpg', '.jpeg', '.png', '.webp'}.contains(extension)
+              ? extension
+              : '.jpg';
+          await ChatMediaCache.instance.saveToGallery(
+            sourcePath: localPath,
+            fileName: 'scrole_chat_${DateTime.now().millisecondsSinceEpoch}$safeExtension',
+          );
+        } catch (e) {
+          debugPrint('[ChatMedia] auto-save failed: $e');
+        }
+      }
+    }
   }
 
   Future<void> _initialize(String id) async {
@@ -254,6 +372,61 @@ class ChatController extends GetxController {
   void clearReply() => repliedMessage.value = null;
   void onBack() => Get.back();
   void goToOtherUserProfile() { if (otherUserId.isNotEmpty) Get.toNamed(AppPages.externalProfilePath(otherUserId)); }
+
+  Future<void> refreshBlockStatus() async {
+    if (otherUserId.isEmpty) return;
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'scrole_get_direct_block_status',
+        params: {'p_other_user_id': otherUserId},
+      );
+      final row = result is List && result.isNotEmpty ? result.first : result;
+      if (row is Map) {
+        blockedByMe.value = row['blocked_by_me'] == true;
+        blockedByOtherUser.value = row['blocked_me'] == true;
+      }
+    } catch (_) {
+      // Keep the chat available if status lookup fails; server still rejects blocked sends.
+    }
+  }
+
+  Future<void> toggleBlockOtherUser() async {
+    if (otherUserId.isEmpty) throw StateError('Utilisateur invalide.');
+    if (blockedByMe.value) {
+      await Supabase.instance.client.rpc(
+        'scrole_unblock_direct_user',
+        params: {'p_other_user_id': otherUserId},
+      );
+    } else {
+      await Supabase.instance.client.rpc(
+        'scrole_block_direct_user',
+        params: {'p_other_user_id': otherUserId},
+      );
+    }
+    await refreshBlockStatus();
+    if (!blockedByMe.value && !blockedByOtherUser.value) {
+      // Status is now clear on both sides; the composer can become available again.
+      blockedByMe.refresh();
+      blockedByOtherUser.refresh();
+    }
+  }
+
+  Future<void> reportOtherUser(String reason, String? details) async {
+    if (otherUserId.isEmpty) throw StateError('Utilisateur invalide.');
+    await Supabase.instance.client.rpc('scrole_report_direct_user', params: {
+      'p_reported_user_id': otherUserId,
+      'p_reason': reason,
+      'p_details': details,
+    });
+  }
+
+  Future<void> clearConversationForMe() async {
+    if (conversationId.isEmpty || isDraftConversation) return;
+    final result = await _repository.deleteConversation(conversationId);
+    if (!result.success) throw StateError(result.message ?? 'Impossible de supprimer la discussion.');
+    messages.clear();
+  }
+
   Future<void> pickMedia() => pickGalleryMedia();
   Future<void> pickCameraMedia() async { final file = await ImagePicker().pickImage(source: ImageSource.camera); if (file != null) await _sendMedia([file]); }
   Future<void> pickGalleryMedia() async {

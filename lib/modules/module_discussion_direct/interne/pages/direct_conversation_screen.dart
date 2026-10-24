@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:scrole/shared/models/chat_message.dart'
@@ -12,8 +14,9 @@ import '../widgets/direct_voice_message_player.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/image_source_sheet.dart';
-import '../../../../shared/widgets/media_full_screen_page.dart';
+import 'chat_media_viewer_screen.dart';
 import '../../centre/models/message_model.dart';
 import '../widgets/chat_cached_media.dart';
 import '../controllers/direct_conversation_controller.dart';
@@ -63,12 +66,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
           onPressed: controller.onBack,
         ),
         title: Obx(() => _buildTitle()),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _openDetails,
-          ),
-        ],
+        actions: const [],
       ),
       body: Stack(
         children: [
@@ -92,23 +90,68 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             );
           }),
 
-          // 2. Contenu (Messages + Zone de saisie transparente)
-          Column(
-            children: [
-              Expanded(child: _messages(colors)),
-              Obx(
-                () => controller.recordingState.value != RecordingState.idle
-                    ? DirectVoiceRecorderPanel(controller: controller)
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
+          // 2. Contenu protégé des zones système (navigation Android/iOS).
+          // SafeArea conserve le fond derrière la barre système, mais maintient
+          // les messages et surtout le composeur au-dessus de celle-ci.
+          SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                Expanded(child: _messages(colors)),
+                Obx(() {
+                  if (controller.blockedByOtherUser.value) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: colors.errorContainer.withValues(alpha: .65),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: colors.error.withValues(alpha: .25), width: 0.7),
+                      ),
+                      child: Row(
                         children: [
-                          _reply(colors),
-                          _composer(context, colors),
-                          _emoji(),
+                          Icon(Icons.block_rounded, color: colors.onErrorContainer, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Cet utilisateur vous a bloqué. Vous ne pouvez plus lui envoyer de messages.',
+                              style: TextStyle(color: colors.onErrorContainer, fontSize: 13),
+                            ),
+                          ),
                         ],
                       ),
-              ),
-            ],
+                    );
+                  }
+                  if (controller.blockedByMe.value) {
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        'Vous avez bloqué cet utilisateur. Débloquez-le depuis les paramètres de discussion pour lui envoyer des messages.',
+                        style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return controller.recordingState.value != RecordingState.idle
+                      ? DirectVoiceRecorderPanel(controller: controller)
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _reply(colors),
+                            _composer(context, colors),
+                            _emoji(),
+                          ],
+                        );
+                }),
+              ],
+            ),
           ),
         ],
       ),
@@ -161,12 +204,25 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
             () => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  controller.otherUserName.value.toUpperCase(),
-                  style: AppTextStyles.h6.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        controller.otherUserName.value.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.h6.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    UserCertifiedBadge(
+                      userId: controller.otherUserId,
+                      size: 16,
+                    ),
+                  ],
                 ),
                 if (controller.isOtherUserTyping.value)
                   const Text(
@@ -187,50 +243,80 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28.0),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          width: 360,
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 26),
           decoration: BoxDecoration(
             color: hasWallpaper
-                ? Colors.black.withValues(alpha: 0.20)
-                : (isDark
-                    ? colors.surfaceContainerHighest.withValues(alpha: 0.20)
-                    : Colors.white.withValues(alpha: 0.95)),
-            borderRadius: BorderRadius.circular(16),
+                ? Colors.black.withValues(alpha: .28)
+                : colors.surface.withValues(alpha: isDark ? .72 : .92),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
               color: hasWallpaper
-                  ? Colors.white.withValues(alpha: 0.20)
-                  : colors.outlineVariant.withValues(alpha: 0.20),
-              width: 1,
+                  ? Colors.white.withValues(alpha: .18)
+                  : colors.outlineVariant.withValues(alpha: .35),
+              width: .7,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: isDark ? .10 : .035),
+                blurRadius: 28,
+                offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .14)
+                      : colors.primary.withValues(alpha: .10),
+                ),
+                child: Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  size: 29,
+                  color: hasWallpaper ? Colors.white : colors.primary,
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 'chats_empty_title'.tr,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.h4.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 19,
+                  height: 1.2,
+                  letterSpacing: -.35,
+                  fontWeight: FontWeight.w700,
                   color: hasWallpaper ? Colors.white : colors.onSurface,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 9),
               Text(
                 'chats_empty_subtitle'.tr,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.body.copyWith(
-                  fontSize: 13,
-                  height: 1.35,
-                  color: hasWallpaper ? Colors.white.withValues(alpha: 0.85) : colors.onSurfaceVariant,
+                  fontSize: 14,
+                  height: 1.5,
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .86)
+                      : colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                height: 3,
+                width: 34,
+                decoration: BoxDecoration(
+                  color: hasWallpaper
+                      ? Colors.white.withValues(alpha: .55)
+                      : colors.primary.withValues(alpha: .45),
+                  borderRadius: BorderRadius.circular(99),
                 ),
               ),
             ],
@@ -377,8 +463,10 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                 children: content,
               ),
             ),
-            if (header)
+            if (header || isMe)
               Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     DateFormat.Hm().format(m.createdAt),
@@ -389,7 +477,27 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                           : colors.onSurfaceVariant.withValues(alpha: .5),
                     ),
                   ),
-                  if (isMe) _status(m.status),
+                  if (isMe) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _status(m.status),
+                        const SizedBox(width: 3),
+                        Text(
+                          _receiptLabel(m.status),
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: m.status == MessageStatus.read
+                                ? Colors.blue
+                                : hasWallpaper
+                                    ? Colors.white70
+                                    : colors.onSurfaceVariant.withValues(alpha: .65),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
           ],
@@ -399,18 +507,27 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   }
 
   Widget _status(MessageStatus s) {
-    final icon = s == MessageStatus.read || s == MessageStatus.received
-        ? Icons.done_all_rounded
-        : s == MessageStatus.sent
-        ? Icons.check_rounded
-        : Icons.error_outline;
+    final icon = switch (s) {
+      MessageStatus.pending || MessageStatus.sending => Icons.schedule_rounded,
+      MessageStatus.sent => Icons.check_rounded,
+      MessageStatus.delivered || MessageStatus.received || MessageStatus.read => Icons.done_all_rounded,
+      MessageStatus.failed || MessageStatus.error => Icons.error_outline_rounded,
+    };
     final color = s == MessageStatus.read
         ? Colors.blue
         : s == MessageStatus.error || s == MessageStatus.failed
-        ? AppColors.error
-        : null;
-    return Icon(icon, size: 15, color: color);
+            ? AppColors.error
+            : null;
+    return Icon(icon, size: 13, color: color);
   }
+
+  String _receiptLabel(MessageStatus s) => switch (s) {
+    MessageStatus.pending || MessageStatus.sending => 'Envoi…',
+    MessageStatus.sent => 'Envoyé',
+    MessageStatus.delivered || MessageStatus.received => 'Reçu',
+    MessageStatus.read => 'Lu',
+    MessageStatus.failed || MessageStatus.error => 'Échec',
+  };
 
   Widget _media(List<String> urls) {
     return Container(
@@ -432,7 +549,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   Widget _one(String path, List<String> all) {
     return GestureDetector(
       onTap: () =>
-          Get.to(() => MediaFullScreenPage(mediaUrls: all, initialIndex: 0)),
+          Get.to(() => ChatMediaViewerScreen(mediaUrls: all, initialIndex: 0)),
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: ChatCachedMedia(
@@ -447,7 +564,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
   Widget _thumb(String path, int index, List<String> all) {
     return GestureDetector(
       onTap: () => Get.to(
-        () => MediaFullScreenPage(mediaUrls: all, initialIndex: index),
+        () => ChatMediaViewerScreen(mediaUrls: all, initialIndex: index),
       ),
       child: ChatCachedMedia(
         remoteUrl: path,
@@ -629,8 +746,20 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
       final hasWallpaper = controller.selectedWallpaper.value != 'none';
 
       return Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        decoration: BoxDecoration(
+          color: hasWallpaper
+              ? Colors.black.withValues(alpha: .16)
+              : colors.surface.withValues(alpha: .96),
+          border: Border(
+            top: BorderSide(
+              color: hasWallpaper
+                  ? Colors.white.withValues(alpha: .12)
+                  : colors.outlineVariant.withValues(alpha: .35),
+              width: .6,
+            ),
+          ),
+        ),
         child: Column(
           children: [
             if (editingMode)
@@ -673,64 +802,100 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                   ],
                 ),
               ),
-            Row(
-              children: [
-                if (!editingMode)
-                  _CircleIcon(
-                    icon: Icons.add,
-                    color: hasWallpaper ? Colors.white : null,
-                    onTap: () => showImageSourceSheet(
-                      context,
-                      onCamera: controller.pickCameraMedia,
-                      onGallery: controller.pickGalleryMedia,
-                    ),
-                  ),
-                if (!editingMode) const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: controller.messageController,
-                    onTap: () => controller.showEmojiPicker.value = false,
-                    style: TextStyle(
-                      color: hasWallpaper ? Colors.white : colors.onSurface,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: editingMode
-                          ? 'Modifier le message...'
-                          : 'chats_message_hint'.tr,
-                      hintStyle: TextStyle(
-                        color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 360;
+                final iconSize = compact ? 38.0 : 42.0;
+                final gap = compact ? 5.0 : 8.0;
+                return Row(
+                  children: [
+                    if (!editingMode)
+                      _CircleIcon(
+                        icon: null,
+                        assetPath: 'assets/svg_icons/pictures2-svgrepo-com.svg',
+                        size: iconSize,
+                        color: hasWallpaper ? Colors.white : null,
+                        onTap: () => showImageSourceSheet(
+                          context,
+                          onCamera: controller.pickCameraMedia,
+                          onGallery: controller.pickGalleryMedia,
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: hasWallpaper
-                          ? Colors.black.withValues(alpha: .45)
-                          : colors.surfaceContainerHighest.withValues(alpha: .3),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    if (!editingMode) SizedBox(width: gap),
+                    Expanded(
+                      child: TextField(
+                        controller: controller.messageController,
+                        onTap: () => controller.showEmojiPicker.value = false,
+                        minLines: 1,
+                        maxLines: 5,
+                        textCapitalization: TextCapitalization.sentences,
+                        keyboardAppearance: hasWallpaper || Get.isDarkMode
+                            ? Brightness.dark
+                            : Brightness.light,
+                        style: TextStyle(
+                          color: hasWallpaper ? Colors.white : colors.onSurface,
+                          fontSize: 15,
+                          height: 1.35,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: editingMode
+                              ? 'Modifier le message...'
+                              : 'chats_message_hint'.tr,
+                          hintStyle: TextStyle(
+                            color: hasWallpaper ? Colors.white60 : colors.onSurfaceVariant,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide(
+                              color: colors.outlineVariant.withValues(alpha: .35),
+                              width: 0.5,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(
+                              color: colors.outlineVariant.withValues(alpha: .35),
+                              width: 0.5,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(
+                              color: colors.outline.withValues(alpha: .55),
+                              width: 0.7,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: hasWallpaper
+                              ? Colors.black.withValues(alpha: .45)
+                              : colors.surfaceContainerHighest.withValues(alpha: .3),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: compact ? 12 : 16,
+                            vertical: 11,
+                          ),
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => controller.sendMessage(),
                       ),
                     ),
-                    onSubmitted: (_) => controller.sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _CircleIcon(
-                  icon: editingMode
-                      ? Icons.check_rounded
-                      : controller.isTyping.value
-                      ? Icons.send
-                      : Icons.mic_none,
-                  color: canSendText ? AppColors.primary : (hasWallpaper ? Colors.white : null),
-                  onTap: canSendText
-                      ? controller.sendMessage
-                      : controller.startRecording,
-                  onLongPress: editingMode ? null : controller.startRecording,
-                  onLongPressUp: editingMode ? null : controller.stopRecording,
-                ),
-              ],
+                    SizedBox(width: gap),
+                    _CircleIcon(
+                      size: iconSize,
+                      icon: editingMode
+                          ? Icons.check_rounded
+                          : controller.isTyping.value
+                          ? Icons.send
+                          : Icons.mic_none,
+                      color: canSendText ? AppColors.primary : (hasWallpaper ? Colors.white : null),
+                      onTap: canSendText
+                          ? controller.sendMessage
+                          : controller.startRecording,
+                      onLongPress: editingMode ? null : controller.startRecording,
+                      onLongPressUp: editingMode ? null : controller.stopRecording,
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -754,18 +919,22 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
 
 class _CircleIcon extends StatelessWidget {
   const _CircleIcon({
-    required this.icon,
+    this.icon,
+    this.assetPath,
     this.color,
     this.onTap,
     this.onLongPress,
     this.onLongPressUp,
-  });
+    this.size = 44,
+  }) : assert(icon != null || assetPath != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final String? assetPath;
   final Color? color;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onLongPressUp;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -776,14 +945,21 @@ class _CircleIcon extends StatelessWidget {
       onLongPressUp: onLongPressUp,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 44,
-        height: 44,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: c.withValues(alpha: .15),
         ),
         alignment: Alignment.center,
-        child: Icon(icon, color: c, size: 21),
+        child: assetPath != null
+            ? SvgPicture.asset(
+                assetPath!,
+                width: 21,
+                height: 21,
+                colorFilter: ColorFilter.mode(c, BlendMode.srcIn),
+              )
+            : Icon(icon, color: c, size: 21),
       ),
     );
   }

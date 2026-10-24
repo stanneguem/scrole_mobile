@@ -98,6 +98,11 @@ class SettingsScreen extends StatelessWidget {
                             onTap: controller.openLanguageScreen,
                           ),
                           _SettingsTile(
+                            icon: Icons.tune_rounded,
+                            label: 'settings_preferences_title'.tr,
+                            onTap: controller.openPreferences,
+                          ),
+                          _SettingsTile(
                             icon: Icons.chat_bubble_rounded,
                             label: 'settings_chats'.tr,
                             onTap: controller.openChats,

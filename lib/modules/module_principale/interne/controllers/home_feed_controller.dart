@@ -10,6 +10,7 @@ import 'package:scrole/modules/module_principale/externe/repositories/home_feed_
 import 'package:scrole/modules/module_evenement/centre/repositories/event_repository.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/app/local_storage/structured/app_cache_database.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/app/utils/supabase_error_mapper.dart';
@@ -164,8 +165,17 @@ class HomeFeedController extends GetxController {
 
       debugPrint('[HOME_FEED] fetchFeed started with refresh=$refresh');
 
-      // 2. Fetch pending outbox posts
+      // 2. Show queued personal posts before waiting on the network.
       final pendingPosts = await _getPendingOutboxPosts(userId);
+      if (pendingPosts.isNotEmpty) {
+        final existingRemote = posts.where((post) => !post.isPublishing).toList();
+        final previewById = <String, CommunityPost>{};
+        for (final post in [...pendingPosts, ...existingRemote]) {
+          previewById[post.id] = post;
+        }
+        posts.assignAll(previewById.values);
+        state.value = HomeFeedState.loaded;
+      }
 
       // 3. Remote fetch via get_home_feed RPC
       final result = await _feedRepo.getHomeFeed(limit: 20, cursor: null);
@@ -317,8 +327,8 @@ class HomeFeedController extends GetxController {
       final db = await _db.database;
       final rows = await db.query(
         'post_outbox',
-        where: 'user_id = ? AND status = "pending"',
-        whereArgs: [userId],
+        where: 'user_id = ? AND status IN (?, ?) AND community_id IS NULL',
+        whereArgs: [userId, 'pending', 'failed'],
         orderBy: 'created_at DESC',
       );
 
@@ -336,10 +346,16 @@ class HomeFeedController extends GetxController {
             authorId: userId,
             authorColor: Colors.grey,
             authorRole: CommunityRole.member,
-            timeAgo: 'En attente...',
+            timeAgo: row['status'] == 'failed' ? 'Échec de publication' : 'Publication en cours…',
             content: content,
             communityId: communityId,
             isPublishing: true,
+            reactionsEnabled: false,
+            commentsEnabled: false,
+            sharingEnabled: false,
+            reasonSubtitle: row['status'] == 'failed'
+                ? (payload['p_last_error']?.toString() ?? 'Publication non confirmée')
+                : 'Publication en cours…',
           ));
         } catch (_) {}
       }
@@ -384,6 +400,36 @@ class HomeFeedController extends GetxController {
   }
 
   final Map<String, Timer> _reactionDebouncers = {};
+
+  Future<void> retryQueuedPost(String postId) async {
+    final userId = _authService.userId;
+    if (userId == null) return;
+    try {
+      final db = await _db.database;
+      final rows = await db.query(
+        'post_outbox',
+        columns: ['id'],
+        where: 'user_id = ? AND operation_id = ? AND status = ?',
+        whereArgs: [userId, postId, 'failed'],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+      await db.update(
+        'post_outbox',
+        {'status': 'pending', 'attempt_count': 0, 'next_retry_at': 0, 'updated_at': DateTime.now().toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [rows.first['id']],
+      );
+      if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+        Get.put(CommunityOutboxProcessor());
+      }
+      unawaited(Get.find<CommunityOutboxProcessor>().processPendingPosts());
+      await fetchFeed(refresh: true);
+    } catch (e) {
+      debugPrint('[HOME_FEED] Retry queued post failed postId=$postId error=$e');
+      Get.snackbar('Réessai impossible', e.toString().replaceFirst('Exception: ', ''), snackPosition: SnackPosition.BOTTOM);
+    }
+  }
 
   Future<void> handleReaction(String postId, PostReaction reaction) async {
     final index = posts.indexWhere((p) => p.id == postId);
