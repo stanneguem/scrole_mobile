@@ -523,7 +523,13 @@ class ProfileScreen extends GetView<ProfileController> {
           final post = posts[index];
           final imageUrl = post.media.isNotEmpty ? (post.media.first.isVideo ? (post.media.first.thumbnailUrl ?? '') : post.media.first.url) : '';
           return GestureDetector(
-            onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
+            onTap: () async {
+              final deleted = await Get.to<bool>(() => ProfilePostDetailScreen(post: post));
+              if (deleted == true) {
+                await controller.refreshProfileTab(tabIndex);
+                await controller.refreshProfile();
+              }
+            },
             child: Stack(fit: StackFit.expand, children: [
               Container(
                 color: colorScheme.surfaceContainerHighest,
