@@ -251,7 +251,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
         children: [
           // La gestion de la certification appartient exclusivement au propriétaire.
           // Les outils de modération restent réservés aux administrateurs/modérateurs.
-          if (_isAdmin || _role == 'moderator')
+          if (_isAdmin || _role == 'moderator' || _isCommunityOwner)
             _buildTile(
               icon: Icons.admin_panel_settings_outlined,
               iconColor: Colors.indigo,
