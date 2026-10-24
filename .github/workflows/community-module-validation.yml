@@ -1,0 +1,39 @@
+name: Community module validation
+
+on:
+  pull_request:
+    branches: [relationship, feature/story-comment-interactions]
+    paths:
+      - 'lib/modules/module_communautes/**'
+      - 'lib/modules/module_principale/interne/widgets/feed_post_card.dart'
+      - 'lib/modules/module_principale/centre/models/community_post.dart'
+      - 'lib/app/translation/app_translation_additions.dart'
+      - 'test/modules/community_*.dart'
+      - 'supabase/migrations/*community*'
+      - '.github/workflows/community-module-validation.yml'
+  push:
+    branches: [fix/post-creation-flow]
+    paths:
+      - 'lib/modules/module_communautes/**'
+      - 'lib/modules/module_principale/interne/widgets/feed_post_card.dart'
+      - 'lib/modules/module_principale/centre/models/community_post.dart'
+      - 'lib/app/translation/app_translation_additions.dart'
+      - 'test/modules/community_*.dart'
+      - 'supabase/migrations/*community*'
+      - '.github/workflows/community-module-validation.yml'
+
+jobs:
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze community module and shared post widgets
+        run: flutter analyze lib/modules/module_communautes lib/modules/module_principale/interne/widgets/feed_post_card.dart lib/modules/module_principale/centre/models/community_post.dart lib/app/translation/app_translation_additions.dart
+      - name: Test community flows
+        run: flutter test test/modules/community_management_translations_test.dart test/modules/community_report_and_leave_test.dart test/modules/community_members_rpc_test.dart test/modules/community_open_and_preview_test.dart test/modules/community_local_sync_test.dart
