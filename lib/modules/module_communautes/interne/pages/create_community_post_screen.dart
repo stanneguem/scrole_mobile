@@ -899,19 +899,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       ),
                     ),
 
-                    // Community Promotion Toggle if community post
-                    if (isCommunity)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: SwitchListTile(
-                          title: const Text('Garder ce post uniquement dans la communauté', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                          value: !_allowPromotion,
-                          onChanged: (val) => setState(() => _allowPromotion = !val),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-
                     // Champ de texte
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1191,11 +1178,14 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       final result = await Get.to<Map<String, dynamic>>(() => CommunityPostSettingsScreen(
                         initialCommentsEnabled: _commentsEnabled,
                         initialSharingEnabled: _sharingEnabled,
+                        isCommunityPost: isCommunity,
+                        initialAllowPromotion: _allowPromotion,
                       ));
                       if (result != null) {
                         setState(() {
                           _commentsEnabled = result['commentsEnabled'] ?? true;
                           _sharingEnabled = result['sharingEnabled'] ?? true;
+                          _allowPromotion = result['allowPromotion'] ?? _allowPromotion;
                         });
                       }
                     },
