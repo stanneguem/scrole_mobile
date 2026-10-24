@@ -352,6 +352,8 @@ begin
     where user_id = v_rep.target_id and deleted_at is null;
     get diagnostics v_n = row_count;
     if v_n = 0 then raise exception 'Utilisateur introuvable ou déjà supprimé'; end if;
+    insert into public.admin_user_moderation_actions (user_id, admin_id, action, reason)
+    values (v_rep.target_id, v_admin, 'suspend', coalesce(v_note, 'Signalement communautaire escaladé après 48 heures'));
     v_new := 'resolu';
   elsif p_action = 'remove_content' then
     if v_rep.target_type::text = 'post' then
