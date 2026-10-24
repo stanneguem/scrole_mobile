@@ -639,6 +639,15 @@ class FeedPostCard extends StatelessWidget {
                 _reportPost(context, post);
               },
             ),
+            if (post.communityId != null && post.communityId!.isNotEmpty && !isAuthor)
+              ListTile(
+                leading: const Icon(Icons.person_off_outlined, color: Colors.orange),
+                title: const Text('Signaler l’auteur dans cette communauté'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _reportPost(context, post, reportAuthor: true);
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.copy_rounded),
               title: const Text('Copier le texte'),
@@ -664,7 +673,16 @@ class FeedPostCard extends StatelessWidget {
     );
   }
 
-  Future<void> _reportPost(BuildContext context, CommunityPost post) async {
+  Future<void> _reportPost(
+    BuildContext context,
+    CommunityPost post, {
+    bool reportAuthor = false,
+  }) async {
+    final targetUserId = post.authorObj?.userId ?? post.authorId;
+    if (reportAuthor && (post.communityId == null || post.communityId!.isEmpty || targetUserId.isEmpty)) {
+      Get.snackbar('community_save_error'.tr, 'Impossible d’identifier le membre à signaler.');
+      return;
+    }
     final repository = CommunityRepository();
     final reasons = await repository.getSignalementRaisons();
     if (reasons.isEmpty) {
@@ -692,7 +710,9 @@ class FeedPostCard extends StatelessWidget {
               selectedReasonId!.isNotEmpty &&
               (!isOther || description.isNotEmpty);
           return AlertDialog(
-            title: Text('community_report_title'.tr),
+            title: Text(
+              reportAuthor ? 'Signaler l’auteur dans cette communauté' : 'community_report_title'.tr,
+            ),
             content: SizedBox(
               width: 420,
               child: SingleChildScrollView(
@@ -770,12 +790,24 @@ class FeedPostCard extends StatelessWidget {
                     : () async {
                         setDialogState(() => submitting = true);
                         try {
-                          await repository.reportContent(
-                            targetType: 'post',
-                            targetId: post.id,
-                            reasonId: selectedReasonId!,
-                            description: descriptionController.text.trim(),
-                          );
+                          if (reportAuthor) {
+                            await Supabase.instance.client.rpc(
+                              'report_community_member',
+                              params: {
+                                'p_community_id': post.communityId,
+                                'p_user_id': targetUserId,
+                                'p_reason_id': selectedReasonId,
+                                'p_description': descriptionController.text.trim(),
+                              },
+                            );
+                          } else {
+                            await repository.reportContent(
+                              targetType: 'post',
+                              targetId: post.id,
+                              reasonId: selectedReasonId!,
+                              description: descriptionController.text.trim(),
+                            );
+                          }
                           Get.back();
                           Get.snackbar(
                             'community_report_title'.tr,
