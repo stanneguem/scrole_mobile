@@ -104,6 +104,7 @@ class FeedPostCard extends StatelessWidget {
   final VoidCallback? onMoreTap;
   final VoidCallback? onHidePost;
   final VoidCallback? onJoinCommunity;
+  final VoidCallback? onRetryPublishing;
   final String? currentCommunityId;
 
   const FeedPostCard({
@@ -115,6 +116,7 @@ class FeedPostCard extends StatelessWidget {
     this.onMoreTap,
     this.onHidePost,
     this.onJoinCommunity,
+    this.onRetryPublishing,
     this.currentCommunityId,
   });
 
