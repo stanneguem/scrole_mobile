@@ -464,7 +464,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                           else
                             GestureDetector(
                               onTap: () {
-                                if (_currentStory.sharedPostId != null) {
+                                if (_currentStory.sharedPostId != null && _currentStory.sharedPostCanOpenOriginal) {
                                   _openOriginalPost(
                                     _currentStory.sharedPostId!,
                                   );
