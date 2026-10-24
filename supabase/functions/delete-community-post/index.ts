@@ -46,10 +46,17 @@ function isAllowedPostR2Key(key: string, post: Record<string, unknown>): boolean
   const communityId = typeof post.community_id === "string" ? post.community_id : "";
   if (!authorId) return false;
   if (communityId) {
+    // Public community media and thumbnails use different subpaths. Private
+    // community thumbnails include /thumbnails/ before the author's ID.
     return key.startsWith(`communities/${communityId}/posts/`) ||
-      key.startsWith(`private/communities/${communityId}/posts/${authorId}/`);
+      key.startsWith(`private/communities/${communityId}/posts/${authorId}/`) ||
+      key.startsWith(`private/communities/${communityId}/posts/thumbnails/${authorId}/`);
   }
-  return key.startsWith(`posts/${authorId}/`) || key.startsWith(`users/${authorId}/posts/`);
+  // Public feed video thumbnails are stored separately from the original video
+  // under thumbnails/posts/<authorId>/<uploadId>.<ext>.
+  return key.startsWith(`posts/${authorId}/`) ||
+    key.startsWith(`thumbnails/posts/${authorId}/`) ||
+    key.startsWith(`users/${authorId}/posts/`);
 }
 
 function getR2Configuration(key: string) {
@@ -331,18 +338,33 @@ Deno.serve(async (req) => {
 
   const deletedR2Objects: string[] = [];
   const retainedSharedR2Objects: string[] = [];
+  let currentR2Key: string | null = null;
+  let r2FailureStage: "reference_check" | "delete_object" | null = null;
   try {
     for (const object of r2Objects.values()) {
+      currentR2Key = object.key;
+      r2FailureStage = "reference_check";
       if (await isR2ObjectReferencedElsewhere(adminClient, postId, object)) {
         retainedSharedR2Objects.push(object.key);
         continue;
       }
+      r2FailureStage = "delete_object";
       await deleteR2Object(object.key);
       deletedR2Objects.push(object.key);
     }
   } catch (error) {
-    console.error("[delete-community-post] R2 cleanup failed", { postId, details: error instanceof Error ? error.message : String(error) });
-    return json({ error: "Suppression des médias Cloudflare R2 impossible", post_id: postId, r2_deleted: deletedR2Objects.length }, 502);
+    const details = error instanceof Error ? error.message : String(error);
+    console.error("[delete-community-post] R2 cleanup failed", {
+      postId, key: currentR2Key, stage: r2FailureStage, details,
+    });
+    return json({
+      error: "Suppression des médias Cloudflare R2 impossible",
+      post_id: postId,
+      r2_deleted: deletedR2Objects.length,
+      stage: r2FailureStage,
+      failed_key: currentR2Key,
+      details,
+    }, 502);
   }
 
   const deletedBunnyVideos: string[] = [];
