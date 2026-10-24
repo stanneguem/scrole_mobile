@@ -257,7 +257,11 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
               iconColor: Colors.indigo,
               title: 'community_mgmt_mod'.tr,
               subtitle: 'community_mgmt_mod_sub'.tr,
-              badgeCount: (_modCounts['pending_reports'] ?? 0) + (_modCounts['pending_posts'] ?? 0) + (_modCounts['pending_join_requests'] ?? 0),
+              badgeCount: ((_modCounts['reports'] as num?)?.toInt() ?? (_modCounts['pending_reports'] as num?)?.toInt() ?? 0) +
+                  ((_modCounts['pending_posts'] as num?)?.toInt() ?? 0) +
+                  ((_modCounts['join_requests'] as num?)?.toInt() ?? (_modCounts['pending_join_requests'] as num?)?.toInt() ?? 0) +
+                  ((_modCounts['spam'] as num?)?.toInt() ?? 0) +
+                  ((_modCounts['alerts'] as num?)?.toInt() ?? 0),
               onTap: () => Get.to(() => CommunityModerationCenterScreen(communityId: widget.communityId, communityName: _communityName ?? widget.communityName, communityAvatar: _avatarUrl)),
             ),
           if (_isCommunityOwner) ...[
