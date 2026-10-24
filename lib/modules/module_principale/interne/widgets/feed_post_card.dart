@@ -685,10 +685,26 @@ class FeedPostCard extends StatelessWidget {
             onPressed: () {
               Navigator.of(ctx).pop();
               try {
-                if (Get.isRegistered<HomeFeedController>()) {
+                // Dans le fil d’une communauté, utiliser son contrôleur tagué
+                // en priorité. Le contrôleur du fil principal est souvent déjà
+                // enregistré et ne doit pas être choisi pour une suppression locale.
+                final inCommunityFeed = currentCommunityId != null &&
+                    currentCommunityId!.isNotEmpty &&
+                    currentCommunityId == post.communityId;
+                if (inCommunityFeed) {
+                  try {
+                    Get.find<CommunityFeedController>(
+                      tag: currentCommunityId,
+                    ).deletePost(post.id);
+                  } catch (e) {
+                    debugPrint(
+                      '[DELETE] Community controller unavailable for '
+                      'community=$currentCommunityId: $e',
+                    );
+                    Get.find<CommunityFeedController>().deletePost(post.id);
+                  }
+                } else if (Get.isRegistered<HomeFeedController>()) {
                   Get.find<HomeFeedController>().deletePost(post.id);
-                } else if (Get.isRegistered<CommunityFeedController>()) {
-                  Get.find<CommunityFeedController>().deletePost(post.id);
                 } else {
                   CommunityFeedController? commCtrl;
                   try {
