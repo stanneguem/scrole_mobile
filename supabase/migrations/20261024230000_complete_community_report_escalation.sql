@@ -361,7 +361,6 @@ declare
   v_n integer;
   v_admin uuid;
   v_c record;
-  v_user_exists boolean := false;
 begin
   if v_uid is null then raise exception 'Utilisateur non authentifié'; end if;
   if not coalesce(public.is_admin_or_above(), false) then
@@ -379,13 +378,36 @@ begin
     raise exception 'Note trop longue (1000 caractères maximum)';
   end if;
 
+  -- External profile reports live in their own table and never get a community_id.
+  if exists (select 1 from public.user_profile_reports where id = p_report_id) then
+    if p_action = 'remove_content' then
+      raise exception 'Un signalement de profil externe ne cible pas un contenu';
+    end if;
+    update public.user_profile_reports
+    set status = case when p_action = 'dismiss' then 'dismissed' else 'resolved' end
+    where id = p_report_id and status in ('pending', 'reviewing');
+    get diagnostics v_n = row_count;
+    if v_n = 0 then raise exception 'Ce signalement de profil a déjà été traité'; end if;
+    if p_action = 'suspend_user' then
+      select reported_user_id into v_c from public.user_profile_reports where id = p_report_id;
+      update public.user_profiles set account_status = 'suspended', updated_at = now()
+      where user_id = v_c.reported_user_id and deleted_at is null;
+      get diagnostics v_n = row_count;
+      if v_n = 0 then raise exception 'Utilisateur introuvable ou déjà supprimé'; end if;
+      select id into v_admin from public.administrateur_profil where auth_id = v_uid and actif limit 1;
+      insert into public.admin_user_moderation_actions (user_id, admin_id, action, reason)
+      values (v_c.reported_user_id, v_admin, 'suspend', coalesce(v_note, 'Suite à un signalement de profil externe'));
+    end if;
+    return jsonb_build_object('updated', 1, 'status',
+      case when p_action = 'dismiss' then 'dismissed' else 'resolved' end);
+  end if;
+
   select * into v_rep from public.signalement where id = p_report_id for update;
   if not found then raise exception 'Signalement introuvable'; end if;
   if v_rep.status::text not in ('en_attente', 'en_cours') then
     raise exception 'Ce signalement a déjà été traité';
   end if;
-  select id into v_admin from public.administrateur_profil
-  where auth_id = v_uid and actif limit 1;
+  select id into v_admin from public.administrateur_profil where auth_id = v_uid and actif limit 1;
 
   if p_action = 'suspend_user' then
     if v_rep.target_type::text <> 'user' or v_rep.community_id is null or v_rep.escalated_at is null then
@@ -428,7 +450,6 @@ begin
     v_new := 'rejete';
   end if;
 
-  -- Do not resolve a member's reports from unrelated communities.
   update public.signalement
   set status = v_new, reviewed_at = now(), reviewed_by = v_admin
   where target_type = v_rep.target_type
