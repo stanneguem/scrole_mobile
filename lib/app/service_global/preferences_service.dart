@@ -97,27 +97,29 @@ class PreferencesService extends GetxService {
     if (userId == null || isFlushingPending.value) return;
 
     isFlushingPending.value = true;
+    var hasMorePending = false;
     try {
-      final snapshot = await _dao.getPendingChangesSnapshot(userId);
-      final mergedChanges = snapshot.changes;
-      if (mergedChanges.isEmpty) return;
+      // Process snapshots so a preference changed during an RPC remains queued.
+      while (true) {
+        final snapshot = await _dao.getPendingChangesSnapshot(userId);
+        final mergedChanges = snapshot.changes;
+        if (mergedChanges.isEmpty) break;
 
-      final res = await _repository.updateUserSettingsRpc(mergedChanges);
+        final res = await _repository.updateUserSettingsRpc(mergedChanges);
+        if (res == null) break;
 
-      if (res != null) {
         _applyServerState(res);
         await _dao.clearPendingChanges(userId, throughId: snapshot.throughId);
-        // Any changes added while the request was in flight remain in the
-        // outbox and are sent immediately afterwards.
-        final pendingAgain = await _dao.getPendingChangesSnapshot(userId);
-        if (pendingAgain.changes.isNotEmpty) {
-          unawaited(flushPending());
-        }
       }
+      hasMorePending = (await _dao.getPendingChangesSnapshot(userId)).changes.isNotEmpty;
     } catch (e) {
       debugPrint('[Error] flushPending preferences: $e');
     } finally {
       isFlushingPending.value = false;
+    }
+
+    if (hasMorePending) {
+      unawaited(flushPending());
     }
   }
 
