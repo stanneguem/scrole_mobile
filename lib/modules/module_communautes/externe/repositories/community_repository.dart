@@ -926,6 +926,19 @@ class CommunityRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getCommunityAlerts(String communityId) async {
+    try {
+      final response = await client.rpc('get_community_alerts', params: {
+        'p_community_id': communityId,
+      });
+      if (response is Map) return Map<String, dynamic>.from(response);
+      return {'items': [], 'count': 0};
+    } catch (e) {
+      debugPrint('[CommunityRepository] Error in getCommunityAlerts: $e');
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> getCommunitySpamQueue(
     String communityId, {
     int limit = 20,
