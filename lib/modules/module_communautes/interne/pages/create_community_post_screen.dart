@@ -655,7 +655,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       if (!mounted || _selectedMediaCount >= maxPostMedia) break;
       final file = File(picked.path);
       final extension = p.extension(picked.path).replaceFirst('.', '').toLowerCase();
-      final isVideo = const {'mp4', 'mov', 'm4v', '3gp', '3gpp'}.contains(extension);
+      final isVideo = const {'mp4', 'mov'}.contains(extension);
       if (!isVideo) {
         if (_selectedPhotoCount >= maxPostPhotos) {
           Get.snackbar('Limite de photos atteinte', 'Vous pouvez ajouter au maximum $maxPostPhotos photos par publication.');
@@ -698,7 +698,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           _prefilledUrl = null;
         });
       } catch (e) {
-        if (mounted) Get.snackbar('Vidéo incompatible', 'Cette vidéo ne peut pas être lue par Scrole. Choisissez un MP4, MOV, M4V ou 3GP compatible.');
+        if (mounted) Get.snackbar('Vidéo incompatible', 'Cette vidéo ne peut pas être lue par Scrole. Choisissez un MP4 ou MOV compatible.');
         debugPrint('[POST_COMPOSER] incompatible gallery video: $e');
       }
     }
