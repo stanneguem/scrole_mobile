@@ -17,7 +17,10 @@ const reply = (status: number, body: Record<string, unknown>) =>
 const IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif", "image/gif": "gif",
 };
-const VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
+const VIDEO_TYPES: Record<string, string> = {
+  "video/mp4": "mp4", "video/quicktime": "mov", "video/x-m4v": "m4v",
+  "video/3gpp": "3gp",
+};
 const AUDIO_TYPES: Record<string, string> = {
   "audio/mp4": "m4a", "audio/aac": "aac", "audio/mpeg": "mp3",
   "audio/ogg": "ogg", "audio/wav": "wav", "audio/webm": "webm",
@@ -82,7 +85,7 @@ Deno.serve(async (req: Request) => {
     for (const key of keys) {
       const parts = key.split("/");
       const filename = parts[parts.length - 1] ?? "";
-      const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4v|webm)$/i.test(filename);
+      const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4v|3gp|3gpp)$/i.test(filename);
       const userPostKey = !communityId && parts.length === 3 && parts[0] === "posts" && parts[1] === user.id;
       const publicCommunityKey = !!communityId && parts.length === 4 && parts[0] === "communities" && parts[1] === communityId && parts[2] === "posts";
       const privateCommunityKey = !!communityId && parts.length === 6 && parts[0] === "private" && parts[1] === "communities" && parts[2] === communityId && parts[3] === "posts" && parts[4] === user.id;
