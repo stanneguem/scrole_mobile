@@ -36,11 +36,13 @@
 - Le compteur du centre de modération utilise les vraies clés de réponse (`reports`, `join_requests`, `pending_posts`, `spam`) sans additionner les alertes agrégées, qui doublonneraient certains éléments.
 - Une file dédiée aux publications suspectées de spam est maintenant accessible et utilise `moderate_community_post` pour approuver ou rejeter les contenus, ce qui met également à jour les indicateurs de spam.
 - Les alertes automatiques sont visibles et conduisent vers la file d’action appropriée (signalements, spam, publications en attente ou demandes d’adhésion).
+- Les libellés de signalement, de spam et d’alertes sont disponibles dans les neuf langues et couverts par des tests de traduction.
 
 ### Adhésions et rôles
 
 - Les RPC de demande et de réponse aux adhésions ont été inspectées : critères d’accès, exclusion, statut en attente, insertion du membre lors de l’acceptation et notification du demandeur.
 - Les écrans de demandes gèrent la pagination par curseur et l’état de chargement/erreur.
+- Les libellés de prévisualisation et de demandes d’adhésion manquants ont été ajoutés dans les neuf catalogues de langue, avec un test de couverture.
 - Les actions de résolution des signalements sont autorisées côté serveur selon le rôle communautaire; l’exclusion d’un membre reste réservée aux administrateurs.
 
 ## Migrations appliquées
