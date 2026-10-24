@@ -118,6 +118,40 @@ begin
 end; $function$
 
 
+CREATE OR REPLACE FUNCTION private.community_chain_sharing_allowed(p_post_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_current uuid := p_post_id;
+  v_post public.community_posts;
+  v_depth integer := 0;
+begin
+  while v_current is not null loop
+    v_depth := v_depth + 1;
+    if v_depth > 8 then return false; end if;
+    select * into v_post from public.community_posts where id = v_current;
+    if not found or v_post.status <> 'active' or not coalesce(v_post.sharing_enabled, false) then
+      return false;
+    end if;
+    if v_post.community_id is not null and exists (
+      select 1 from public.community_settings cs
+      where cs.community_id = v_post.community_id
+        and not coalesce(cs.allow_post_sharing, true)
+    ) then
+      return false;
+    end if;
+    v_current := v_post.shared_post_id;
+  end loop;
+  return true;
+end
+$function$;
+
+REVOKE ALL ON FUNCTION private.community_chain_sharing_allowed(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION private.community_chain_sharing_allowed(uuid) TO authenticated;
+
 CREATE OR REPLACE FUNCTION private.post_extras(p_post_id uuid, p_viewer uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -191,8 +225,8 @@ begin
      or private.users_blocked(v_uid, v_source.author_id) then
     raise exception 'Publication indisponible';
   end if;
-  if not v_source.sharing_enabled then
-    raise exception 'Le partage est désactivé sur cette publication';
+  if not private.community_chain_sharing_allowed(p_original_post_id) then
+    raise exception 'Le repartage est désactivé sur cette publication ou sa communauté source';
   end if;
   if v_source.community_id is not null then
     if not exists (
@@ -257,7 +291,7 @@ begin
     raise exception 'Publication indisponible';
   end if;
   if private.users_blocked(v_uid, v_orig.author_id) then raise exception 'Action impossible'; end if;
-  if not v_orig.sharing_enabled then raise exception 'Le partage est désactivé sur ce post'; end if;
+  if not private.community_chain_sharing_allowed(p_original_post_id) then raise exception 'Le repartage est désactivé sur cette publication ou sa communauté source'; end if;
   if v_orig.community_id is not null then
     if not exists (
       select 1 from public.communities c
