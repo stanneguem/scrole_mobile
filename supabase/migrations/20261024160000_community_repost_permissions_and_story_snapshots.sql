@@ -138,9 +138,16 @@ begin
   if private.users_blocked(v_uid, v_orig.author_id) then raise exception 'Action impossible'; end if;
   if not v_orig.sharing_enabled then raise exception 'Le partage est désactivé sur ce post'; end if;
   if v_orig.community_id is not null then
-    if not exists (select 1 from public.communities c where c.id = v_orig.community_id and c.visibility = 'public' and c.status = 'active') then
-      raise exception 'Ce post ne peut pas être partagé';
-    end if;
+    if not exists (
+      select 1 from public.communities c
+      where c.id = v_orig.community_id and c.status = 'active'
+        and (c.visibility = 'public' or public.is_community_member(c.id))
+    ) then raise exception 'Ce post ne peut pas être partagé'; end if;
+    if exists (
+      select 1 from public.community_settings cs
+      where cs.community_id = v_orig.community_id
+        and not coalesce(cs.allow_post_sharing, true)
+    ) then raise exception 'Le repartage est désactivé par les administrateurs de cette communauté'; end if;
   elsif v_orig.audience <> 'public' then
     raise exception 'Ce post ne peut pas être partagé';
   end if;
