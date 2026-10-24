@@ -75,10 +75,6 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
         'sharingEnabled': _sharing,
       };
       if (widget.communityId != null && widget.communityId!.isNotEmpty) {
-        await _repository.updateCommunityManagementSettings(
-          communityId: widget.communityId!,
-          allowComments: _comments,
-        );
         await _repository.setCommunityPostSharingEnabled(
           communityId: widget.communityId!,
           enabled: _sharing,
@@ -130,17 +126,15 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
-                      SwitchListTile.adaptive(
-                        title: const Text('Autoriser les commentaires'),
-                        subtitle: Text(
-                          widget.communityId != null && widget.communityId!.isNotEmpty
-                              ? 'Les membres peuvent commenter les publications de la communauté.'
-                              : 'Autoriser les commentaires sur ce contenu.',
+                      if (widget.communityId == null || widget.communityId!.isEmpty) ...[
+                        SwitchListTile.adaptive(
+                          title: const Text('Autoriser les commentaires'),
+                          subtitle: const Text('Autoriser les commentaires sur ce contenu.'),
+                          value: _comments,
+                          onChanged: _saving ? null : (value) => setState(() => _comments = value),
                         ),
-                        value: _comments,
-                        onChanged: _saving ? null : (value) => setState(() => _comments = value),
-                      ),
-                      const Divider(height: 1),
+                        const Divider(height: 1),
+                      ],
                       SwitchListTile.adaptive(
                         title: const Text('Autoriser le repartage des publications'),
                         subtitle: Text(
