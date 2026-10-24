@@ -926,6 +926,25 @@ class CommunityRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getCommunitySpamQueue(
+    String communityId, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await client.rpc('get_community_spam_queue', params: {
+        'p_community_id': communityId,
+        'p_limit': limit,
+        'p_offset': offset,
+      });
+      if (response is Map) return Map<String, dynamic>.from(response);
+      return {'items': [], 'has_more': false};
+    } catch (e) {
+      debugPrint('[CommunityRepository] Error in getCommunitySpamQueue: $e');
+      rethrow;
+    }
+  }
+
   Future<void> moderateCommunityPost(String postId, String action, {String? reason}) async {
     try {
       final params = <String, dynamic>{
