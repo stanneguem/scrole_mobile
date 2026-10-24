@@ -885,10 +885,12 @@ class FeedPostCard extends StatelessWidget {
   }
 
   void _showShareSheet(BuildContext context, CommunityPost post) {
-    if (!post.sharingEnabled) {
+    if (!post.canRepost) {
       Get.snackbar(
         'Partage',
-        'Le partage est désactivé sur ce post',
+        !post.communitySharingEnabled
+            ? 'Le repartage est désactivé par les administrateurs de cette communauté.'
+            : 'Le partage est désactivé sur cette publication.',
         snackPosition: SnackPosition.BOTTOM,
       );
       return;
