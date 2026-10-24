@@ -30,7 +30,19 @@ begin
   end if;
   v_item := private.post_item(p_post_id, p_viewer);
   if v_p.shared_post_id is not null then
-    v_nested := private.story_post_snapshot(v_p.shared_post_id, p_viewer, p_depth + 1);
+    if exists (
+      select 1 from public.community_posts source
+      where source.id = v_p.shared_post_id
+        and source.community_id is not null
+        and not (coalesce(public.is_admin_or_above(), false) or public.is_community_member(source.community_id))
+    ) then
+      v_nested := coalesce(
+        v_p.shared_post_snapshot,
+        jsonb_build_object('id', v_p.shared_post_id, 'available', false, 'can_open_original', false)
+      );
+    else
+      v_nested := private.story_post_snapshot(v_p.shared_post_id, p_viewer, p_depth + 1);
+    end if;
     v_item := jsonb_set(v_item, '{shared_post}', v_nested, true);
   end if;
   -- Snapshot de contenu et d'attribution uniquement : pas de communauté,
