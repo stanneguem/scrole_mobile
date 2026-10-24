@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import '../constants/post_media_limits.dart';
@@ -32,6 +33,12 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
   static const int _pageSize = 60;
   
   bool _isOpeningMedia = false;
+  static const Set<String> _videoExtensions = {'mp4', 'mov', 'm4v', '3gp', '3gpp'};
+  bool _isSupportedAsset(AssetEntity asset) {
+    if (asset.type == AssetType.image) return true;
+    if (asset.type != AssetType.video) return false;
+    return _videoExtensions.contains(p.extension(asset.title).replaceFirst('.', '').toLowerCase());
+  }
   AssetPathEntity? _currentPath;
 
   @override
@@ -45,7 +52,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (ps.isAuth || ps == PermissionState.limited) {
         final paths = await PhotoManager.getAssetPathList(
-          type: RequestType.image,
+          type: RequestType.common,
           onlyAll: true,
           filterOption: FilterOptionGroup(
             containsLivePhotos: false,
@@ -61,7 +68,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
           if (mounted) {
             setState(() {
               _allAssets.clear();
-              _allAssets.addAll(entities);
+              _allAssets.addAll(entities.where(_isSupportedAsset));
               _hasMore = entities.length == _pageSize;
               _isLoading = false;
             });
@@ -221,7 +228,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
         } else {
           Get.snackbar(
             'Limite atteinte',
-            'Vous ne pouvez sélectionner que ${widget.maxSelection} images.',
+            'Vous ne pouvez sélectionner que ${widget.maxSelection} médias compatibles.',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -246,7 +253,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
 
       debugPrint('[MEDIA_GALLERY] Selection resolved: selected=$expectedCount resolved=${xFiles.length}');
       if (xFiles.length != expectedCount) {
-        throw StateError('Sélection incomplète : $expectedCount photos choisies, ${xFiles.length} accessibles.');
+        throw StateError('Sélection incomplète : $expectedCount médias choisis, ${xFiles.length} accessibles.');
       }
       widget.onSelected(xFiles);
       if (mounted) Navigator.of(context).pop();
@@ -255,7 +262,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
       if (mounted) {
         Get.snackbar(
           'Sélection incomplète',
-          'Certaines photos ne sont pas accessibles. Rien n’a été ajouté : réessaie avec les photos concernées.',
+          'Certains médias ne sont pas accessibles. Rien n’a été ajouté : réessaie avec d’autres fichiers.',
           snackPosition: SnackPosition.BOTTOM,
         );
       }
@@ -293,6 +300,8 @@ class _AssetItem extends StatelessWidget {
             thumbnailSize: const ThumbnailSize.square(200),
             fit: BoxFit.cover,
           ),
+          if (asset.type == AssetType.video)
+            Positioned(left: 5, bottom: 5, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .72), borderRadius: BorderRadius.circular(5)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.play_arrow_rounded, color: Colors.white, size: 13), SizedBox(width: 2), Text('Vidéo', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600))])),
           if (isSelected)
             Container(
               color: Colors.black26,
