@@ -34,6 +34,9 @@ begin
   if position('interval ''48 hours''' in lower(v_escalator)) = 0 then
     raise exception 'Community escalation threshold must remain 48 hours';
   end if;
+  if position('en_cours' in lower(v_escalator)) = 0 then
+    raise exception 'Community reports left in progress must also escalate after 48 hours';
+  end if;
 
   if not exists (
     select 1 from cron.job
