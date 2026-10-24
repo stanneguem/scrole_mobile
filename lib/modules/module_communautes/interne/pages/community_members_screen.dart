@@ -449,7 +449,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                           Get.back();
                           Get.snackbar(
                             'Signalement transmis',
-                            'Merci, le signalement de ce membre a été transmis aux modérateurs.',
+                            'community_report_community_success_msg'.tr,
                             snackPosition: SnackPosition.BOTTOM,
                           );
                         } catch (e) {
