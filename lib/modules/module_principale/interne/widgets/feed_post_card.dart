@@ -636,11 +636,7 @@ class FeedPostCard extends StatelessWidget {
               title: const Text('Signaler la publication'),
               onTap: () {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Merci, votre signalement a été transmis.'),
-                  ),
-                );
+                _reportPost(context, post);
               },
             ),
             ListTile(
@@ -666,6 +662,150 @@ class FeedPostCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _reportPost(BuildContext context, CommunityPost post) async {
+    final repository = CommunityRepository();
+    final reasons = await repository.getSignalementRaisons();
+    if (reasons.isEmpty) {
+      Get.snackbar(
+        'community_save_error'.tr,
+        'Impossible de charger les motifs de signalement. Réessaie plus tard.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    String? selectedReasonId = reasons.first['id']?.toString();
+    String? selectedReasonCode =
+        reasons.first['code']?.toString() ?? reasons.first['nom']?.toString();
+    bool submitting = false;
+    final descriptionController = TextEditingController();
+
+    await Get.dialog<void>(
+      StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final isOther = selectedReasonCode?.toLowerCase() == 'autre' ||
+              selectedReasonCode?.toLowerCase() == 'other';
+          final description = descriptionController.text.trim();
+          final valid = selectedReasonId != null &&
+              selectedReasonId!.isNotEmpty &&
+              (!isOther || description.isNotEmpty);
+          return AlertDialog(
+            title: Text('community_report_title'.tr),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('community_report_reason_label'.tr),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedReasonId,
+                      isExpanded: true,
+                      items: reasons.map((reason) {
+                        final id = reason['id']?.toString() ?? '';
+                        final code = reason['code']?.toString() ??
+                            reason['nom']?.toString() ??
+                            'Motif';
+                        String label = code;
+                        if (code == 'harcelement') {
+                          label = 'community_report_reason_harassment'.tr;
+                        } else if (code == 'dangereux_risqué' ||
+                            code == 'dangereux_riske') {
+                          label = 'community_report_reason_dangerous'.tr;
+                        } else if (code == 'copie_contrefacon') {
+                          label = 'community_report_reason_copy'.tr;
+                        } else if (code == 'autre') {
+                          label = 'community_report_reason_other'.tr;
+                        }
+                        return DropdownMenuItem<String>(
+                          value: id,
+                          child: Text(label),
+                        );
+                      }).toList(),
+                      onChanged: submitting
+                          ? null
+                          : (value) => setDialogState(() {
+                                selectedReasonId = value;
+                                final selected = reasons.firstWhereOrNull(
+                                  (item) => item['id']?.toString() == value,
+                                );
+                                selectedReasonCode = selected?['code']?.toString() ??
+                                    selected?['nom']?.toString();
+                              }),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('community_report_description_label'.tr),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: descriptionController,
+                      maxLength: 1000,
+                      maxLines: 3,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'community_report_description_hint'.tr,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    if (isOther && description.isEmpty)
+                      Text(
+                        'community_report_other_desc_required'.tr,
+                        style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Get.back(),
+                child: Text('cancel'.tr),
+              ),
+              FilledButton(
+                onPressed: !valid || submitting
+                    ? null
+                    : () async {
+                        setDialogState(() => submitting = true);
+                        try {
+                          await repository.reportContent(
+                            targetType: 'post',
+                            targetId: post.id,
+                            reasonId: selectedReasonId!,
+                            description: descriptionController.text.trim(),
+                          );
+                          Get.back();
+                          Get.snackbar(
+                            'community_report_title'.tr,
+                            'Merci, votre signalement a été transmis.',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        } catch (e) {
+                          setDialogState(() => submitting = false);
+                          Get.snackbar(
+                            'community_save_error'.tr,
+                            e.toString().replaceFirst('Exception: ', ''),
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        }
+                      },
+                child: submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('community_report_submit'.tr),
+              ),
+            ],
+          );
+        },
+      ),
+      barrierDismissible: !submitting,
+    );
+    descriptionController.dispose();
   }
 
   void _confirmDeletePost(BuildContext context, CommunityPost post) {
