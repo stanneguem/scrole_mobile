@@ -333,6 +333,147 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
     }
   }
 
+  Future<void> _reportCommunityMember(String userId, String userName) async {
+    final reasons = await _service.getSignalementRaisons();
+    if (reasons.isEmpty) {
+      Get.snackbar(
+        'community_save_error'.tr,
+        'Impossible de charger les motifs de signalement. Réessaie plus tard.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+    String? selectedReasonId = reasons.first['id']?.toString();
+    String? selectedReasonCode =
+        reasons.first['code']?.toString() ?? reasons.first['nom']?.toString();
+    final descriptionController = TextEditingController();
+    bool submitting = false;
+
+    await Get.dialog<void>(
+      StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final isOther = selectedReasonCode?.toLowerCase() == 'autre' ||
+              selectedReasonCode?.toLowerCase() == 'other';
+          final description = descriptionController.text.trim();
+          final valid = selectedReasonId != null &&
+              selectedReasonId!.isNotEmpty &&
+              (!isOther || description.isNotEmpty);
+          return AlertDialog(
+            title: Text('Signaler @$userName'),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('community_report_reason_label'.tr),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: selectedReasonId,
+                      isExpanded: true,
+                      items: reasons.map((reason) {
+                        final id = reason['id']?.toString() ?? '';
+                        final code = reason['code']?.toString() ??
+                            reason['nom']?.toString() ??
+                            'Motif';
+                        String label = code;
+                        if (code == 'harcelement') {
+                          label = 'community_report_reason_harassment'.tr;
+                        } else if (code == 'dangereux_risqué' ||
+                            code == 'dangereux_riske') {
+                          label = 'community_report_reason_dangerous'.tr;
+                        } else if (code == 'copie_contrefacon') {
+                          label = 'community_report_reason_copy'.tr;
+                        } else if (code == 'autre') {
+                          label = 'community_report_reason_other'.tr;
+                        }
+                        return DropdownMenuItem<String>(
+                          value: id,
+                          child: Text(label),
+                        );
+                      }).toList(),
+                      onChanged: submitting
+                          ? null
+                          : (value) => setDialogState(() {
+                                selectedReasonId = value;
+                                final selected = reasons.firstWhereOrNull(
+                                  (item) => item['id']?.toString() == value,
+                                );
+                                selectedReasonCode = selected?['code']?.toString() ??
+                                    selected?['nom']?.toString();
+                              }),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('community_report_description_label'.tr),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: descriptionController,
+                      maxLength: 1000,
+                      maxLines: 3,
+                      onChanged: (_) => setDialogState(() {}),
+                      decoration: InputDecoration(
+                        hintText: 'community_report_description_hint'.tr,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    if (isOther && description.isEmpty)
+                      Text(
+                        'community_report_other_desc_required'.tr,
+                        style: TextStyle(color: Theme.of(dialogContext).colorScheme.error),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: submitting ? null : () => Get.back(),
+                child: Text('cancel'.tr),
+              ),
+              FilledButton(
+                onPressed: !valid || submitting
+                    ? null
+                    : () async {
+                        setDialogState(() => submitting = true);
+                        try {
+                          await Supabase.instance.client.rpc(
+                            'report_community_member',
+                            params: {
+                              'p_community_id': widget.communityId,
+                              'p_user_id': userId,
+                              'p_reason_id': selectedReasonId,
+                              'p_description': descriptionController.text.trim(),
+                            },
+                          );
+                          Get.back();
+                          Get.snackbar(
+                            'Signalement transmis',
+                            'Merci, le signalement de ce membre a été transmis aux modérateurs.',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        } catch (e) {
+                          setDialogState(() => submitting = false);
+                          Get.snackbar(
+                            'community_save_error'.tr,
+                            e.toString().replaceFirst('Exception: ', ''),
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        }
+                      },
+                child: submitting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text('community_report_submit'.tr),
+              ),
+            ],
+          );
+        },
+      ),
+      barrierDismissible: !submitting,
+    );
+    descriptionController.dispose();
+  }
+
   void _onMemberLongPress(Map<String, dynamic> member) {
     final userId = member['user_id']?.toString() ?? '';
     final isSelf = member['is_self'] == true || member['is_self'] == 1 || member['is_self'] == 'true';
@@ -361,6 +502,14 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined, color: Colors.orange),
+              title: const Text('Signaler ce membre'),
+              onTap: () {
+                Get.back();
+                _reportCommunityMember(userId, userName);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.person_outline_rounded),
               title: Text('community_member_view_profile'.tr),
