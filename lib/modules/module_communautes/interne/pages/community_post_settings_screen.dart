@@ -8,12 +8,16 @@ class CommunityPostSettingsScreen extends StatefulWidget {
   final String? communityId;
   final bool initialCommentsEnabled;
   final bool initialSharingEnabled;
+  final bool isCommunityPost;
+  final bool initialAllowPromotion;
 
   const CommunityPostSettingsScreen({
     super.key,
     this.communityId,
     this.initialCommentsEnabled = true,
     this.initialSharingEnabled = true,
+    this.isCommunityPost = false,
+    this.initialAllowPromotion = true,
   });
 
   @override
@@ -24,6 +28,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
   final CommunityRepository _repository = CommunityRepository();
   late bool _comments = widget.initialCommentsEnabled;
   late bool _sharing = widget.initialSharingEnabled;
+  late bool _allowPromotion = widget.initialAllowPromotion;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -73,6 +78,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
       final result = {
         'commentsEnabled': _comments,
         'sharingEnabled': _sharing,
+        'allowPromotion': _allowPromotion,
       };
       if (widget.communityId != null && widget.communityId!.isNotEmpty) {
         await _repository.setCommunityPostSharingEnabled(
@@ -126,6 +132,15 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
                   clipBehavior: Clip.antiAlias,
                   child: Column(
                     children: [
+                      if (widget.isCommunityPost) ...[
+                        SwitchListTile.adaptive(
+                          title: const Text('Garder ce post uniquement dans la communauté'),
+                          subtitle: const Text('Désactive la diffusion de cette publication en dehors de cette communauté.'),
+                          value: !_allowPromotion,
+                          onChanged: _saving ? null : (value) => setState(() => _allowPromotion = !value),
+                        ),
+                        const Divider(height: 1),
+                      ],
                       if (widget.communityId == null || widget.communityId!.isEmpty) ...[
                         SwitchListTile.adaptive(
                           title: const Text('Autoriser les commentaires'),
