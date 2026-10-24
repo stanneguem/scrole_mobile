@@ -3,11 +3,17 @@ import 'package:get/get.dart';
 import '../../externe/repositories/community_repository.dart';
 
 class CommunityPostSettingsScreen extends StatefulWidget {
-  final String communityId;
+  /// When provided, this screen edits community-wide permissions.
+  /// When omitted, it returns per-publication/story options to the caller.
+  final String? communityId;
+  final bool initialCommentsEnabled;
+  final bool initialSharingEnabled;
 
   const CommunityPostSettingsScreen({
     super.key,
-    required this.communityId,
+    this.communityId,
+    this.initialCommentsEnabled = true,
+    this.initialSharingEnabled = true,
   });
 
   @override
@@ -16,8 +22,8 @@ class CommunityPostSettingsScreen extends StatefulWidget {
 
 class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScreen> {
   final CommunityRepository _repository = CommunityRepository();
-  bool _comments = true;
-  bool _sharing = true;
+  late bool _comments = widget.initialCommentsEnabled;
+  late bool _sharing = widget.initialSharingEnabled;
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -25,7 +31,11 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    if (widget.communityId != null && widget.communityId!.isNotEmpty) {
+      _loadSettings();
+    } else {
+      _loading = false;
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -34,7 +44,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
       _error = null;
     });
     try {
-      final response = await _repository.getCommunityManagementSettings(widget.communityId);
+      final response = await _repository.getCommunityManagementSettings(widget.communityId!);
       final settings = response['settings'] is Map
           ? Map<String, dynamic>.from(response['settings'] as Map)
           : <String, dynamic>{};
@@ -60,24 +70,27 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
       _error = null;
     });
     try {
-      await _repository.updateCommunityManagementSettings(
-        communityId: widget.communityId,
-        allowComments: _comments,
-      );
-      await _repository.setCommunityPostSharingEnabled(
-        communityId: widget.communityId,
-        enabled: _sharing,
-      );
-      if (!mounted) return;
-      Get.snackbar(
-        'Paramètres enregistrés',
-        'Les autorisations de publication de la communauté ont été mises à jour.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      Get.back(result: {
+      final result = {
         'commentsEnabled': _comments,
         'sharingEnabled': _sharing,
-      });
+      };
+      if (widget.communityId != null && widget.communityId!.isNotEmpty) {
+        await _repository.updateCommunityManagementSettings(
+          communityId: widget.communityId!,
+          allowComments: _comments,
+        );
+        await _repository.setCommunityPostSharingEnabled(
+          communityId: widget.communityId!,
+          enabled: _sharing,
+        );
+        if (!mounted) return;
+        Get.snackbar(
+          'Paramètres enregistrés',
+          'Les autorisations de publication de la communauté ont été mises à jour.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      Get.back(result: result);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -92,14 +105,22 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Paramètres des publications')),
+      appBar: AppBar(
+        title: Text(
+          widget.communityId != null && widget.communityId!.isNotEmpty
+              ? 'Paramètres des publications'
+              : 'Options de publication',
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Text(
-                  'Choisissez les actions autorisées pour les publications de cette communauté.',
+                  widget.communityId != null && widget.communityId!.isNotEmpty
+                      ? 'Choisissez les actions autorisées pour les publications de cette communauté.'
+                      : 'Choisissez les options pour cette publication ou cette story.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -111,14 +132,22 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
                     children: [
                       SwitchListTile.adaptive(
                         title: const Text('Autoriser les commentaires'),
-                        subtitle: const Text('Les membres peuvent commenter les publications de la communauté.'),
+                        subtitle: Text(
+                          widget.communityId != null && widget.communityId!.isNotEmpty
+                              ? 'Les membres peuvent commenter les publications de la communauté.'
+                              : 'Autoriser les commentaires sur ce contenu.',
+                        ),
                         value: _comments,
                         onChanged: _saving ? null : (value) => setState(() => _comments = value),
                       ),
                       const Divider(height: 1),
                       SwitchListTile.adaptive(
                         title: const Text('Autoriser le repartage des publications'),
-                        subtitle: const Text('Si cette option est désactivée, aucune publication de la communauté ne peut être repartagée dans un fil ou une story.'),
+                        subtitle: Text(
+                          widget.communityId != null && widget.communityId!.isNotEmpty
+                              ? 'Si cette option est désactivée, aucune publication de la communauté ne peut être repartagée dans un fil ou une story.'
+                              : 'Autoriser le repartage de ce contenu.',
+                        ),
                         value: _sharing,
                         onChanged: _saving ? null : (value) => setState(() => _sharing = value),
                       ),
