@@ -404,7 +404,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
           setState(() => _autoPlay = prefs.autoPlayVideos);
           if (!_autoPlay) {
             _controller?.pause();
-          } else if (_visible) {
+          } else if (_visible && _cardEligible) {
             _initializeIfNeeded();
             _controller?.play();
           }
