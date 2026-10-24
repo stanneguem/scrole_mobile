@@ -1568,7 +1568,7 @@ class _RepublishFeedSheetState extends State<_RepublishFeedSheet> {
     try {
       final feedController = Get.find<HomeFeedController>();
       await feedController.sharePost(
-        originalPostId: widget.post.sharedPostId ?? widget.post.id,
+        originalPostId: widget.post.id,
         communityId: null,
         audience: _audience,
         comment: _commentController.text.trim().isNotEmpty
@@ -2495,7 +2495,7 @@ class _SharePostToStorySheetState extends State<_SharePostToStorySheet> {
     setState(() => _isPublishing = true);
 
     final pId = const Uuid().v4();
-    final originalPostId = widget.post.sharedPostId ?? widget.post.id;
+    final originalPostId = widget.post.id;
 
     try {
       final repo = HomeFeedRepository();
