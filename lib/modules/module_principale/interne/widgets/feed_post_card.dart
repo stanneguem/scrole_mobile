@@ -397,7 +397,10 @@ class FeedPostCard extends StatelessWidget {
                                       style: TextButton.styleFrom(
                                         visualDensity: VisualDensity.compact,
                                         foregroundColor: colorScheme.primary,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 6,
+                                        ),
                                       ),
                                     ),
                                 ],
