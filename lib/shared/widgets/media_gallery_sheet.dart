@@ -33,7 +33,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
   static const int _pageSize = 60;
   
   bool _isOpeningMedia = false;
-  static const Set<String> _videoExtensions = {'mp4', 'mov', 'm4v', '3gp', '3gpp'};
+  static const Set<String> _videoExtensions = {'mp4', 'mov'};
   bool _isSupportedAsset(AssetEntity asset) {
     if (asset.type == AssetType.image) return true;
     if (asset.type != AssetType.video) return false;
