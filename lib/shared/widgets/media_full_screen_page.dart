@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../../modules/module_discussion_direct/interne/widgets/chat_cached_media.dart';
 import '../../modules/module_discussion_direct/centre/services/chat_media_cache.dart';
 import '../models/post_media.dart';
+import '../../app/service_global/preferences_service.dart';
 import '../utils/number_formatter.dart';
 import 'app_cached_image.dart';
 
