@@ -562,6 +562,29 @@ class CommunityModerationCenterScreen extends StatelessWidget {
             color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
             child: ListTile(
+              onTap: () => Get.to(() => CommunityAlertsScreen(
+                communityId: communityId,
+                communityName: communityName,
+                communityAvatar: communityAvatar,
+              )),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.notifications_active_outlined, color: Colors.amber, size: 24),
+              ),
+              title: Text('community_alerts_title'.tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: Text('community_alerts_empty'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
+              trailing: Icon(Icons.chevron_right_rounded, color: colorScheme.outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
+            child: ListTile(
               onTap: () => Get.to(() => CommunityReportsHubScreen(communityId: communityId, communityName: communityName, communityAvatar: communityAvatar)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
