@@ -37,7 +37,8 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
   bool _isSupportedAsset(AssetEntity asset) {
     if (asset.type == AssetType.image) return true;
     if (asset.type != AssetType.video) return false;
-    return _videoExtensions.contains(p.extension(asset.title).replaceFirst('.', '').toLowerCase());
+    final title = asset.title ?? '';
+    return _videoExtensions.contains(p.extension(title).replaceFirst('.', '').toLowerCase());
   }
   AssetPathEntity? _currentPath;
 
@@ -301,7 +302,32 @@ class _AssetItem extends StatelessWidget {
             fit: BoxFit.cover,
           ),
           if (asset.type == AssetType.video)
-            Positioned(left: 5, bottom: 5, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .72), borderRadius: BorderRadius.circular(5)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.play_arrow_rounded, color: Colors.white, size: 13), SizedBox(width: 2), Text('Vidéo', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w600))])),
+            Positioned(
+              left: 5,
+              bottom: 5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.play_arrow_rounded, color: Colors.white, size: 13),
+                    SizedBox(width: 2),
+                    Text(
+                      'Vidéo',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (isSelected)
             Container(
               color: Colors.black26,
