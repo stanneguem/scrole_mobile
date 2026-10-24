@@ -177,7 +177,7 @@ declare v_uid uuid := auth.uid(); v_result jsonb;
 begin
   if v_uid is null then raise exception 'Authentication required'; end if;
   with vis as (
-    select s.id, s.author_id, s.kind, s.content, s.image_url, s.background, s.shared_post_id, s.audience, s.created_at, s.expires_at,
+    select s.id, s.author_id, s.kind, s.content, s.image_url, s.background, s.shared_post_id, s.shared_post_snapshot, s.audience, s.created_at, s.expires_at,
            exists (select 1 from public.story_views sv where sv.story_id = s.id and sv.viewer_id = v_uid) as viewed
     from public.stories s
     where s.status = 'active' and s.expires_at > now()
