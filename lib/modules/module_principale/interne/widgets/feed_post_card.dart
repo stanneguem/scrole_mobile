@@ -2259,21 +2259,21 @@ class _RepublicationPostCard extends StatelessWidget {
                                           ],
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.open_in_new_rounded,
-                                          size: 18,
+                                      if (post.canOpenOriginal)
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.open_in_new_rounded,
+                                            size: 18,
+                                          ),
+                                          color: colorScheme.onSurfaceVariant,
+                                          tooltip: 'Voir la publication originale',
+                                          onPressed: () => _openOriginalPost(
+                                            context,
+                                            post.sharedPostId!,
+                                          ),
+                                          constraints: const BoxConstraints(),
+                                          padding: const EdgeInsets.all(6),
                                         ),
-                                        color: colorScheme.onSurfaceVariant,
-                                        tooltip:
-                                            'Voir la publication originale',
-                                        onPressed: () => _openOriginalPost(
-                                          context,
-                                          shared.id,
-                                        ),
-                                        constraints: const BoxConstraints(),
-                                        padding: const EdgeInsets.all(6),
-                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 8),
