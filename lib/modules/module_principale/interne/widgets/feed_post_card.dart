@@ -2565,9 +2565,9 @@ class _RepublicationPostCard extends StatelessWidget {
                                     const SizedBox(height: 8),
                                   ],
                                   // Read-only stats bar of original post
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                  Wrap(
+                                    alignment: WrapAlignment.spaceBetween,
+                                    runSpacing: 6,
                                     children: [
                                       Row(
                                         children: [
