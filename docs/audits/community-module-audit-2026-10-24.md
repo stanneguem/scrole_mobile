@@ -25,7 +25,7 @@
 - Les chaînes de republications sont vérifiées sur toute leur profondeur (limite défensive de 8 niveaux).
 - Les aperçus conservés sont expurgés des identifiants de la source, des identifiants d’auteur, des références de communauté et des compteurs d’interaction.
 - Les aperçus restreints ne proposent pas de repartage supplémentaire.
-- Les politiques RLS des tables `community_posts` et `stories` empêchent la lecture directe des lignes partagées lorsque le lecteur ne peut pas ouvrir la source. Les RPC de flux peuvent encore retourner un aperçu expurgé.
+- Les instantanés sont expurgés à l’écriture et les politiques RLS des tables `community_posts` et `stories` empêchent la lecture directe des lignes partagées lorsque le lecteur ne peut pas ouvrir la source. Les RPC de flux peuvent encore retourner un aperçu expurgé. Un wrapper public très limité permet d’appliquer le contrôle RLS sans exposer le schéma privé.
 
 ### Signalements et modération
 
@@ -33,7 +33,9 @@
 - Les membres peuvent signaler un autre membre depuis la liste des membres et depuis le menu d’une publication communautaire.
 - `report_community_member` vérifie l’adhésion du signalant, l’existence du membre, le motif actif, les limites de fréquence et le réglage `allow_reports`.
 - Le réglage de signalement des publications/commentaires reste appliqué côté serveur.
-- Le compteur du centre de modération utilise les vraies clés de réponse (`reports`, `join_requests`, `pending_posts`, `spam`, `alerts`).
+- Le compteur du centre de modération utilise les vraies clés de réponse (`reports`, `join_requests`, `pending_posts`, `spam`) sans additionner les alertes agrégées, qui doublonneraient certains éléments.
+- Une file dédiée aux publications suspectées de spam est maintenant accessible et utilise `moderate_community_post` pour approuver ou rejeter les contenus, ce qui met également à jour les indicateurs de spam.
+- Les alertes automatiques sont visibles et conduisent vers la file d’action appropriée (signalements, spam, publications en attente ou demandes d’adhésion).
 
 ### Adhésions et rôles
 
@@ -50,6 +52,7 @@
 - `enforce_community_repost_setting_for_comment_shares`
 - `disable_repost_on_restricted_snapshots`
 - `secure_shared_source_metadata`
+- `use_public_source_access_wrapper_in_rls`
 
 ## Validation restante
 
