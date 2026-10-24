@@ -631,14 +631,15 @@ class FeedPostCard extends StatelessWidget {
                 }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.flag_outlined),
-              title: Text('community_report_post_title'.tr),
-              onTap: () {
-                Navigator.of(context).pop();
-                _reportPost(context, post);
-              },
-            ),
+            if (post.id.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text('community_report_post_title'.tr),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _reportPost(context, post);
+                },
+              ),
             if (post.communityId != null && post.communityId!.isNotEmpty && !isAuthor)
               ListTile(
                 leading: const Icon(Icons.person_off_outlined, color: Colors.orange),
