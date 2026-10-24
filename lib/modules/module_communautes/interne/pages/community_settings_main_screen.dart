@@ -1158,6 +1158,153 @@ class _CommunitySpamQueueScreenState extends State<CommunitySpamQueueScreen> {
   }
 }
 
+class CommunityAlertsScreen extends StatefulWidget {
+  final String communityId;
+  final String communityName;
+  final String? communityAvatar;
+
+  const CommunityAlertsScreen({
+    super.key,
+    required this.communityId,
+    required this.communityName,
+    this.communityAvatar,
+  });
+
+  @override
+  State<CommunityAlertsScreen> createState() => _CommunityAlertsScreenState();
+}
+
+class _CommunityAlertsScreenState extends State<CommunityAlertsScreen> {
+  final CommunityService _service = Get.find<CommunityService>();
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _items = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await _service.getCommunityAlerts(widget.communityId);
+      final raw = response['items'];
+      if (raw is! List) throw const FormatException('Réponse invalide des alertes.');
+      if (!mounted) return;
+      setState(() {
+        _items = raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = _service.localizedCommunityError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _titleFor(Map<String, dynamic> item) {
+    final type = item['type']?.toString() ?? '';
+    switch (type) {
+      case 'reported_content':
+        return 'community_alert_reported_content'.trParams({
+          'count': (item['reports_count'] ?? 0).toString(),
+        });
+      case 'spam_author':
+        return 'community_alert_spam_author'.trParams({
+          'username': item['username']?.toString() ?? 'excluded_members_unknown_user'.tr,
+          'count': (item['confirmed_count'] ?? 0).toString(),
+        });
+      case 'overdue_posts':
+        return 'community_alert_overdue_posts'.trParams({
+          'count': (item['count'] ?? 0).toString(),
+        });
+      case 'overdue_join_requests':
+        return 'community_alert_overdue_join_requests'.trParams({
+          'count': (item['count'] ?? 0).toString(),
+        });
+      case 'overdue_reports':
+        return 'community_alert_overdue_reports'.trParams({
+          'count': (item['count'] ?? 0).toString(),
+        });
+      default:
+        return type;
+    }
+  }
+
+  void _openAlert(Map<String, dynamic> item) {
+    final type = item['type']?.toString() ?? '';
+    if (type == 'reported_content' || type == 'overdue_reports') {
+      Get.to(() => CommunityReportsHubScreen(
+        communityId: widget.communityId,
+        communityName: widget.communityName,
+        communityAvatar: widget.communityAvatar,
+      ));
+    } else if (type == 'spam_author') {
+      Get.to(() => CommunitySpamQueueScreen(communityId: widget.communityId));
+    } else if (type == 'overdue_posts') {
+      Get.to(() => CommunityPendingPostsScreen(communityId: widget.communityId));
+    } else if (type == 'overdue_join_requests') {
+      Get.to(() => CommunityJoinRequestsScreen(
+        communityId: widget.communityId,
+        communityName: widget.communityName,
+        communityAvatar: widget.communityAvatar,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: Text('community_alerts_title'.tr)),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        OutlinedButton(onPressed: _load, child: Text('retry'.tr)),
+                      ],
+                    ),
+                  ),
+                )
+              : _items.isEmpty
+                  ? Center(child: Text('community_alerts_empty'.tr))
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _items.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final item = _items[index];
+                          return Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.notifications_active_outlined, color: Colors.amber),
+                              title: Text(_titleFor(item)),
+                              subtitle: item['first_reported_at'] != null
+                                  ? Text(item['first_reported_at'].toString(), style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12))
+                                  : null,
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () => _openAlert(item),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
+}
+
 class CommunityReportsHubScreen extends StatefulWidget {
   final String communityId;
   final String communityName;
