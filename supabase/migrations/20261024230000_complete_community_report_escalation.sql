@@ -370,6 +370,21 @@ begin
   if p_action is null or p_action not in ('dismiss', 'remove_content', 'suspend_user') then
     raise exception 'Action invalide';
   end if;
+  if p_action = 'dismiss' and not exists (
+    select 1 from public.admin_permissions_for_current_user() p where p.permission = 'reports.reject'
+  ) then
+    raise exception 'Votre rôle ne permet pas de rejeter des signalements';
+  end if;
+  if p_action in ('remove_content', 'suspend_user') and not exists (
+    select 1 from public.admin_permissions_for_current_user() p where p.permission = 'reports.resolve'
+  ) then
+    raise exception 'Votre rôle ne permet pas de résoudre des signalements';
+  end if;
+  if p_action = 'remove_content' and not exists (
+    select 1 from public.admin_permissions_for_current_user() p where p.permission = 'posts.delete'
+  ) then
+    raise exception 'Votre rôle ne permet pas de supprimer du contenu';
+  end if;
   if p_action = 'suspend_user' and not exists (
     select 1 from public.admin_permissions_for_current_user() p where p.permission = 'users.suspend'
   ) then
