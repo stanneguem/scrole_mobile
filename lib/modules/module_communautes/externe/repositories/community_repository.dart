@@ -784,6 +784,17 @@ class CommunityRepository {
     }
   }
 
+
+  Future<void> setCommunityPostSharingEnabled({
+    required String communityId,
+    required bool enabled,
+  }) async {
+    await client.rpc('set_community_post_sharing_enabled', params: {
+      'p_community_id': communityId,
+      'p_enabled': enabled,
+    });
+  }
+
   Future<void> updateCommunityPostSettings({
     required String communityId,
     required String postPermission,
