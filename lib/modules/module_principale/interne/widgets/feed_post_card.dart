@@ -633,7 +633,7 @@ class FeedPostCard extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.flag_outlined),
-              title: const Text('Signaler la publication'),
+              title: Text('community_report_post_title'.tr),
               onTap: () {
                 Navigator.of(context).pop();
                 _reportPost(context, post);
@@ -642,7 +642,7 @@ class FeedPostCard extends StatelessWidget {
             if (post.communityId != null && post.communityId!.isNotEmpty && !isAuthor)
               ListTile(
                 leading: const Icon(Icons.person_off_outlined, color: Colors.orange),
-                title: const Text('Signaler l’auteur dans cette communauté'),
+                title: Text('community_report_author_title'.tr),
                 onTap: () {
                   Navigator.of(context).pop();
                   _reportPost(context, post, reportAuthor: true);
@@ -711,7 +711,7 @@ class FeedPostCard extends StatelessWidget {
               (!isOther || description.isNotEmpty);
           return AlertDialog(
             title: Text(
-              reportAuthor ? 'Signaler l’auteur dans cette communauté' : 'community_report_title'.tr,
+              reportAuthor ? 'community_report_author_title'.tr : 'community_report_post_title'.tr,
             ),
             content: SizedBox(
               width: 420,
