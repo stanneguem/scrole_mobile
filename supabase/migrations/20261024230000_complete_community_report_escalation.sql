@@ -313,3 +313,6 @@ $function$;
 
 revoke all on function public.resolve_platform_report(uuid, text, text) from public, anon;
 grant execute on function public.resolve_platform_report(uuid, text, text) to authenticated;
+
+-- Only the scheduled database job should trigger escalations; end users must not force early escalation.
+revoke all on function public.escalate_stale_community_reports() from public, anon, authenticated;
