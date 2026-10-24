@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:video_player/video_player.dart';
 import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
@@ -625,11 +626,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = [maxPostPhotos - _selectedPhotoCount, maxPostMedia - _selectedMediaCount].reduce((a, b) => a < b ? a : b);
+    final maxAllowed = maxPostMedia - _selectedMediaCount;
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous pouvez ajouter au maximum $maxPostPhotos photos et $maxPostMedia médias au total.',
+        'Vous pouvez ajouter au maximum $maxPostMedia médias, dont $maxPostPhotos photos.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -643,21 +644,65 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => MediaGallerySheet(
         maxSelection: maxAllowed,
-        onSelected: (files) {
-          if (files.isNotEmpty) {
-            setState(() {
-              final remainingPhotos = maxPostPhotos - _selectedPhotoCount;
-              final remainingTotal = maxPostMedia - _selectedMedia.length;
-              final remaining = remainingPhotos < remainingTotal ? remainingPhotos : remainingTotal;
-              _selectedMedia.addAll(files.take(remaining).map((f) => _SelectedPostMedia(file: File(f.path), isVideo: false)));
-              _prefilledUrl = null;
-            });
-          }
-        },
+        onSelected: _handleGallerySelection,
       ),
     );
   }
 
+
+  Future<void> _handleGallerySelection(List<XFile> files) async {
+    for (final picked in files) {
+      if (!mounted || _selectedMediaCount >= maxPostMedia) break;
+      final file = File(picked.path);
+      final extension = p.extension(picked.path).replaceFirst('.', '').toLowerCase();
+      final isVideo = const {'mp4', 'mov', 'm4v', '3gp', '3gpp'}.contains(extension);
+      if (!isVideo) {
+        if (_selectedPhotoCount >= maxPostPhotos) {
+          Get.snackbar('Limite de photos atteinte', 'Vous pouvez ajouter au maximum $maxPostPhotos photos par publication.');
+          continue;
+        }
+        setState(() {
+          _selectedMedia.add(_SelectedPostMedia(file: file, isVideo: false));
+          _prefilledUrl = null;
+        });
+        continue;
+      }
+      try {
+        var videoFile = file;
+        final controller = VideoPlayerController.file(videoFile);
+        Duration duration;
+        try {
+          await controller.initialize();
+          duration = controller.value.duration;
+        } finally {
+          await controller.dispose();
+        }
+        if (duration > const Duration(seconds: 29)) {
+          final trimmed = await Get.to<File>(() => VideoTrimScreen(videoFile: videoFile, maxDuration: const Duration(seconds: 29)));
+          if (trimmed == null || !mounted) continue;
+          videoFile = trimmed;
+          final verify = VideoPlayerController.file(videoFile);
+          try {
+            await verify.initialize();
+            if (verify.value.duration > const Duration(seconds: 29)) {
+              Get.snackbar('Découpage insuffisant', 'La vidéo doit durer 29 secondes maximum.');
+              continue;
+            }
+          } finally {
+            await verify.dispose();
+          }
+        }
+        if (!mounted) return;
+        setState(() {
+          _selectedMedia.add(_SelectedPostMedia(file: videoFile, isVideo: true));
+          _prefilledUrl = null;
+        });
+      } catch (e) {
+        if (mounted) Get.snackbar('Vidéo incompatible', 'Cette vidéo ne peut pas être lue par Scrole. Choisissez un MP4, MOV, M4V ou 3GP compatible.');
+        debugPrint('[POST_COMPOSER] incompatible gallery video: $e');
+      }
+    }
+  }
 
   Future<void> _pickVideo() async {
     if (_pollData != null) {
@@ -1118,12 +1163,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                   IconButton(
                     onPressed: _openGallery,
                     icon: Icon(Icons.camera_alt_rounded, color: colorScheme.onSurface, size: 24),
-                    tooltip: 'Photos (max $maxPostMedia médias)',
-                  ),
-                  IconButton(
-                    onPressed: _pickVideo,
-                    icon: Icon(Icons.videocam_rounded, color: _selectedVideos.isNotEmpty ? colorScheme.primary : colorScheme.onSurface, size: 24),
-                    tooltip: 'Ajouter une vidéo (30 s max)',
+                    tooltip: 'Galerie photos et vidéos (max $maxPostMedia médias)',
                   ),
                   IconButton(
                     onPressed: _openPollCreator,
