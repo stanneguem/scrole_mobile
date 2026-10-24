@@ -65,7 +65,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   bool _sharingEnabled = true;
   bool _reactionsEnabled = true;
   String _audience = 'public'; // 'public' | 'followers' | 'friends'
-  bool _allowPromotion = true; // For community posts: toggle "Garder ce post uniquement dans la communauté" -> p_allow_promotion: false
+  bool _allowPromotion = true; // false keeps the post exclusive to its community
 
   final List<CommunityHashtag> _selectedHashtags = [];
   List<Map<String, dynamic>> _selectedMentions = [];
