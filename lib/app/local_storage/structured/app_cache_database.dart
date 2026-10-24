@@ -4,7 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
   static const String _dbName = 'app_local.db';
-  static const int _dbVersion = 30;
+  static const int _dbVersion = 31;
   Future<Database>? _dbOpenFuture;
   Database? _database;
 
@@ -213,6 +213,23 @@ class AppDatabase {
         await db.execute('CREATE INDEX IF NOT EXISTS idx_communities_slug ON communities(slug)');
       } catch (_) {}
     }
+    if (oldVersion < 31) {
+      final columns = await db.rawQuery('PRAGMA table_info(user_preferences)');
+      final existing = columns.map((column) => column['name']).whereType<String>().toSet();
+      const preferenceColumns = <String, String>{
+        'notif_push': 'INTEGER NOT NULL DEFAULT 1',
+        'notif_messages': 'INTEGER NOT NULL DEFAULT 1',
+        'notif_evenements': 'INTEGER NOT NULL DEFAULT 1',
+        'notif_communautes': 'INTEGER NOT NULL DEFAULT 1',
+        'notif_social': 'INTEGER NOT NULL DEFAULT 1',
+        'auto_play_videos': 'INTEGER NOT NULL DEFAULT 1',
+      };
+      for (final entry in preferenceColumns.entries) {
+        if (!existing.contains(entry.key)) {
+          await db.execute('ALTER TABLE user_preferences ADD COLUMN ${entry.key} ${entry.value}');
+        }
+      }
+    }
   }
 
   Future<void> _createHomeFeedCacheTable(Database db) async {
@@ -286,6 +303,12 @@ class AppDatabase {
       language TEXT NOT NULL DEFAULT 'fr',
       theme TEXT NOT NULL DEFAULT 'system',
       notifications_enabled INTEGER NOT NULL DEFAULT 1,
+      notif_push INTEGER NOT NULL DEFAULT 1,
+      notif_messages INTEGER NOT NULL DEFAULT 1,
+      notif_evenements INTEGER NOT NULL DEFAULT 1,
+      notif_communautes INTEGER NOT NULL DEFAULT 1,
+      notif_social INTEGER NOT NULL DEFAULT 1,
+      auto_play_videos INTEGER NOT NULL DEFAULT 1,
       privacy_profile_visibility TEXT NOT NULL DEFAULT 'public',
       updated_at TEXT NOT NULL,
       sync_status TEXT NOT NULL DEFAULT 'synced',
