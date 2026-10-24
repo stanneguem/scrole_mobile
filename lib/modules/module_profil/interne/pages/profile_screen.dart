@@ -526,7 +526,6 @@ class ProfileScreen extends GetView<ProfileController> {
             onTap: () async {
               final deleted = await Get.to<bool>(() => ProfilePostDetailScreen(post: post));
               if (deleted == true) {
-                await controller.refreshProfileTab(tabIndex);
                 await controller.refreshProfile();
               }
             },
