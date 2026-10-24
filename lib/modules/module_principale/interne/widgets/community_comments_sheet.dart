@@ -339,11 +339,53 @@ class _CommunityCommentsSheetState extends State<CommunityCommentsSheet> {
       final client = Supabase.instance.client;
       List<Map<String, dynamic>> results = [];
       if (type == 'user') {
-        final rows = await client.from('user_profiles').select('user_id, username, first_name, last_name, photo_url, is_verified')
-            .eq('account_status', 'active').isFilter('deleted_at', null)
-            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
-            .order('username').limit(7);
-        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+        final uid = client.auth.currentUser?.id;
+        if (uid == null) {
+          results = [];
+        } else {
+          final allowedIds = <String>{};
+          // Personal-feed comments: friends only, never followers.
+          final friendshipRows = await client.from('friendships')
+              .select('user_a_id,user_b_id')
+              .or('user_a_id.eq.$uid,user_b_id.eq.$uid')
+              .limit(500);
+          for (final row in friendshipRows) {
+            final other = row['user_a_id']?.toString() == uid
+                ? row['user_b_id']?.toString()
+                : row['user_a_id']?.toString();
+            if (other != null && other.isNotEmpty && other != uid) allowedIds.add(other);
+          }
+
+          // On a private community post, only its current members can be
+          // suggested. On a public community post, members are added to friends.
+          final communityId = widget.post.communityId;
+          if (communityId != null && communityId.isNotEmpty) {
+            final community = await client.from('communities')
+                .select('visibility')
+                .eq('id', communityId)
+                .maybeSingle();
+            final visibility = (community?['visibility'] ?? 'private').toString().toLowerCase();
+            if (visibility == 'private') {
+              allowedIds.clear();
+            }
+            final members = await client.from('community_members')
+                .select('user_id')
+                .eq('community_id', communityId)
+                .limit(1000);
+            allowedIds.addAll(members.map((m) => m['user_id'].toString()));
+          }
+          allowedIds.remove(uid);
+          if (allowedIds.isNotEmpty) {
+            final rows = await client.from('user_profiles')
+                .select('user_id, username, first_name, last_name, photo_url, is_verified')
+                .inFilter('user_id', allowedIds.toList())
+                .eq('account_status', 'active')
+                .isFilter('deleted_at', null)
+                .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
+                .order('username').limit(7);
+            results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+          }
+        }
       } else if (type == 'community') {
         final rows = await client.from('communities').select('id, name, photo_profile, visibility')
             .eq('status', 'active').ilike('name', '%$query%').order('name').limit(7);

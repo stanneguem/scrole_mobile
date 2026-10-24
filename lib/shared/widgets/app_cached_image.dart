@@ -38,7 +38,10 @@ class AppCachedImage extends StatelessWidget {
     // Private R2 object keys must be exchanged for short-lived signed URLs.
     if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') &&
         (imageUrl.startsWith('private/') || imageUrl.startsWith('messages/') ||
-         imageUrl.startsWith('stories/') || imageUrl.startsWith('bug-reports/'))) {
+         imageUrl.startsWith('stories/') || imageUrl.startsWith('bug-reports/') ||
+         imageUrl.startsWith('comments/') || imageUrl.startsWith('communities/') ||
+         imageUrl.startsWith('posts/') || imageUrl.startsWith('profiles/') ||
+         imageUrl.startsWith('events/'))) {
       return _R2SignedImage(
         objectKey: imageUrl, width: width, height: height, fit: fit,
         borderRadius: borderRadius, placeholder: placeholder, errorWidget: errorWidget,

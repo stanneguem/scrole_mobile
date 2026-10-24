@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'home_feed_suggested': 'Suggestion',
+      'home_feed_join_community': 'Rejoindre',
       'entity_cert_price_unavailable': "Aucun tarif de certification n’est configuré pour votre zone.",
       'entity_cert_event_title': "Certification de l’événement",
       'entity_cert_community_title': "Certification de la communauté",
@@ -787,6 +789,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Ajouté à l’agenda",
 },
     'en': {
+      'home_feed_suggested': 'Suggested',
+      'home_feed_join_community': 'Join',
       'entity_cert_price_unavailable': "No certification price is configured for your region.",
       'entity_cert_event_title': "Event certification",
       'entity_cert_community_title': "Community certification",
@@ -1565,6 +1569,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Added to calendar",
 },
     'es': {
+      'home_feed_suggested': 'Sugerencia',
+      'home_feed_join_community': 'Unirse',
       'entity_cert_price_unavailable': "No hay un precio de certificación configurado para tu región.",
       'entity_cert_event_title': "Certificación del evento",
       'entity_cert_community_title': "Certificación de la comunidad",
@@ -2260,6 +2266,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Añadido al calendario",
 },
     'de': {
+      'home_feed_suggested': 'Vorschlag',
+      'home_feed_join_community': 'Beitreten',
       'entity_cert_price_unavailable': "Für deine Region ist kein Zertifizierungspreis konfiguriert.",
       'entity_cert_event_title': "Event-Zertifizierung",
       'entity_cert_community_title': "Community-Zertifizierung",
@@ -2938,6 +2946,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Zum Kalender hinzugefügt",
 },
     'it': {
+      'home_feed_suggested': 'Suggerimento',
+      'home_feed_join_community': 'Unisciti',
       'entity_cert_price_unavailable': "Nessun prezzo di certificazione è configurato per la tua regione.",
       'entity_cert_event_title': "Certificazione dell’evento",
       'entity_cert_community_title': "Certificazione della community",
@@ -3616,6 +3626,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Aggiunto al calendario",
 },
     'pt': {
+      'home_feed_suggested': 'Sugestão',
+      'home_feed_join_community': 'Participar',
       'entity_cert_price_unavailable': "Não há preço de certificação configurado para a sua região.",
       'entity_cert_event_title': "Certificação do evento",
       'entity_cert_community_title': "Certificação da comunidade",
@@ -4294,6 +4306,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "Adicionado ao calendário",
 },
     'zh': {
+      'home_feed_suggested': '推荐',
+      'home_feed_join_community': '加入',
       'entity_cert_price_unavailable': "您所在地区尚未配置认证价格。",
       'entity_cert_event_title': "活动认证",
       'entity_cert_community_title': "社群认证",
@@ -4972,6 +4986,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "已添加到日程",
 },
     'ja': {
+      'home_feed_suggested': 'おすすめ',
+      'home_feed_join_community': '参加する',
       'entity_cert_price_unavailable': "お住まいの地域には認証料金が設定されていません。",
       'entity_cert_event_title': "イベント認証",
       'entity_cert_community_title': "コミュニティ認証",
@@ -5649,6 +5665,8 @@ class AppTranslationAdditions {
       'event_added_to_calendar': "予定に追加済み",
 },
     'ru': {
+      'home_feed_suggested': 'Рекомендация',
+      'home_feed_join_community': 'Вступить',
       'entity_cert_price_unavailable': "Для вашего региона не настроена стоимость сертификации.",
       'entity_cert_event_title': "Сертификация мероприятия",
       'entity_cert_community_title': "Сертификация сообщества",

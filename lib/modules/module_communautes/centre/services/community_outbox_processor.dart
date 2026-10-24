@@ -16,6 +16,8 @@ class CommunityOutboxProcessor extends GetxService {
   late final CommunityLocalDao _dao = CommunityLocalDao(Get.find<AppDatabase>());
 
   final RxBool isProcessing = false.obs;
+  bool _isProcessingPosts = false;
+  static const int _maxPostAttempts = 5;
   Timer? _pollingTimer;
 
   @override
@@ -205,6 +207,23 @@ class CommunityOutboxProcessor extends GetxService {
     }
   }
 
+  Future<void> _persistUploadedMedia(
+    dynamic db,
+    int rowId,
+    Map<String, dynamic> payload,
+    List<Map<String, dynamic>> uploadedMedia,
+    String operationId,
+    String postKind,
+  ) async {
+    payload['p_uploaded_media'] = List<Map<String, dynamic>>.from(uploadedMedia);
+    await db.update(
+      'post_outbox',
+      {'payload': jsonEncode(payload), 'updated_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [rowId],
+    );
+    debugPrint('[POST_CREATE][$postKind] MEDIA_PROGRESS_SAVED operationId=$operationId uploaded=${uploadedMedia.length}');
+  }
   bool _isDefinitiveUploadError(dynamic error) {
     final str = error.toString().toLowerCase();
     return str.contains('413') ||
@@ -242,8 +261,12 @@ class CommunityOutboxProcessor extends GetxService {
 
   Future<void> processPendingPosts() async {
     final currentUserId = _authService.userId;
-    debugPrint('[POST] [Outbox] processPendingPosts started. currentUserId=$currentUserId');
-    if (currentUserId == null) return;
+    debugPrint('[POST_CREATE] PROCESS_START userId=$currentUserId alreadyProcessing=$_isProcessingPosts');
+    if (currentUserId == null || _isProcessingPosts) {
+      debugPrint('[POST_CREATE] PROCESS_SKIPPED userId=$currentUserId alreadyProcessing=$_isProcessingPosts');
+      return;
+    }
+    _isProcessingPosts = true;
 
     try {
       final db = await Get.find<AppDatabase>().database;
@@ -255,7 +278,7 @@ class CommunityOutboxProcessor extends GetxService {
         orderBy: 'created_at ASC',
       );
 
-      debugPrint('[POST] [Outbox] Found ${pendingList.length} pending posts');
+      debugPrint('[POST_CREATE] OUTBOX_SCAN userId=$currentUserId pendingCount=${pendingList.length} nowMs=$nowMs');
       for (final item in pendingList) {
         final id = (item['id'] as num).toInt();
         final operationId = item['operation_id'].toString();
@@ -263,24 +286,36 @@ class CommunityOutboxProcessor extends GetxService {
         final attempts = (item['attempt_count'] as num).toInt();
         final payload = Map<String, dynamic>.from(jsonDecode(item['payload'].toString()));
 
-        debugPrint('[POST] [Outbox] Processing post operationId=$operationId, communityId=$communityId, attempts=$attempts');
+        final postKind = communityId == null || communityId.isEmpty ? 'feed' : 'community';
+        debugPrint('[POST_CREATE][$postKind] OUTBOX_ITEM_START operationId=$operationId communityId=$communityId attempts=$attempts payloadKeys=${payload.keys.toList()}');
 
         try {
           final rawLocalMedia = List<dynamic>.from(payload['p_local_media'] ?? []);
           final localMediaItems = rawLocalMedia.map((item) => item is Map ? Map<String, dynamic>.from(item) : <String, dynamic>{'path': item.toString(), 'type': 'photo'}).toList();
           List<Map<String, dynamic>> uploadedMedia = [];
+          final cachedUploadedMedia = payload['p_uploaded_media'];
+          final cachedMediaList = cachedUploadedMedia is List ? cachedUploadedMedia : <dynamic>[];
+          final reusableCount = cachedMediaList.length <= localMediaItems.length ? cachedMediaList.length : 0;
+          if (reusableCount > 0) {
+            uploadedMedia = cachedMediaList.take(reusableCount).where((media) => media is Map && media['url'] != null).map((media) => Map<String, dynamic>.from(media as Map)).toList();
+            debugPrint('[POST_CREATE][$postKind] MEDIA_REUSE operationId=$operationId count=${uploadedMedia.length}/${localMediaItems.length} reason=previous_upload_progress');
+          }
 
           final supabaseClient = Supabase.instance.client;
           final r2MediaRepository = R2MediaRepository(client: supabaseClient);
-          debugPrint('[POST] [Outbox] Selected media count=${localMediaItems.length}');
-          for (int i = 0; i < localMediaItems.length; i++) {
+          if (uploadedMedia.length < localMediaItems.length) {
+          debugPrint('[POST_CREATE][$postKind] MEDIA_PREPARE_START operationId=$operationId count=${localMediaItems.length} types=${localMediaItems.map((m) => m['type'] ?? 'photo').toList()}');
+          for (int i = uploadedMedia.length; i < localMediaItems.length; i++) {
+            final mediaStartedAt = DateTime.now();
             final localPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
+            debugPrint('[POST_CREATE][$postKind] MEDIA_START operationId=$operationId index=${i + 1}/${localMediaItems.length} type=$mediaType remote=${localPath.startsWith('http://') || localPath.startsWith('https://')} exists=${localPath.startsWith('http') ? 'n/a' : File(localPath).existsSync()}');
             if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
               if (mediaType == 'video') {
                 throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
               }
-              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath});
+              uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath}); // legacy queued remote URL; new local uploads always go to R2
+              await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
             } else {
               final file = File(localPath);
               if (file.existsSync()) {
@@ -296,7 +331,8 @@ class CommunityOutboxProcessor extends GetxService {
                     'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
                     'duration_seconds': 30,
                   });
-                  debugPrint('[POST] [Outbox] R2 video uploaded ${i + 1}/${localMediaItems.length} key=${uploaded.objectKey}');
+                  debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=video key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 } else {
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'photo', communityId: communityId,
@@ -307,7 +343,8 @@ class CommunityOutboxProcessor extends GetxService {
                     'object_key': uploaded.objectKey, 'is_public': uploaded.isPublic,
                     'mime_type': uploaded.contentType, 'size_bytes': uploaded.sizeBytes,
                   });
-                  debugPrint('[POST] [Outbox] R2 photo uploaded ${i + 1}/${localMediaItems.length} key=${uploaded.objectKey}');
+                  debugPrint('[POST_CREATE][$postKind] MEDIA_SUCCESS operationId=$operationId index=${i + 1}/${localMediaItems.length} type=photo key=${uploaded.objectKey} elapsedMs=${DateTime.now().difference(mediaStartedAt).inMilliseconds}');
+                  await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
                 }
               } else {
                 throw FileSystemException('Le média sélectionné n’existe plus sur le stockage local.', localPath);
@@ -316,6 +353,8 @@ class CommunityOutboxProcessor extends GetxService {
           }
           if (uploadedMedia.length != localMediaItems.length) {
             throw StateError('Téléversement incomplet : ${uploadedMedia.length}/${localMediaItems.length} médias ont été préparés.');
+          }
+          debugPrint('[POST_CREATE][$postKind] MEDIA_CACHE_READY operationId=$operationId count=${uploadedMedia.length}');
           }
 
           final pId = payload['p_id']?.toString() ?? operationId;
@@ -329,7 +368,8 @@ class CommunityOutboxProcessor extends GetxService {
           final poll = payload['p_poll'] is Map ? Map<String, dynamic>.from(payload['p_poll']) : null;
           final allowPromotion = payload['p_allow_promotion'] ?? true;
 
-          debugPrint('[POST] [Outbox] Calling repository createPostRpc with p_id=$pId, communityId=$communityId, audience=$audience, mediaCount=${uploadedMedia.length}');
+          debugPrint('[POST_CREATE][$postKind] RPC_START operationId=$operationId postId=$pId communityId=$communityId audience=$audience contentLength=${content.length} mediaCount=${uploadedMedia.length} hashtagCount=${hashtags.length} mentionCount=${mentions.length} pollPresent=${poll != null}');
+          final rpcStartedAt = DateTime.now();
 
           await _repository.createPostRpc(
             p_id: pId,
@@ -346,21 +386,29 @@ class CommunityOutboxProcessor extends GetxService {
             p_allow_promotion: allowPromotion,
           );
 
-          debugPrint('[POST] [Outbox] Post operation $operationId completed successfully.');
+          debugPrint('[POST_CREATE][$postKind] RPC_SUCCESS operationId=$operationId postId=$pId elapsedMs=${DateTime.now().difference(rpcStartedAt).inMilliseconds}');
+          debugPrint('[POST_CREATE][$postKind] OUTBOX_COMPLETE operationId=$operationId postId=$pId');
           await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
         } catch (e, st) {
           final errStr = e.toString();
-          debugPrint('[POST] [Outbox] Post operation $operationId failed with error: $errStr\n$st');
+          debugPrint('[POST_CREATE][$postKind] FAILED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\n$st');
           final nextAttempt = attempts + 1;
+          final permanentError = errStr.contains('community_posts_max_photos') ||
+              errStr.contains('violates check constraint') ||
+              errStr.contains('code: 23514');
+          final terminal = permanentError || nextAttempt >= _maxPostAttempts;
           final retryDelay = _calculateBackoffDelay(nextAttempt);
-          final nextRetryAt = DateTime.now().add(retryDelay).millisecondsSinceEpoch;
+          final nextRetryAt = terminal ? 0 : DateTime.now().add(retryDelay).millisecondsSinceEpoch;
+          debugPrint('[POST_CREATE][$postKind] ${permanentError ? 'PERMANENT_ERROR' : terminal ? 'MAX_ATTEMPTS_REACHED' : 'RETRY_SCHEDULED'} operationId=$operationId attempt=$nextAttempt maxAttempts=$_maxPostAttempts delayMs=${terminal ? 0 : retryDelay.inMilliseconds} nextRetryAt=$nextRetryAt error=$errStr');
 
+          // The installed SQLite post_outbox schema has no last_error column.
+          // Keep the error in logs and update only columns known to exist.
           await db.update(
             'post_outbox',
             {
+              'status': terminal ? 'failed' : 'pending',
               'attempt_count': nextAttempt,
               'next_retry_at': nextRetryAt,
-              'last_error': errStr,
               'updated_at': DateTime.now().toIso8601String(),
             },
             where: 'id = ?',
@@ -369,7 +417,10 @@ class CommunityOutboxProcessor extends GetxService {
         }
       }
     } catch (e, st) {
-      debugPrint('[POST] [Outbox] Unexpected error in processPendingPosts: $e\n$st');
+      debugPrint('[POST_CREATE] PROCESS_FATAL error=$e\n$st');
+    } finally {
+      _isProcessingPosts = false;
+      debugPrint('[POST_CREATE] PROCESS_FINISHED userId=$currentUserId');
     }
   }
 }

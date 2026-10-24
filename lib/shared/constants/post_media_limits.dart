@@ -4,4 +4,4 @@
 const int maxPostMedia = 20;
 
 /// Backward-compatible alias for image-only UI until video selection is implemented.
-const int maxPostPhotos = maxPostMedia;
+const int maxPostPhotos = 4;

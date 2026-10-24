@@ -850,6 +850,8 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     String? content,
     List<File>? imageFiles,
     List<File>? videoFiles,
+    List<File>? orderedMediaFiles,
+    List<String>? orderedMediaTypes,
     String? audience,
     bool commentsEnabled = true,
     bool sharingEnabled = true,
@@ -859,7 +861,9 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
   }) async {
-    final totalMediaCount = (imageFiles?.length ?? 0) + (videoFiles?.length ?? 0);
+    final startedAt = DateTime.now();
+    debugPrint('[POST_CREATE][COMPOSER] START communityId=$communityId requestedPostId=$requestedPostId audience=$audience contentLength=${content?.length ?? 0} imageCount=${imageFiles?.length ?? 0} videoCount=${videoFiles?.length ?? 0} orderedCount=${orderedMediaFiles?.length ?? 0} pollPresent=${poll != null}');
+    final totalMediaCount = orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0));
     if (totalMediaCount > maxPostMedia) {
       throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
     }
@@ -871,32 +875,50 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     List<Map<String, String>> localMediaPaths = [];
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      if (imageFiles != null && imageFiles.isNotEmpty) {
-        final filesToProcess = imageFiles.toList();
-        for (int i = 0; i < filesToProcess.length; i++) {
-          final file = filesToProcess[i];
-          if (file.existsSync()) {
+      // New composers supply a unified ordered list. Keep that order in the
+      // durable outbox payload so uploads and the published post use the same sequence.
+      if (orderedMediaFiles != null && orderedMediaTypes != null &&
+          orderedMediaFiles.length == orderedMediaTypes.length) {
+        for (int i = 0; i < orderedMediaFiles.length; i++) {
+          final file = orderedMediaFiles[i];
+          final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
+          if (!file.existsSync()) continue;
+          if (type == 'video') {
+            localMediaPaths.add({'path': file.path, 'type': 'video'});
+          } else {
             final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
             await Directory(p.dirname(targetPath)).create(recursive: true);
             final compressed = await FlutterImageCompress.compressAndGetFile(
-              file.absolute.path,
-              targetPath,
-              minWidth: 1280,
-              minHeight: 1280,
-              quality: 80,
+              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
             );
             localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
           }
         }
-      }
-      if (videoFiles != null) {
-        for (final video in videoFiles) {
-          if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+      } else {
+        // Backward compatibility for callers that still provide separate lists.
+        if (imageFiles != null) {
+          for (int i = 0; i < imageFiles.length; i++) {
+            final file = imageFiles[i];
+            if (!file.existsSync()) continue;
+            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i.jpg');
+            await Directory(p.dirname(targetPath)).create(recursive: true);
+            final compressed = await FlutterImageCompress.compressAndGetFile(
+              file.absolute.path, targetPath, minWidth: 1280, minHeight: 1280, quality: 80,
+            );
+            localMediaPaths.add({'path': compressed?.path ?? file.path, 'type': 'photo'});
+          }
+        }
+        if (videoFiles != null) {
+          for (final video in videoFiles) {
+            if (video.existsSync()) localMediaPaths.add({'path': video.path, 'type': 'video'});
+          }
         }
       }
     } catch (e) {
       if (videoFiles != null && videoFiles.isNotEmpty) rethrow;
     }
+
+    debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARED postId=$postId communityId=$communityId mediaCount=${localMediaPaths.length} types=${localMediaPaths.map((m) => m['type']).toList()} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
     final payload = {
       'p_id': postId,
@@ -938,11 +960,13 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       outboxRow['operation_type'] = 'create';
     }
 
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_START operationId=$operationId postId=$postId communityId=$communityId userId=$userId payloadMediaCount=${localMediaPaths.length} payloadBytes=${jsonEncode(payload).length} hasOperationType=$hasOperationType');
     await db.insert(
       'post_outbox',
       outboxRow,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    debugPrint('[POST_CREATE][COMPOSER] OUTBOX_INSERT_SUCCESS operationId=$operationId elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
 
     try {
       if (!Get.isRegistered<CommunityOutboxProcessor>()) {
@@ -950,7 +974,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       }
       await Get.find<CommunityOutboxProcessor>().processPendingPosts();
     } catch (e) {
-      debugPrint('[POST] Immediate outbox processing failed for $postId: $e');
+      debugPrint('[POST_CREATE][COMPOSER] IMMEDIATE_PROCESS_FAILED operationId=$operationId postId=$postId error=$e');
     }
 
     // Do not silently report success when the server rejected the publication.
@@ -964,13 +988,14 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
         final detail = (rawError == null || rawError.isEmpty)
             ? 'La publication est enregistrée pour une nouvelle tentative.'
             : rawError;
+        debugPrint('[POST_CREATE][COMPOSER] NOT_CONFIRMED operationId=$operationId postId=$postId lastError=${rawError ?? '(none)'} elapsedMs=${DateTime.now().difference(startedAt).inMilliseconds}');
         throw Exception('Publication non confirmée : $detail');
       }
     } catch (e) {
       if (e is Exception && e.toString().startsWith('Exception: Publication non confirmée')) {
         rethrow;
       }
-      debugPrint('[POST] Could not verify outbox result for $postId: $e');
+      debugPrint('[POST_CREATE][COMPOSER] OUTBOX_VERIFY_ERROR operationId=$operationId postId=$postId error=$e');
     }
   }
 

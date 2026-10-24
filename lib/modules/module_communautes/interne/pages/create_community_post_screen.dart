@@ -40,12 +40,21 @@ class CreateCommunityPostScreen extends StatefulWidget {
   State<CreateCommunityPostScreen> createState() => _CreateCommunityPostScreenState();
 }
 
+class _SelectedPostMedia {
+  final File file;
+  final bool isVideo;
+  const _SelectedPostMedia({required this.file, required this.isVideo});
+}
+
 class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   late final TextEditingController _textController;
-  final List<File> _selectedFiles = [];
-  final List<File> _selectedVideos = [];
+  // Single source of truth: this list preserves the exact order in which media are selected.
+  final List<_SelectedPostMedia> _selectedMedia = [];
+  List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+  List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
-  int get _selectedMediaCount => _selectedFiles.length + _selectedVideos.length;
+  int get _selectedMediaCount => _selectedMedia.length;
+  int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -93,7 +102,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
   bool get _canPublish =>
       _textController.text.trim().isNotEmpty ||
-      _selectedFiles.isNotEmpty ||
+      _selectedMedia.isNotEmpty ||
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
 
@@ -156,12 +165,38 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       final client = Supabase.instance.client;
       List<Map<String, dynamic>> results = [];
       if (type == 'user') {
-        final rows = await client.from('user_profiles')
-            .select('user_id, username, first_name, last_name, photo_url, is_verified')
-            .eq('account_status', 'active').isFilter('deleted_at', null)
-            .or('username.ilike.%$query%,first_name.ilike.%$query%,last_name.ilike.%$query%')
-            .order('username').limit(7);
-        results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+        final userId = client.auth.currentUser?.id;
+        if (userId != null) {
+          final allowedIds = <String>{};
+          final communityId = widget.communityId;
+          if (communityId != null && communityId.isNotEmpty) {
+            final members = await client.from('community_members')
+                .select('user_id').eq('community_id', communityId).limit(1000);
+            allowedIds.addAll(members.map((m) => m['user_id'].toString()));
+          } else {
+            final friendships = await client.from('friendships').select('user_a_id,user_b_id')
+                .or('user_a_id.eq.$userId,user_b_id.eq.$userId').limit(500);
+            for (final relation in friendships) {
+              final other = relation['user_a_id']?.toString() == userId
+                  ? relation['user_b_id']?.toString() : relation['user_a_id']?.toString();
+              if (other != null && other.isNotEmpty) allowedIds.add(other);
+            }
+            final followers = await client.from('user_follows').select('follower_id')
+                .eq('followed_id', userId).limit(1000);
+            allowedIds.addAll(followers.map((r) => r['follower_id'].toString()));
+          }
+          allowedIds.remove(userId);
+          if (allowedIds.isNotEmpty) {
+            final safeQuery = query.replaceAll(',', '').replaceAll('%', '').replaceAll('_', r'\_');
+            final rows = await client.from('user_profiles')
+                .select('user_id, username, first_name, last_name, photo_url, is_verified')
+                .inFilter('user_id', allowedIds.toList())
+                .eq('account_status', 'active').isFilter('deleted_at', null)
+                .or('username.ilike.%$safeQuery%,first_name.ilike.%$safeQuery%,last_name.ilike.%$safeQuery%')
+                .order('username').limit(7);
+            results = rows.map((r) => Map<String, dynamic>.from(r)).toList();
+          }
+        }
       } else if (type == 'community') {
         final rows = await client.from('communities')
             .select('id, name, photo_profile, visibility')
@@ -439,7 +474,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
 
   Future<void> _openPollCreator() async {
-    if (_selectedFiles.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
+    if (_selectedMedia.isNotEmpty || (_prefilledUrl != null && _prefilledUrl!.isNotEmpty)) {
       Get.snackbar('Attention', 'Un sondage ne peut pas contenir de photos.', backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -454,10 +489,15 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   Future<void> _publish() async {
     if (!_canPublish) return;
 
-    List<File> filesToPublish = List.from(_selectedFiles);
-    final videosToPublish = List<File>.from(_selectedVideos);
+    final orderedMedia = List<_SelectedPostMedia>.from(_selectedMedia);
+    List<File> filesToPublish = orderedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
+    final videosToPublish = orderedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
+    final orderedFilesForService = orderedMedia.map((m) => m.file).toList();
+    final orderedTypesForService = orderedMedia.map((m) => m.isVideo ? 'video' : 'photo').toList();
     if (filesToPublish.isEmpty && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       filesToPublish.add(File(_prefilledUrl!));
+      orderedFilesForService.add(File(_prefilledUrl!));
+      orderedTypesForService.add('photo');
     }
 
     final content = _textController.text.trim();
@@ -523,6 +563,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         content: postContent,
         imageFiles: filesToPublish,
         videoFiles: videosToPublish,
+        orderedMediaFiles: orderedFilesForService,
+        orderedMediaTypes: orderedTypesForService,
         audience: isCommunity ? 'public' : _audience,
         commentsEnabled: _commentsEnabled,
         sharingEnabled: _sharingEnabled,
@@ -572,11 +614,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    final maxAllowed = maxPostMedia - _selectedMediaCount;
+    final maxAllowed = [maxPostPhotos - _selectedPhotoCount, maxPostMedia - _selectedMediaCount].reduce((a, b) => a < b ? a : b);
     if (maxAllowed <= 0) {
       Get.snackbar(
         'Limite atteinte',
-        'Vous ne pouvez pas ajouter plus de $maxPostMedia médias au total.',
+        'Vous pouvez ajouter au maximum $maxPostPhotos photos et $maxPostMedia médias au total.',
         backgroundColor: Colors.black87,
         colorText: Colors.white,
       );
@@ -593,10 +635,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         onSelected: (files) {
           if (files.isNotEmpty) {
             setState(() {
-              _selectedFiles.addAll(files.map((f) => File(f.path)));
-              if (_selectedMediaCount > maxPostMedia) {
-                _selectedFiles.removeRange(maxPostMedia - _selectedVideos.length, _selectedFiles.length);
-              }
+              final remainingPhotos = maxPostPhotos - _selectedPhotoCount;
+              final remainingTotal = maxPostMedia - _selectedMedia.length;
+              final remaining = remainingPhotos < remainingTotal ? remainingPhotos : remainingTotal;
+              _selectedMedia.addAll(files.take(remaining).map((f) => _SelectedPostMedia(file: File(f.path), isVideo: false)));
               _prefilledUrl = null;
             });
           }
@@ -644,7 +686,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       }
       if (!mounted) return;
       setState(() {
-        _selectedVideos.add(file);
+        _selectedMedia.add(_SelectedPostMedia(file: file, isVideo: true));
         _prefilledUrl = null;
       });
     } catch (e) {
@@ -993,8 +1035,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           ),
                           itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
-                            final isVideo = index >= _selectedFiles.length;
-                            final file = isVideo ? _selectedVideos[index - _selectedFiles.length] : _selectedFiles[index];
+                            final media = _selectedMedia[index];
+                            final isVideo = media.isVideo;
+                            final file = media.file;
                             return Stack(
                               fit: StackFit.expand,
                               children: [
@@ -1008,7 +1051,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                   top: 6,
                                   right: 6,
                                   child: GestureDetector(
-                                    onTap: () => setState(() => _selectedFiles.removeAt(index)),
+                                    onTap: () => setState(() => _selectedMedia.removeAt(index)),
                                     child: Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: const BoxDecoration(

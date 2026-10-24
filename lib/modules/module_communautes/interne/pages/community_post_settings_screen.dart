@@ -30,7 +30,7 @@ class _CommunityPostSettingsScreenState extends State<CommunityPostSettingsScree
             onChanged: (v) => setState(() => _comments = v),
           ),
           SwitchListTile(
-            title: const Text('Activer le partage'),
+            title: const Text('Autoriser le repartage de cette story'),
             value: _sharing,
             onChanged: (v) => setState(() => _sharing = v),
           ),
