@@ -212,19 +212,8 @@ class FeedPostCard extends StatelessWidget {
                     ),
                   // 1. En-tête de la communauté si présente et hors du fil propre de cette communauté
                   if (showCommunityHeader) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.055),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.13),
-                        ),
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2, top: 2, bottom: 2),
                       child: Row(
                         children: [
                           Container(
@@ -314,16 +303,10 @@ class FeedPostCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.people_alt_rounded,
-                            size: 18,
-                            color: colorScheme.primary.withValues(alpha: 0.75),
-                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
                   ],
 
                   // 2. Ligne Auteur + Contenu de la carte
