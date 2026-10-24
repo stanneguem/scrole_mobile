@@ -575,7 +575,7 @@ class CommunityModerationCenterScreen extends StatelessWidget {
                 child: const Icon(Icons.notifications_active_outlined, color: Colors.amber, size: 24),
               ),
               title: Text('community_alerts_title'.tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              subtitle: Text('community_alerts_empty'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
+              subtitle: Text('community_alerts_subtitle'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
               trailing: Icon(Icons.chevron_right_rounded, color: colorScheme.outline),
             ),
           ),
