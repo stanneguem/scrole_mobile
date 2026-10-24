@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
+import 'package:scrole/app/service_global/preferences_service.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/modules/module_notification/centre/services/notification_db_service.dart';
@@ -726,12 +727,36 @@ class NotificationService {
     }
   }
 
+  bool _notificationAllowed(String? payload) {
+    try {
+      if (!Get.isRegistered<PreferencesService>()) return true;
+      final prefs = Get.find<PreferencesService>().preferences.value;
+      if (!prefs.notificationsEnabled || !prefs.notifPush) return false;
+      if (payload == null || payload.isEmpty) return true;
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map) return true;
+      final type = (decoded['type'] ?? '').toString().toLowerCase();
+      if (type.isEmpty) return true;
+      if (type.contains('message')) return prefs.notifMessages;
+      if (type.contains('event') || type.contains('evenement')) return prefs.notifEvenements;
+      if (type.contains('community') || type.contains('communaute')) return prefs.notifCommunautes;
+      return prefs.notifSocial;
+    } catch (_) {
+      // A malformed payload must not prevent normal notifications from working.
+      return true;
+    }
+  }
+
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
+    if (!_notificationAllowed(payload)) {
+      debugPrint('[FCM] Notification suppressed by user preferences');
+      return;
+    }
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'scrole_default_channel',
@@ -765,6 +790,10 @@ class NotificationService {
     required String message,
     required String payload,
   }) async {
+    if (!_notificationAllowed(payload)) {
+      debugPrint('[FCM] Replyable message notification suppressed by user preferences');
+      return;
+    }
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'scrole_default_channel',
