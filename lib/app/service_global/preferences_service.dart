@@ -22,6 +22,7 @@ class PreferencesService extends GetxService {
   final Rx<AppPreferences> preferences = AppPreferences.defaultValues().obs;
   final Rx<AppPrivacy> privacy = AppPrivacy.defaultValues().obs;
   final RxBool isFlushingPending = false.obs;
+  bool _flushRequested = false;
 
   RealtimeChannel? _userChannel;
   StreamSubscription<InternetStatus>? _connectivitySubscription;
@@ -111,7 +112,11 @@ class PreferencesService extends GetxService {
   /// Traitement des changements en attente (pending_changes -> update_user_settings)
   Future<void> flushPending() async {
     final userId = _getUserId();
-    if (userId == null || isFlushingPending.value) return;
+    if (userId == null) return;
+    if (isFlushingPending.value) {
+      _flushRequested = true;
+      return;
+    }
 
     isFlushingPending.value = true;
     var hasMorePending = false;
@@ -147,7 +152,8 @@ class PreferencesService extends GetxService {
       isFlushingPending.value = false;
     }
 
-    if (hasMorePending) {
+    if (hasMorePending || _flushRequested) {
+      _flushRequested = false;
       unawaited(flushPending());
     }
   }
@@ -159,6 +165,11 @@ class PreferencesService extends GetxService {
 
     try {
       await flushPending();
+      // If another update was already being flushed, wait for it before
+      // applying the server snapshot so it cannot overwrite newer local edits.
+      while (isFlushingPending.value) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
 
       final serverData = await _repository.getUserSettingsRpc();
       if (serverData != null) {
