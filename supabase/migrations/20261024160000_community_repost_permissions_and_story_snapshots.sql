@@ -117,7 +117,7 @@ begin
     'access_rules', jsonb_build_object('countries_enabled',coalesce(v_access.countries_enabled,false),'allowed_countries',coalesce(to_jsonb(v_access.allowed_countries),'[]'::jsonb),'cities_enabled',coalesce(v_access.cities_enabled,false),'allowed_cities',coalesce(to_jsonb(v_access.allowed_cities),'[]'::jsonb),'certification_required',coalesce(v_access.certification_required,false),'gender_restriction',v_access.gender_restriction,'age_min',v_access.age_min,'age_max',v_access.age_max),
     'settings', jsonb_build_object('members_list_visible',coalesce(v_settings.members_list_visible,true),'posts_require_approval',coalesce(v_settings.posts_require_approval,false),'post_permission',coalesce(v_settings.post_permission,'everyone'),'allow_reports',coalesce(v_settings.allow_reports,true),'allow_comments',coalesce(v_settings.allow_comments,true),'allow_reactions',coalesce(v_settings.allow_reactions,true),'allow_post_promotion',coalesce(v_settings.allow_post_promotion,true),'allow_post_sharing',coalesce(v_settings.allow_post_sharing,true))
   );
-end; $function$
+end; $function$;
 
 
 CREATE OR REPLACE FUNCTION private.community_chain_sharing_allowed(p_post_id uuid)
@@ -498,7 +498,7 @@ begin
   end if;
   return v_row;
 end
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.create_post(uuid, text, uuid, text, jsonb, text[], uuid[], boolean, boolean, boolean, jsonb, boolean, uuid, uuid) FROM PUBLIC, anon;
@@ -630,7 +630,7 @@ begin
       'Publication partagée en story', 'Quelqu''un a partagé votre publication dans sa story.');
   end if;
   return v_row;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION private.story_groups(p_scope text, p_limit integer, p_offset integer, p_author uuid DEFAULT NULL::uuid)
@@ -722,7 +722,7 @@ begin
   from ordered o join public.user_profiles up on up.user_id = o.author_id
   where o.rn > p_offset and o.rn <= p_offset + p_limit;
   return v_result;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_community_post_sharing_enabled(
