@@ -7,6 +7,7 @@ import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
+import 'package:scrole/shared/widgets/post_media_slider.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/community_comments_sheet.dart';
 import 'create_community_post_screen.dart';
 import 'community_settings_screen.dart';
@@ -359,7 +360,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     child: VisibilityDetector(
                     key: Key('comm_post_vis_${post.id}'),
                     onVisibilityChanged: (info) {
-                      if (info.visibleFraction >= 0.5) {
+                      final eligible = info.visibleFraction >= 0.50;
+                      FeedVideoAutoplayGate.updatePostVisibility(post.id, eligible);
+                      if (eligible) {
                         controller.queuePostView(post);
                       }
                     },
