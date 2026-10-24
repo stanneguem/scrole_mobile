@@ -481,6 +481,7 @@ class FeedPostCard extends StatelessWidget {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(14),
                                     child: PostMediaSlider(
+                                      autoplayPostId: post.id,
                                       heroTagPrefix: 'post_${post.id}',
                                       media: post.media,
                                       likesCount: post.likeCount,
@@ -2264,6 +2265,7 @@ class _RepublicationPostCard extends StatelessWidget {
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
                                       child: PostMediaSlider(
+                                        autoplayPostId: post.id,
                                         heroTagPrefix:
                                             'shared_${shared.id}_${post.id}',
                                         media: shared.media,
