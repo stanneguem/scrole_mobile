@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/service_global/privacy_service.dart';
-import '../../../../app/service_global/preferences_service.dart';
 import '../../../../shared/models/user_models.dart';
 
 class PrivacyDataScreen extends StatefulWidget {
@@ -15,7 +14,6 @@ class PrivacyDataScreen extends StatefulWidget {
 
 class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
   final PrivacyService service = Get.find<PrivacyService>();
-  final PreferencesService preferencesService = Get.find<PreferencesService>();
   bool _loadFailed = false;
   static const _visibilityValues = {'only_me', 'friends', 'followers', 'everyone'};
 
@@ -28,7 +26,6 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
   Future<void> _loadPrivacy() async {
     try {
       await service.loadFromBackend();
-      await preferencesService.syncInitialSettings();
       if (mounted) setState(() => _loadFailed = false);
     } catch (_) {
       if (mounted) setState(() => _loadFailed = true);
