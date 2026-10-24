@@ -478,7 +478,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
     final userId = member['user_id']?.toString() ?? '';
     final isSelf = member['is_self'] == true || member['is_self'] == 1 || member['is_self'] == 'true';
 
-    if (!_isStaff || isSelf || userId.isEmpty) return;
+    if (isSelf || userId.isEmpty) return;
 
     final userName = (member['first_name'] != null && member['first_name'].toString().isNotEmpty)
         ? '${member['first_name']} ${member['last_name'] ?? ''}'.trim()
@@ -687,7 +687,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                                       userId: member['user_id']?.toString(),
                                       prefixWidget: isVerified ? UserCertifiedBadge(size: 16, userId: member['user_id']?.toString()) : null,
                                       subtitle: [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${_formatReputation(communityScore)}/5'].join('  ').isNotEmpty ? [if (roleTag.isNotEmpty) roleTag, if (communityScore != null) '★ ${_formatReputation(communityScore)}/5 · Réputation communauté'].join('  ') : null,
-                                      trailing: (_isStaff && !isSelf)
+                                      trailing: !isSelf
                                           ? Icon(Icons.more_vert_rounded, size: 18, color: colorScheme.onSurfaceVariant)
                                           : null,
                                     ),
