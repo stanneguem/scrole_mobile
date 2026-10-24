@@ -1,5 +1,5 @@
--- Persist the user's video autoplay preference.
--- Additive migration: existing users default to autoplay enabled.
+-- Persist video autoplay and all supported privacy/preferences settings.
+-- Additive schema change; existing users keep autoplay enabled by default.
 begin;
 
 alter table public.user_preferences
@@ -21,18 +21,14 @@ begin
   if v_user_id is null then
     raise exception 'Utilisateur non authentifié';
   end if;
-
   if p_changes is null or jsonb_typeof(p_changes) <> 'object' then
     raise exception 'p_changes doit être un objet JSON';
   end if;
 
   insert into public.user_preferences (user_id)
-  values (v_user_id)
-  on conflict (user_id) do nothing;
-
+  values (v_user_id) on conflict (user_id) do nothing;
   insert into public.user_privacy (user_id)
-  values (v_user_id)
-  on conflict (user_id) do nothing;
+  values (v_user_id) on conflict (user_id) do nothing;
 
   update public.user_preferences
   set
@@ -48,17 +44,12 @@ begin
     updated_at = now()
   where user_id = v_user_id
     and (
-      p_changes ? 'language'
-      or p_changes ? 'theme'
-      or p_changes ? 'notifications_enabled'
-      or p_changes ? 'notif_push'
-      or p_changes ? 'notif_messages'
-      or p_changes ? 'notif_evenements'
-      or p_changes ? 'notif_communautes'
-      or p_changes ? 'notif_social'
+      p_changes ? 'language' or p_changes ? 'theme'
+      or p_changes ? 'notifications_enabled' or p_changes ? 'notif_push'
+      or p_changes ? 'notif_messages' or p_changes ? 'notif_evenements'
+      or p_changes ? 'notif_communautes' or p_changes ? 'notif_social'
       or p_changes ? 'auto_play_videos'
     );
-
   v_pref_changed := found;
 
   update public.user_privacy
@@ -73,46 +64,28 @@ begin
     updated_at = now()
   where user_id = v_user_id
     and (
-      p_changes ? 'profile_visibility'
-      or p_changes ? 'show_online_status'
-      or p_changes ? 'allow_messages_from'
-      or p_changes ? 'afficher_pays'
-      or p_changes ? 'afficher_ville'
-      or p_changes ? 'afficher_derniere_connexion'
+      p_changes ? 'profile_visibility' or p_changes ? 'show_online_status'
+      or p_changes ? 'allow_messages_from' or p_changes ? 'afficher_pays'
+      or p_changes ? 'afficher_ville' or p_changes ? 'afficher_derniere_connexion'
       or p_changes ? 'event_itinerary_visibility'
     );
-
   v_priv_changed := found;
 
   if not v_pref_changed and not v_priv_changed then
     raise exception 'Aucun champ de préférence ou confidentialité reconnu';
   end if;
 
-  select to_jsonb(up) - 'user_id'
-  into v_preferences
-  from public.user_preferences up
-  where up.user_id = v_user_id;
-
-  select to_jsonb(uv) - 'user_id'
-  into v_privacy
-  from public.user_privacy uv
-  where uv.user_id = v_user_id;
+  select to_jsonb(up) - 'user_id' into v_preferences
+  from public.user_preferences up where up.user_id = v_user_id;
+  select to_jsonb(uv) - 'user_id' into v_privacy
+  from public.user_privacy uv where uv.user_id = v_user_id;
 
   insert into public.sync_log (user_id, entity_type, entity_id, action, payload)
-  values (
-    v_user_id,
-    'user_settings',
-    v_user_id::text,
-    'updated',
-    jsonb_build_object('preferences', v_preferences, 'privacy', v_privacy)
-  )
+  values (v_user_id, 'user_settings', v_user_id::text, 'updated',
+          jsonb_build_object('preferences', v_preferences, 'privacy', v_privacy))
   returning id into v_cursor;
 
-  return jsonb_build_object(
-    'preferences', v_preferences,
-    'privacy', v_privacy,
-    'server_cursor', v_cursor
-  );
+  return jsonb_build_object('preferences', v_preferences, 'privacy', v_privacy, 'server_cursor', v_cursor);
 end;
 $function$;
 
