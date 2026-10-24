@@ -51,11 +51,29 @@ Deno.serve(async (req: Request) => {
     const [{ data: devices, error: devicesError }, { data: preferences, error: preferencesError }] = await Promise.all([
       supabaseAdmin.from("user_devices").select("id,device_token,platform,device_brand,device_model,push_enabled")
         .eq("user_id", userId).eq("push_enabled", true).not("device_token", "is", null),
-      supabaseAdmin.from("user_preferences").select("language").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("user_preferences")
+        .select("language,notifications_enabled,notif_push,notif_messages,notif_evenements,notif_communautes,notif_social")
+        .eq("user_id", userId).maybeSingle(),
     ]);
     if (devicesError || preferencesError) {
       console.error("recipient lookup failed", { devicesError, preferencesError });
       return json({ error: "recipient_lookup_failed" }, 500);
+    }
+
+    const type = String(record.type ?? "info").toLowerCase();
+    const pref = preferences ?? {};
+    const categoryEnabled = type.includes("message")
+      ? pref.notif_messages !== false
+      : (type.includes("event") || type.includes("evenement"))
+        ? pref.notif_evenements !== false
+        : (type.includes("community") || type.includes("communaute"))
+          ? pref.notif_communautes !== false
+          : pref.notif_social !== false;
+
+    // Honor preferences on the server as well, including background push
+    // notifications that Flutter cannot filter in its background isolate.
+    if (pref.notifications_enabled === false || pref.notif_push === false || !categoryEnabled) {
+      return json({ ok: true, sent: 0, reason: "disabled_by_user_preferences", type });
     }
 
     const tokens = (devices ?? []).map((d: any) => ({ ...d, device_token: String(d.device_token ?? "").trim() }))
@@ -64,7 +82,6 @@ Deno.serve(async (req: Request) => {
 
     const sa = JSON.parse(serviceAccountRaw);
     const accessToken = await getFirebaseAccessToken(sa);
-    const type = String(record.type ?? "info");
     const recordData = record.data && typeof record.data === "object" ? record.data : {};
     const dataBase: Record<string, string> = { type, notification_id: String(record.id ?? "") };
     for (const [key, value] of Object.entries(recordData)) if (value != null)
