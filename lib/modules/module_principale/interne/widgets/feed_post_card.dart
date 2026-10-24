@@ -2118,6 +2118,7 @@ class _RepublicationPostCard extends StatelessWidget {
                                 post: post,
                                 onReactionTap: onReactionTap,
                                 onCommentTap: onCommentTap,
+                                currentCommunityId: currentCommunityId,
                               )._showPostOptions(context, post),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
