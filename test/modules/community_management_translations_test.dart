@@ -104,6 +104,7 @@ void main() {
       'community_settings_select_at_least_one_country',
       'community_settings_select_at_least_one_city',
       'community_alerts_title',
+      'community_alerts_subtitle',
       'community_alerts_empty',
       'community_alert_reported_content',
       'community_alert_spam_author',
