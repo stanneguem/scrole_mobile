@@ -56,7 +56,10 @@ class PreferencesLocalDao {
 
   Future<void> clearPendingChanges(String userId, {int? throughId}) async {
     final db = await _db;
-    if (throughId == null) return;
+    if (throughId == null) {
+      await db.delete('user_preferences_outbox', where: 'user_id = ?', whereArgs: [userId]);
+      return;
+    }
     await db.delete(
       'user_preferences_outbox',
       where: 'user_id = ? AND id <= ?',
@@ -74,8 +77,4 @@ class PreferencesLocalDao {
     });
   }
 
-  Future<void> clearPendingChanges(String userId) async {
-    final db = await _db;
-    await db.delete('user_preferences_outbox', where: 'user_id = ?', whereArgs: [userId]);
-  }
 }
