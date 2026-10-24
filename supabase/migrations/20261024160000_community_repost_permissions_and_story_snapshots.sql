@@ -5,6 +5,9 @@ ALTER TABLE public.community_settings
 ALTER TABLE public.stories
   ADD COLUMN IF NOT EXISTS shared_post_snapshot jsonb;
 
+ALTER TABLE public.community_posts
+  ADD COLUMN IF NOT EXISTS shared_post_snapshot jsonb;
+
 CREATE OR REPLACE FUNCTION private.story_post_snapshot(p_post_id uuid, p_viewer uuid, p_depth integer DEFAULT 0)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -102,6 +105,112 @@ begin
   );
 end; $function$
 
+
+CREATE OR REPLACE FUNCTION private.post_extras(p_post_id uuid, p_viewer uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_shared uuid;
+  v_scomment uuid;
+  v_snapshot jsonb;
+  v_card jsonb := null;
+  v_ccard jsonb := null;
+  v_orig public.community_posts;
+begin
+  select shared_post_id, shared_comment_id, shared_post_snapshot
+    into v_shared, v_scomment, v_snapshot
+  from public.community_posts where id = p_post_id;
+
+  if v_shared is not null then
+    select * into v_orig from public.community_posts where id = v_shared;
+    if found and v_orig.status = 'active'
+       and private.story_can_open_original(v_shared, p_viewer) then
+      v_card := private.post_item(v_shared, p_viewer) || jsonb_build_object('available', true, 'can_open_original', true);
+    elsif v_snapshot is not null then
+      v_card := v_snapshot || jsonb_build_object('available', true, 'can_open_original', false);
+    else
+      v_card := jsonb_build_object('id', v_shared, 'available', false, 'can_open_original', false);
+    end if;
+  end if;
+
+  if v_scomment is not null then
+    v_ccard := private.comment_card(v_scomment, p_viewer);
+  end if;
+
+  return jsonb_build_object(
+    'views_count', (select coalesce(sum(v.view_count), 0)::bigint from public.post_views v where v.post_id = p_post_id),
+    'viewers_count', (select count(*) from public.post_views v where v.post_id = p_post_id),
+    'shares_count', (select count(*) from public.community_posts s where s.shared_post_id = p_post_id and s.status = 'active'),
+    'viewer_has_shared', exists (select 1 from public.community_posts s where s.shared_post_id = p_post_id and s.author_id = p_viewer),
+    'shared_post_id', v_shared,
+    'shared_post', v_card,
+    'shared_post_can_open_original', coalesce((v_card ->> 'can_open_original')::boolean, false),
+    'shared_comment_id', v_scomment,
+    'shared_comment', v_ccard
+  );
+end
+$function$;
+
+CREATE OR REPLACE FUNCTION public.share_post(
+  p_id uuid,
+  p_original_post_id uuid,
+  p_community_id uuid DEFAULT NULL::uuid,
+  p_audience text DEFAULT 'public'::text,
+  p_comment text DEFAULT NULL::text
+) RETURNS public.community_posts
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO ''
+AS $function$
+declare
+  v_uid uuid := auth.uid();
+  v_source public.community_posts;
+  v_shared public.community_posts;
+begin
+  if v_uid is null then raise exception 'Authentication required'; end if;
+  if p_original_post_id is null then raise exception 'Publication indisponible'; end if;
+
+  select * into v_source from public.community_posts where id = p_original_post_id;
+  if not found or v_source.status <> 'active'
+     or not public.can_view_post_row(v_source.community_id, v_source.author_id, v_source.audience)
+     or private.users_blocked(v_uid, v_source.author_id) then
+    raise exception 'Publication indisponible';
+  end if;
+  if not v_source.sharing_enabled then
+    raise exception 'Le partage est désactivé sur cette publication';
+  end if;
+  if v_source.community_id is not null then
+    if not exists (
+      select 1 from public.communities c
+      where c.id = v_source.community_id and c.status = 'active'
+        and (c.visibility = 'public' or public.is_community_member(c.id))
+    ) then raise exception 'Publication indisponible'; end if;
+    if exists (
+      select 1 from public.community_settings cs
+      where cs.community_id = v_source.community_id
+        and not coalesce(cs.allow_post_sharing, true)
+    ) then raise exception 'Le repartage est désactivé par les administrateurs de cette communauté'; end if;
+  elsif v_source.audience <> 'public' then
+    raise exception 'Cette publication ne peut pas être repartagée';
+  end if;
+
+  v_shared := public.create_post(
+    p_id, p_comment, p_community_id, p_audience, '[]'::jsonb, '{}'::text[], '{}'::uuid[],
+    true, true, true, null, true, p_original_post_id
+  );
+  update public.community_posts
+    set shared_post_snapshot = private.story_post_snapshot(p_original_post_id, v_uid, 0)
+    where id = v_shared.id
+    returning * into v_shared;
+  return v_shared;
+end
+$function$;
+
+REVOKE ALL ON FUNCTION public.share_post(uuid, uuid, uuid, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.share_post(uuid, uuid, uuid, text, text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.share_post_to_story(p_id uuid, p_original_post_id uuid, p_caption text DEFAULT NULL::text, p_background text DEFAULT NULL::text, p_audience text DEFAULT 'public'::text)
  RETURNS stories
