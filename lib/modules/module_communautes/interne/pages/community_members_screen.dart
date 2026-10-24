@@ -359,7 +359,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
               selectedReasonId!.isNotEmpty &&
               (!isOther || description.isNotEmpty);
           return AlertDialog(
-            title: Text('Signaler @$userName'),
+            title: Text('community_report_member_title'.trParams({'name': userName})),
             content: SizedBox(
               width: 420,
               child: SingleChildScrollView(
@@ -504,7 +504,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.flag_outlined, color: Colors.orange),
-              title: const Text('Signaler ce membre'),
+              title: Text('community_report_member_title'.tr),
               onTap: () {
                 Get.back();
                 _reportCommunityMember(userId, userName);
