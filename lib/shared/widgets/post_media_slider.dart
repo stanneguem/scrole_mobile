@@ -8,6 +8,8 @@ import '../../shared/widgets/app_cached_image.dart';
 import 'media_full_screen_page.dart';
 
 class PostMediaSlider extends StatefulWidget {
+  /// Parent feed post ID; autoplay requires at least half of that card to be visible.
+  final String? autoplayPostId;
   final List<PostMedia> media;
   final String? heroTagPrefix;
   final int likesCount;
@@ -18,6 +20,7 @@ class PostMediaSlider extends StatefulWidget {
 
   const PostMediaSlider({
     super.key,
+    this.autoplayPostId,
     required this.media,
     this.heroTagPrefix,
     this.likesCount = 0,
@@ -335,15 +338,35 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
 }
 
 
-/// Plays a feed video only while its card is sufficiently visible. This avoids
-/// starting every video controller in a long, lazily built feed at once.
+/// Autoplay gate driven by visibility of the complete feed post card.
+class FeedVideoAutoplayGate {
+  static final Map<String, bool> _eligiblePosts = {};
+  static final Map<String, Set<VoidCallback>> _listeners = {};
+  static bool isEligible(String postId) => _eligiblePosts[postId] == true;
+  static void updatePostVisibility(String postId, bool eligible) {
+    if (_eligiblePosts[postId] == eligible) return;
+    _eligiblePosts[postId] = eligible;
+    for (final listener in List<VoidCallback>.from(_listeners[postId] ?? <VoidCallback>{})) { listener(); }
+  }
+  static void register(String postId, VoidCallback listener) {
+    (_listeners[postId] ??= <VoidCallback>{}).add(listener);
+    listener();
+  }
+  static void unregister(String postId, VoidCallback listener) {
+    _listeners[postId]?.remove(listener);
+    if (_listeners[postId]?.isEmpty == true) _listeners.remove(postId);
+  }
+}
+
 class _InlineFeedVideo extends StatefulWidget {
+  final String? autoplayPostId;
   final String url;
   final String? thumbnailUrl;
   final VoidCallback onOpenFullScreen;
 
   const _InlineFeedVideo({
     super.key,
+    this.autoplayPostId,
     required this.url,
     required this.thumbnailUrl,
     required this.onOpenFullScreen,
@@ -358,12 +381,20 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
   bool _initializing = false;
   bool _autoPlay = true;
   bool _visible = false;
+  bool _cardEligible = false;
   bool _failed = false;
   Worker? _preferencesWorker;
 
   @override
   void initState() {
     super.initState();
+    final postId = widget.autoplayPostId;
+    if (postId != null) {
+      _cardEligible = FeedVideoAutoplayGate.isEligible(postId);
+      FeedVideoAutoplayGate.register(postId, _onCardVisibilityChanged);
+    } else {
+      _cardEligible = true;
+    }
     try {
       if (Get.isRegistered<PreferencesService>()) {
         final service = Get.find<PreferencesService>();
@@ -383,13 +414,13 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
   }
 
   Future<void> _initializeIfNeeded() async {
-    if (!_autoPlay || !_visible || _initializing || _controller != null ||
+    if (!_autoPlay || !_visible || !_cardEligible || _initializing || _controller != null ||
         widget.url.trim().isEmpty || _failed) return;
     _initializing = true;
     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     try {
       await controller.initialize();
-      if (!mounted || !_visible || !_autoPlay) {
+      if (!mounted || !_visible || !_cardEligible || !_autoPlay) {
         await controller.dispose();
         return;
       }
@@ -408,24 +439,40 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
     }
   }
 
+  void _onCardVisibilityChanged() {
+    final postId = widget.autoplayPostId;
+    if (postId == null) return;
+    final eligible = FeedVideoAutoplayGate.isEligible(postId);
+    if (_cardEligible == eligible) return;
+    _cardEligible = eligible;
+    if (!eligible) {
+      _controller?.pause();
+    } else if (_visible && _autoPlay) {
+      _initializeIfNeeded();
+      final controller = _controller;
+      if (controller != null && controller.value.isInitialized) controller.play();
+    }
+    if (mounted) setState(() {});
+  }
+
   void _onVisibilityChanged(VisibilityInfo info) {
-    final visible = info.visibleFraction >= 0.60;
+    final visible = info.visibleFraction >= 0.50;
     if (_visible == visible) return;
     _visible = visible;
     final controller = _controller;
-    if (!visible) {
+    if (!visible || !_cardEligible) {
       controller?.pause();
     } else {
       _initializeIfNeeded();
-      if (_autoPlay && controller != null && controller.value.isInitialized) {
-        controller.play();
-      }
+      if (_autoPlay && controller != null && controller.value.isInitialized) controller.play();
     }
   }
 
   @override
   void dispose() {
     _preferencesWorker?.dispose();
+    final postId = widget.autoplayPostId;
+    if (postId != null) FeedVideoAutoplayGate.unregister(postId, _onCardVisibilityChanged);
     _controller?.dispose();
     super.dispose();
   }
