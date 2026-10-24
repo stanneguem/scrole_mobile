@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/local_storage/structured/app_cache_database.dart';
 import 'package:scrole/app/local_storage/structured/preferences_local_dao.dart';
+import 'package:scrole/app/service_global/connectivity_service.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:scrole/app/repository_global/preferences_repository.dart';
 import 'package:scrole/shared/models/user_models.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
@@ -22,6 +24,7 @@ class PreferencesService extends GetxService {
   final RxBool isFlushingPending = false.obs;
 
   RealtimeChannel? _userChannel;
+  StreamSubscription<InternetStatus>? _connectivitySubscription;
 
   Future<PreferencesService> init() async {
     _dao = PreferencesLocalDao(Get.find<AppDatabase>());
@@ -39,6 +42,20 @@ class PreferencesService extends GetxService {
 
     // 2. Synchronisation initiale si l'utilisateur est connecté
     _initUserSync();
+
+    // Rejoue les changements conservés dans l'outbox dès le retour du réseau.
+    try {
+      if (Get.isRegistered<ConnectivityService>()) {
+        _connectivitySubscription = Get.find<ConnectivityService>().onStatusChange.listen((status) {
+          if (status == InternetStatus.connected) {
+            unawaited(flushPending());
+            unawaited(syncInitialSettings());
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('[Preferences] connectivity listener unavailable: $e');
+    }
 
     return this;
   }
@@ -110,6 +127,18 @@ class PreferencesService extends GetxService {
 
         _applyServerState(res);
         await _dao.clearPendingChanges(userId, throughId: snapshot.throughId);
+
+        // Keep newer optimistic edits visible if they were made while the
+        // server request was in flight; the loop will send them next.
+        final newer = await _dao.getPendingChangesSnapshot(userId);
+        if (newer.changes.isNotEmpty) {
+          final prefMap = preferences.value.toJson()..addAll(newer.changes);
+          final privacyMap = privacy.value.toJson()..addAll(newer.changes);
+          preferences.value = AppPreferences.fromJson(prefMap);
+          privacy.value = AppPrivacy.fromJson(privacyMap);
+          await _cache.set(_cacheKey, preferences.value.toJson());
+          await _cache.set(_privacyCacheKey, privacy.value.toJson());
+        }
       }
       hasMorePending = (await _dao.getPendingChangesSnapshot(userId)).changes.isNotEmpty;
     } catch (e) {
@@ -219,6 +248,7 @@ class PreferencesService extends GetxService {
   @override
   void onClose() {
     _userChannel?.unsubscribe();
+    _connectivitySubscription?.cancel();
     super.onClose();
   }
 }
