@@ -196,24 +196,29 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                         feedController.queuePostView(post);
                       }
                     },
-                    child: FeedPostCard(
-                      post: post,
-                      onRetryPublishing: () => feedController.retryQueuedPost(post.id),
-                      onReactionTap: (reaction) => feedController.handleReaction(post.id, reaction),
-                      onCommentTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => CommunityCommentsSheet(
-                            post: post,
-                            controller: Get.isRegistered<CommunityFeedController>()
-                                ? Get.find<CommunityFeedController>()
-                                : Get.put(CommunityFeedController(null, post.eventId)),
-                          ),
-                        );
-                      },
-                      onHidePost: () => feedController.hidePost(post.id),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 760),
+                        child: FeedPostCard(
+                          post: post,
+                          onRetryPublishing: () => feedController.retryQueuedPost(post.id),
+                          onReactionTap: (reaction) => feedController.handleReaction(post.id, reaction),
+                          onCommentTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => CommunityCommentsSheet(
+                                post: post,
+                                controller: Get.isRegistered<CommunityFeedController>()
+                                    ? Get.find<CommunityFeedController>()
+                                    : Get.put(CommunityFeedController(null, post.eventId)),
+                              ),
+                            );
+                          },
+                          onHidePost: () => feedController.hidePost(post.id),
+                        ),
+                      ),
                     ),
                   );
                 },
