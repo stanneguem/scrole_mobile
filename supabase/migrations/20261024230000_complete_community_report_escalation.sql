@@ -332,6 +332,11 @@ begin
   if p_action is null or p_action not in ('dismiss', 'remove_content', 'suspend_user') then
     raise exception 'Action invalide';
   end if;
+  if p_action = 'suspend_user' and not exists (
+    select 1 from public.admin_permissions_for_current_user() p where p.permission = 'users.suspend'
+  ) then
+    raise exception 'Votre rôle ne permet pas de suspendre des comptes';
+  end if;
   if char_length(coalesce(v_note, '')) > 1000 then
     raise exception 'Note trop longue (1000 caractères maximum)';
   end if;
