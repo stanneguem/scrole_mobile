@@ -298,7 +298,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
           const SizedBox(height: 12),
 
           // 2. Accès et règles -> Écran E (Admin only)
-          if (_isAdmin)
+          if (_isAdmin || _isCommunityOwner)
             _buildTile(
               icon: Icons.security_outlined,
               iconColor: Colors.green,
@@ -309,7 +309,7 @@ class _CommunitySettingsMainScreenState extends State<CommunitySettingsMainScree
           if (_isAdmin) const SizedBox(height: 12),
 
           // 3. Informations de la communauté -> Écran H (Admin only)
-          if (_isAdmin)
+          if (_isAdmin || _isCommunityOwner)
             _buildTile(
               icon: Icons.info_outline_rounded,
               iconColor: Colors.deepOrange,
@@ -2466,7 +2466,6 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
   bool _allowReports = true;
   bool _allowComments = true;
   bool _allowReactions = true;
-  bool _allowPostPromotion = true;
   bool _countriesEnabled = false;
   bool _citiesEnabled = false;
   String? _genderRestriction;
@@ -2600,7 +2599,6 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
       _allowReports = settings['allow_reports'] != false;
       _allowComments = settings['allow_comments'] != false;
       _allowReactions = settings['allow_reactions'] != false;
-      _allowPostPromotion = settings['allow_post_promotion'] != false;
       _certificationRequired = access['certification_required'] == true;
       _countriesEnabled = access['countries_enabled'] == true;
       _citiesEnabled = access['cities_enabled'] == true;
@@ -2665,7 +2663,6 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
         allowReports: _allowReports,
         allowComments: _allowComments,
         allowReactions: _allowReactions,
-        allowPostPromotion: _allowPostPromotion,
         certificationRequired: _certificationRequired,
         countriesEnabled: _countriesEnabled,
         allowedCountries: _allowedCountries.toList(),
@@ -2748,11 +2745,6 @@ class _CommunityAccessDetailsScreenState extends State<CommunityAccessDetailsScr
                             title: Text('community_settings_allow_reactions'.tr),
                             value: _allowReactions,
                             onChanged: (val) => setState(() => _allowReactions = val),
-                          ),
-                          _IosSwitchTile(
-                            title: Text('community_settings_allow_post_promotion'.tr),
-                            value: _allowPostPromotion,
-                            onChanged: (val) => setState(() => _allowPostPromotion = val),
                           ),
                         ],
                       ),
