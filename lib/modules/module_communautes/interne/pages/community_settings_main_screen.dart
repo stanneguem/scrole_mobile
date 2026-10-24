@@ -543,6 +543,25 @@ class CommunityModerationCenterScreen extends StatelessWidget {
             color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
             child: ListTile(
+              onTap: () => Get.to(() => CommunitySpamQueueScreen(communityId: communityId)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(color: Colors.deepOrange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.gpp_bad_outlined, color: Colors.deepOrange, size: 24),
+              ),
+              title: Text('community_mod_spam_title'.tr, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              subtitle: Text('community_mod_spam_subtitle'.tr, style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
+              trailing: Icon(Icons.chevron_right_rounded, color: colorScheme.outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3))),
+            child: ListTile(
               onTap: () => Get.to(() => CommunityReportsHubScreen(communityId: communityId, communityName: communityName, communityAvatar: communityAvatar)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               leading: Container(
@@ -877,6 +896,245 @@ class _CommunityPendingPostsScreenState extends State<CommunityPendingPostsScree
 }
 
 // --- Écran D : Signalements (TabView interne avec Contenus et Membres) ---
+class CommunitySpamQueueScreen extends StatefulWidget {
+  final String communityId;
+  const CommunitySpamQueueScreen({super.key, required this.communityId});
+
+  @override
+  State<CommunitySpamQueueScreen> createState() => _CommunitySpamQueueScreenState();
+}
+
+class _CommunitySpamQueueScreenState extends State<CommunitySpamQueueScreen> {
+  final CommunityService _service = Get.find<CommunityService>();
+  List<Map<String, dynamic>> _items = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _offset = 0;
+  String? _error;
+  final Set<String> _busy = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load({bool more = false}) async {
+    if (more) {
+      if (!_hasMore || _loadingMore || _loading) return;
+      setState(() => _loadingMore = true);
+    } else {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _offset = 0;
+      });
+    }
+    try {
+      final result = await _service.getCommunitySpamQueue(
+        widget.communityId,
+        limit: 20,
+        offset: more ? _offset : 0,
+      );
+      final raw = result['items'];
+      if (raw is! List) throw const FormatException('Réponse invalide de la file de spam.');
+      final page = raw.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList();
+      if (!mounted) return;
+      setState(() {
+        if (more) {
+          _items.addAll(page);
+        } else {
+          _items = page;
+        }
+        _offset = _items.length;
+        _hasMore = result['has_more'] == true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _service.localizedCommunityError(e));
+    } finally {
+      if (mounted) setState(() {
+        _loading = false;
+        _loadingMore = false;
+      });
+    }
+  }
+
+  Future<void> _moderate(Map<String, dynamic> item, String action) async {
+    final postId = item['post_id']?.toString() ?? '';
+    if (postId.isEmpty || _busy.contains(postId)) return;
+    setState(() => _busy.add(postId));
+    try {
+      await _service.moderateCommunityPost(
+        postId,
+        action,
+        reason: action == 'reject' ? 'Spam confirmé par la modération' : null,
+      );
+      await _load();
+      Get.snackbar(
+        'community_save_success'.tr,
+        action == 'approve'
+            ? 'community_mod_post_approved'.tr
+            : 'community_mod_post_rejected'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'community_save_error'.tr,
+        _service.localizedCommunityError(e),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      if (mounted) setState(() => _busy.remove(postId));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: Text('community_mod_spam_title'.tr)),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        OutlinedButton(onPressed: _load, child: Text('retry'.tr)),
+                      ],
+                    ),
+                  ),
+                )
+              : _items.isEmpty
+                  ? Center(child: Text('community_mod_spam_empty'.tr))
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _items.length + (_hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= _items.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: _loadingMore
+                                    ? const CircularProgressIndicator()
+                                    : TextButton(
+                                        onPressed: () => _load(more: true),
+                                        child: Text('community_load_more'.tr),
+                                      ),
+                              ),
+                            );
+                          }
+                          final item = _items[index];
+                          final postId = item['post_id']?.toString() ?? '';
+                          final author = item['author'] is Map
+                              ? Map<String, dynamic>.from(item['author'] as Map)
+                              : <String, dynamic>{};
+                          final name = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
+                          final username = author['username']?.toString() ?? '';
+                          final reasons = item['reasons'] is List
+                              ? (item['reasons'] as List).map((e) => e.toString()).join(', ')
+                              : '';
+                          final photos = item['photos'] is List
+                              ? (item['photos'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+                              : <String>[];
+                          final video = item['video'] is Map
+                              ? Map<String, dynamic>.from(item['video'] as Map)
+                              : <String, dynamic>{};
+                          final busy = _busy.contains(postId);
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          name.isNotEmpty ? name : (username.isNotEmpty ? '@$username' : 'excluded_members_unknown_user'.tr),
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      Text('Score ${item['score'] ?? 0}', style: TextStyle(color: colors.error, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  if (reasons.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Text('Motifs : $reasons', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
+                                  ],
+                                  if ((item['content']?.toString() ?? '').trim().isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Text(item['content'].toString(), maxLines: 6, overflow: TextOverflow.ellipsis),
+                                  ],
+                                  if (photos.isNotEmpty || video.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      height: 88,
+                                      child: ListView(
+                                        scrollDirection: Axis.horizontal,
+                                        children: [
+                                          ...photos.map((url) => Padding(
+                                            padding: const EdgeInsets.only(right: 8),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(10),
+                                              child: Image.network(url, width: 88, height: 88, fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(width: 88, height: 88, color: colors.surfaceContainerHighest, child: const Icon(Icons.broken_image_outlined)),
+                                              ),
+                                            ),
+                                          )),
+                                          if (video['thumbnail_url']?.toString().isNotEmpty == true)
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(10),
+                                              child: Image.network(video['thumbnail_url'].toString(), width: 88, height: 88, fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(width: 88, height: 88, color: colors.surfaceContainerHighest, child: const Icon(Icons.videocam_outlined)),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: busy ? null : () => _moderate(item, 'reject'),
+                                          icon: const Icon(Icons.close_rounded, color: Colors.red),
+                                          label: Text('community_mod_reject_post'.tr),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: busy ? null : () => _moderate(item, 'approve'),
+                                          icon: const Icon(Icons.check_rounded),
+                                          label: Text('community_mod_approve_post'.tr),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
+}
+
 class CommunityReportsHubScreen extends StatefulWidget {
   final String communityId;
   final String communityName;
