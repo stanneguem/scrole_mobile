@@ -370,7 +370,7 @@ class _CommunityMembersScreenState extends State<CommunityMembersScreen> {
                     Text('community_report_reason_label'.tr),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: selectedReasonId,
+                      initialValue: selectedReasonId,
                       isExpanded: true,
                       items: reasons.map((reason) {
                         final id = reason['id']?.toString() ?? '';
