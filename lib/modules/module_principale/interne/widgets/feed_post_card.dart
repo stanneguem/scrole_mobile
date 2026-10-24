@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:scrole/modules/module_communautes/externe/repositories/community_repository.dart';
+import 'package:scrole/modules/module_communautes/centre/models/community_model.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
+import 'package:scrole/modules/module_communautes/interne/pages/community_preview_screen.dart';
 import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
@@ -207,73 +210,118 @@ class FeedPostCard extends StatelessWidget {
                     ),
                   // 1. En-tête de la communauté si présente et hors du fil propre de cette communauté
                   if (showCommunityHeader) ...[
-                    GestureDetector(
-                      onTap: () => _onCommunityTap(post.communityId!),
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            ClipOval(
-                              child:
-                                  post.communityLogoUrl != null &&
-                                      post.communityLogoUrl!.isNotEmpty
-                                  ? AppCachedImage(
-                                      imageUrl: post.communityLogoUrl!,
-                                      width: 22,
-                                      height: 22,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      width: 22,
-                                      height: 22,
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.groups_rounded,
-                                        size: 14,
-                                        color: colorScheme.primary,
-                                      ),
-                                    ),
+                    Material(
+                      color: colorScheme.surfaceContainerLow.withValues(alpha: 0.78),
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        onTap: () => _onCommunityTap(context, post),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      post.communityName ?? 'Communauté',
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colorScheme.primary.withValues(alpha: 0.10),
+                                  border: Border.all(
+                                    color: colorScheme.primary.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: post.communityLogoUrl != null &&
+                                          post.communityLogoUrl!.isNotEmpty
+                                      ? AppCachedImage(
+                                          imageUrl: post.communityLogoUrl!,
+                                          width: 34,
+                                          height: 34,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Icon(
+                                          Icons.groups_rounded,
+                                          size: 20,
+                                          color: colorScheme.primary,
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            post.communityName?.trim().isNotEmpty == true
+                                                ? post.communityName!
+                                                : 'Communauté',
+                                            style: TextStyle(
+                                              fontSize: 13.5,
+                                              height: 1.15,
+                                              fontWeight: FontWeight.w700,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        if (post.communityId != null && post.communityId!.isNotEmpty)
+                                          EntityCertifiedBadge(
+                                            entityType: 'community',
+                                            entityId: post.communityId!,
+                                            size: 15,
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      post.isSuggested
+                                          ? 'Découvrir la communauté'
+                                          : 'Publication dans cette communauté',
                                       style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.primary,
+                                        fontSize: 11.5,
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                  if (post.communityId != null && post.communityId!.isNotEmpty)
-                                    EntityCertifiedBadge(
-                                      entityType: 'community',
-                                      entityId: post.communityId!,
-                                      size: 15,
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 12,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.primary.withValues(alpha: 0.10),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  post.isSuggested
+                                      ? Icons.arrow_outward_rounded
+                                      : Icons.chevron_right_rounded,
+                                  size: 19,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const Divider(height: 1, thickness: 0.5),
                     const SizedBox(height: 10),
                   ],
 
@@ -419,7 +467,7 @@ class FeedPostCard extends StatelessWidget {
                                       onPressed:
                                           onJoinCommunity ??
                                           () {
-                                            _onCommunityTap(post.communityId!);
+                                            _onCommunityTap(context, post);
                                           },
                                       icon: const Icon(
                                         Icons.group_add_rounded,
@@ -911,9 +959,30 @@ class FeedPostCard extends StatelessWidget {
     }
   }
 
-  void _onCommunityTap(String communityId) {
-    if (communityId.isNotEmpty) {
+  Future<void> _onCommunityTap(BuildContext context, CommunityPost post) async {
+    final communityId = post.communityId?.trim() ?? '';
+    if (communityId.isEmpty) return;
+
+    // A suggested community opens the existing join/request preview sheet.
+    // A community post opens the actual community page.
+    if (!post.isSuggested) {
       Get.toNamed(AppPages.communityDetailPath(communityId));
+      return;
+    }
+
+    try {
+      final service = Get.isRegistered<CommunityService>()
+          ? Get.find<CommunityService>()
+          : Get.put(CommunityService());
+      final result = await service.openCommunity(communityId);
+      if (!context.mounted) return;
+      showCommunityPreviewSheet(context, result: result);
+    } catch (error) {
+      Get.snackbar(
+        'community_preview_title'.tr,
+        error.toString().replaceFirst('Exception: ', ''),
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
