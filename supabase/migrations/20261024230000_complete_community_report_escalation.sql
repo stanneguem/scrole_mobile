@@ -361,6 +361,7 @@ declare
   v_n integer;
   v_admin uuid;
   v_c record;
+  v_profile_target uuid;
 begin
   if v_uid is null then raise exception 'Utilisateur non authentifié'; end if;
   if not coalesce(public.is_admin_or_above(), false) then
@@ -389,14 +390,14 @@ begin
     get diagnostics v_n = row_count;
     if v_n = 0 then raise exception 'Ce signalement de profil a déjà été traité'; end if;
     if p_action = 'suspend_user' then
-      select reported_user_id into v_c from public.user_profile_reports where id = p_report_id;
+      select reported_user_id into v_profile_target from public.user_profile_reports where id = p_report_id;
       update public.user_profiles set account_status = 'suspended', updated_at = now()
-      where user_id = v_c.reported_user_id and deleted_at is null;
+      where user_id = v_profile_target and deleted_at is null;
       get diagnostics v_n = row_count;
       if v_n = 0 then raise exception 'Utilisateur introuvable ou déjà supprimé'; end if;
       select id into v_admin from public.administrateur_profil where auth_id = v_uid and actif limit 1;
       insert into public.admin_user_moderation_actions (user_id, admin_id, action, reason)
-      values (v_c.reported_user_id, v_admin, 'suspend', coalesce(v_note, 'Suite à un signalement de profil externe'));
+      values (v_profile_target, v_admin, 'suspend', coalesce(v_note, 'Suite à un signalement de profil externe'));
     end if;
     return jsonb_build_object('updated', 1, 'status',
       case when p_action = 'dismiss' then 'dismissed' else 'resolved' end);
