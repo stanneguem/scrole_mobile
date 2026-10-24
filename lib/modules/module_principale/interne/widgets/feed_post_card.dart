@@ -2145,7 +2145,7 @@ class _RepublicationPostCard extends StatelessWidget {
                     ],
                     const SizedBox(height: 10),
                     GestureDetector(
-                      onTap: hasSharedPost && shared != null
+                      onTap: hasSharedPost && shared != null && post.canOpenOriginal
                           ? () => _openOriginalPost(context, post.sharedPostId!)
                           : null,
                       child: Container(
