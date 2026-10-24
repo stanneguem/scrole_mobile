@@ -1889,7 +1889,7 @@ class _CommunityPublishSheetState extends State<_CommunityPublishSheet> {
     try {
       final feedController = Get.find<HomeFeedController>();
       await feedController.sharePost(
-        originalPostId: widget.post.sharedPostId ?? widget.post.id,
+        originalPostId: widget.post.id,
         communityId: widget.communityId,
         audience: 'public',
         comment: _commentController.text.trim().isNotEmpty
