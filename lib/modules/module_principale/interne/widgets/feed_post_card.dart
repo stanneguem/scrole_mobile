@@ -2172,6 +2172,17 @@ class _RepublicationPostCard extends StatelessWidget {
                             : Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  if (!post.canOpenOriginal) ...[
+                                    Text(
+                                      'Aperçu partagé · source réservée aux membres de la communauté',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
                                   Row(
                                     children: [
                                       CircleAvatar(
