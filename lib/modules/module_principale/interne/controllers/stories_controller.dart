@@ -31,6 +31,7 @@ class StoryItem {
   bool isLiked;
   final CommunityPost? sharedPost;
   final String? sharedPostId;
+  final bool sharedPostCanOpenOriginal;
 
   StoryItem({
     required this.id,
@@ -51,6 +52,7 @@ class StoryItem {
     this.isLiked = false,
     this.sharedPost,
     this.sharedPostId,
+    this.sharedPostCanOpenOriginal = true,
   });
 
   String? get mediaUrl => imageUrl;
@@ -103,6 +105,7 @@ class StoryItem {
                map['liked'] == 1,
       sharedPost: shared,
       sharedPostId: map['shared_post_id']?.toString(),
+      sharedPostCanOpenOriginal: map['shared_post_can_open_original'] == true || map['shared_post_can_open_original'] == null,
     );
   }
 }
