@@ -71,6 +71,7 @@ class CommunityPost {
   final String? sharedPostId;
   final CommunityPost? sharedPost;
   final bool sharingEnabled;
+  final bool communitySharingEnabled;
   final bool canOpenOriginal;
   final bool commentsEnabled;
   final bool reactionsEnabled;
@@ -110,6 +111,7 @@ class CommunityPost {
     this.sharedPostId,
     this.sharedPost,
     this.sharingEnabled = true,
+    this.communitySharingEnabled = true,
     this.canOpenOriginal = true,
     this.commentsEnabled = true,
     this.reactionsEnabled = true,
@@ -129,6 +131,7 @@ class CommunityPost {
 
   int get sharesCount => shareCount;
   int get viewsCount => viewCount;
+  bool get canRepost => sharingEnabled && communitySharingEnabled;
 
   factory CommunityPost.fromMap(Map<String, dynamic> map) {
     final authorMap = map['author'] is Map ? Map<String, dynamic>.from(map['author']) : <String, dynamic>{};
@@ -251,6 +254,9 @@ class CommunityPost {
       sharedPostId: map['shared_post_id']?.toString(),
       sharedPost: shared,
       sharingEnabled: map['sharing_enabled'] != false,
+      communitySharingEnabled: map['community'] is Map
+          ? (map['community']['allow_post_sharing'] != false)
+          : true,
       canOpenOriginal: map['shared_post_can_open_original'] != false && map['can_open_original'] != false,
       commentsEnabled: map['comments_enabled'] != false,
       reactionsEnabled: map['reactions_enabled'] != false,
@@ -310,6 +316,7 @@ class CommunityPost {
       sharedPostId: sharedPostId,
       sharedPost: sharedPost,
       sharingEnabled: sharingEnabled,
+      communitySharingEnabled: communitySharingEnabled,
       canOpenOriginal: canOpenOriginal,
       commentsEnabled: commentsEnabled,
       reactionsEnabled: reactionsEnabled,
