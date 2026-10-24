@@ -141,7 +141,11 @@ class ProfileController extends GetxController {
           : <Map<String, dynamic>>[];
 
       if (index == 0) {
-        userPosts.assignAll(rows.map(CommunityPost.fromMap));
+        // Le profil personnel n'affiche que les publications du fil d'actualité.
+        // Les publications créées dans une communauté restent dans le fil communautaire.
+        final posts = rows.map(CommunityPost.fromMap).where((post) =>
+            post.communityId == null || post.communityId!.trim().isEmpty);
+        userPosts.assignAll(posts);
       } else if (index == 2) {
         savedPosts.assignAll(rows.map(CommunityPost.fromMap));
       } else {
