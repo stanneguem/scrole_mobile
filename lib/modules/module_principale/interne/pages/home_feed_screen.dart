@@ -6,6 +6,7 @@ import '../controllers/home_feed_controller.dart';
 import '../controllers/main_layout_controller.dart';
 import '../controllers/stories_controller.dart';
 import '../widgets/feed_post_card.dart';
+import '../../../../shared/widgets/post_media_slider.dart';
 import '../widgets/community_comments_sheet.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
@@ -189,7 +190,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   return VisibilityDetector(
                     key: Key('post_vis_${post.id}'),
                     onVisibilityChanged: (info) {
-                      if (info.visibleFraction >= 0.5) {
+                      final eligible = info.visibleFraction >= 0.50;
+                      FeedVideoAutoplayGate.updatePostVisibility(post.id, eligible);
+                      if (eligible) {
                         feedController.queuePostView(post);
                       }
                     },
