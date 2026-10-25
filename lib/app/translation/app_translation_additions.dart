@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'update_required_version': "Version disponible",
+      'update_store_unavailable': "Le lien vers la boutique n’est pas encore configuré. Réessaie plus tard.",
       'events_ongoing': 'En cours',
       'events_price_from': 'À partir de @price',
       'events_paid_entry': 'Entrée payante',
@@ -401,6 +403,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'Voulez-vous vraiment supprimer cette règle ?',
     },
     'en': {
+      'update_required_version': "Available version",
+      'update_store_unavailable': "The app store link is not configured yet. Please try again later.",
       'story_comment_title': 'Comment on story',
       'story_write_comment_hint': 'Write a comment...',
       'story_reply_action': 'Reply',
@@ -793,6 +797,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'Do you really want to delete this rule?',
     },
     'es': {
+      'update_required_version': "Versión disponible",
+      'update_store_unavailable': "El enlace a la tienda aún no está configurado. Inténtalo más tarde.",
       'select_participation_days': 'Seleccionar días',
       'edit_participation_days': 'Editar mis días',
       'save': 'Guardar',
@@ -1092,6 +1098,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': '¿Realmente deseas eliminar esta regla?',
     },
     'de': {
+      'update_required_version': "Verfügbare Version",
+      'update_store_unavailable': "Der Store-Link ist noch nicht konfiguriert. Bitte versuche es später erneut.",
       'status_online': 'Online',
       'status_offline': 'Offline',
       'events_ongoing': 'Laufend',
@@ -1374,6 +1382,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'Möchten Sie diese Regel wirklich löschen?',
     },
     'it': {
+      'update_required_version': "Versione disponibile",
+      'update_store_unavailable': "Il link allo store non è ancora configurato. Riprova più tardi.",
       'status_online': 'In linea',
       'status_offline': 'Non in linea',
       'events_ongoing': 'In corso',
@@ -1656,6 +1666,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'Vuoi davvero eliminare questa regola?',
     },
     'pt': {
+      'update_required_version': "Versão disponível",
+      'update_store_unavailable': "O link da loja ainda não está configurado. Tente novamente mais tarde.",
       'status_online': 'Online',
       'status_offline': 'Offline',
       'events_ongoing': 'Em andamento',
@@ -1938,6 +1950,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'Deseja realmente excluir esta regra?',
     },
     'zh': {
+      'update_required_version': "可用版本",
+      'update_store_unavailable': "尚未配置应用商店链接，请稍后重试。",
       'status_online': '在线',
       'status_offline': '离线',
       'events_ongoing': '进行中',
@@ -2220,6 +2234,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': '确定要删除这条规则吗？',
     },
     'ja': {
+      'update_required_version': "利用可能なバージョン",
+      'update_store_unavailable': "ストアへのリンクがまだ設定されていません。後でもう一度お試しください。",
       'status_online': 'オンライン',
       'status_offline': 'オフライン',
       'events_ongoing': '開催中',
@@ -2501,6 +2517,8 @@ class AppTranslationAdditions {
       'community_rule_delete_msg': 'このルールを本当に削除しますか？',
     },
     'ru': {
+      'update_required_version': "Доступная версия",
+      'update_store_unavailable': "Ссылка на магазин ещё не настроена. Повторите попытку позже.",
       'status_online': 'В сети',
       'status_offline': 'Не в сети',
       'events_ongoing': 'В процессе',
