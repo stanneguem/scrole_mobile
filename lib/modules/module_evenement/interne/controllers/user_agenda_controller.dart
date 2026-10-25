@@ -45,12 +45,18 @@ class UserAgendaController extends GetxController {
   }
 
   Future<void> removeFromAgenda(String eventId) async {
+    final userId = Get.find<AuthService>().userId;
+    if (userId == null || userId.isEmpty) {
+      Get.snackbar('Connexion requise', 'Connectez-vous pour modifier votre agenda.');
+      return;
+    }
     try {
-      final userId = Get.find<AuthService>().userId ?? '';
       await _repository.removeEventFromCalendarOptimistic(eventId, userId);
       myAgenda.removeWhere((e) => e.id == eventId);
+      Get.snackbar('Agenda', 'Événement retiré de votre agenda.', snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Get.snackbar('Erreur', 'Impossible de retirer l\'événement de votre agenda.');
+      await loadMyAgenda();
     }
   }
 }

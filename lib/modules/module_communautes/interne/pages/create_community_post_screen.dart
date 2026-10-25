@@ -444,7 +444,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
   }
 
-  void _publish() {
+  Future<void> _publish() async {
     if (!_canPublish) return;
 
     List<File> filesToPublish = List.from(_selectedFiles);
@@ -469,7 +469,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    Get.back();
+    if (_isPublishing) return;
+    setState(() => _isPublishing = true);
 
     CommunityFeedController? feedController;
     try {
@@ -507,30 +508,53 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
-    unawaited(() async {
-      try {
-        await service.createCommunityPost(
-      requestedPostId: postId,
-      communityId: cId,
-      content: postContent,
-      imageFiles: filesToPublish,
-      audience: isCommunity ? 'public' : _audience,
-      commentsEnabled: _commentsEnabled,
-      sharingEnabled: _sharingEnabled,
-      reactionsEnabled: _reactionsEnabled,
-      hashtags: hashtagsList,
-      mentions: mentionsList,
-      poll: _pollData,
-      allowPromotion: isCommunity ? _allowPromotion : true,
+    try {
+      await service.createCommunityPost(
+        requestedPostId: postId,
+        communityId: cId,
+        content: postContent,
+        imageFiles: filesToPublish,
+        audience: isCommunity ? 'public' : _audience,
+        commentsEnabled: _commentsEnabled,
+        sharingEnabled: _sharingEnabled,
+        reactionsEnabled: _reactionsEnabled,
+        hashtags: hashtagsList,
+        mentions: mentionsList,
+        poll: _pollData,
+        allowPromotion: isCommunity ? _allowPromotion : true,
+      );
+      if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
+        await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
+          'p_source_type': 'post',
+          'p_source_id': postId,
+          'p_community_ids': _selectedCommunityIds.toList(),
+          'p_event_ids': _selectedEventIds.toList(),
+        });
+      }
+      if (!mounted) return;
+      Get.back();
+      if (feedController != null) {
+        await feedController.fetchCommunityFeed(isRefresh: true);
+      }
+      Get.snackbar(
+        'Publication envoyée',
+        'La publication a été transmise au serveur.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+      if (mounted) {
+        setState(() => _isPublishing = false);
+        Get.snackbar(
+          'Publication non confirmée',
+          e.toString().replaceFirst('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 6),
         );
-        if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
-          await Supabase.instance.client.rpc('save_content_entity_mentions', params: {
-            'p_source_type': 'post', 'p_source_id': postId,
-            'p_community_ids': _selectedCommunityIds.toList(), 'p_event_ids': _selectedEventIds.toList(),
-          });
-        }
-      } catch (e) { debugPrint('[MENTIONS] Post publish/entity mention error: $e'); }
-    }());
+      }
+    }
   }
 
   Future<void> _openGallery() async {
@@ -805,18 +829,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                colorScheme.primary.withValues(alpha: 0.09),
-                                colorScheme.tertiary.withValues(alpha: 0.06),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: colorScheme.primary.withValues(alpha: 0.28)),
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: .55)),
+                            boxShadow: [BoxShadow(color: colorScheme.shadow.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? .08 : .04), blurRadius: 22, offset: const Offset(0, 7))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,12 +891,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                 final isCorrect = _pollData!['kind'] == 'quiz' &&
                                     rawOption is Map && rawOption['is_correct'] == true;
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 7),
+                                  padding: const EdgeInsets.only(bottom: 9),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: colorScheme.surface.withValues(alpha: 0.9),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(15),
                                       border: Border.all(
                                         color: isCorrect ? Colors.green.withValues(alpha: 0.7) : colorScheme.outlineVariant.withValues(alpha: 0.55),
                                       ),

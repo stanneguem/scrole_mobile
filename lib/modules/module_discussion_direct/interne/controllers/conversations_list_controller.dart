@@ -15,7 +15,16 @@ class ConversationsListController extends GetxController {
 
   List<ConversationModel> get filteredConversations {
     final query = searchQuery.value.trim().toLowerCase();
-    final source = query.isEmpty ? conversations : conversations.where((c) => (c.name ?? '').toLowerCase().contains(query)).toList();
+    final source = query.isEmpty
+        ? conversations.toList()
+        : conversations.where((c) => (c.name ?? '').toLowerCase().contains(query)).toList();
+    source.sort((a, b) {
+      final aAt = a.lastMessage?.createdAt ?? a.updatedAt;
+      final bAt = b.lastMessage?.createdAt ?? b.updatedAt;
+      final byActivity = bAt.compareTo(aAt);
+      if (byActivity != 0) return byActivity;
+      return b.updatedAt.compareTo(a.updatedAt);
+    });
     return source.toList(growable: false);
   }
 

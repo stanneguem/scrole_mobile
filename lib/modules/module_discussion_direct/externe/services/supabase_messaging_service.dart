@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/models/message.dart';
 import '../../centre/models/conversation.dart';
@@ -134,7 +135,22 @@ class SupabaseMessagingService {
     return null;
   }
 
-  Future<void> markDelivered(String id) => _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+  Future<void> markDelivered(String id, {bool cleanupMedia = true}) async {
+    // Persist the receipt first. The cleanup Edge Function independently verifies
+    // the authenticated recipient and the persisted delivery receipt before deleting.
+    await _client.rpc('mark_direct_message_delivered', params: {'p_message_id': id});
+    if (!cleanupMedia) return;
+    try {
+      await _client.functions.invoke(
+        'delete-delivered-message-media',
+        body: {'message_id': id},
+      );
+    } catch (error) {
+      // A delivery receipt is still valid if R2 is temporarily unavailable.
+      // A repeated incoming event retries this call; server-side deletion is idempotent.
+      debugPrint('[Messaging] Delivered-media cleanup deferred: $error');
+    }
+  }
   Future<void> markRead(String conversationId, DateTime at, String id) => _client.rpc('mark_direct_conversation_read_cursor', params: {
         'p_conversation_id': conversationId,
         'p_last_read_at': at.toUtc().toIso8601String(),
@@ -242,14 +258,65 @@ class SupabaseMessagingService {
     await _client.removeChannel(channel);
   }
 
-  Future<String?> uploadFile(String localPath, String folder, {String? contentType}) async {
+  Future<String?> uploadFile(
+    String localPath,
+    String folder, {
+    String? contentType,
+    String? conversationId,
+  }) async {
     final uid = currentUserId;
     if (uid == null) return null;
     final file = File(localPath);
     if (!await file.exists()) return null;
+    final resolvedType = contentType ?? 'application/octet-stream';
+    final size = await file.length();
+    final rawExtension = file.uri.pathSegments.last.split('.').last.toLowerCase();
+    final extension = rawExtension == 'jpeg' ? 'jpg' : rawExtension;
+    final mediaType = resolvedType.startsWith('audio/')
+        ? 'audio'
+        : resolvedType.startsWith('video/')
+            ? 'video'
+            : 'image';
+
+    // Direct-message media is private in R2. Only store the returned object key;
+    // the recipient obtains short-lived download URLs through the same Edge Function.
+    if (conversationId != null && conversationId.isNotEmpty) {
+      final signed = await _client.functions.invoke(
+        'r2-media-upload',
+        body: {
+          'action': 'create-upload-url',
+          'category': 'message_media',
+          'entity_id': conversationId,
+          'media_type': mediaType,
+          'content_type': resolvedType,
+          'size_bytes': size,
+          'extension': extension,
+        },
+      );
+      final payload = signed.data;
+      if (signed.status < 200 || signed.status >= 300 || payload is! Map) return null;
+      final uploadUrl = payload['upload_url']?.toString();
+      final objectKey = payload['object_key']?.toString();
+      if (uploadUrl == null || uploadUrl.isEmpty || objectKey == null || !objectKey.startsWith('messages/$conversationId/$uid/')) return null;
+      final client = HttpClient();
+      try {
+        final request = await client.putUrl(Uri.parse(uploadUrl));
+        request.headers.set(HttpHeaders.contentTypeHeader, resolvedType);
+        request.contentLength = size;
+        await request.addStream(file.openRead());
+        final response = await request.close();
+        await response.drain<void>();
+        if (response.statusCode < 200 || response.statusCode >= 300) return null;
+        return objectKey;
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    // Keep legacy non-message upload behavior for any other caller.
     final name = file.uri.pathSegments.last;
     final path = '$uid/chat/$folder/${DateTime.now().microsecondsSinceEpoch}_$name';
-    await _client.storage.from('chat-media').upload(path, file, fileOptions: FileOptions(contentType: contentType, upsert: false));
+    await _client.storage.from('chat-media').upload(path, file, fileOptions: FileOptions(contentType: resolvedType, upsert: false));
     return path;
   }
 }

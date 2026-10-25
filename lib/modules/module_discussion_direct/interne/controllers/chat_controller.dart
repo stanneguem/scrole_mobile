@@ -66,21 +66,15 @@ class ChatController extends GetxController {
     final cache = Get.find<FastCacheService>();
     final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
     if (targetId.isEmpty) return;
-    final key = 'chat_wallpaper_$targetId';
-    final saved = cache.get<String>(key);
-    selectedWallpaper.value = saved ?? 'fond1';
+    selectedWallpaper.value = cache.get<String>('chat_wallpaper_$targetId') ?? 'fond1';
   }
 
   Future<void> setWallpaper(String wallpaperKey) async {
     selectedWallpaper.value = wallpaperKey;
     selectedWallpaper.refresh();
-    if (Get.isRegistered<FastCacheService>()) {
-      final cache = Get.find<FastCacheService>();
-      final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
-      if (targetId.isNotEmpty) {
-        final key = 'chat_wallpaper_$targetId';
-        await cache.set(key, wallpaperKey);
-      }
+    final targetId = conversationId.isNotEmpty ? conversationId : otherUserId;
+    if (Get.isRegistered<FastCacheService>() && targetId.isNotEmpty) {
+      await Get.find<FastCacheService>().set('chat_wallpaper_$targetId', wallpaperKey);
     }
   }
 

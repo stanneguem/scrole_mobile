@@ -73,9 +73,42 @@ class MessagesDao {
       if (message.localId != message.id) await _mediaCache.deleteMessageMedia(userId, message.localId);
       return;
     }
-    final existing = await db.query('direct_chat_messages', columns: ['id'], where: 'user_id = ? AND local_id = ?', whereArgs: [userId, message.localId], limit: 1);
-    if (existing.isNotEmpty && '${existing.first['id']}' != message.id) await db.delete('direct_chat_messages', where: 'user_id = ? AND id = ?', whereArgs: [userId, existing.first['id']]);
-    await db.insert('direct_chat_messages', _toRow(userId, message), conflictAlgorithm: ConflictAlgorithm.replace);
+    // Les synchronisations serveur/Realtime peuvent renvoyer un ancien état
+    // ("sent") après un accusé de réception ("delivered"/"read"). Ne jamais
+    // faire régresser un accusé déjà enregistré localement.
+    final existing = await db.query(
+      'direct_chat_messages',
+      columns: ['id', 'local_id', 'status'],
+      where: 'user_id = ? AND (id = ? OR local_id = ?)',
+      whereArgs: [userId, message.id, message.localId],
+      limit: 1,
+    );
+    var incoming = message;
+    if (existing.isNotEmpty) {
+      final previousId = '${existing.first['id']}';
+      final previousLocalId = '${existing.first['local_id'] ?? existing.first['id']}';
+      final previousStatus = _status('${existing.first['status']}');
+      if (previousStatus == MessageStatus.read &&
+          message.status != MessageStatus.failed &&
+          message.status != MessageStatus.error) {
+        incoming = message.copyWith(status: MessageStatus.read, localId: previousLocalId);
+      } else if ((previousStatus == MessageStatus.delivered ||
+                  previousStatus == MessageStatus.received) &&
+          message.status != MessageStatus.read &&
+          message.status != MessageStatus.failed &&
+          message.status != MessageStatus.error) {
+        incoming = message.copyWith(status: MessageStatus.delivered, localId: previousLocalId);
+      } else if (previousStatus == MessageStatus.sent &&
+          (message.status == MessageStatus.pending ||
+           message.status == MessageStatus.sending)) {
+        incoming = message.copyWith(status: MessageStatus.sent, localId: previousLocalId);
+      }
+      if (previousId != message.id) {
+        await db.delete('direct_chat_messages',
+            where: 'user_id = ? AND id = ?', whereArgs: [userId, previousId]);
+      }
+    }
+    await db.insert('direct_chat_messages', _toRow(userId, incoming), conflictAlgorithm: ConflictAlgorithm.replace);
     _changes.add('$userId:${message.conversationId}');
   }
 

@@ -138,7 +138,7 @@ class ContactsScreen extends GetView<ContactsController> {
                   ),
                   if (contact.isCertified) ...[
                     const SizedBox(width: 4),
-                    const UserCertifiedBadge(size: 14),
+                    UserCertifiedBadge(size: 14, userId: contact.id)
                   ],
                 ],
               ),

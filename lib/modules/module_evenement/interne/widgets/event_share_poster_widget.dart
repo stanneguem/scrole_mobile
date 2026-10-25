@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/event_preview_model.dart';
 
 /// Widget d'affiche promotionnelle événementielle (Format 9:16 Réseaux Sociaux).
@@ -33,7 +34,7 @@ class EventSharePosterWidget extends StatelessWidget {
     return Container(
       width: 540,
       height: 960,
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topCenter,
@@ -44,7 +45,8 @@ class EventSharePosterWidget extends StatelessWidget {
             Color(0xFF0F172A),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,16 +98,24 @@ class EventSharePosterWidget extends StatelessWidget {
           const SizedBox(height: 20),
 
           // ─── TITRE ÉVÉNEMENT ───
-          Text(
-            event.name,
-            style: GoogleFonts.spaceGrotesk(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              height: 1.15,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  event.name,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 24),
+            ],
           ),
 
           const SizedBox(height: 20),
@@ -113,12 +123,12 @@ class EventSharePosterWidget extends StatelessWidget {
           // ─── VISUEL / COUVERTURE ───
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(26),
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(26),
                 ),
                 child: event.coverImageUrl != null && event.coverImageUrl!.isNotEmpty
                     ? AppCachedImage(
@@ -146,10 +156,10 @@ class EventSharePosterWidget extends StatelessWidget {
 
           // ─── CARTES INFO: DATE, LIEU, PRIX ───
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E293B).withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(16),
+              color: const Color(0xFF1E293B).withValues(alpha: 0.82),
+              borderRadius: BorderRadius.circular(22),
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Column(

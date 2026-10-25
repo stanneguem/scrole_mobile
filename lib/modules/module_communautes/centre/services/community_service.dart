@@ -901,19 +901,32 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
     final db = await Get.find<AppDatabase>().database;
     final now = DateTime.now().toIso8601String();
+
+    // Some installed app_local.db versions have a NOT NULL operation_type
+    // column in post_outbox, while older versions do not. Inspect the actual
+    // local schema so publishing works on both without forcing data deletion.
+    final postOutboxColumns = await db.rawQuery('PRAGMA table_info(post_outbox)');
+    final hasOperationType = postOutboxColumns.any(
+      (column) => column['name']?.toString() == 'operation_type',
+    );
+    final outboxRow = <String, Object?>{
+      'operation_id': operationId,
+      'user_id': userId,
+      'community_id': communityId.isEmpty ? null : communityId,
+      'payload': jsonEncode(payload),
+      'status': 'pending',
+      'attempt_count': 0,
+      'next_retry_at': 0,
+      'created_at': now,
+      'updated_at': now,
+    };
+    if (hasOperationType) {
+      outboxRow['operation_type'] = 'create';
+    }
+
     await db.insert(
       'post_outbox',
-      {
-        'operation_id': operationId,
-        'user_id': userId,
-        'community_id': communityId.isEmpty ? null : communityId,
-        'payload': jsonEncode(payload),
-        'status': 'pending',
-        'attempt_count': 0,
-        'next_retry_at': 0,
-        'created_at': now,
-        'updated_at': now,
-      },
+      outboxRow,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
@@ -922,7 +935,29 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
         Get.put(CommunityOutboxProcessor());
       }
       await Get.find<CommunityOutboxProcessor>().processPendingPosts();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[POST] Immediate outbox processing failed for $postId: $e');
+    }
+
+    // Do not silently report success when the server rejected the publication.
+    // Keep the outbox entry for retry, but return the actual backend error to
+    // the composer so the author knows the post has not yet been published.
+    try {
+      final pending = await db
+          .query('post_outbox', where: 'operation_id = ?', whereArgs: [operationId], limit: 1);
+      if (pending.isNotEmpty) {
+        final rawError = pending.first['last_error']?.toString().trim();
+        final detail = (rawError == null || rawError.isEmpty)
+            ? 'La publication est enregistrée pour une nouvelle tentative.'
+            : rawError;
+        throw Exception('Publication non confirmée : $detail');
+      }
+    } catch (e) {
+      if (e is Exception && e.toString().startsWith('Exception: Publication non confirmée')) {
+        rethrow;
+      }
+      debugPrint('[POST] Could not verify outbox result for $postId: $e');
+    }
   }
 
   String _generateUuidV4() {

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import '../../centre/models/event_comment.dart';
 import '../controllers/event_comments_controller.dart';
 
@@ -117,14 +118,22 @@ class _EventCommentsScreenState extends State<EventCommentsScreen> {
               ],
             ),
             if (widget.eventName != null && widget.eventName!.isNotEmpty)
-              Text(
-                widget.eventName!,
-                style: AppTextStyles.caption.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.eventName!,
+                      style: AppTextStyles.caption.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  EntityCertifiedBadge(entityType: 'event', entityId: widget.eventId, size: 14),
+                ],
               ),
           ],
         ),

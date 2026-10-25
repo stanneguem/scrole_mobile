@@ -7,6 +7,7 @@ import 'package:lottie/lottie.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../shared/widgets/expandable_text_widget.dart';
 import 'package:scrole/modules/module_evenement/interne/pages/report_event_sheet.dart';
 import '../../../../../app_controller.dart';
@@ -23,6 +24,7 @@ import '../../centre/models/event_day_models.dart';
 import '../enums/event_enum.dart';
 import '../widgets/add_to_calendar_dialog.dart';
 import 'event_days_selector_screen.dart';
+import 'event_itinerary_screen.dart';
 import 'event_comments_screen.dart';
 import 'event_rating_screen.dart';
 import '../widgets/event_share_options_sheet.dart';
@@ -711,7 +713,12 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                         ),
                         const SizedBox(height: 16),
 
-                        Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface)),
+                        Row(
+                          children: [
+                            Expanded(child: Text(event.name, style: AppTextStyles.h2.copyWith(color: colorScheme.onSurface))),
+                            EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 22),
+                          ],
+                        ),
                         Text(
                           '@${event.slug}',
                           style: AppTextStyles.body.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
@@ -1024,22 +1031,51 @@ class _EventDetailPageState extends State<EventDetailPage> with SingleTickerProv
                     Row(
                       children: [
                         Expanded(
+                          flex: _isEventAdded ? 5 : 1,
                           child: ElevatedButton.icon(
                             onPressed: _isCalendarLoading ? null : _handleCalendarAction,
                             icon: Icon(_isEventAdded ? Icons.check_rounded : Icons.calendar_today_rounded, size: 18),
                             label: Text(
                               _isEventAdded ? 'Ajouté à mon agenda' : 'Ajouter à mon agenda',
                               style: AppTextStyles.buttonSmall.copyWith(fontSize: 13, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isEventAdded ? AppColors.success : colorScheme.surfaceContainerHighest,
                               foregroundColor: _isEventAdded ? AppColors.white : colorScheme.onSurface,
-                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
                           ),
                         ),
+                        if (_isEventAdded) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 5,
+                            child: ElevatedButton.icon(
+                              onPressed: () => Get.to(
+                                () => EventItineraryScreen(event: widget.event),
+                                transition: Transition.rightToLeft,
+                              ),
+                              icon: const Icon(Icons.route_rounded, size: 18),
+                              label: const Text(
+                                'Organiser mon parcours',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -1219,7 +1255,7 @@ class _RestrictedPreviewView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint'),
+        title: Row(children: [Expanded(child: Text(event.name.isNotEmpty ? event.name : 'Aperçu restreint', maxLines: 1, overflow: TextOverflow.ellipsis)), EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 18)]),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Get.back(),

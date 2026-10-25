@@ -119,12 +119,35 @@ class ChatMediaCache {
     if (existing != null) return existing;
 
     try {
+      if (remoteUrl.startsWith('messages/')) {
+        final client = Supabase.instance.client;
+        final signed = await client.functions.invoke(
+          'r2-media-upload',
+          body: {'action': 'create-download-url', 'object_key': remoteUrl},
+        );
+        final payload = signed.data;
+        if (signed.status < 200 || signed.status >= 300 || payload is! Map) return null;
+        final url = payload['url']?.toString();
+        if (url == null || url.isEmpty) return null;
+        final http = HttpClient();
+        try {
+          final request = await http.getUrl(Uri.parse(url));
+          final response = await request.close();
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            await response.drain<void>();
+            return null;
+          }
+          final bytes = await consolidateHttpClientResponseBytes(response);
+          return cacheBytes(remoteUrl, bytes);
+        } finally {
+          http.close(force: true);
+        }
+      }
       final storagePath = isHttpUrl(remoteUrl) ? _storagePathFromPublicUrl(remoteUrl) : remoteUrl;
-      final response = await Supabase.instance.client.storage
-          .from('chat-media')
-          .download(storagePath);
+      final response = await Supabase.instance.client.storage.from('chat-media').download(storagePath);
       return cacheBytes(remoteUrl, response);
-    } catch (_) {
+    } catch (error) {
+      debugPrint('[ChatMediaCache] Media download failed: $error');
       return null;
     }
   }

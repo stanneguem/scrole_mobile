@@ -15,6 +15,7 @@ import 'event_interests_screen.dart';
 import 'event_guest_invitations_screen.dart';
 import 'event_sponsors_screen.dart';
 import 'event_open_days_screen.dart';
+import 'package:scrole/modules/module_communautes/interne/pages/community_settings_main_screen.dart';
 
 class EventSettingsScreen extends StatelessWidget {
   const EventSettingsScreen({super.key});
@@ -24,8 +25,9 @@ class EventSettingsScreen extends StatelessWidget {
     final EventModel event = Get.arguments is Map ? Get.arguments['event'] : Get.arguments;
     final controller = Get.put(EventManagementController(event: event), tag: event.id);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    final isCreator = (event.creatorId == currentUserId || event.userRole == 'fondateur' || event.userRole == 'owner') &&
-        (event.userRole != 'co_createur');
+    // La propriété repose sur l'identifiant du créateur, pas sur le rôle d'affichage.
+    // L'accès à la certification est en plus confirmé par le RPC serveur.
+    final isCreator = event.creatorId == currentUserId;
 
     return Scaffold(
       appBar: AppBar(
@@ -80,6 +82,42 @@ class EventSettingsScreen extends StatelessWidget {
             }
             return const SizedBox.shrink();
           }),
+
+          // --- CERTIFICATION (source de vérité : backend) ---
+          FutureBuilder<dynamic>(
+            future: Supabase.instance.client.rpc(
+              'scrole_get_entity_certification_status',
+              params: {'p_entity_type': 'event', 'p_entity_id': event.id},
+            ),
+            builder: (context, snapshot) {
+              final status = snapshot.data is Map
+                  ? Map<String, dynamic>.from(snapshot.data as Map)
+                  : <String, dynamic>{};
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  status['is_owner'] != true) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: ScroleBottomSheetGroup(
+                  children: [
+                    ScroleBottomSheetAction(
+                      icon: Icons.verified_user_outlined,
+                      label: 'Certifier l’événement',
+                      subtitle: status['entity_certified'] == true
+                          ? 'Certification active · gérer les droits'
+                          : 'Consulter vos droits inclus ou acheter une certification',
+                      onTap: () => Get.to(() => EntityCertificationManagementScreen(
+                        entityType: 'event',
+                        entityId: event.id,
+                        entityName: event.name,
+                      )),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
 
           // --- SECTION ÉVÉNEMENT ---
           Text(
@@ -139,67 +177,90 @@ class EventSettingsScreen extends StatelessWidget {
             style: AppTextStyles.labelSmall.copyWith(color: Theme.of(context).colorScheme.primary, letterSpacing: 1.2),
           ),
           const SizedBox(height: 8),
-          ScroleBottomSheetGroup(
-            children: [
-              ScroleBottomSheetAction(
-                icon: Icons.insights_rounded,
-                label: 'Statistiques de l\'événement',
-                subtitle: 'Tableau de bord et indicateurs de performance',
-                onTap: () => Get.to(() => EventStatsDashboardScreen(event: event)),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
+          FutureBuilder<dynamic>(
+            future: Supabase.instance.client.rpc(
+              'scrole_get_entity_certification_status',
+              params: {'p_entity_type': 'event', 'p_entity_id': event.id},
+            ),
+            builder: (context, snapshot) {
+              final cert = snapshot.data is Map
+                  ? Map<String, dynamic>.from(snapshot.data as Map)
+                  : <String, dynamic>{};
+              final eventCertified = cert['entity_certified'] == true;
+              final communityCertified = cert['community_certified'] == true;
+              final actions = <Widget>[];
+              if (eventCertified) {
+                actions.add(ScroleBottomSheetAction(
+                  icon: Icons.insights_rounded,
+                  label: 'Statistiques de l\'événement',
+                  subtitle: 'Tableau de bord et indicateurs de performance',
+                  onTap: () => Get.to(() => EventStatsDashboardScreen(event: event)),
+                ));
+                actions.add(const ScroleBottomSheetDivider());
+              }
+              actions.add(ScroleBottomSheetAction(
                 icon: Icons.stars_outlined,
                 label: 'Gérer les co-fondateurs',
-                subtitle: 'Sélection d\'un co-fondateur parmi les membres du staff',
+                subtitle: 'Limites applicables aux événements non certifiés',
                 onTap: () => Get.toNamed(
                   AppPages.eventCoCreators.replaceFirst(':id', event.id),
                   arguments: event,
                 ),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
+              ));
+              actions.add(const ScroleBottomSheetDivider());
+              actions.add(ScroleBottomSheetAction(
                 icon: Icons.people_outline,
                 label: 'Gérer le staff',
-                subtitle: 'Gérer l\'équipe et attribuer les activités',
+                subtitle: eventCertified ? 'Gérer l’équipe et attribuer les activités' : 'Plafond du staff applicable aux événements non certifiés',
                 onTap: () => Get.toNamed(
                   AppPages.eventStaff.replaceFirst(':id', event.id),
                   arguments: {'event': event, 'initialTab': 0},
                 ),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
-                icon: Icons.mark_email_read_outlined,
-                label: 'Invitations d\'honneur',
-                subtitle: 'Inviter des personnalités ou profils publics',
-                onTap: () => Get.to(() => EventGuestInvitationsScreen(event: event)),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
-                icon: Icons.workspace_premium_outlined,
-                label: 'Sponsors',
-                subtitle: 'Inviter et gérer les sponsors de l\'événement',
-                onTap: () => Get.to(() => EventSponsorsScreen(event: event)),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
-                icon: Icons.confirmation_number_outlined,
-                label: 'Gérer la billetterie',
-                onTap: () => Get.toNamed(
-                  AppPages.eventTickets.replaceFirst(':id', event.id),
-                  arguments: event,
+              ));
+              if (eventCertified) {
+                actions.addAll([
+                  const ScroleBottomSheetDivider(),
+                  ScroleBottomSheetAction(
+                    icon: Icons.mark_email_read_outlined,
+                    label: 'Invitations d\'honneur',
+                    subtitle: 'Inviter des personnalités ou profils publics',
+                    onTap: () => Get.to(() => EventGuestInvitationsScreen(event: event)),
+                  ),
+                  const ScroleBottomSheetDivider(),
+                  ScroleBottomSheetAction(
+                    icon: Icons.workspace_premium_outlined,
+                    label: 'Sponsors',
+                    subtitle: 'Inviter et gérer les sponsors de l\'événement',
+                    onTap: () => Get.to(() => EventSponsorsScreen(event: event)),
+                  ),
+                ]);
+              }
+              if (eventCertified || communityCertified) {
+                actions.addAll([
+                  const ScroleBottomSheetDivider(),
+                  ScroleBottomSheetAction(
+                    icon: Icons.confirmation_number_outlined,
+                    label: 'Gérer la billetterie',
+                    onTap: () => Get.toNamed(
+                      AppPages.eventTickets.replaceFirst(':id', event.id),
+                      arguments: event,
+                    ),
+                  ),
+                ]);
+              }
+              actions.addAll([
+                const ScroleBottomSheetDivider(),
+                ScroleBottomSheetAction(
+                  icon: Icons.assignment_outlined,
+                  label: 'Gérer les activités',
+                  onTap: () => Get.toNamed(
+                    AppPages.eventActivities.replaceFirst(':id', event.id),
+                    arguments: event,
+                  ),
                 ),
-              ),
-              const ScroleBottomSheetDivider(),
-              ScroleBottomSheetAction(
-                icon: Icons.assignment_outlined,
-                label: 'Gérer les activités',
-                onTap: () => Get.toNamed(
-                  AppPages.eventActivities.replaceFirst(':id', event.id),
-                  arguments: event,
-                ),
-              ),
-            ],
+              ]);
+              return ScroleBottomSheetGroup(children: actions);
+            },
           ),
           const SizedBox(height: 20),
 

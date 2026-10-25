@@ -7,6 +7,7 @@ import '../../../../app/routes/app_pages.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/scrole_bottom_sheet.dart';
 import '../../centre/models/conversation_model.dart';
 import '../../centre/models/message_model.dart';
@@ -83,6 +84,7 @@ class DirectMessagesScreen extends GetView<DirectMessagesController> {
                 return _EmptyState(onRefresh: controller.refreshConversations);
               return _LoadedState(
                 unpinned: controller.unpinnedConversations,
+                currentUserId: Get.find<MessagingRepository>().currentUserId,
                 onRefresh: controller.refreshConversations,
               );
             }),
@@ -349,8 +351,9 @@ class _EmptyState extends StatelessWidget {
 
 class _LoadedState extends StatelessWidget {
   final List<ConversationModel> unpinned;
+  final String? currentUserId;
   final Future<void> Function() onRefresh;
-  const _LoadedState({required this.unpinned, required this.onRefresh});
+  const _LoadedState({required this.unpinned, required this.currentUserId, required this.onRefresh});
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     color: AppColors.primary,
@@ -359,14 +362,37 @@ class _LoadedState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: unpinned.length,
       itemBuilder: (context, index) =>
-          _AnimatedConversationTile(conversation: unpinned[index]),
+          _AnimatedConversationTile(conversation: unpinned[index], currentUserId: currentUserId),
     ),
   );
 }
 
+
+class _ReceiptStatusIcon extends StatelessWidget {
+  const _ReceiptStatusIcon({required this.status});
+  final MessageStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (status) {
+      MessageStatus.pending || MessageStatus.sending => Icons.schedule_rounded,
+      MessageStatus.sent => Icons.check_rounded,
+      MessageStatus.delivered || MessageStatus.received || MessageStatus.read => Icons.done_all_rounded,
+      MessageStatus.failed || MessageStatus.error => Icons.error_outline_rounded,
+    };
+    final color = status == MessageStatus.read
+        ? Colors.blue
+        : (status == MessageStatus.failed || status == MessageStatus.error)
+            ? AppColors.error
+            : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(.65);
+    return Icon(icon, size: 13, color: color);
+  }
+}
+
 class _AnimatedConversationTile extends StatelessWidget {
   final ConversationModel conversation;
-  const _AnimatedConversationTile({required this.conversation});
+  final String? currentUserId;
+  const _AnimatedConversationTile({required this.conversation, required this.currentUserId});
 
   Future<void> _confirmDelete(BuildContext context) =>
       _confirmConversationDelete(context, conversation.id);
@@ -452,7 +478,7 @@ class _AnimatedConversationTile extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
                               conversation.name ?? 'Discussion',
                               maxLines: 1,
@@ -465,6 +491,11 @@ class _AnimatedConversationTile extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (conversation.participantIds.isNotEmpty)
+                            UserCertifiedBadge(
+                              userId: conversation.participantIds.first,
+                              size: 16,
+                            ),
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(conversation.updatedAt),
@@ -492,42 +523,46 @@ class _AnimatedConversationTile extends StatelessWidget {
                               style: AppTextStyles.bodySmall.copyWith(
                                 color: hasUnread
                                     ? colorScheme.onSurface
-                                    : colorScheme.onSurfaceVariant.withOpacity(
-                                        .7,
-                                      ),
-                                fontWeight: hasUnread
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
+                                    : colorScheme.onSurfaceVariant.withOpacity(.7),
+                                fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal,
                               ),
                             ),
                           ),
                           if (hasUnread)
                             Container(
                               margin: const EdgeInsets.only(left: 8),
-                              constraints: const BoxConstraints(
-                                minWidth: 24,
-                                minHeight: 24,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 4,
-                              ),
+                              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                               alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: unreadColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${conversation.unreadCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              decoration: BoxDecoration(color: unreadColor, shape: BoxShape.circle),
+                              child: Text('${conversation.unreadCount}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                             ),
                         ],
                       ),
+                      if (conversation.lastMessage != null &&
+                          conversation.lastMessage!.senderId == currentUserId)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 3, right: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ReceiptStatusIcon(status: conversation.lastMessage!.status),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _receiptLabel(conversation.lastMessage!.status),
+                                  style: AppTextStyles.caption.copyWith(
+                                    fontSize: 10,
+                                    color: conversation.lastMessage!.status == MessageStatus.read
+                                        ? Colors.blue
+                                        : colorScheme.onSurfaceVariant.withOpacity(.65),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -566,7 +601,7 @@ class _AnimatedConversationTile extends StatelessWidget {
   String _getMessagePreview() {
     final msg = conversation.lastMessage;
     if (msg == null) return 'Aucun message';
-    final prefix = msg.senderId == 'me' ? '${'chats_you_prefix'.tr} ' : '';
+    final prefix = msg.senderId == currentUserId ? '${'chats_you_prefix'.tr} ' : '';
     switch (msg.type) {
       case MessageType.image:
         return '$prefix🖼️ Photo';
@@ -580,6 +615,25 @@ class _AnimatedConversationTile extends StatelessWidget {
         return '$prefix📊 Sondage';
       case MessageType.text:
         return '$prefix${msg.text ?? ''}';
+    }
+  }
+
+
+  String _receiptLabel(MessageStatus status) {
+    switch (status) {
+      case MessageStatus.pending:
+      case MessageStatus.sending:
+        return 'Envoi en cours';
+      case MessageStatus.sent:
+        return 'Envoyé';
+      case MessageStatus.delivered:
+      case MessageStatus.received:
+        return 'Reçu';
+      case MessageStatus.read:
+        return 'Lu';
+      case MessageStatus.failed:
+      case MessageStatus.error:
+        return 'Échec de l’envoi';
     }
   }
 

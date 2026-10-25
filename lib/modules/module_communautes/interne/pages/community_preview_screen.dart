@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../centre/models/community_model.dart';
 import '../../centre/services/community_service.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/entity_certified_badge.dart';
 import '../../../../shared/controllers/search_controller.dart';
 import 'community_feed_screen.dart';
 
@@ -277,6 +278,7 @@ class _CommunityPreviewSheetState extends State<CommunityPreviewSheet> {
                                   ),
                                 ),
                               ),
+                              EntityCertifiedBadge(entityType: 'community', entityId: widget.result.id ?? '', size: 18),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
