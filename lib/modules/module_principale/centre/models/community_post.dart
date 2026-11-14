@@ -7,22 +7,25 @@ enum PostReaction { like, dislike, none }
 class CommunityPostAuthor {
   final String userId;
   final String username;
+  final String fullName;
   final String? photoUrl;
   final bool isCertified;
 
   const CommunityPostAuthor({
     required this.userId,
     required this.username,
+    this.fullName = '',
     this.photoUrl,
     this.isCertified = false,
   });
 
-  String get displayName => username.isNotEmpty ? username : 'Utilisateur';
+  String get displayName => fullName.trim().isNotEmpty ? fullName.trim() : (username.isNotEmpty ? username : 'Utilisateur');
 
   factory CommunityPostAuthor.fromMap(Map<String, dynamic> map) {
     return CommunityPostAuthor(
       userId: map['user_id']?.toString() ?? map['id']?.toString() ?? '',
       username: map['username']?.toString() ?? '',
+      fullName: (map['full_name'] ?? map['display_name'] ?? map['name'] ?? [map['first_name'], map['last_name']].where((value) => value != null && value.toString().trim().isNotEmpty).join(' '))?.toString() ?? '',
       photoUrl: map['photo_url']?.toString() ?? map['avatar_url']?.toString(),
       isCertified: map['is_certified'] == true || map['is_certified'] == 1 || map['is_verified'] == true || map['is_verified'] == 1,
     );
@@ -331,6 +334,7 @@ class CommunityPost {
         'author': {
           'user_id': authorObj?.userId ?? authorId,
           'username': authorObj?.username ?? authorName,
+          'full_name': authorObj?.fullName ?? '',
           'photo_url': authorObj?.photoUrl,
           'is_certified': authorObj?.isCertified ?? false,
         },
