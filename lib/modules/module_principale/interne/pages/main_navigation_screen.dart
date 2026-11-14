@@ -246,8 +246,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                     ),
                     label: 'nav_events'.tr,
                   ),
-                  const BottomNavigationBarItem(
-                    icon: _BottomNavProfileIcon(isSelected: false),
+                  BottomNavigationBarItem(
+                    icon: const _BottomNavProfileIcon(isSelected: false),
                     activeIcon: _BottomNavProfileIcon(isSelected: true),
                     label: 'nav_profile'.tr,
                   ),
