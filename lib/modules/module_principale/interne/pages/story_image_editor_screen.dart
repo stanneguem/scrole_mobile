@@ -39,54 +39,22 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   Future<void> _addText() => _editText(null);
 
   Future<void> _editText(int? overlayIndex) async {
-    final controller = TextEditingController(
-      text: overlayIndex == null ? '' : _overlays[overlayIndex].text,
-    );
+    // The dialog owns its controller and focus node. They are disposed only
+    // when the dialog subtree itself is removed, not when its pop animation
+    // merely starts.
     final result = await Get.dialog<String>(
-      AlertDialog(
-        backgroundColor: const Color(0xFF242424),
-        title: Text(
-          'story_editor_add_text'.tr,
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 4,
-          minLines: 1,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
-          decoration: InputDecoration(
-            hintText: 'story_editor_text_hint'.tr,
-            hintStyle: const TextStyle(color: Colors.white54),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white38),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: Text('story_editor_cancel'.tr),
-          ),
-          TextButton(
-            onPressed: () => Get.back(result: controller.text.trim()),
-            child: Text('story_editor_done'.tr),
-          ),
-        ],
+      _StoryTextDialog(
+        initialText: overlayIndex == null ? '' : _overlays[overlayIndex].text,
       ),
       barrierDismissible: false,
     );
-    controller.dispose();
 
     if (result == null || result.isEmpty || !mounted) return;
     setState(() {
-      if (overlayIndex != null) {
+      if (overlayIndex != null && overlayIndex < _overlays.length) {
         _overlays[overlayIndex].text = result;
         _selectedOverlay = overlayIndex;
-      } else {
+      } else if (overlayIndex == null) {
         _overlays.add(_StoryTextOverlay(text: result));
         _selectedOverlay = _overlays.length - 1;
       }
@@ -375,6 +343,79 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StoryTextDialog extends StatefulWidget {
+  final String initialText;
+
+  const _StoryTextDialog({required this.initialText});
+
+  @override
+  State<_StoryTextDialog> createState() => _StoryTextDialogState();
+}
+
+class _StoryTextDialogState extends State<_StoryTextDialog> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _close({bool submit = false}) {
+    final result = submit ? _controller.text.trim() : null;
+    _focusNode.unfocus();
+    Navigator.of(context).pop<String>(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF242424),
+      title: Text(
+        'story_editor_add_text'.tr,
+        style: const TextStyle(color: Colors.white),
+      ),
+      content: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        autofocus: true,
+        maxLines: 4,
+        minLines: 1,
+        style: const TextStyle(color: Colors.white, fontSize: 18),
+        decoration: InputDecoration(
+          hintText: 'story_editor_text_hint'.tr,
+          hintStyle: const TextStyle(color: Colors.white54),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white38),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _close,
+          child: Text('story_editor_cancel'.tr),
+        ),
+        TextButton(
+          onPressed: () => _close(submit: true),
+          child: Text('story_editor_done'.tr),
+        ),
+      ],
     );
   }
 }
