@@ -1401,6 +1401,28 @@ class FeedPostCard extends StatelessWidget {
     );
   }
 
+/// Ouvre le même panneau de partage depuis les écrans qui réutilisent
+/// les interactions d'une carte de publication (ex. le lecteur de Réels).
+void showFeedPostShareSheet(BuildContext context, CommunityPost post) {
+  if (!post.sharingEnabled) {
+    Get.snackbar(
+      'Partage',
+      'Le partage est désactivé sur ce post',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _ShareSheetWidget(post: post),
+  );
+}
+
   void _showUsersListBottomSheet(
       BuildContext context,
       String title,
