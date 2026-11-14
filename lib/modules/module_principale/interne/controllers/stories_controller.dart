@@ -241,23 +241,51 @@ class StoriesController extends GetxController {
   bool get _hasStoryGroups =>
       ownGroup.value != null || followingGroups.isNotEmpty || suggestedGroups.isNotEmpty;
 
-  void _applyStoryTray(Map<String, dynamic> data) {
+  bool _canShowStoryGroup(EventStoryGroup group) {
+    // The private story-media endpoint only grants access to the author,
+    // mutual friends, and accounts that follow the author. Never show an
+    // "other" author in the tray: that leaks the existence of private stories.
+    return group.relation == 'own' ||
+        group.relation == 'friend' ||
+        group.relation == 'follow';
+  }
+
+  void _applyStoryTray(
+    Map<String, dynamic> data, {
+    bool includeNonOwnGroups = true,
+  }) {
     if (data['own'] != null) {
-      ownGroup.value = EventStoryGroup.fromMap(Map<String, dynamic>.from(data['own']));
+      final group = EventStoryGroup.fromMap(Map<String, dynamic>.from(data['own']));
+      ownGroup.value = group.stories.isNotEmpty ? group : null;
     } else {
       ownGroup.value = null;
     }
 
+    // Cached relationship metadata can become stale after an unfollow, block,
+    // or friendship change. Restore only the current account's own stories
+    // from disk; other authors are shown only after a fresh server response.
+    final allowedRelations = includeNonOwnGroups
+        ? const {'friend', 'follow'}
+        : const <String>{};
+
     if (data['following'] is List) {
       followingGroups.assignAll((data['following'] as List)
           .map((g) => EventStoryGroup.fromMap(Map<String, dynamic>.from(g)))
-          .where((g) => g.stories.isNotEmpty));
+          .where((g) => g.stories.isNotEmpty &&
+              allowedRelations.contains(g.relation) &&
+              _canShowStoryGroup(g)));
+    } else if (!includeNonOwnGroups) {
+      followingGroups.clear();
     }
 
     if (data['suggested'] is List) {
       suggestedGroups.assignAll((data['suggested'] as List)
           .map((g) => EventStoryGroup.fromMap(Map<String, dynamic>.from(g)))
-          .where((g) => g.stories.isNotEmpty));
+          .where((g) => g.stories.isNotEmpty &&
+              allowedRelations.contains(g.relation) &&
+              _canShowStoryGroup(g)));
+    } else if (!includeNonOwnGroups) {
+      suggestedGroups.clear();
     }
   }
 
@@ -268,8 +296,11 @@ class StoriesController extends GetxController {
       if (!await file.exists()) return;
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is Map) {
-        _applyStoryTray(Map<String, dynamic>.from(decoded));
-        debugPrint('[STORY_CACHE] Restored story tray from local cache');
+        _applyStoryTray(
+          Map<String, dynamic>.from(decoded),
+          includeNonOwnGroups: false,
+        );
+        debugPrint('[STORY_CACHE] Restored only own stories from local cache; other authors require fresh permission checks');
       }
     } catch (e) {
       debugPrint('[STORY_CACHE] Unable to restore story tray: $e');
