@@ -354,8 +354,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
           orElse: () => null,
         );
         opened ??= await _feedRepository.getPost(widget.initialPostId!);
-        if (opened != null) {
-          final media = opened.media.where(
+        final openedPost = opened;
+        if (openedPost != null) {
+          final media = openedPost.media.where(
             (m) => m.isVideo && m.url.trim().isNotEmpty,
           );
           final matchingMedia = media
@@ -367,11 +368,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
               : (media.isNotEmpty ? media.first : null);
           if (selected != null) {
             existing.removeWhere((item) =>
-                item.post.id == opened.id &&
+                item.post.id == openedPost.id &&
                 (widget.initialMediaUrl == null ||
                     item.media.url == widget.initialMediaUrl));
-            existing.insert(0, _ReelItem(post: opened, media: selected));
-            excluded.add(opened.id);
+            existing.insert(0, _ReelItem(post: openedPost, media: selected));
+            excluded.add(openedPost.id);
             // Start the tapped feed video immediately; recommendations load behind it.
             _scutItems
               ..clear()
