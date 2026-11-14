@@ -54,6 +54,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _scutRequestInFlight = false;
   bool _hasInternet = false;
   bool _initialScutSetupFinished = false;
+  bool _syncingPendingWatchSignals = false;
   bool _cacheBusy = false;
   int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
@@ -276,28 +277,33 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   Future<void> _syncPendingScutWatchSignals() async {
-    if (!_hasInternet) return;
-    final pending = await readPendingScutWatchSignals();
-    for (final signal in pending) {
-      final postId = signal['post_id']?.toString() ?? '';
-      final watchedMs = (signal['watched_ms'] as num?)?.toInt() ?? 0;
-      final durationMs = (signal['duration_ms'] as num?)?.toInt() ?? 0;
-      final signalId = signal['signal_id']?.toString() ?? '';
-      if (postId.isEmpty || watchedMs <= 0 || durationMs <= 0 || signalId.isEmpty) {
-        await removePendingScutWatchSignal(signalId);
-        continue;
+    if (!_hasInternet || _syncingPendingWatchSignals) return;
+    _syncingPendingWatchSignals = true;
+    try {
+      final pending = await readPendingScutWatchSignals();
+      for (final signal in pending) {
+        final postId = signal['post_id']?.toString() ?? '';
+        final watchedMs = (signal['watched_ms'] as num?)?.toInt() ?? 0;
+        final durationMs = (signal['duration_ms'] as num?)?.toInt() ?? 0;
+        final signalId = signal['signal_id']?.toString() ?? '';
+        if (postId.isEmpty || watchedMs <= 0 || durationMs <= 0 || signalId.isEmpty) {
+          await removePendingScutWatchSignal(signalId);
+          continue;
+        }
+        try {
+          await _feedRepository.recordScutWatch(
+            postId: postId,
+            watchedMs: watchedMs,
+            durationMs: durationMs,
+          );
+          await removePendingScutWatchSignal(signalId);
+        } catch (error) {
+          debugPrint('[SCUT] pending watch sync paused: $error');
+          break;
+        }
       }
-      try {
-        await _feedRepository.recordScutWatch(
-          postId: postId,
-          watchedMs: watchedMs,
-          durationMs: durationMs,
-        );
-        await removePendingScutWatchSignal(signalId);
-      } catch (error) {
-        debugPrint('[SCUT] pending watch sync paused: $error');
-        break;
-      }
+    } finally {
+      _syncingPendingWatchSignals = false;
     }
   }
 
