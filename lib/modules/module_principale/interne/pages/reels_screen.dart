@@ -491,7 +491,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       // Le clavier ne doit jamais redimensionner le lecteur : seule la zone
       // de commentaire se repositionne au-dessus du clavier.
       resizeToAvoidBottomInset: false,
-      body: Obx(() {
+      body: Builder(builder: (context) {
         final items = _buildItems();
         if (items.isEmpty) {
           if (_scutLoading) return const ColoredBox(color: Colors.black, child: Center(child: CircularProgressIndicator(color: Colors.white)));
