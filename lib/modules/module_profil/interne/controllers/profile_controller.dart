@@ -60,7 +60,6 @@ class ProfileController extends GetxController {
   final RxInt eventsAttendedCount = 0.obs;
   final RxInt eventsOrganizedCount = 0.obs;
   final RxInt interactionsCount = 0.obs;
-  final RxDouble reputation = 0.0.obs;
 
   final RxList<Interest> userInterests = <Interest>[].obs;
 
@@ -437,7 +436,6 @@ class ProfileController extends GetxController {
       eventsAttendedCount.value = (cached['events_attended_count'] as num?)?.toInt() ?? eventsAttendedCount.value;
       eventsOrganizedCount.value = (cached['events_organized_count'] as num?)?.toInt() ?? eventsOrganizedCount.value;
       interactionsCount.value = (cached['interactions_count'] as num?)?.toInt() ?? interactionsCount.value;
-      reputation.value = (cached['reputation'] as num?)?.toDouble() ?? reputation.value;
     }
     try {
       final raw = await Supabase.instance.client.rpc(
@@ -452,22 +450,6 @@ class ProfileController extends GetxController {
       eventsAttendedCount.value = (stats['events_attended_count'] as num?)?.toInt() ?? 0;
       eventsOrganizedCount.value = (stats['events_organized_count'] as num?)?.toInt() ?? 0;
       interactionsCount.value = (stats['interactions_count'] as num?)?.toInt() ?? 0;
-      try {
-        final reputationRaw = await Supabase.instance.client.rpc(
-          'get_user_reputation',
-          params: {'p_user_id': uid, 'p_community_id': null},
-        );
-        if (reputationRaw is Map) {
-          final reputationData = Map<String, dynamic>.from(reputationRaw);
-          reputation.value = ((reputationData['score'] as num?)?.toDouble() ?? 0.0)
-              .clamp(0.0, 5.0).toDouble();
-        }
-      } catch (e) {
-        // Compatibility fallback until the reputation V2 migration is deployed.
-        reputation.value = ((stats['reputation'] as num?)?.toDouble() ?? reputation.value)
-            .clamp(0.0, 5.0).toDouble();
-        debugPrint('[ProfileController] V2 reputation unavailable; legacy fallback used: $e');
-      }
       await cache?.set(cacheKey, {
         ...?cache?.get<Map<String, dynamic>>(cacheKey),
         'posts_count': postsCount.value,
@@ -476,7 +458,6 @@ class ProfileController extends GetxController {
         'events_attended_count': eventsAttendedCount.value,
         'events_organized_count': eventsOrganizedCount.value,
         'interactions_count': interactionsCount.value,
-        'reputation': reputation.value,
       });
     } catch (e, stack) {
       debugPrint('[ProfileController] get_profile_engagement_stats failed: $e\\n$stack');
