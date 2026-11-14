@@ -1464,10 +1464,49 @@ class SupabaseEventService {
         'p_days_ahead': 30,
         'p_limit_per_category': limit,
       });
-      if (response != null && response is List) {
-        return List<Map<String, dynamic>>.from(response);
+      if (response is! List) return <Map<String, dynamic>>[];
+
+      final items = response
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList(growable: true);
+      if (items.isEmpty) return items;
+
+      // The recommendation RPC returns city_id/country_id but not their labels
+      // or the event address. Hydrate those display fields in one batched query.
+      final ids = items
+          .map((row) => row['id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toList(growable: false);
+      if (ids.isNotEmpty) {
+        try {
+          final locationRows = await _client
+              .from('events')
+              .select('id,address,city:cities!events_city_id_fkey(nom),country:countries!events_country_id_fkey(nom,code_iso)')
+              .inFilter('id', ids);
+          final locationsById = <String, Map<String, dynamic>>{};
+          for (final row in locationRows) {
+            final map = Map<String, dynamic>.from(row);
+            final city = map['city'] is Map ? Map<String, dynamic>.from(map['city'] as Map) : null;
+            final country = map['country'] is Map ? Map<String, dynamic>.from(map['country'] as Map) : null;
+            locationsById[map['id'].toString()] = {
+              'address': map['address'],
+              if (city != null) 'city': {'nom': city['nom']},
+              if (country != null) 'country': {
+                'nom': country['nom'],
+                'code_iso': country['code_iso'],
+              },
+            };
+          }
+          for (final item in items) {
+            final location = locationsById[item['id']?.toString()];
+            if (location != null) item.addAll(location);
+          }
+        } catch (locationError) {
+          debugPrint('[SupabaseEventService] Could not hydrate suggested event locations: $locationError');
+        }
       }
-      return [];
+      return items;
     } catch (e) {
       debugPrint('[SupabaseEventService] RPC get_home_event_suggestions failed: $e');
       rethrow;
