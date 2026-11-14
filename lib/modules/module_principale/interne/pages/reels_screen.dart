@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../../shared/models/post_media.dart';
@@ -33,6 +34,16 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final Map<String, String> _followStates = {};
   final Set<String> _followRequestsInFlight = {};
   bool _isSendingComment = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController.addListener(_onCommentDraftChanged);
+  }
+
+  void _onCommentDraftChanged() {
+    if (mounted) setState(() {});
+  }
 
   void _goHome() => Get.back();
 
@@ -198,6 +209,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _commentController.removeListener(_onCommentDraftChanged);
     _commentController.dispose();
     _commentFocusNode.dispose();
     super.dispose();
