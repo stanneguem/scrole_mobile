@@ -328,6 +328,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
       } else if (!append && _hasInternet && widget.initialPostId != null) {
         existing.removeWhere((item) => item.post.id != widget.initialPostId);
       }
+      if (!append && _hasInternet) {
+        _scutItems
+          ..clear()
+          ..addAll(existing);
+        _scutLoaded = existing.isNotEmpty;
+        if (mounted) setState(() {});
+      }
       final excluded = existing.map((item) => item.post.id).toSet();
       if (!append && widget.initialPostId != null && widget.initialPostId!.isNotEmpty) {
         CommunityPost? opened = feed.posts.cast<CommunityPost?>().firstWhere(
