@@ -417,6 +417,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "L’espace est encore calme. Lancez la conversation avec la première publication.",
       'community_feed_create_first_post': "Créer la première publication",
       'community_feed_create_post_tooltip': "Créer une publication",
+      'creation_menu_create_post': 'Créer un post',
+      'creation_menu_create_scut': 'Créer un Scut',
       'community_creation_in_progress': "Création de la communauté en cours…",
 
       'certification_screen_title': 'Certifications Scrole',
@@ -1997,6 +1999,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "It’s quiet here for now. Start the conversation with the first post.",
       'community_feed_create_first_post': "Create the first post",
       'community_feed_create_post_tooltip': "Create a post",
+      'creation_menu_create_post': 'Create a post',
+      'creation_menu_create_scut': 'Create a Scut',
       'community_creation_in_progress': "Community creation in progress…",
 
       'certification_screen_title': 'Scrole certifications',
@@ -3579,6 +3583,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "Este espacio está tranquilo por ahora. Inicia la conversación con la primera publicación.",
       'community_feed_create_first_post': "Crear la primera publicación",
       'community_feed_create_post_tooltip': "Crear una publicación",
+      'creation_menu_create_post': 'Crear una publicación',
+      'creation_menu_create_scut': 'Crear un Scut',
       'community_creation_in_progress': "Creación de la comunidad en curso…",
 
       'certification_screen_title': 'Certificaciones de Scrole',
@@ -5056,6 +5062,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "Hier ist es noch ruhig. Starte das Gespräch mit dem ersten Beitrag.",
       'community_feed_create_first_post': "Ersten Beitrag erstellen",
       'community_feed_create_post_tooltip': "Beitrag erstellen",
+      'creation_menu_create_post': 'Beitrag erstellen',
+      'creation_menu_create_scut': 'Scut erstellen',
       'community_creation_in_progress': "Community wird erstellt…",
 
       'certification_screen_title': 'Scrole-Zertifizierungen',
@@ -6516,6 +6524,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "Qui è ancora tutto tranquillo. Avvia la conversazione con il primo post.",
       'community_feed_create_first_post': "Crea il primo post",
       'community_feed_create_post_tooltip': "Crea un post",
+      'creation_menu_create_post': 'Crea un post',
+      'creation_menu_create_scut': 'Crea uno Scut',
       'community_creation_in_progress': "Creazione della community in corso…",
 
       'certification_screen_title': 'Certificazioni Scrole',
@@ -7974,6 +7984,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "O espaço está tranquilo por enquanto. Comece a conversa com a primeira publicação.",
       'community_feed_create_first_post': "Criar a primeira publicação",
       'community_feed_create_post_tooltip': "Criar publicação",
+      'creation_menu_create_post': 'Criar publicação',
+      'creation_menu_create_scut': 'Criar um Scut',
       'community_creation_in_progress': "Criação da comunidade em andamento…",
 
       'certification_screen_title': 'Certificações Scrole',
@@ -9432,6 +9444,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "这里暂时很安静。发布第一条内容，开启交流吧。",
       'community_feed_create_first_post': "发布第一条内容",
       'community_feed_create_post_tooltip': "创建帖子",
+      'creation_menu_create_post': '创建帖子',
+      'creation_menu_create_scut': '创建 Scut',
       'community_creation_in_progress': "社群正在创建…",
 
       'certification_screen_title': 'Scrole 认证',
@@ -10892,6 +10906,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "ここはまだ静かです。最初の投稿で会話を始めましょう。",
       'community_feed_create_first_post': "最初の投稿を作成",
       'community_feed_create_post_tooltip': "投稿を作成",
+      'creation_menu_create_post': '投稿を作成',
+      'creation_menu_create_scut': 'Scutを作成',
       'community_creation_in_progress': "コミュニティを作成中…",
 
       'certification_screen_title': 'Scrole認証',
@@ -12345,6 +12361,8 @@ class AppTranslationAdditions {
       'community_feed_empty_subtitle': "Здесь пока тихо. Начните общение с первой публикации.",
       'community_feed_create_first_post': "Создать первую публикацию",
       'community_feed_create_post_tooltip': "Создать публикацию",
+      'creation_menu_create_post': 'Создать публикацию',
+      'creation_menu_create_scut': 'Создать Scut',
       'community_creation_in_progress': "Сообщество создаётся…",
 
       'certification_screen_title': 'Сертификации Scrole',
