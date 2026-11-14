@@ -248,6 +248,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
     final feed = Get.find<HomeFeedController>();
     return Scaffold(
       backgroundColor: Colors.black,
+      // Le clavier ne doit jamais redimensionner le lecteur : seule la zone
+      // de commentaire se repositionne au-dessus du clavier.
+      resizeToAvoidBottomInset: false,
       body: Obx(() {
         final items = _buildItems(feed);
         if (items.isEmpty) {
