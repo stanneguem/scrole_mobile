@@ -266,7 +266,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       try { await controller.pause(); } catch (_) {}
       await controller.dispose();
     }
-    if (mounted && !widget.active) setState(() => _loading = true);
+    if (mounted) setState(() => _loading = true);
   }
 
   @override
