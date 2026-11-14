@@ -22,7 +22,10 @@ import '../../../module_discussion_direct/externe/repositories/social_repository
 import '../../externe/repositories/home_feed_repository.dart';
 
 class ReelsScreen extends StatefulWidget {
-  const ReelsScreen({super.key});
+  final String? initialPostId;
+  final String? initialMediaUrl;
+
+  const ReelsScreen({super.key, this.initialPostId, this.initialMediaUrl});
 
   @override
   State<ReelsScreen> createState() => _ReelsScreenState();
@@ -31,6 +34,7 @@ class ReelsScreen extends StatefulWidget {
 class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+  bool _initialPageApplied = false;
   bool _muted = false;
   bool _descriptionExpanded = false;
   final TextEditingController _commentController = TextEditingController();
@@ -290,7 +294,25 @@ class _ReelsScreenState extends State<ReelsScreen> {
             ],
           );
         }
-        final index = _currentIndex.clamp(0, items.length - 1);
+        final requestedIndex = widget.initialPostId == null
+            ? -1
+            : items.indexWhere((item) =>
+                item.post.id == widget.initialPostId &&
+                (widget.initialMediaUrl == null ||
+                    item.media.url == widget.initialMediaUrl));
+        final index = !_initialPageApplied && requestedIndex >= 0
+            ? requestedIndex
+            : _currentIndex.clamp(0, items.length - 1);
+        if (!_initialPageApplied) {
+          _initialPageApplied = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || !_pageController.hasClients) return;
+            if (index != _currentIndex) {
+              _pageController.jumpToPage(index);
+              setState(() => _currentIndex = index);
+            }
+          });
+        }
         final activeItem = items[index];
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _loadRelationship(activeItem.post.authorId);
