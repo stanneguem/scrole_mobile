@@ -779,8 +779,8 @@ class _ReelAuthorInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final author = post.authorObj;
     final username = author?.username.isNotEmpty == true ? author!.username : post.authorName;
-    final displayName = author?.fullName.trim().isNotEmpty == true
-        ? author!.fullName.trim()
+    final displayName = author?.displayName.trim().isNotEmpty == true
+        ? author!.displayName.trim()
         : post.authorName;
     final avatar = author?.photoUrl;
     final colorScheme = Theme.of(context).colorScheme;
