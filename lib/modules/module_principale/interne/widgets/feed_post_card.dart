@@ -895,7 +895,7 @@ class FeedPostCard extends StatelessWidget {
             heroTagPrefix: 'post_${post.id}',
             forceAutoplayVideos: autoplayVideos,
             onVideoQualifiedView: () => onVideoQualifiedView?.call(post.id),
-            qualifiedViewPercent: post.isSponsored ? 0.10 : 0.50,
+            qualifiedViewPercent: 0.25,
             media: post.media,
             likesCount: post.likeCount,
             dislikesCount: post.dislikeCount,
