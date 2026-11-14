@@ -300,7 +300,10 @@ class _ReelsScreenState extends State<ReelsScreen> {
               onPageChanged: (value) {
                 _commentController.clear();
                 _commentFocusNode.unfocus();
-                setState(() => _currentIndex = value);
+                setState(() {
+                  _currentIndex = value;
+                  _descriptionExpanded = false;
+                });
                 _loadRelationship(items[value].post.authorId);
               },
               itemBuilder: (context, pageIndex) => _ReelVideoPage(
