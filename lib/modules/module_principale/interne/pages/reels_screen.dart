@@ -312,17 +312,14 @@ class _ReelsScreenState extends State<ReelsScreen> {
               child: _ReelActionRail(
                 post: activeItem.post,
                 onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
-                onComments: () => _openComments(activeItem),
                 onShare: () => Share.share(activeItem.post.content.isEmpty
                     ? 'Découvre ce réel sur Scrole'
                     : activeItem.post.content),
-                muted: _muted,
-                onToggleSound: () => setState(() => _muted = !_muted),
               ),
             ),
             Positioned(
               left: 16,
-              right: 82,
+              right: 16,
               bottom: safeBottom + 24 + keyboardInset,
               child: _ReelPostInfo(
                 key: ValueKey('info_${activeItem.post.id}_${activeItem.media.url}'),
@@ -546,18 +543,12 @@ class _ReelsTopBar extends StatelessWidget {
 class _ReelActionRail extends StatelessWidget {
   final CommunityPost post;
   final VoidCallback onLike;
-  final VoidCallback onComments;
   final VoidCallback onShare;
-  final bool muted;
-  final VoidCallback onToggleSound;
 
   const _ReelActionRail({
     required this.post,
     required this.onLike,
-    required this.onComments,
     required this.onShare,
-    required this.muted,
-    required this.onToggleSound,
   });
 
   @override
@@ -571,15 +562,7 @@ class _ReelActionRail extends StatelessWidget {
         onTap: onLike,
       ),
       const SizedBox(height: 22),
-      _ReelActionButton(icon: Icons.mode_comment_outlined, label: post.commentCount.toString(), onTap: onComments),
-      const SizedBox(height: 22),
       _ReelActionButton(icon: Icons.send_rounded, label: post.shareCount.toString(), onTap: onShare),
-      const SizedBox(height: 18),
-      IconButton(
-        tooltip: muted ? 'Activer le son' : 'Couper le son',
-        onPressed: onToggleSound,
-        icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 28),
-      ),
     ],
   );
 }
