@@ -643,7 +643,9 @@ class _StoriesRow extends GetView<StoriesController> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        controller.isPublishingStory.value ? 'Publication…' : 'Ma story',
+                        controller.isPublishingStory.value
+                            ? 'home_feed_story_publishing'.tr
+                            : 'home_feed_my_story'.tr,
                         style: TextStyle(
                           fontSize: 11,
                           color: controller.isPublishingStory.value
