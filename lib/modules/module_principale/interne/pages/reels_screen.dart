@@ -56,6 +56,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _scutLoading = true;
   bool _scutLoaded = false;
   bool _loadingMoreScuts = false;
+  bool _scutRequestInFlight = false;
   bool _cacheBusy = false;
   int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
@@ -275,7 +276,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   Future<void> _loadScutFeed({bool append = false}) async {
-    if (_loadingMoreScuts || (!append && _scutLoaded && _scutLoading)) return;
+    if (_scutRequestInFlight || _loadingMoreScuts || (!append && _scutLoaded && _scutLoading)) return;
+    _scutRequestInFlight = true;
     final generation = ++_scutRequestGeneration;
     if (append) {
       _loadingMoreScuts = true;
@@ -323,6 +325,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       _scutLoaded = true;
       _scutLoading = false;
       _loadingMoreScuts = false;
+      _scutRequestInFlight = false;
       if (mounted) setState(() {});
       unawaited(_cacheScutWindow(_currentIndex));
     } catch (error, stack) {
@@ -331,6 +334,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         setState(() {
           _scutLoading = false;
           _loadingMoreScuts = false;
+          _scutRequestInFlight = false;
         });
       }
     }
