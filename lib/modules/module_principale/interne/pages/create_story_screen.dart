@@ -229,10 +229,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         mentions: mentions,
         allowReshare: allowReshare,
       );
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('[STORY] publication failed: $e\\n$stack');
       Get.snackbar(
         'story_error_title'.tr,
-        e.toString().replaceFirst('Exception: ', ''),
+        'story_error_message'.tr,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
