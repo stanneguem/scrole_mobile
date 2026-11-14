@@ -861,35 +861,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     }
   }
 
-  Future<Duration> _readVideoDuration(File file) async {
-    if (!await file.exists()) {
-      throw StateError('Le fichier vidéo sélectionné est introuvable.');
-    }
-    final fileSize = await file.length();
-    if (fileSize <= 0) {
-      throw StateError('Le fichier vidéo sélectionné est vide.');
-    }
-
-    final watch = Stopwatch()..start();
-    final info = await VideoCompress.getMediaInfo(file.path)
-        .timeout(const Duration(seconds: 20));
-    final durationMicros = info.duration;
-    if (durationMicros == null ||
-        !durationMicros.isFinite ||
-        durationMicros <= 0) {
-      throw StateError('La durée de cette vidéo est illisible.');
-    }
-
-    final duration = Duration(microseconds: durationMicros.round());
-    debugPrint(
-      '[POST_COMPOSER] video metadata: '
-      'size=${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB '
-      'resolution=${info.width}x${info.height} '
-      'duration=${duration.inMilliseconds}ms '
-      'metadata=${watch.elapsedMilliseconds}ms',
-    );
-    return duration;
-  }
 
   Future<void> _handleGallerySelection(List<XFile> files) async {
     // Traitement volontairement séquentiel : un seul travail vidéo natif à la fois.
@@ -918,11 +889,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             ));
         if (trimmed == null || !mounted) continue;
         final videoFile = trimmed;
-        final trimmedDuration = await _readVideoDuration(videoFile);
-        if (trimmedDuration > const Duration(seconds: 29)) {
-          Get.snackbar('post_composer_attention'.tr, 'post_composer_video_too_long'.tr);
-          continue;
-        }
+        // La durée est déjà bornée et validée par VideoTrimScreen.
+        // Ne pas relire les métadonnées via VideoCompress ici : certains
+        // conteneurs/codecs lisibles par le décodeur natif échouent dans ce
+        // second extracteur et provoquaient le faux rejet MP4/MOV.
         final thumbnail = await _createVideoThumbnail(videoFile);
         if (!mounted) return;
         setState(() {
@@ -964,11 +934,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           ));
       if (trimmed == null || !mounted) return;
       final file = trimmed;
-      final trimmedDuration = await _readVideoDuration(file);
-      if (trimmedDuration > const Duration(seconds: 29)) {
-        Get.snackbar('post_composer_attention'.tr, 'post_composer_trim_invalid'.tr, backgroundColor: Colors.black87, colorText: Colors.white);
-        return;
-      }
+      // VideoTrimScreen applique déjà la limite de 29 secondes.
+      // Éviter une seconde extraction de métadonnées, source de rejets
+      // injustifiés pour certains formats pourtant décodables nativement.
       final thumbnail = await _createVideoThumbnail(file);
       if (!mounted) return;
       setState(() {
@@ -997,11 +965,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       maxDuration: const Duration(seconds: 29),
     ));
     if (updatedFile == null || !mounted) return;
-    final duration = await _readVideoDuration(updatedFile);
-    if (duration > const Duration(seconds: 29)) {
-      Get.snackbar('Vidéo invalide', 'La vidéo ne peut pas dépasser 29 secondes.');
-      return;
-    }
+    // La durée maximale est imposée par VideoPreviewScreen / VideoTrimScreen.
+    // Ne pas relancer VideoCompress.getMediaInfo après le découpage.
     try {
       final thumbnail = await _createVideoThumbnail(updatedFile);
       if (!mounted) return;
