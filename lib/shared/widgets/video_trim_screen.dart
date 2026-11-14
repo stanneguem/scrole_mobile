@@ -190,9 +190,11 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
       _trimmer.videoPlayerController?.pause();
       _isPlaying = false;
       _ticker?.cancel();
-      if (_isConverting) {
-        // video_compress exposes native cancellation; don't keep a full transcode
-        // running while the app is backgrounded on a low-memory device.
+      if (_isConverting &&
+          (state == AppLifecycleState.paused ||
+              state == AppLifecycleState.detached)) {
+        // Don't cancel on a brief inactive transition (system overlays/calls).
+        // Stop a full transcode only when the app actually leaves foreground.
         unawaited(VideoCompress.cancelCompression());
       }
     }
