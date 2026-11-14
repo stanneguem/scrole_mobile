@@ -334,9 +334,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
       final directory = await getApplicationSupportDirectory();
       final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
       await cacheDir.create(recursive: true);
-      final start = (currentIndex - 8).clamp(0, _scutItems.length);
-      var end = (currentIndex + 2).clamp(0, _scutItems.length);
-      if (end - start < 10) end = (start + 10).clamp(0, _scutItems.length);
+      final start = (currentIndex - 8).clamp(0, _scutItems.length).toInt();
+      var end = (currentIndex + 2).clamp(0, _scutItems.length).toInt();
+      if (end - start < 10) end = (start + 10).clamp(0, _scutItems.length).toInt();
       final window = _scutItems.sublist(start, end);
       final keep = <String>{};
       for (final item in window) {
@@ -465,7 +465,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     item.media.url == widget.initialMediaUrl));
         final index = !_initialPageApplied && requestedIndex >= 0
             ? requestedIndex
-            : _currentIndex.clamp(0, items.length - 1);
+            : _currentIndex.clamp(0, items.length - 1).toInt();
         if (!_initialPageApplied) {
           _initialPageApplied = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
