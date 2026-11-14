@@ -647,7 +647,8 @@ class _ReelPostInfo extends StatelessWidget {
               child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 20) : null,
             ),
             const SizedBox(width: 9),
-            Expanded(
+            Flexible(
+              fit: FlexFit.loose,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
