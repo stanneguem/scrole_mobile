@@ -1185,7 +1185,7 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
     final ev = widget.event;
     return Container(
       width: 238,
-      height: 270,
+      height: 248,
       margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHigh.withValues(alpha: 0.55),
@@ -1207,11 +1207,7 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
                     ? AppCachedImage(imageUrl: ev.coverImageUrl!, width: 238, height: 128, fit: BoxFit.cover)
                     : Container(width: 238, height: 128, color: colors.primaryContainer,
                         child: Icon(Icons.event_rounded, size: 34, color: colors.onPrimaryContainer)),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: EntityCertifiedBadge(entityType: 'event', entityId: ev.id, size: 17),
-                ),
+
               ],
             ),
           ),
@@ -1222,9 +1218,19 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
                 children: [
                   GestureDetector(
                     onTap: () => Get.toNamed(AppPages.eventPreviewPath(ev.id)),
-                    child: Text(ev.name,
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: colors.onSurface),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            ev.name,
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: colors.onSurface),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        EntityCertifiedBadge(entityType: 'event', entityId: ev.id, size: 15),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
