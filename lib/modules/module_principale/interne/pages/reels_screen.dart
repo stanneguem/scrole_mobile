@@ -633,16 +633,16 @@ class _ReelActionRailState extends State<_ReelActionRail> {
     setState(() {
       if (_reaction == next) {
         if (next == PostReaction.like) {
-          _likes = (_likes - 1).clamp(0, 1 << 30);
+          if (_likes > 0) _likes--;
         } else if (next == PostReaction.dislike) {
-          _dislikes = (_dislikes - 1).clamp(0, 1 << 30);
+          if (_dislikes > 0) _dislikes--;
         }
         _reaction = PostReaction.none;
       } else {
         if (_reaction == PostReaction.like) {
-          _likes = (_likes - 1).clamp(0, 1 << 30);
+          if (_likes > 0) _likes--;
         } else if (_reaction == PostReaction.dislike) {
-          _dislikes = (_dislikes - 1).clamp(0, 1 << 30);
+          if (_dislikes > 0) _dislikes--;
         }
         if (next == PostReaction.like) _likes++;
         if (next == PostReaction.dislike) _dislikes++;
