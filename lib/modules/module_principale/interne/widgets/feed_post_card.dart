@@ -16,6 +16,7 @@ import 'package:scrole/shared/widgets/entity_certified_badge.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/app/routes/app_pages.dart';
 import '../pages/sponsored_webview_page.dart';
+import '../pages/reels_screen.dart';
 import '../../centre/models/community_post.dart';
 import '../../../../modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../../../../shared/widgets/post_media_slider.dart';
@@ -879,6 +880,10 @@ class FeedPostCard extends StatelessWidget {
         children: [
           PostMediaSlider(
             onPageChanged: (index) => mediaPageNotifier.value = index,
+            onOpenVideoReel: (index) => Get.to(() => ReelsScreen(
+              initialPostId: post.id,
+              initialMediaUrl: post.media[index].url,
+            )),
             heroTagPrefix: 'post_${post.id}',
             forceAutoplayVideos: autoplayVideos,
             onVideoQualifiedView: () => onVideoQualifiedView?.call(post.id),
