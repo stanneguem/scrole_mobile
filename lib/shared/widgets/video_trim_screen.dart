@@ -109,9 +109,9 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
       debugPrint('[VideoTrimScreen] native load failed; trying H.264 normalization: $error\n$stack');
     }
 
-    // Fallback codec/container: re-encode only when the native trimmer cannot
-    // open the original. Media3 (Android) / AVFoundation (iOS) decode the source
-    // and write a broadly compatible MP4 (H.264 + AAC) using hardware encoders.
+    // Fallback codec/container: full-file native re-encoding is deliberately
+    // reserved for sources the trimmer cannot open. It costs more CPU, time and
+    // memory than a direct native trim, so never run it in parallel with thumbnails.
     try {
       _trimmer.dispose();
       if (!mounted || _isClosing) return;
