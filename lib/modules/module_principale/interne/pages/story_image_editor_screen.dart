@@ -47,6 +47,86 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
 
   Future<void> _addText() => _editText(null);
 
+  Future<void> _addEmoji() async {
+    const emojis = [
+      '😀','😃','😄','😁','😆','🥹','😂','🤣','😊','😍','🥰','😘','😎','🤩','🥳',
+      '😉','😜','🤗','🤔','😴','😭','😡','🤯','🥺','😇','🤭','🫶','❤️','🧡','💛',
+      '💚','💙','💜','🖤','🤍','💖','💗','💞','💕','💘','💝','💯','💥','✨','⭐',
+      '🌟','🔥','🌈','☀️','🌙','⚡','❄️','🌸','🌺','🌻','🌹','🍀','🌴','🌊','☁️',
+      '🎉','🎊','🎈','🎁','🎂','🏆','🥇','🎵','🎶','📸','💎','👑','🦋','🐼','🐱',
+      '🐶','🦄','🍓','🍒','🍑','🍉','🍍','🥑','🍕','🍔','☕','🍹','🚀','✈️','🌍',
+      '👍','👎','👏','🙌','🙏','💪','🤝','👋','✌️','🤟','👌','💅','🧿','✅','❌',
+    ];
+    final emoji = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF202020),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.48,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.emoji_emotions_outlined, color: Colors.white70),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'story_editor_emoji'.tr,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 5,
+                  ),
+                  itemCount: emojis.length,
+                  itemBuilder: (_, index) => InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.pop(sheetContext, emojis[index]),
+                    child: Center(
+                      child: Text(emojis[index], style: const TextStyle(fontSize: 27)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (emoji == null || !mounted) return;
+    setState(() {
+      _overlays.add(
+        _StoryTextOverlay(
+          text: emoji,
+          fontSize: 48,
+          backgroundColor: Colors.transparent,
+        ),
+      );
+      _selectedOverlay = _overlays.length - 1;
+      _activeTextPanel = 'font';
+      _showFilters = false;
+    });
+  }
+
   Future<void> _editText(int? overlayIndex) async {
     // The dialog owns its controller and focus node. They are disposed only
     // when the dialog subtree itself is removed, not when its pop animation
@@ -494,6 +574,11 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                         icon: Icons.text_fields_rounded,
                         label: 'story_editor_add_text'.tr,
                         onTap: _addText,
+                      ),
+                      _EditorTool(
+                        icon: Icons.emoji_emotions_outlined,
+                        label: 'story_editor_emoji'.tr,
+                        onTap: _addEmoji,
                       ),
                       _EditorTool(
                         icon: Icons.crop_rounded,
