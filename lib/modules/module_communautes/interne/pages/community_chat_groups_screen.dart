@@ -936,7 +936,9 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
         await _localCache.deleteMessage(userId: userId, salonId: widget.salonId, messageId: id);
         continue;
       }
-      if (_initialSalonMessagesLoaded && !_knownSalonMessageIds.contains(id)) {
+      if (_initialSalonMessagesLoaded &&
+          !_knownSalonMessageIds.contains(id) &&
+          message['sender_id']?.toString() != userId) {
         newlyReceived.add(message);
       }
       _knownSalonMessageIds.add(id);
@@ -1087,7 +1089,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
     final userId = _client.auth.currentUser?.id;
     final messageId = message['id']?.toString() ?? '';
     if (userId == null || messageId.isEmpty ||
-        message['sender_id']?.toString() == userId ||
+        message['is_uploading'] == true ||
         !_readThroughInFlight.add(messageId)) return;
     try {
       await _client.rpc('mark_salon_messages_read_through', params: {
@@ -1461,6 +1463,11 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
             }
           });
         }
+        unawaited(_markVisibleMessageRead({
+          'id': id,
+          'sender_id': currentUserId,
+          'is_uploading': false,
+        }));
         unawaited(_syncMessageDelta(id));
       }
       if (replySnapshot != null && mounted) setState(() => _replyToMessage = null);
@@ -1742,6 +1749,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           if (replySnapshot != null) _replyToMessage = null;
         });
       }
+      unawaited(_markVisibleMessageRead({...optimistic, 'is_uploading': false}));
       unawaited(_syncMessageDelta(id));
     } catch (e) {
       if (mounted) {
@@ -1812,6 +1820,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           if (replySnapshot != null) _replyToMessage = null;
         });
       }
+      unawaited(_markVisibleMessageRead({...optimistic, 'is_uploading': false}));
       unawaited(_syncMessageDelta(id));
     } catch (e) {
       if (mounted) {
