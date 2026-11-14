@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -73,6 +74,38 @@ class HomeFeedRepository {
     } catch (_) {
       return SupabaseClient('https://example.supabase.co', 'dummyKey');
     }
+  }
+
+  /// Loads a personalized, video-only Scut batch. The ranking is calculated server-side.
+  Future<List<CommunityPost>> getScutsFeed({
+    int limit = 10,
+    List<String> excludeIds = const [],
+  }) async {
+    final response = await client.rpc('get_scuts_feed', params: {
+      'p_limit': limit,
+      'p_exclude_ids': excludeIds,
+    });
+    final rawItems = response is Map ? response['items'] as List? ?? const [] : const [];
+    return rawItems
+        .whereType<Map>()
+        .map((row) => _parsePost(Map<String, dynamic>.from(row)))
+        .where((post) => post.id.isNotEmpty && post.media.any((media) => media.isVideo && media.url.trim().isNotEmpty))
+        .toList(growable: false);
+  }
+
+  /// Persists watch depth for recommendation ranking (separate from the official 25% view counter).
+  Future<void> recordScutWatch({
+    required String postId,
+    required int watchedMs,
+    required int durationMs,
+  }) async {
+    if (postId.isEmpty || watchedMs <= 0 || durationMs <= 0) return;
+    await client.rpc('record_scut_watch', params: {
+      'p_post_id': postId,
+      'p_watched_ms': watchedMs,
+      'p_duration_ms': durationMs,
+      'p_session_id': const Uuid().v4(),
+    });
   }
 
   Future<Map<String, dynamic>> getHomeFeed({int limit = 20, String? cursor}) async {
