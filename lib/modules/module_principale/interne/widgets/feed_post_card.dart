@@ -1536,6 +1536,29 @@ void showFeedPostShareSheet(BuildContext context, CommunityPost post) {
   }
 }
 
+
+/// Ouvre le panneau de partage de la carte depuis les écrans qui réutilisent
+/// ses interactions, notamment le lecteur de Réels.
+void showFeedPostShareSheet(BuildContext context, CommunityPost post) {
+  if (!post.sharingEnabled) {
+    Get.snackbar(
+      'Partage',
+      'Le partage est désactivé sur ce post',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return;
+  }
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => _ShareSheetWidget(post: post),
+  );
+}
+
 class _OverlappingAvatars extends StatelessWidget {
   final List<CommunityPostMention> users;
   final VoidCallback onTap;
