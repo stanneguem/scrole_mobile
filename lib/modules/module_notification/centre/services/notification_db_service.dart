@@ -71,7 +71,7 @@ class NotificationDbService extends GetxService {
     return true;
   }
 
-  Future<List<Map<String, dynamic>>> _get(String userId) => database.then((db) => db.query('notifications', where: 'user_id = ?', whereArgs: [userId], orderBy: 'created_at DESC'));
+  Future<List<Map<String, dynamic>>> _get(String userId) => database.then((db) => db.query('notifications', where: 'user_id = ? AND is_read = 0', whereArgs: [userId], orderBy: 'created_at DESC'));
 
   Stream<List<NotificationEntry>> watchNotifications(String userId) async* {
     Future<List<NotificationEntry>> read() async => (await _get(userId)).map(_fromRow).toList();
@@ -313,7 +313,10 @@ class NotificationDbService extends GetxService {
 
   Future<List<Map<String, dynamic>>> getPendingOutbox(String userId) async {
     final db = await database;
-    return await db.query('notification_outbox', where: 'user_id = ? AND attempts < 5', whereArgs: [userId], orderBy: 'created_at ASC');
+    // Une action locale ne doit jamais être abandonnée après un nombre fixe
+    // d'échecs : l'utilisateur peut rester hors ligne plusieurs jours.
+    // L'outbox reste durable jusqu'à confirmation du backend.
+    return await db.query('notification_outbox', where: 'user_id = ?', whereArgs: [userId], orderBy: 'created_at ASC');
   }
 
   Future<void> removeFromOutbox(String userId, String notificationId, String actionType) async {
