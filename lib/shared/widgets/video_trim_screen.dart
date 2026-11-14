@@ -4,8 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:video_compress_next/video_compress.dart';
-import 'package:video_compress_next/video_compress_next.dart';
+import 'package:video_compress/video_compress.dart';
 import 'package:video_trimmer/video_trimmer.dart';
 import '../../app/theme/app_colors.dart';
 
@@ -109,30 +108,30 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
     // open the original. Media3 (Android) / AVFoundation (iOS) decode the source
     // and write a broadly compatible MP4 (H.264 + AAC) using hardware encoders.
     try {
-      await _trimmer.dispose();
+      _trimmer.dispose();
       if (!mounted) return;
       setState(() {
         _isConverting = true;
         _conversionProgress = 0;
       });
 
-      final task = VideoCompressor.compress(
-        (_workingVideoFile ?? widget.videoFile).path,
-        options: const CompressOptions(
-          maxShortSide: 1080,
-          maxFrameRate: 30,
-          includeAudio: true,
-          codec: VideoCodec.h264,
-        ),
-      );
-      _conversionSubscription = task.progress.listen((progress) {
-        if (mounted) setState(() => _conversionProgress = progress.clamp(0, 1));
+      final subscription = VideoCompress.compressProgress$.listen((progress) {
+        if (mounted) setState(() => _conversionProgress = (progress / 100).clamp(0, 1));
       });
-      final converted = await task.result;
-      await _conversionSubscription?.cancel();
+      _conversionSubscription = subscription;
+      final converted = await VideoCompress.compressVideo(
+        (_workingVideoFile ?? widget.videoFile).path,
+        quality: VideoQuality.MediumQuality,
+        deleteOrigin: false,
+        includeAudio: true,
+      );
+      await subscription.cancel();
       _conversionSubscription = null;
 
-      final normalizedFile = File(converted.path);
+      final normalizedFile = converted?.file;
+      if (normalizedFile == null) {
+        throw StateError('La conversion vidéo n’a retourné aucun fichier.');
+      }
       if (!await normalizedFile.exists() || await normalizedFile.length() == 0) {
         throw StateError('Le fichier MP4 normalisé est introuvable ou vide.');
       }
