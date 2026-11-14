@@ -29,7 +29,7 @@ class MainLayoutPage extends StatefulWidget {
 class _MainLayoutPageState extends State<MainLayoutPage> {
   final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
   int _currentIndex = 0;
-  final List<bool> _visited = [true, false, false, false]; // Home, Community, Events, Reels
+  final List<bool> _visited = [true, false, false]; // Home, Community, Events
   bool _isBottomNavVisible = true;
 
   @override
@@ -41,13 +41,12 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         int stackIdx = 0;
         if (navIdx == 1) stackIdx = 1;
         else if (navIdx == 4) stackIdx = 2;
-        else if (navIdx == 2) stackIdx = 3;
         else stackIdx = 0;
         if (mounted && _currentIndex != stackIdx) {
           setState(() {
             _currentIndex = stackIdx;
             _visited[stackIdx] = true;
-            _isBottomNavVisible = stackIdx != 3;
+            _isBottomNavVisible = true;
           });
         }
       });
@@ -58,10 +57,14 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     HomeFeedScreen(key: _homeFeedKey), // 0. Accueil
     CommunityScreen(),    // 1. Communautés
     EventScreen(),        // 2. Événements
-    const ReelsScreen(),  // 3. Réels
   ];
 
   void _onTabChanged(int index) {
+    if (index == 2) {
+      // Reels open as a separate full-screen route, like the profile.
+      Get.to(() => const ReelsScreen(), fullscreenDialog: true);
+      return;
+    }
     if (index == 3) {
       // Notifications are opened from the bottom navigation bar.
       Get.find<MainLayoutController>().openNotifications();
@@ -77,8 +80,6 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       stackIndex = 1;
     } else if (index == 4) {
       stackIndex = 2;
-    } else if (index == 2) {
-      stackIndex = 3;
     } else {
       stackIndex = 0;
     }
@@ -88,7 +89,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     setState(() {
       _currentIndex = stackIndex;
       _visited[stackIndex] = true;
-      _isBottomNavVisible = stackIndex != 3;
+      _isBottomNavVisible = true;
     });
 
     if (Get.isRegistered<MainLayoutController>()) {
@@ -132,7 +133,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _currentIndex == 3 ? null : CustomAppBar(controller: controller),
+      appBar: CustomAppBar(controller: controller),
       drawer: const AppDrawer(),
       body: Stack(
         children: [
@@ -189,7 +190,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                   backgroundColor: colorScheme.surface,
                   indicatorColor: colorScheme.surfaceContainerHighest,
                   indicatorShape: const StadiumBorder(),
-                  selectedIndex: _currentIndex == 2 ? 4 : (_currentIndex == 3 ? 2 : _currentIndex),
+                  selectedIndex: _currentIndex == 2 ? 4 : _currentIndex,
                   onDestinationSelected: _onTabChanged,
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
                   destinations: [
