@@ -488,7 +488,6 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       label: 'story_editor_crop_tab'.tr,
                       onTap: _cropImage,
                     ),
-                  ]
                   ],
                 ],
               ),
