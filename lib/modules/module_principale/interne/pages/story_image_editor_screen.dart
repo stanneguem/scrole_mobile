@@ -108,7 +108,11 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
 
   Future<void> _save() async {
     if (_isSaving) return;
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      // Selection handles are editor-only and must not be baked into the image.
+      _selectedOverlay = null;
+    });
     try {
       await WidgetsBinding.instance.endOfFrame;
       final boundary = _canvasKey.currentContext?.findRenderObject()
