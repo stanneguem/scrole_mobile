@@ -504,7 +504,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                     const SizedBox(width: 18),
                     _EditorTool(
                       icon: Icons.auto_awesome_rounded,
-                      label: 'Filtres',
+                      label: 'story_editor_filters'.tr,
                       onTap: () => setState(() => _showFilters = !_showFilters),
                     ),
                   ],
