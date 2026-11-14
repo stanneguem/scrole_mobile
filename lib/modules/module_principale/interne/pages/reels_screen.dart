@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
+import '../../../../shared/widgets/linkified_text.dart';
 import '../../../module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../controllers/home_feed_controller.dart';
 import '../widgets/community_comments_sheet.dart';
@@ -703,8 +704,7 @@ class _ReelPostInfo extends StatelessWidget {
         ),
         if (post.content.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(post.content, maxLines: 3, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25)),
+          _ExpandableReelDescription(text: post.content),
         ],
         const SizedBox(height: 10),
         // Copie exacte du compositeur _buildQuickStoryReply() de StoryViewerScreen.
@@ -827,4 +827,77 @@ class _ReelActionButton extends StatelessWidget {
       ],
     ),
   );
+}
+
+
+/// Description compacte des Réels : une seule ligne par défaut,
+/// avec le même comportement « Voir plus / Voir moins » que le fil.
+class _ExpandableReelDescription extends StatefulWidget {
+  final String text;
+
+  const _ExpandableReelDescription({required this.text});
+
+  @override
+  State<_ExpandableReelDescription> createState() =>
+      _ExpandableReelDescriptionState();
+}
+
+class _ExpandableReelDescriptionState
+    extends State<_ExpandableReelDescription> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+      color: Colors.white,
+      fontSize: 13,
+      height: 1.25,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: const TextSpan(text: ''),
+          maxLines: 1,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        );
+        painter.text = TextSpan(text: widget.text, style: style);
+        painter.layout(maxWidth: constraints.maxWidth);
+        final isOverflowing = painter.didExceedMaxLines;
+        painter.dispose();
+
+        if (!isOverflowing) {
+          return LinkifiedText(text: widget.text, style: style);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LinkifiedText(
+              text: widget.text,
+              maxLines: _isExpanded ? null : 1,
+              overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: style,
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              child: Text(
+                _isExpanded ? 'post_see_less'.tr : 'post_see_more'.tr,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Colors.white70,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
