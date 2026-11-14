@@ -193,6 +193,14 @@ class FeedPostCard extends StatelessWidget {
         onVideoQualifiedView: onVideoQualifiedView,
         autoplayVideos: autoplayVideos,
         margin: margin,
+        onOpenVideoReel: (index) {
+          final shared = post.sharedPost;
+          if (shared == null || index >= shared.media.length) return;
+          Get.to(() => ReelsScreen(
+            initialPostId: shared.id,
+            initialMediaUrl: shared.media[index].url,
+          ));
+        },
       );
     }
 
@@ -3072,6 +3080,7 @@ class _RepublicationPostCard extends StatelessWidget {
   final VoidCallback? onHidePost;
   final String? currentCommunityId;
   final ValueChanged<String>? onVideoQualifiedView;
+  final ValueChanged<int>? onOpenVideoReel;
   final bool autoplayVideos;
   final EdgeInsetsGeometry margin;
 
@@ -3084,6 +3093,7 @@ class _RepublicationPostCard extends StatelessWidget {
     this.onHidePost,
     this.currentCommunityId,
     this.onVideoQualifiedView,
+    this.onOpenVideoReel,
     this.autoplayVideos = false,
     this.margin = const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
   });
@@ -3392,6 +3402,7 @@ class _RepublicationPostCard extends StatelessWidget {
             child: PostMediaSlider(
               heroTagPrefix: 'shared_${shared.id}_${post.id}',
               forceAutoplayVideos: autoplayVideos,
+              onOpenVideoReel: onOpenVideoReel,
               onVideoQualifiedView: () => onVideoQualifiedView?.call(shared.id),
               media: shared.media,
               likesCount: shared.likeCount,
