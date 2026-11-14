@@ -40,7 +40,7 @@ class PostMediaSlider extends StatefulWidget {
     this.onVideoQualifiedView,
     this.onPageChanged,
     this.onOpenVideoReel,
-    this.qualifiedViewPercent = 0.5,
+    this.qualifiedViewPercent = 0.25,
   });
 
   @override
