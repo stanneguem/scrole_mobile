@@ -89,8 +89,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
-  Future<void> _sendReelComment(_ReelItem item) async {
-    final text = _commentController.text.trim();
+  Future<void> _sendReelComment(_ReelItem item, {String? quickEmoji}) async {
+    final text = (quickEmoji ?? _commentController.text).trim();
     if (text.isEmpty || _isSendingComment) return;
     setState(() => _isSendingComment = true);
     try {
@@ -117,62 +117,73 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
-  Future<void> _showReelEmojis() async {
+  Future<void> _showReelEmojis(_ReelItem item) async {
     const emojis = [
-      '😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉',
-      '😍','🥰','😘','😋','😛','😜','🤪','🤗','🤭','🤔','🫡','😴','🥳','😎',
-      '🤩','😭','😢','🥺','😤','😡','🤯','😱','❤️','🧡','💛','💚','💙','💜',
-      '🖤','🤍','💔','💕','💞','💖','🔥','✨','⭐','🌟','💯','👏','🙌','👍',
-      '👎','🙏','💪','🎉','🌹','🌸','🌈','☀️','💐','🫶','💋',
+      '😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂',
+      '🙃','😉','😍','🥰','😘','😗','😙','😚','😋','😛','😜','🤪',
+      '🤗','🤭','🤫','🤔','🫡','🤐','🤨','😐','😏','😒','🙄','😬',
+      '😴','🤤','🥳','😎','🤩','😭','😢','🥺','😤','😡','🤯','😱',
+      '❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💕','💞','💖',
+      '🔥','✨','⭐','🌟','💯','👏','🙌','👍','👎','🙏','💪','🎉',
+      '🥂','🍾','🌹','🌸','🌈','☀️','💐','🎂','😍','🤝','🫶','💋',
     ];
-    final emoji = await showModalBottomSheet<String>(
+    final selectedEmoji = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => SafeArea(
         child: Container(
-          height: MediaQuery.of(sheetContext).size.height * .48,
+          height: MediaQuery.of(sheetContext).size.height * 0.52,
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-          decoration: BoxDecoration(
-            color: Theme.of(sheetContext).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: const BoxDecoration(
+            color: Color(0xFF202020),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(children: [
-            Container(width: 38, height: 4,
-              decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(4))),
-            const SizedBox(height: 14),
-            Align(alignment: Alignment.centerLeft,
-              child: Text('Choisir un emoji', style: TextStyle(
-                color: Theme.of(sheetContext).colorScheme.onSurface,
-                fontSize: 16, fontWeight: FontWeight.w700))),
-            const SizedBox(height: 12),
-            Expanded(child: GridView.builder(
-              itemCount: emojis.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7, mainAxisSpacing: 8, crossAxisSpacing: 8),
-              itemBuilder: (_, index) => InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => Navigator.of(sheetContext).pop(emojis[index]),
-                child: Center(child: Text(emojis[index], style: const TextStyle(fontSize: 25))),
+          child: Column(
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white30,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-            )),
-          ]),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'story_choose_emoji'.tr,
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: GridView.builder(
+                  itemCount: emojis.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 7,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                  ),
+                  itemBuilder: (_, index) => InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => Navigator.of(sheetContext).pop(emojis[index]),
+                    child: Center(
+                      child: Text(emojis[index], style: const TextStyle(fontSize: 27)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
-    if (emoji != null && mounted) {
-      final value = _commentController.value;
-      final selection = value.selection;
-      final start = selection.isValid ? selection.start : value.text.length;
-      final end = selection.isValid ? selection.end : value.text.length;
-      final updated = value.text.replaceRange(start, end, emoji);
-      _commentController.value = value.copyWith(
-        text: updated,
-        selection: TextSelection.collapsed(offset: start + emoji.length),
-        composing: TextRange.empty,
-      );
-      _commentFocusNode.requestFocus();
-      setState(() {});
+
+    if (!mounted) return;
+    if (selectedEmoji != null) {
+      await _sendReelComment(item, quickEmoji: selectedEmoji);
     }
   }
 
@@ -324,7 +335,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 commentFocusNode: _commentFocusNode,
                 isSendingComment: _isSendingComment,
                 onSendComment: () => _sendReelComment(activeItem),
-                onOpenEmojiPicker: _showReelEmojis,
+                onOpenEmojiPicker: () => _showReelEmojis(activeItem),
+                onQuickEmoji: (emoji) => _sendReelComment(activeItem, quickEmoji: emoji),
               ),
             ),
           ],
@@ -582,6 +594,7 @@ class _ReelPostInfo extends StatelessWidget {
   final FocusNode commentFocusNode;
   final bool isSendingComment;
   final VoidCallback onSendComment;
+  final ValueChanged<String> onQuickEmoji;
   final VoidCallback onOpenEmojiPicker;
 
   const _ReelPostInfo({
@@ -595,6 +608,7 @@ class _ReelPostInfo extends StatelessWidget {
     required this.commentFocusNode,
     required this.isSendingComment,
     required this.onSendComment,
+    required this.onQuickEmoji,
     required this.onOpenEmojiPicker,
   });
 
@@ -610,6 +624,7 @@ class _ReelPostInfo extends StatelessWidget {
         : followStatus == 'requested'
             ? 'Demandé'
             : 'Suivre';
+    final hasText = commentController.text.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -657,51 +672,95 @@ class _ReelPostInfo extends StatelessWidget {
             style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25)),
         ],
         const SizedBox(height: 10),
-        Container(
-          constraints: const BoxConstraints(minHeight: 44, maxHeight: 104),
-          padding: const EdgeInsets.fromLTRB(2, 3, 5, 3),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.22),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.38)),
-          ),
-          child: Row(children: [
-            IconButton(
-              tooltip: 'Émojis',
-              onPressed: onOpenEmojiPicker,
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.white, size: 25),
+        // Copie exacte du compositeur _buildQuickStoryReply() de StoryViewerScreen.
+        Row(
+          children: [
+            PopupMenuButton<String>(
+              tooltip: 'story_emoji_tooltip'.tr,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.white, size: 26),
+              color: const Color(0xFF292929),
+              onSelected: (emoji) {
+                if (emoji == '__more__') {
+                  onOpenEmojiPicker();
+                  return;
+                }
+                onQuickEmoji(emoji);
+              },
+              itemBuilder: (_) => [
+                ...['❤️', '😂', '😍', '🔥', '👏', '👍'].map(
+                  (emoji) => PopupMenuItem<String>(
+                    value: emoji,
+                    child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: '__more__',
+                  child: Center(
+                    child: Icon(Icons.add_circle_outline, color: Colors.white, size: 22),
+                  ),
+                ),
+              ],
             ),
-            Expanded(child: TextField(
-              controller: commentController,
-              focusNode: commentFocusNode,
-              minLines: 1,
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSendComment(),
-              style: const TextStyle(color: Colors.white, fontSize: 13.5),
-              cursorColor: Colors.white,
-              decoration: const InputDecoration(
-                hintText: 'Ajouter un commentaire...',
-                hintStyle: TextStyle(color: Colors.white70, fontSize: 12.5),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 5, 6, 5),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.32)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: commentController,
+                        focusNode: commentFocusNode,
+                        onChanged: (_) => (context as Element).markNeedsBuild(),
+                        minLines: 1,
+                        maxLines: 3,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => onSendComment(),
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        cursorColor: Colors.white,
+                        decoration: InputDecoration(
+                          hintText: 'story_reply_hint'.tr,
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 13),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          isCollapsed: false,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+                        ),
+                      ),
+                    ),
+                    if (hasText)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'story_send'.tr,
+                        onPressed: isSendingComment ? null : onSendComment,
+                        icon: isSendingComment
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                      ),
+                  ],
+                ),
               ),
-            )),
-            IconButton(
-              tooltip: 'Envoyer le commentaire',
-              onPressed: isSendingComment || commentController.text.trim().isEmpty ? null : onSendComment,
-              visualDensity: VisualDensity.compact,
-              icon: isSendingComment
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
             ),
-          ]),
+          ],
         ),
       ],
     );
