@@ -482,7 +482,7 @@ class FeedPostCard extends StatelessWidget {
                       ),
                   ],
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
                   // Sponsored actions stay hidden until campaign-specific
                   // impression, click and engagement tracking is connected.
@@ -499,7 +499,7 @@ class FeedPostCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
           ],
         ),
       ),
