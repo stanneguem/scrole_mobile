@@ -115,7 +115,7 @@ class MainLayoutController extends GetxController
 
   void goToEventsTab() {
     closeAddMenu();
-    changeTab(3);
+    changeTab(4);
   }
 
   void goToEventSuggestionsTab() {
