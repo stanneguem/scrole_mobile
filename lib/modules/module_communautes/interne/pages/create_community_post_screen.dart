@@ -13,6 +13,7 @@ import 'package:scrole/shared/widgets/video_preview_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
+import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
@@ -787,16 +788,55 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       );
     } catch (e) {
       debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+
+      // A network interruption should be explained in user-friendly terms,
+      // rather than exposing the raw socket/Supabase exception in a red alert.
+      var isOffline = e is SocketException ||
+          e.toString().toLowerCase().contains('socketexception') ||
+          e.toString().toLowerCase().contains('failed host lookup') ||
+          e.toString().toLowerCase().contains('network is unreachable') ||
+          e.toString().toLowerCase().contains('connection timed out') ||
+          e.toString().toLowerCase().contains('connection reset') ||
+          e.toString().toLowerCase().contains('clientexception');
+
+      if (!isOffline && Get.isRegistered<ConnectivityService>()) {
+        try {
+          isOffline = !await Get.find<ConnectivityService>()
+              .checkConnection()
+              .timeout(const Duration(seconds: 2));
+        } catch (_) {
+          // Do not hide a real server/application error if connectivity
+          // status itself cannot be determined.
+        }
+      }
+
       if (mounted) {
         setState(() => _isPublishing = false);
-        Get.snackbar(
-          'Publication non confirmée',
-          e.toString().replaceFirst('Exception: ', ''),
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 6),
-        );
+        if (isOffline) {
+          final colors = Theme.of(context).colorScheme;
+          Get.snackbar(
+            'Connexion interrompue',
+            'Tu es hors connexion. Vérifie ton accès Internet puis réessaie de publier.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: colors.surface,
+            colorText: colors.onSurface,
+            icon: Icon(Icons.wifi_off_rounded, color: colors.onSurface),
+            margin: const EdgeInsets.all(12),
+            borderRadius: 16,
+            duration: const Duration(seconds: 4),
+          );
+        } else {
+          Get.snackbar(
+            'Publication non confirmée',
+            e.toString().replaceFirst('Exception: ', ''),
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            colorText: Theme.of(context).colorScheme.onSurface,
+            duration: const Duration(seconds: 6),
+            margin: const EdgeInsets.all(12),
+            borderRadius: 16,
+          );
+        }
       }
     }
   }
