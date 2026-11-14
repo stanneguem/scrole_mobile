@@ -12,7 +12,6 @@ import 'package:scrole/shared/widgets/external_web_view_screen.dart';
 import '../../../module_evenement/interne/pages/event_screen.dart';
 import '../../../module_communautes/interne/pages/community_screen.dart';
 import '../../../module_communautes/interne/controllers/community/community_controller.dart';
-import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 import '../pages/home_feed_screen.dart';
 import '../../../../app_controller.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
@@ -61,8 +60,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
 
   void _onTabChanged(int index) {
     if (index == 2) {
-      // Center Create button (+) -> Opens CreateCommunityPostScreen
-      Get.to(() => const CreateCommunityPostScreen(communityName: 'Fil d\'actualité général'));
+      // Notifications are opened from the bottom navigation bar.
+      Get.find<MainLayoutController>().openNotifications();
       return;
     }
     if (index == 4) {
@@ -232,33 +231,25 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                       label: 'Communautés',
                     ),
                     NavigationDestination(
-                      icon: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colorScheme.primary,
-                        ),
-                        child: const Icon(
-                          Icons.add_rounded,
-                          color: Colors.white,
-                          size: 26,
+                      icon: SvgPicture.asset(
+                        'assets/svg_icons/notification-svgrepo-com.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(
+                          colorScheme.onSurfaceVariant,
+                          BlendMode.srcIn,
                         ),
                       ),
-                      selectedIcon: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colorScheme.primary,
-                        ),
-                        child: const Icon(
-                          Icons.add_rounded,
-                          color: Colors.white,
-                          size: 26,
+                      selectedIcon: SvgPicture.asset(
+                        'assets/svg_icons/notification-svgrepo-com.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(
+                          colorScheme.primary,
+                          BlendMode.srcIn,
                         ),
                       ),
-                      label: 'nav_create'.tr,
+                      label: 'Notifications',
                     ),
                     NavigationDestination(
                       icon: SvgPicture.asset(
