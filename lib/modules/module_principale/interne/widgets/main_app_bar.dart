@@ -19,8 +19,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(72);
 
   void _openCreation(String type) {
-    // Le compositeur général accepte déjà les photos et les vidéos :
-    // un média vidéo publié alimente le fil des Scuts.
+    // Le compositeur général accepte les photos et les vidéos.
+    // Les publications contenant une vidéo alimentent le fil des Scuts.
     Get.to(
       () => const CreateCommunityPostScreen(
         communityName: 'Fil d\'actualité général',
@@ -40,7 +40,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         color: Colors.transparent,
         child: Row(
           children: [
-            // ─── GAUCHE : Scrole wordmark ───
             Builder(
               builder: (drawerContext) => GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -64,10 +63,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 }),
               ),
             ),
-
             const Spacer(),
-
-            // ─── DROITE : Création, recherche et messagerie ───
             Row(
               children: [
                 PopupMenuButton<String>(
@@ -78,7 +74,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  itemBuilder: (menuContext) => [
+                  itemBuilder: (_) => [
                     PopupMenuItem<String>(
                       value: 'post',
                       child: Row(
@@ -106,7 +102,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ],
                   child: GlassmorphismButton(
                     icon: const Icon(Icons.add_rounded, size: 25),
-                    onTap: () {},
+                    // Laisser le PopupMenuButton gérer le geste.
+                    onTap: null,
                   ),
                 ),
                 const SizedBox(width: 8),
