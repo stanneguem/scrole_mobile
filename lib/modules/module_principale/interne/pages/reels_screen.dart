@@ -424,7 +424,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   }
 
   Future<void> _initialize() async {
-    if (!widget.active || widget.paused || _video != null || !_loading) return;
+    if (!widget.active || widget.isPaused || _video != null || !_loading) return;
     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.item.media.url));
     try {
       await controller.initialize();
