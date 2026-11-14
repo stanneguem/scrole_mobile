@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../module_creation_de_compte/centre/services/user_service.dart';
@@ -91,6 +93,7 @@ class AuthService extends GetxService {
       }
 
       await _authRepository.signOut();
+      await _clearScutOfflineCache();
       currentUser.value = null;
       isAuthenticated.value = false;
       _lastUserId = null;
@@ -107,6 +110,20 @@ class AuthService extends GetxService {
       rethrow;
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> _clearScutOfflineCache() async {
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final videoCache = Directory('${directory.path}/scut_video_cache');
+      if (await videoCache.exists()) {
+        await videoCache.delete(recursive: true);
+      }
+      final manifest = File('${directory.path}/scut_feed_cache.json');
+      if (await manifest.exists()) await manifest.delete();
+    } catch (error) {
+      if (kDebugMode) print('[Auth] Unable to clear Scut offline cache: $error');
     }
   }
 
