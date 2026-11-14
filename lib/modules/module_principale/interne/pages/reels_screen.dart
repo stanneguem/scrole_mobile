@@ -591,6 +591,7 @@ class _ReelActionRail extends StatefulWidget {
   final VoidCallback onShare;
 
   const _ReelActionRail({
+    super.key,
     required this.post,
     required this.onReaction,
     required this.onComments,
