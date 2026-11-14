@@ -367,14 +367,16 @@ class _ReelVideoPage extends StatefulWidget {
   final _ReelItem item;
   final bool active;
   final bool muted;
-  final bool paused;
+  // Nullable backing field keeps existing PageView children safe during hot reload.
+  final bool? paused;
+  bool get isPaused => paused ?? false;
 
   const _ReelVideoPage({
     super.key,
     required this.item,
     required this.active,
     required this.muted,
-    required this.paused,
+    this.paused = false,
   });
 
   @override
@@ -402,10 +404,10 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     if (oldWidget.muted != widget.muted && _video?.value.isInitialized == true) {
       unawaited(_video!.setVolume(widget.muted ? 0 : 1));
     }
-    if (oldWidget.paused != widget.paused && widget.active) {
+    if (oldWidget.isPaused != widget.isPaused && widget.active) {
       final controller = _video;
       if (controller != null && controller.value.isInitialized) {
-        if (widget.paused) {
+        if (widget.isPaused) {
           unawaited(controller.pause());
         } else {
           unawaited(controller.play());
@@ -435,7 +437,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       _video = controller;
       controller.addListener(_onVideoChanged);
       setState(() => _loading = false);
-      if (!widget.paused) await controller.play();
+      if (!widget.isPaused) await controller.play();
     } catch (error) {
       debugPrint('[REELS] video initialization failed: $error');
       await controller.dispose();
