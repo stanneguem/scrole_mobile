@@ -112,7 +112,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     if (userId.isEmpty || userId == _socialRepository.currentUserId ||
         _followStates.containsKey(userId)) return;
     try {
-      final relation = await _socialRepository.getRelationship(userId);
+      final relation = await _socialRepository.getRelationship(userId, forceRefresh: true);
       if (mounted) setState(() => _followStates[userId] = _relationStatus(relation));
     } catch (error) {
       debugPrint('[REELS] relationship lookup failed: $error');
@@ -1197,7 +1197,7 @@ class _ReelAuthorInfo extends StatelessWidget {
                 userId: author?.userId.isNotEmpty == true ? author!.userId : post.authorId,
               ),
             ],
-            if (!isOwnPost) ...[
+            if (!isOwnPost && followStatus != 'following' && followStatus != 'requested') ...[
               const SizedBox(width: 9),
               OutlinedButton(
                 onPressed: isFollowBusy || followStatus == 'loading' ||
