@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -647,22 +648,63 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                 else if (_currentStory.kind == 'image' &&
                     _currentStory.imageUrl != null)
                   Positioned.fill(
-                    child: AppCachedImage(
-                      key: ValueKey('story-image-${_currentStory.id}'),
-                      imageUrl: _currentStory.imageUrl!,
-                      fit: BoxFit.cover,
-                      cacheUntil: _currentStory.expiresAt,
-                      onImageLoaded: () => _onCurrentStoryImageLoaded(_currentStory.id),
-                      placeholder: const Center(
-                        child: SizedBox(
-                          width: 34,
-                          height: 34,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Fill the canvas with a softened reflection of the
+                        // same photo. This layer is only decorative: cropping
+                        // here must never affect the actual story image.
+                        ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(
+                            sigmaX: 26,
+                            sigmaY: 26,
+                          ),
+                          child: AppCachedImage(
+                            imageUrl: _currentStory.imageUrl!,
+                            fit: BoxFit.cover,
+                            cacheUntil: _currentStory.expiresAt,
                           ),
                         ),
-                      ),
+                        const ColoredBox(
+                          color: Color(0x55303030),
+                        ),
+                        // A subtle translucent veil gives the blurred
+                        // reflection a glass-like finish.
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0x22FFFFFF),
+                                Color(0x08000000),
+                                Color(0x33FFFFFF),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // The real story stays completely visible at its
+                        // natural aspect ratio, without zooming or cropping.
+                        Center(
+                          child: AppCachedImage(
+                            key: ValueKey('story-image-${_currentStory.id}'),
+                            imageUrl: _currentStory.imageUrl!,
+                            fit: BoxFit.contain,
+                            cacheUntil: _currentStory.expiresAt,
+                            onImageLoaded: () => _onCurrentStoryImageLoaded(_currentStory.id),
+                            placeholder: const Center(
+                              child: SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 else if (_currentStory.kind == 'post')
