@@ -355,11 +355,13 @@ class _ReelsScreenState extends State<ReelsScreen> {
               },
             ),
             // Barre supérieure persistante : elle ne fait pas partie du PageView.
-            const Positioned(
+            Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: _ReelsTopBar(),
+              child: _ReelsTopBar(
+                onReport: () => showFeedPostReportSheet(context, activeItem.post),
+              ),
             ),
             // Compositeur fixe : il reste à la même place pendant le défilement.
             Positioned(
@@ -620,12 +622,14 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
 }
 
 class _ReelsTopBar extends StatelessWidget {
-  const _ReelsTopBar();
+  final VoidCallback onReport;
+
+  const _ReelsTopBar({required this.onReport});
 
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: Align(
-      alignment: Alignment.topLeft,
+    child: Padding(
+      padding: const EdgeInsets.only(right: 8),
       child: Row(
         children: [
           IconButton(
@@ -634,6 +638,28 @@ class _ReelsTopBar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           const Text('Scut', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          PopupMenuButton<String>(
+            tooltip: 'Options',
+            icon: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 27),
+            color: const Color(0xFF252525),
+            onSelected: (value) {
+              if (value == 'report') onReport();
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem<String>(
+                value: 'report',
+                child: Row(
+                  children: [
+                    const Icon(Icons.flag_outlined, color: Colors.white70, size: 20),
+                    const SizedBox(width: 12),
+                    Text('home_feed_report_post'.tr,
+                        style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     ),
