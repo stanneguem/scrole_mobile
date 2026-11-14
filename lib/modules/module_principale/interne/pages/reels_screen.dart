@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../../shared/models/post_media.dart';
@@ -11,6 +12,8 @@ import '../../../module_communautes/interne/controllers/community/community_feed
 import '../controllers/home_feed_controller.dart';
 import '../widgets/community_comments_sheet.dart';
 import '../../centre/models/community_post.dart';
+import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
+import '../../externe/repositories/home_feed_repository.dart';
 
 class ReelsScreen extends StatefulWidget {
   const ReelsScreen({super.key});
@@ -23,8 +26,144 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
   bool _muted = false;
+  final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
+  final SocialRepository _socialRepository = SocialRepository();
+  final HomeFeedRepository _feedRepository = HomeFeedRepository();
+  final Map<String, String> _followStates = {};
+  final Set<String> _followRequestsInFlight = {};
+  bool _isSendingComment = false;
 
   void _goHome() => Get.back();
+
+  String _relationStatus(Map<String, dynamic> relation) {
+    final state = (relation['state'] ?? '').toString().toLowerCase();
+    if (state == 'following' || state == 'friends' || relation['is_following'] == true) {
+      return 'following';
+    }
+    if (state == 'requested' || relation['request_sent'] == true) return 'requested';
+    return 'none';
+  }
+
+  Future<void> _loadRelationship(String userId) async {
+    if (userId.isEmpty || userId == _socialRepository.currentUserId ||
+        _followStates.containsKey(userId)) return;
+    try {
+      final relation = await _socialRepository.getRelationship(userId);
+      if (mounted) setState(() => _followStates[userId] = _relationStatus(relation));
+    } catch (error) {
+      debugPrint('[REELS] relationship lookup failed: $error');
+      if (mounted) setState(() => _followStates.putIfAbsent(userId, () => 'none'));
+    }
+  }
+
+  Future<void> _followAuthor(String userId) async {
+    if (userId.isEmpty || !_followRequestsInFlight.add(userId)) return;
+    setState(() {});
+    try {
+      final relation = await _socialRepository.followUser(userId);
+      final status = _relationStatus(relation);
+      if (mounted) {
+        setState(() => _followStates[userId] = status == 'none' ? 'following' : status);
+      }
+    } catch (error) {
+      debugPrint('[REELS] follow action failed: $error');
+      if (mounted) {
+        Get.snackbar('Suivi impossible', 'Réessaie dans un instant.',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } finally {
+      _followRequestsInFlight.remove(userId);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _sendReelComment(_ReelItem item) async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty || _isSendingComment) return;
+    setState(() => _isSendingComment = true);
+    try {
+      await _feedRepository.commentCommunityPost(
+        p_id: const Uuid().v4(),
+        postId: item.post.id,
+        content: text,
+        mentions: const [],
+      );
+      if (!mounted) return;
+      _commentController.clear();
+      _commentFocusNode.unfocus();
+      Get.snackbar('Commentaire envoyé', 'Ton commentaire a été publié.',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2));
+    } catch (error) {
+      debugPrint('[REELS] comment submission failed: $error');
+      if (mounted) {
+        Get.snackbar('Envoi impossible', 'Vérifie ta connexion puis réessaie.',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } finally {
+      if (mounted) setState(() => _isSendingComment = false);
+    }
+  }
+
+  Future<void> _showReelEmojis() async {
+    const emojis = [
+      '😀','😃','😄','😁','😆','😅','😂','🤣','🥲','😊','😇','🙂','🙃','😉',
+      '😍','🥰','😘','😋','😛','😜','🤪','🤗','🤭','🤔','🫡','😴','🥳','😎',
+      '🤩','😭','😢','🥺','😤','😡','🤯','😱','❤️','🧡','💛','💚','💙','💜',
+      '🖤','🤍','💔','💕','💞','💖','🔥','✨','⭐','🌟','💯','👏','🙌','👍',
+      '👎','🙏','💪','🎉','🌹','🌸','🌈','☀️','💐','🫶','💋',
+    ];
+    final emoji = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          height: MediaQuery.of(sheetContext).size.height * .48,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+          decoration: BoxDecoration(
+            color: Theme.of(sheetContext).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(children: [
+            Container(width: 38, height: 4,
+              decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(4))),
+            const SizedBox(height: 14),
+            Align(alignment: Alignment.centerLeft,
+              child: Text('Choisir un emoji', style: TextStyle(
+                color: Theme.of(sheetContext).colorScheme.onSurface,
+                fontSize: 16, fontWeight: FontWeight.w700))),
+            const SizedBox(height: 12),
+            Expanded(child: GridView.builder(
+              itemCount: emojis.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7, mainAxisSpacing: 8, crossAxisSpacing: 8),
+              itemBuilder: (_, index) => InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => Navigator.of(sheetContext).pop(emojis[index]),
+                child: Center(child: Text(emojis[index], style: const TextStyle(fontSize: 25))),
+              ),
+            )),
+          ]),
+        ),
+      ),
+    );
+    if (emoji != null && mounted) {
+      final value = _commentController.value;
+      final selection = value.selection;
+      final start = selection.isValid ? selection.start : value.text.length;
+      final end = selection.isValid ? selection.end : value.text.length;
+      final updated = value.text.replaceRange(start, end, emoji);
+      _commentController.value = value.copyWith(
+        text: updated,
+        selection: TextSelection.collapsed(offset: start + emoji.length),
+        composing: TextRange.empty,
+      );
+      _commentFocusNode.requestFocus();
+      setState(() {});
+    }
+  }
 
   List<_ReelItem> _buildItems(HomeFeedController controller) {
     final result = <_ReelItem>[];
@@ -59,6 +198,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _commentController.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -108,6 +249,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
         }
         final index = _currentIndex.clamp(0, items.length - 1);
         final activeItem = items[index];
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadRelationship(activeItem.post.authorId);
+        });
+        final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+        final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -115,7 +261,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
               controller: _pageController,
               scrollDirection: Axis.vertical,
               itemCount: items.length,
-              onPageChanged: (value) => setState(() => _currentIndex = value),
+              onPageChanged: (value) {
+                _commentController.clear();
+                _commentFocusNode.unfocus();
+                setState(() => _currentIndex = value);
+                _loadRelationship(items[value].post.authorId);
+              },
               itemBuilder: (context, pageIndex) => _ReelVideoPage(
                 key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
                 item: items[pageIndex],
@@ -134,7 +285,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
             // proviennent toujours de la publication actuellement affichée.
             Positioned(
               right: 12,
-              bottom: 112,
+              bottom: safeBottom + 142,
               child: _ReelActionRail(
                 post: activeItem.post,
                 onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
@@ -149,11 +300,19 @@ class _ReelsScreenState extends State<ReelsScreen> {
             Positioned(
               left: 16,
               right: 82,
-              bottom: 24,
+              bottom: safeBottom + 24 + keyboardInset,
               child: _ReelPostInfo(
                 key: ValueKey('info_${activeItem.post.id}_${activeItem.media.url}'),
                 post: activeItem.post,
                 onComments: () => _openComments(activeItem),
+                followStatus: _followStates[activeItem.post.authorId] ?? 'loading',
+                isFollowBusy: _followRequestsInFlight.contains(activeItem.post.authorId),
+                onFollow: () => _followAuthor(activeItem.post.authorId),
+                commentController: _commentController,
+                commentFocusNode: _commentFocusNode,
+                isSendingComment: _isSendingComment,
+                onSendComment: () => _sendReelComment(activeItem),
+                onOpenEmojiPicker: _showReelEmojis,
               ),
             ),
           ],
@@ -404,8 +563,28 @@ class _ReelActionRail extends StatelessWidget {
 class _ReelPostInfo extends StatelessWidget {
   final CommunityPost post;
   final VoidCallback onComments;
+  final String followStatus;
+  final bool isFollowBusy;
+  final VoidCallback onFollow;
+  final TextEditingController commentController;
+  final FocusNode commentFocusNode;
+  final bool isSendingComment;
+  final VoidCallback onSendComment;
+  final VoidCallback onOpenEmojiPicker;
 
-  const _ReelPostInfo({super.key, required this.post, required this.onComments});
+  const _ReelPostInfo({
+    super.key,
+    required this.post,
+    required this.onComments,
+    required this.followStatus,
+    required this.isFollowBusy,
+    required this.onFollow,
+    required this.commentController,
+    required this.commentFocusNode,
+    required this.isSendingComment,
+    required this.onSendComment,
+    required this.onOpenEmojiPicker,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -413,58 +592,104 @@ class _ReelPostInfo extends StatelessWidget {
     final username = author?.username.isNotEmpty == true ? author!.username : post.authorName;
     final avatar = author?.photoUrl;
     final colorScheme = Theme.of(context).colorScheme;
+    final isOwnPost = post.authorId == Supabase.instance.client.auth.currentUser?.id;
+    final followLabel = followStatus == 'following'
+        ? 'Suivi'
+        : followStatus == 'requested'
+            ? 'Demandé'
+            : 'Suivre';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            CircleAvatar(
-              radius: 17,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
-              child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 18) : null,
-            ),
-            const SizedBox(width: 9),
-            Flexible(
-              child: Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-            ),
+        Row(children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
+            child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 18) : null,
+          ),
+          const SizedBox(width: 9),
+          Flexible(child: Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
+          if (!isOwnPost) ...[
             const SizedBox(width: 10),
             OutlinedButton(
-              onPressed: () {
-                final id = post.authorId;
-                if (id.isNotEmpty) Get.toNamed('/user-profile/$id');
-              },
+              onPressed: isFollowBusy || followStatus == 'loading' ||
+                  followStatus == 'following' || followStatus == 'requested' ? null : onFollow,
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white70,
                 side: const BorderSide(color: Colors.white70),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Voir le profil', style: TextStyle(fontSize: 11)),
+              child: isFollowBusy || followStatus == 'loading'
+                  ? const SizedBox(width: 14, height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white))
+                  : Text(followLabel, style: const TextStyle(fontSize: 11)),
             ),
           ],
-        ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Voir les commentaires',
+            visualDensity: VisualDensity.compact,
+            onPressed: onComments,
+            icon: const Icon(Icons.mode_comment_outlined, color: Colors.white, size: 21),
+          ),
+        ]),
         if (post.content.trim().isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(post.content, maxLines: 3, overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25)),
         ],
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: onComments,
-          child: Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-            ),
-            alignment: Alignment.centerLeft,
-            child: const Text('Ajouter un commentaire...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 10),
+        Container(
+          constraints: const BoxConstraints(minHeight: 44, maxHeight: 104),
+          padding: const EdgeInsets.fromLTRB(2, 3, 5, 3),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.38)),
           ),
+          child: Row(children: [
+            IconButton(
+              tooltip: 'Émojis',
+              onPressed: onOpenEmojiPicker,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.white, size: 25),
+            ),
+            Expanded(child: TextField(
+              controller: commentController,
+              focusNode: commentFocusNode,
+              minLines: 1,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSendComment(),
+              style: const TextStyle(color: Colors.white, fontSize: 13.5),
+              cursorColor: Colors.white,
+              decoration: const InputDecoration(
+                hintText: 'Ajouter un commentaire...',
+                hintStyle: TextStyle(color: Colors.white70, fontSize: 12.5),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+              ),
+            )),
+            IconButton(
+              tooltip: 'Envoyer le commentaire',
+              onPressed: isSendingComment || commentController.text.trim().isEmpty ? null : onSendComment,
+              visualDensity: VisualDensity.compact,
+              icon: isSendingComment
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+            ),
+          ]),
         ),
       ],
     );
