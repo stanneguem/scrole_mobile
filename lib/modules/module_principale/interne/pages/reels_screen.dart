@@ -287,7 +287,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     if (_cacheBusy) return;
     _cacheBusy = true;
     try {
-      final directory = await getTemporaryDirectory();
+      final directory = await getApplicationSupportDirectory();
       final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
       await cacheDir.create(recursive: true);
       final start = (currentIndex - 8).clamp(0, _scutItems.length);
@@ -398,7 +398,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: TextButton.icon(
-                    onPressed: () => feed.fetchFeed(refresh: true),
+                    onPressed: () => _loadScutFeed(),
                     icon: const Icon(Icons.refresh_rounded, color: Colors.white),
                     label: const Text('Actualiser', style: TextStyle(color: Colors.white)),
                   ),
@@ -437,6 +437,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
             PageView.builder(
               controller: _pageController,
               scrollDirection: Axis.vertical,
+              allowImplicitScrolling: true,
               itemCount: items.length,
               onPageChanged: (value) {
                 _commentController.clear();
@@ -572,6 +573,11 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
         }
       }
     }
+    if (oldWidget.localVideoPath != widget.localVideoPath &&
+        widget.prepare && !widget.active && oldWidget.localVideoPath == null &&
+        widget.localVideoPath != null) {
+      unawaited(_reloadFromLocalCache());
+    }
     if (oldWidget.prepare != widget.prepare) {
       if (widget.prepare) {
         unawaited(_initialize());
@@ -586,6 +592,11 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
         unawaited(_video!.pause());
       }
     }
+  }
+
+  Future<void> _reloadFromLocalCache() async {
+    await _release();
+    if (mounted && widget.prepare) unawaited(_initialize());
   }
 
   Future<void> _initialize() async {
@@ -654,8 +665,16 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) unawaited(_pauseForLifecycle());
-    else if (widget.prepare && !_failed) unawaited(_initialize());
+    if (state != AppLifecycleState.resumed) {
+      unawaited(_pauseForLifecycle());
+    } else if (widget.prepare && !_failed) {
+      final controller = _video;
+      if (widget.active && controller != null && controller.value.isInitialized) {
+        unawaited(controller.play());
+      } else {
+        unawaited(_initialize());
+      }
+    }
   }
 
   Future<void> _pauseForLifecycle() async {
