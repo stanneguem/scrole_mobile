@@ -1,19 +1,14 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../app/local_storage/scut_video_cache.dart';
 import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
@@ -240,12 +235,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
   Future<void> _restoreCachedScutFeed() async {
     try {
-      final directory = await getApplicationSupportDirectory();
-      final manifest = File(p.join(directory.path, 'scut_feed_cache.json'));
-      if (!await manifest.exists()) return;
-      final decoded = jsonDecode(await manifest.readAsString());
-      if (decoded is! List) return;
-      final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
+      final decoded = await readScutFeedManifest();
+      if (decoded.isEmpty) return;
       final restored = <_ReelItem>[];
       for (final entry in decoded) {
         if (entry is! Map) continue;
@@ -255,9 +246,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
           final post = CommunityPost.fromMap(Map<String, dynamic>.from(row['post'] as Map));
           final media = PostMedia.fromJson(Map<String, dynamic>.from(row['media'] as Map));
           if (post.id.isEmpty || !media.isVideo || media.url.isEmpty) continue;
-          final key = sha256.convert(utf8.encode(media.url)).toString();
-          final file = File(p.join(cacheDir.path, '$key.video'));
-          if (await file.exists()) _localVideoPaths[media.url] = file.path;
+          final localPath = await findScutCachedVideo(media.url);
+          if (localPath != null) _localVideoPaths[media.url] = localPath;
           restored.add(_ReelItem(post: post, media: media));
         } catch (error) {
           debugPrint('[SCUT_CACHE] invalid cached item skipped: $error');
@@ -347,41 +337,22 @@ class _ReelsScreenState extends State<ReelsScreen> {
     if (_cacheBusy) return;
     _cacheBusy = true;
     try {
-      final directory = await getApplicationSupportDirectory();
-      final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
-      await cacheDir.create(recursive: true);
       final start = (currentIndex - 8).clamp(0, _scutItems.length).toInt();
       var end = (currentIndex + 2).clamp(0, _scutItems.length).toInt();
       if (end - start < 10) end = (start + 10).clamp(0, _scutItems.length).toInt();
       final window = _scutItems.sublist(start, end);
-      final keep = <String>{};
       for (final item in window) {
-        final key = sha256.convert(utf8.encode(item.media.url)).toString();
-        final file = File(p.join(cacheDir.path, '$key.video'));
-        keep.add(file.path);
-        if (!await file.exists() && _hasInternet) {
-          try {
-            final response = await http.get(Uri.parse(item.media.url)).timeout(const Duration(seconds: 45));
-            if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-              await file.writeAsBytes(response.bodyBytes, flush: true);
-            }
-          } catch (error) {
-            debugPrint('[SCUT_CACHE] download skipped for ${item.post.id}: $error');
-          }
-        }
-        if (await file.exists()) _localVideoPaths[item.media.url] = file.path;
+        final localPath = await cacheScutVideo(
+          item.media.url,
+          downloadIfOnline: _hasInternet,
+        );
+        if (localPath != null) _localVideoPaths[item.media.url] = localPath;
       }
-      // Keep exactly the rolling 10-video window on disk; never delete files still in it.
-      for (final file in cacheDir.listSync().whereType<File>()) {
-        if (!keep.contains(file.path)) {
-          try { await file.delete(); } catch (_) {}
-        }
-      }
-      final manifest = File(p.join(directory.path, 'scut_feed_cache.json'));
-      await manifest.writeAsString(jsonEncode(window.map((item) => {
+      await pruneScutVideos(window.map((item) => item.media.url));
+      await writeScutFeedManifest(window.map((item) => {
         'post': item.post.toCacheMap(),
         'media': item.media.toJson(),
-      }).toList(growable: false)), flush: true);
+      }).toList(growable: false));
       if (mounted) setState(() {});
       debugPrint('[SCUT_CACHE] Cached window: ${window.length} videos (8 previous/current/next).');
     } catch (error) {
@@ -668,11 +639,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
 
   Future<void> _initialize() async {
     if (!widget.prepare || _video != null || !_loading) return;
-    final localPath = widget.localVideoPath;
-    final localFile = localPath == null ? null : File(localPath);
-    final controller = localFile != null && await localFile.exists()
-        ? VideoPlayerController.file(localFile)
-        : VideoPlayerController.networkUrl(Uri.parse(widget.item.media.url));
+    final controller = createScutVideoController(widget.localVideoPath, widget.item.media.url);
     try {
       await controller.initialize();
       if (!mounted || !widget.prepare) {
