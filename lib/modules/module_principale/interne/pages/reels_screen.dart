@@ -596,49 +596,103 @@ class _ReelPostInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final author = post.authorObj;
     final username = author?.username.isNotEmpty == true ? author!.username : post.authorName;
+    final displayName = author?.fullName.trim().isNotEmpty == true
+        ? author!.fullName.trim()
+        : post.authorName;
     final avatar = author?.photoUrl;
+    final isCertified = author?.isCertified == true;
     final colorScheme = Theme.of(context).colorScheme;
     final isOwnPost = post.authorId == Supabase.instance.client.auth.currentUser?.id;
-    final followLabel = followStatus == 'following'
-        ? 'Suivi'
-        : followStatus == 'requested'
-            ? 'Demandé'
-            : 'Suivre';
+    final languageCode = Localizations.localeOf(context).languageCode.toLowerCase();
+    String followLabel;
+    if (followStatus == 'following') {
+      followLabel = switch (languageCode) {
+        'fr' => 'Suivi',
+        'es' => 'Siguiendo',
+        'pt' => 'Seguindo',
+        'de' => 'Gefolgt',
+        'ar' => 'تتابعه',
+        _ => 'Following',
+      };
+    } else if (followStatus == 'requested') {
+      followLabel = switch (languageCode) {
+        'fr' => 'Demandé',
+        'es' => 'Solicitado',
+        'pt' => 'Solicitado',
+        'de' => 'Angefragt',
+        'ar' => 'تم الطلب',
+        _ => 'Requested',
+      };
+    } else {
+      followLabel = switch (languageCode) {
+        'fr' => 'Suivre',
+        'es' => 'Seguir',
+        'pt' => 'Seguir',
+        'de' => 'Folgen',
+        'ar' => 'متابعة',
+        _ => 'Follow',
+      };
+    }
     final hasText = commentController.text.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          CircleAvatar(
-            radius: 17,
-            backgroundColor: colorScheme.surfaceContainerHighest,
-            backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
-            child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 18) : null,
-          ),
-          const SizedBox(width: 9),
-          Flexible(child: Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14))),
-          if (!isOwnPost) ...[
-            const SizedBox(width: 10),
-            OutlinedButton(
-              onPressed: isFollowBusy || followStatus == 'loading' ||
-                  followStatus == 'following' || followStatus == 'requested' ? null : onFollow,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white70,
-                side: const BorderSide(color: Colors.white70),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                minimumSize: const Size(0, 30),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: isFollowBusy || followStatus == 'loading'
-                  ? const SizedBox(width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white))
-                  : Text(followLabel, style: const TextStyle(fontSize: 11)),
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 19,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
+              child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 20) : null,
             ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '@$username',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (isCertified) ...[
+              const SizedBox(width: 5),
+              const Icon(Icons.verified_rounded, color: Color(0xFF35A7FF), size: 17),
+            ],
+            if (!isOwnPost) ...[
+              const SizedBox(width: 9),
+              OutlinedButton(
+                onPressed: isFollowBusy || followStatus == 'loading' ||
+                    followStatus == 'following' || followStatus == 'requested' ? null : onFollow,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white70),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 2),
+                  minimumSize: const Size(0, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: isFollowBusy || followStatus == 'loading'
+                    ? const SizedBox(width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white))
+                    : Text(followLabel, style: const TextStyle(fontSize: 11)),
+              ),
+            ],
           ],
-        ]),
+        ),
         if (post.content.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(post.content, maxLines: 3, overflow: TextOverflow.ellipsis,
