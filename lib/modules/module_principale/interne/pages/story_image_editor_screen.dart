@@ -541,60 +541,67 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
             else
               const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 18),
-              child: Center(
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  runAlignment: WrapAlignment.center,
-                  spacing: 14,
-                  runSpacing: 10,
-                  children: [
-                    if (_isDraggingOverlay)
-                      const _TrashDropTarget()
-                    else if (_selectedOverlay != null) ...[
-                      _EditorTool(
-                        icon: Icons.text_fields_rounded,
-                        label: 'story_editor_add_text'.tr,
-                        onTap: _addText,
-                      ),
-                      _EditorTool(
-                        icon: Icons.delete_outline_rounded,
-                        label: 'story_editor_delete_text'.tr,
-                        onTap: () {
-                          setState(() {
-                            _overlays.removeAt(_selectedOverlay!);
-                            _selectedOverlay = null;
-                            _activeTextPanel = 'font';
-                          });
-                        },
-                      ),
-                    ]
-                    else ...[
-                      _EditorTool(
-                        icon: Icons.text_fields_rounded,
-                        label: 'story_editor_add_text'.tr,
-                        onTap: _addText,
-                      ),
-                      _EditorTool(
-                        icon: Icons.emoji_emotions_outlined,
-                        label: 'story_editor_emoji'.tr,
-                        onTap: _addEmoji,
-                      ),
-                      _EditorTool(
-                        icon: Icons.crop_rounded,
-                        label: 'story_editor_crop_tab'.tr,
-                        onTap: () {
-                          setState(() => _showFilters = false);
-                          _cropImage();
-                        },
-                      ),
-                      _EditorTool(
-                        icon: Icons.auto_awesome_rounded,
-                        label: 'story_editor_filters'.tr,
-                        onTap: () => setState(() => _showFilters = !_showFilters),
-                      ),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 18),
+              child: SizedBox(
+                height: 66,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isDraggingOverlay)
+                        const _TrashDropTarget()
+                      else if (_selectedOverlay != null) ...[
+                        _EditorTool(
+                          icon: Icons.text_fields_rounded,
+                          label: 'story_editor_add_text'.tr,
+                          onTap: _addText,
+                        ),
+                        const SizedBox(width: 14),
+                        _EditorTool(
+                          icon: Icons.delete_outline_rounded,
+                          label: 'story_editor_delete_text'.tr,
+                          onTap: () {
+                            setState(() {
+                              _overlays.removeAt(_selectedOverlay!);
+                              _selectedOverlay = null;
+                              _activeTextPanel = 'font';
+                            });
+                          },
+                        ),
+                      ]
+                      else ...[
+                        _EditorTool(
+                          icon: Icons.text_fields_rounded,
+                          label: 'story_editor_add_text'.tr,
+                          onTap: _addText,
+                        ),
+                        const SizedBox(width: 14),
+                        _EditorTool(
+                          icon: Icons.emoji_emotions_outlined,
+                          label: 'story_editor_emoji'.tr,
+                          onTap: _addEmoji,
+                        ),
+                        const SizedBox(width: 14),
+                        _EditorTool(
+                          icon: Icons.crop_rounded,
+                          label: 'story_editor_crop_tab'.tr,
+                          onTap: () {
+                            setState(() => _showFilters = false);
+                            _cropImage();
+                          },
+                        ),
+                        const SizedBox(width: 14),
+                        _EditorTool(
+                          icon: Icons.auto_awesome_rounded,
+                          label: 'story_editor_filters'.tr,
+                          onTap: () => setState(() => _showFilters = !_showFilters),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
