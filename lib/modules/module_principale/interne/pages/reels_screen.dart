@@ -22,6 +22,7 @@ class ReelsScreen extends StatefulWidget {
 class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+  bool _muted = false;
 
   void _goHome() => Get.back();
 
@@ -188,7 +189,6 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   VideoPlayerController? _video;
   bool _loading = true;
   bool _failed = false;
-  bool _muted = false;
   bool _qualified = false;
   Duration _lastPosition = Duration.zero;
   Duration _watched = Duration.zero;
