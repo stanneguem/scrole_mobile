@@ -29,7 +29,8 @@ class SuggestedProfileModel {
   factory SuggestedProfileModel.fromJson(Map<String, dynamic> json) {
     final username = (json['username'] ?? '').toString();
     final fullName = (json['full_name'] ?? json['name'] ?? json['display_name'] ?? '').toString().trim();
-    final mutual = (json['mutual_friends_count'] as num?)?.toInt() ?? 0;
+    final mutualRaw = json['mutual_friends_count'];
+    final mutual = mutualRaw is num ? mutualRaw.toInt() : int.tryParse(mutualRaw?.toString() ?? '') ?? 0;
     final String reasonKey;
     final Map<String, String> reasonParams;
     if (mutual > 0) {
