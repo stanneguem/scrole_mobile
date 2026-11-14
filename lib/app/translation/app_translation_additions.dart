@@ -419,6 +419,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Créer une publication",
       'creation_menu_create_post': 'Créer un post',
       'creation_menu_create_scut': 'Créer un Scut',
+      'home_feed_my_story': 'Ma story',
+      'home_feed_story_publishing': 'Publication…',
       'community_creation_in_progress': "Création de la communauté en cours…",
 
       'certification_screen_title': 'Certifications Scrole',
@@ -2001,6 +2003,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Create a post",
       'creation_menu_create_post': 'Create a post',
       'creation_menu_create_scut': 'Create a Scut',
+      'home_feed_my_story': 'My Story',
+      'home_feed_story_publishing': 'Publishing…',
       'community_creation_in_progress': "Community creation in progress…",
 
       'certification_screen_title': 'Scrole certifications',
@@ -3585,6 +3589,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Crear una publicación",
       'creation_menu_create_post': 'Crear una publicación',
       'creation_menu_create_scut': 'Crear un Scut',
+      'home_feed_my_story': 'Mi historia',
+      'home_feed_story_publishing': 'Publicando…',
       'community_creation_in_progress': "Creación de la comunidad en curso…",
 
       'certification_screen_title': 'Certificaciones de Scrole',
@@ -5064,6 +5070,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Beitrag erstellen",
       'creation_menu_create_post': 'Beitrag erstellen',
       'creation_menu_create_scut': 'Scut erstellen',
+      'home_feed_my_story': 'Meine Story',
+      'home_feed_story_publishing': 'Wird veröffentlicht…',
       'community_creation_in_progress': "Community wird erstellt…",
 
       'certification_screen_title': 'Scrole-Zertifizierungen',
@@ -6526,6 +6534,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Crea un post",
       'creation_menu_create_post': 'Crea un post',
       'creation_menu_create_scut': 'Crea uno Scut',
+      'home_feed_my_story': 'La mia storia',
+      'home_feed_story_publishing': 'Pubblicazione…',
       'community_creation_in_progress': "Creazione della community in corso…",
 
       'certification_screen_title': 'Certificazioni Scrole',
@@ -7986,6 +7996,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Criar publicação",
       'creation_menu_create_post': 'Criar publicação',
       'creation_menu_create_scut': 'Criar um Scut',
+      'home_feed_my_story': 'Meu story',
+      'home_feed_story_publishing': 'Publicando…',
       'community_creation_in_progress': "Criação da comunidade em andamento…",
 
       'certification_screen_title': 'Certificações Scrole',
@@ -9446,6 +9458,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "创建帖子",
       'creation_menu_create_post': '创建帖子',
       'creation_menu_create_scut': '创建 Scut',
+      'home_feed_my_story': '我的动态',
+      'home_feed_story_publishing': '正在发布…',
       'community_creation_in_progress': "社群正在创建…",
 
       'certification_screen_title': 'Scrole 认证',
@@ -10908,6 +10922,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "投稿を作成",
       'creation_menu_create_post': '投稿を作成',
       'creation_menu_create_scut': 'Scutを作成',
+      'home_feed_my_story': 'マイストーリー',
+      'home_feed_story_publishing': '投稿中…',
       'community_creation_in_progress': "コミュニティを作成中…",
 
       'certification_screen_title': 'Scrole認証',
@@ -12363,6 +12379,8 @@ class AppTranslationAdditions {
       'community_feed_create_post_tooltip': "Создать публикацию",
       'creation_menu_create_post': 'Создать публикацию',
       'creation_menu_create_scut': 'Создать Scut',
+      'home_feed_my_story': 'Моя история',
+      'home_feed_story_publishing': 'Публикация…',
       'community_creation_in_progress': "Сообщество создаётся…",
 
       'certification_screen_title': 'Сертификации Scrole',
