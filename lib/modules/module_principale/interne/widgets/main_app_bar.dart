@@ -18,12 +18,74 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(72);
 
+  final GlobalKey _actionsKey = GlobalKey();
+
+  Future<void> _showCreationMenu(BuildContext context) async {
+    final actionsContext = _actionsKey.currentContext;
+    final actionsBox = actionsContext?.findRenderObject() as RenderBox?;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (actionsBox == null || overlayBox == null) return;
+
+    final topLeft = actionsBox.localToGlobal(
+      Offset(0, actionsBox.size.height),
+      ancestor: overlayBox,
+    );
+    final bottomRight = actionsBox.localToGlobal(
+      Offset(actionsBox.size.width, actionsBox.size.height),
+      ancestor: overlayBox,
+    );
+    final selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(topLeft, bottomRight),
+        Offset.zero & overlayBox.size,
+      ),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      elevation: 12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'post',
+          child: Row(
+            children: [
+              Icon(Icons.post_add_rounded,
+                  color: Theme.of(context).colorScheme.onSurface, size: 21),
+              const SizedBox(width: 12),
+              Text('Créer un post',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  )),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'scut',
+          child: Row(
+            children: [
+              Icon(Icons.video_library_rounded,
+                  color: Theme.of(context).colorScheme.onSurface, size: 21),
+              const SizedBox(width: 12),
+              Text('Créer un Scut',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  )),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (selected != null) _openCreation(selected);
+  }
+
   void _openCreation(String type) {
     // Le compositeur général accepte les photos et les vidéos.
     // Les publications contenant une vidéo alimentent le fil des Scuts.
     Get.to(
       () => const CreateCommunityPostScreen(
-        communityName: 'Fil d\'actualité général',
+        communityName: 'Fil d\\'actualité général',
       ),
     );
   }
@@ -65,46 +127,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             const Spacer(),
             Row(
+              key: _actionsKey,
               children: [
-                PopupMenuButton<String>(
-                  tooltip: 'Créer',
-                  onSelected: _openCreation,
-                  color: colorScheme.surfaceContainer,
-                  elevation: 12,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  itemBuilder: (_) => [
-                    PopupMenuItem<String>(
-                      value: 'post',
-                      child: Row(
-                        children: [
-                          Icon(Icons.post_add_rounded,
-                              color: colorScheme.onSurface, size: 21),
-                          const SizedBox(width: 12),
-                          Text('Créer un post',
-                              style: TextStyle(color: colorScheme.onSurface)),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem<String>(
-                      value: 'scut',
-                      child: Row(
-                        children: [
-                          Icon(Icons.video_library_rounded,
-                              color: colorScheme.onSurface, size: 21),
-                          const SizedBox(width: 12),
-                          Text('Créer un Scut',
-                              style: TextStyle(color: colorScheme.onSurface)),
-                        ],
-                      ),
-                    ),
-                  ],
-                  child: GlassmorphismButton(
-                    icon: const Icon(Icons.add_rounded, size: 25),
-                    // Laisser le PopupMenuButton gérer le geste.
-                    onTap: null,
-                  ),
+                GlassmorphismButton(
+                  icon: const Icon(Icons.add_rounded, size: 25),
+                  onTap: () => _showCreationMenu(context),
                 ),
                 const SizedBox(width: 8),
                 GlassmorphismButton(
