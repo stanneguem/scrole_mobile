@@ -296,7 +296,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
           if (mounted) _loadRelationship(activeItem.post.authorId);
         });
         final safeBottom = MediaQuery.of(context).viewPadding.bottom;
-        final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -364,20 +363,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
               right: 0,
               child: _ReelsTopBar(
                 onReport: () => showFeedPostReportSheet(context, activeItem.post),
-              ),
-            ),
-            // Compositeur fixe : il reste à la même place pendant le défilement.
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: safeBottom + 8 + keyboardInset,
-              child: _ReelCommentComposer(
-                controller: _commentController,
-                focusNode: _commentFocusNode,
-                isSending: _isSendingComment,
-                onSend: () => _sendReelComment(activeItem),
-                onOpenEmojiPicker: () => _showReelEmojis(activeItem),
-                onQuickEmoji: (emoji) => _sendReelComment(activeItem, quickEmoji: emoji),
               ),
             ),
           ],
