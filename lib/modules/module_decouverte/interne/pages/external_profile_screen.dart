@@ -1133,7 +1133,7 @@ class _ProfileStats extends StatelessWidget {
           )),
           Expanded(child: _StatItem(
             value: NumberFormatter.formatCount(profile.totalLikesReceived),
-            label: 'profile_stat_likes_received'.tr,
+            label: 'profile_stat_likes'.tr,
           )),
         ],
       ),
@@ -1610,7 +1610,7 @@ class _HeaderStats extends StatelessWidget {
           child: _buildStatCol(NumberFormatter.formatCount(profile.followingCount), 'follow_tab_following'.tr, colors),
         ),
         const SizedBox(width: 10),
-        _buildStatCol(NumberFormatter.formatCount(profile.totalLikesReceived), 'profile_stat_likes_received'.tr, colors),
+        _buildStatCol(NumberFormatter.formatCount(profile.totalLikesReceived), 'profile_stat_likes'.tr, colors),
       ],
     );
   }
