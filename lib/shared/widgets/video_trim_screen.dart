@@ -34,7 +34,7 @@ class VideoTrimScreen extends StatefulWidget {
   State<VideoTrimScreen> createState() => _VideoTrimScreenState();
 }
 
-class _VideoTrimScreenState extends State<VideoTrimScreen> {
+class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingObserver {
   static const _accent = Color(0xFFFFD21F);
   static const _handleW = 18.0;
   static const _timelineH = 52.0;
@@ -91,6 +91,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _workingVideoFile = widget.videoFile;
     _loadVideo();
   }
@@ -173,7 +174,18 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      // Keep the editor state, but never leave its native decoder playing in background.
+      _trimmer.videoPlayerController?.pause();
+      _isPlaying = false;
+      _ticker?.cancel();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _conversionSubscription?.unsubscribe();
     _playhead.dispose();
