@@ -325,8 +325,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     ),
                     // Les interactions et les informations auteur font partie
                     // de cette page : elles glissent avec la vidéo au swipe.
-                    if (isActive)
-                      Positioned(
+                    Positioned(
                         right: 12,
                         bottom: safeBottom + 181,
                         child: _ReelActionRail(
@@ -337,8 +336,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                           onShare: () => showFeedPostShareSheet(context, item.post),
                         ),
                       ),
-                    if (isActive)
-                      Positioned(
+                    Positioned(
                         left: 16,
                         right: 82,
                         bottom: safeBottom + 82,
