@@ -1433,7 +1433,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                           onTap: () => _openSelectedVideo(index),
                                           child: _SelectedVideoPreview(file: file, thumbnailFile: media.thumbnailFile),
                                         )
-                                      : Image.file(file, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                      : Image.file(file, cacheWidth: 640, cacheHeight: 640, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
                                 ),
                                 Positioned(
                                   top: 6,
@@ -1576,7 +1576,7 @@ class _SelectedVideoPreview extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         if (thumbnailFile != null && thumbnailFile!.existsSync())
-          Image.file(thumbnailFile!, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+          Image.file(thumbnailFile!, cacheWidth: 640, cacheHeight: 640, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
         else
           const ColoredBox(color: Colors.black87),
         Center(
