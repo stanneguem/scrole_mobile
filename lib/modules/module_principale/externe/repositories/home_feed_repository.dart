@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -104,7 +103,6 @@ class HomeFeedRepository {
       'p_post_id': postId,
       'p_watched_ms': watchedMs,
       'p_duration_ms': durationMs,
-      'p_session_id': const Uuid().v4(),
     });
   }
 
