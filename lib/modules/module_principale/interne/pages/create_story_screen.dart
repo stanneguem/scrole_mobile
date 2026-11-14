@@ -75,8 +75,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       _textController.text.trim().isNotEmpty ||
       _selectedFiles.isNotEmpty;
 
-  bool _isVideoFile(File file) =>
-      const {'.mp4', '.mov'}.contains(p.extension(file.path).toLowerCase());
+  bool _isVideoFile(File file) => const {
+    '.mp4', '.m4v', '.mov', '.mkv', '.webm', '.avi', '.3gp', '.3g2',
+    '.ts', '.mts', '.m2ts', '.mpg', '.mpeg', '.m2v', '.wmv', '.flv',
+    '.f4v', '.ogv', '.ogg', '.vob', '.asf', '.divx', '.mxf', '.hevc',
+  }.contains(p.extension(file.path).toLowerCase());
 
   Future<void> _openMediaPicker() async {
     final maxAllowed = 1;
@@ -93,53 +96,25 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           if (files.isEmpty) return;
 
           final file = File(files.first.path);
+          final mimeType = files.first.mimeType?.toLowerCase() ?? '';
+          final isVideo = mimeType.startsWith('video/') || _isVideoFile(file);
           var selectedFile = file;
-          if (_isVideoFile(selectedFile)) {
+
+          if (isVideo) {
             try {
-              final controller = VideoPlayerController.file(selectedFile);
-              Duration duration;
-              try {
-                await controller.initialize();
-                duration = controller.value.duration;
-                if (duration <= Duration.zero) {
-                  throw StateError('Impossible de déterminer la durée de cette vidéo.');
-                }
-              } finally {
-                await controller.dispose();
-              }
-
-              // Same trimming flow as post creation: long videos are not
-              // rejected outright; the user chooses a segment of <= 29 sec.
-              const maxStoryVideoDuration = Duration(seconds: 29);
-              if (duration > maxStoryVideoDuration) {
-                final trimmed = await Get.to<File>(
-                  () => VideoTrimScreen(
-                    videoFile: selectedFile,
-                    maxDuration: maxStoryVideoDuration,
-                  ),
-                );
-                if (trimmed == null || !mounted) return;
-                selectedFile = trimmed;
-
-                final verify = VideoPlayerController.file(selectedFile);
-                try {
-                  await verify.initialize();
-                  if (verify.value.duration <= Duration.zero ||
-                      verify.value.duration > maxStoryVideoDuration) {
-                    Get.snackbar(
-                      'post_composer_attention'.tr,
-                      'post_composer_trim_invalid'.tr,
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.black87,
-                      colorText: Colors.white,
-                    );
-                    return;
-                  }
-                } finally {
-                  await verify.dispose();
-                }
-              }
-            } catch (e) {
+              // Le trimmer gère aussi les vidéos courtes : il applique la
+              // normalisation H.264/AAC si le codec source n'est pas lisible.
+              // Il impose également la limite story de 29 secondes.
+              final trimmed = await Get.to<File>(
+                () => VideoTrimScreen(
+                  videoFile: selectedFile,
+                  maxDuration: _maxVideoDuration,
+                ),
+              );
+              if (trimmed == null || !mounted) return;
+              selectedFile = trimmed;
+            } catch (e, stack) {
+              debugPrint('[STORY] video trim/normalization failed: $e\\n$stack');
               Get.snackbar(
                 'post_composer_video_invalid_title'.tr,
                 'post_composer_video_invalid_message'.tr,
@@ -147,7 +122,6 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 backgroundColor: Colors.black87,
                 colorText: Colors.white,
               );
-              debugPrint('[STORY] Invalid selected video: $e');
               return;
             }
           }
