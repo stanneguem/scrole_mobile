@@ -831,6 +831,21 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   }
 
 
+  /// Reconnaît une vidéo d'abord par son type MIME natif, puis par son
+  /// extension comme solution de repli pour les fournisseurs de galerie qui
+  /// ne renseignent pas le MIME. La liste couvre les conteneurs courants ;
+  /// le décodage réel reste déterminé par les codecs disponibles sur l'appareil.
+  bool _isVideoSelection(XFile picked) {
+    final mime = picked.mimeType?.toLowerCase();
+    if (mime != null && mime.startsWith('video/')) return true;
+    final extension = p.extension(picked.path).replaceFirst('.', '').toLowerCase();
+    return const {
+      'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', '3gp', '3g2',
+      'ts', 'mts', 'm2ts', 'mpg', 'mpeg', 'm2v', 'wmv', 'flv',
+      'f4v', 'ogv', 'ogg', 'vob', 'asf', 'divx', 'mxf', 'hevc',
+    }.contains(extension);
+  }
+
   /// Lit uniquement les métadonnées natives du média.
   /// Évite d'initialiser un lecteur/décodeur vidéo complet pour connaître la durée.
   Future<File?> _createVideoThumbnail(File file) async {
@@ -881,8 +896,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     for (final picked in files) {
       if (!mounted || _selectedMediaCount >= maxPostMedia) break;
       final file = File(picked.path);
-      final extension = p.extension(picked.path).replaceFirst('.', '').toLowerCase();
-      final isVideo = const {'mp4', 'mov', 'm4v'}.contains(extension);
+      final isVideo = _isVideoSelection(picked);
 
       if (!isVideo) {
         if (_selectedPhotoCount >= maxPostPhotos) {
