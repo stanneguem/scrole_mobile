@@ -251,6 +251,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
           final media = PostMedia.fromJson(Map<String, dynamic>.from(row['media'] as Map));
           if (post.id.isEmpty || !media.isVideo || media.url.isEmpty) continue;
           final localPath = await findScutCachedVideo(media.url);
+          // Never advertise an offline item unless its complete video file
+          // is actually present on disk.
+          if (localPath == null && !_hasInternet) continue;
           if (localPath != null) _localVideoPaths[media.url] = localPath;
           restored.add(_ReelItem(post: post, media: media));
         } catch (error) {
