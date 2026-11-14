@@ -8,6 +8,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -58,6 +59,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _cacheBusy = false;
   int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
+  StreamSubscription<InternetStatus>? _connectionSubscription;
 
   @override
   void initState() {
@@ -65,6 +67,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
     _commentController.addListener(_onCommentDraftChanged);
     _commentFocusNode.addListener(_onCommentFocusChanged);
     unawaited(_restoreThenLoadScutFeed());
+    _connectionSubscription = InternetConnection().onStatusChange.listen((status) {
+      if (status == InternetStatus.connected && mounted) {
+        debugPrint('[SCUT] Internet restored; requesting fresh recommendations.');
+        unawaited(_loadScutFeed(append: _scutLoaded));
+      }
+    });
   }
 
   void _onCommentDraftChanged() {
@@ -403,6 +411,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
   @override
   void dispose() {
+    _connectionSubscription?.cancel();
     _pageController.dispose();
     _commentController.removeListener(_onCommentDraftChanged);
     _commentFocusNode.removeListener(_onCommentFocusChanged);
@@ -626,7 +635,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       }
     }
     if (oldWidget.localVideoPath != widget.localVideoPath &&
-        widget.prepare && !widget.active && oldWidget.localVideoPath == null &&
+        oldWidget.prepare && widget.prepare && !widget.active && oldWidget.localVideoPath == null &&
         widget.localVideoPath != null) {
       unawaited(_reloadFromLocalCache());
     }
@@ -722,7 +731,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       unawaited(_pauseForLifecycle());
     } else if (widget.prepare && !_failed) {
       final controller = _video;
-      if (widget.active && controller != null && controller.value.isInitialized) {
+      if (widget.active && !widget.isPaused && controller != null && controller.value.isInitialized) {
         unawaited(controller.play());
       } else {
         unawaited(_initialize());
