@@ -293,6 +293,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
           if (mounted) _loadRelationship(activeItem.post.authorId);
         });
         final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+        final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
         return Stack(
           fit: StackFit.expand,
           children: [
