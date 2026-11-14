@@ -330,23 +330,31 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 onComments: () => _openComments(activeItem),
               ),
             ),
+            // Bloc auteur + description : il change avec le réel actif.
             Positioned(
               left: 16,
-              right: 16,
-              bottom: safeBottom + 24 + keyboardInset,
-              child: _ReelPostInfo(
-                key: ValueKey('info_${activeItem.post.id}_${activeItem.media.url}'),
+              right: 82,
+              bottom: safeBottom + 82 + keyboardInset,
+              child: _ReelAuthorInfo(
+                key: ValueKey('author_${activeItem.post.id}_${activeItem.media.url}'),
                 post: activeItem.post,
-                onComments: () => _openComments(activeItem),
                 followStatus: _followStates[activeItem.post.authorId] ?? 'loading',
                 isFollowBusy: _followRequestsInFlight.contains(activeItem.post.authorId),
                 onFollow: () => _followAuthor(activeItem.post.authorId),
-                commentController: _commentController,
-                commentFocusNode: _commentFocusNode,
-                isSendingComment: _isSendingComment,
-                onSendComment: () => _sendReelComment(activeItem),
-                onOpenEmojiPicker: () => _showReelEmojis(activeItem),
                 onDescriptionExpandedChanged: _onDescriptionExpandedChanged,
+              ),
+            ),
+            // Compositeur fixe : il reste à la même place pendant le défilement.
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: safeBottom + 8 + keyboardInset,
+              child: _ReelCommentComposer(
+                controller: _commentController,
+                focusNode: _commentFocusNode,
+                isSending: _isSendingComment,
+                onSend: () => _sendReelComment(activeItem),
+                onOpenEmojiPicker: () => _showReelEmojis(activeItem),
                 onQuickEmoji: (emoji) => _sendReelComment(activeItem, quickEmoji: emoji),
               ),
             ),
@@ -595,33 +603,19 @@ class _ReelActionRail extends StatelessWidget {
   );
 }
 
-class _ReelPostInfo extends StatelessWidget {
+class _ReelAuthorInfo extends StatelessWidget {
   final CommunityPost post;
-  final VoidCallback onComments;
   final String followStatus;
   final bool isFollowBusy;
   final VoidCallback onFollow;
-  final TextEditingController commentController;
-  final FocusNode commentFocusNode;
-  final bool isSendingComment;
-  final VoidCallback onSendComment;
-  final ValueChanged<String> onQuickEmoji;
-  final VoidCallback onOpenEmojiPicker;
   final ValueChanged<bool> onDescriptionExpandedChanged;
 
-  const _ReelPostInfo({
+  const _ReelAuthorInfo({
     super.key,
     required this.post,
-    required this.onComments,
     required this.followStatus,
     required this.isFollowBusy,
     required this.onFollow,
-    required this.commentController,
-    required this.commentFocusNode,
-    required this.isSendingComment,
-    required this.onSendComment,
-    required this.onQuickEmoji,
-    required this.onOpenEmojiPicker,
     required this.onDescriptionExpandedChanged,
   });
 
@@ -665,7 +659,7 @@ class _ReelPostInfo extends StatelessWidget {
         _ => 'Follow',
       };
     }
-    final hasText = commentController.text.trim().isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -685,19 +679,11 @@ class _ReelPostInfo extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
+                  Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                   const SizedBox(height: 2),
-                  Text(
-                    '@$username',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
+                  Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11)),
                 ],
               ),
             ),
@@ -707,9 +693,7 @@ class _ReelPostInfo extends StatelessWidget {
                 size: 17,
                 showTooltip: false,
                 type: CertificationBadgeType.basic,
-                userId: author?.userId.isNotEmpty == true
-                    ? author!.userId
-                    : post.authorId,
+                userId: author?.userId.isNotEmpty == true ? author!.userId : post.authorId,
               ),
             ],
             if (!isOwnPost) ...[
@@ -740,96 +724,108 @@ class _ReelPostInfo extends StatelessWidget {
             onExpandedChanged: onDescriptionExpandedChanged,
           ),
         ],
-        const SizedBox(height: 10),
-        // Copie exacte du compositeur _buildQuickStoryReply() de StoryViewerScreen.
-        Row(
-          children: [
-            PopupMenuButton<String>(
-              tooltip: 'story_emoji_tooltip'.tr,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-              icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.white, size: 26),
-              color: const Color(0xFF292929),
-              onSelected: (emoji) {
-                if (emoji == '__more__') {
-                  onOpenEmojiPicker();
-                  return;
-                }
-                onQuickEmoji(emoji);
-              },
-              itemBuilder: (_) => [
-                ...['❤️', '😂', '😍', '🔥', '👏', '👍'].map(
-                  (emoji) => PopupMenuItem<String>(
-                    value: emoji,
-                    child: Text(emoji, style: const TextStyle(fontSize: 22)),
+      ],
+    );
+  }
+}
+
+class _ReelCommentComposer extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool isSending;
+  final VoidCallback onSend;
+  final VoidCallback onOpenEmojiPicker;
+  final ValueChanged<String> onQuickEmoji;
+
+  const _ReelCommentComposer({
+    required this.controller,
+    required this.focusNode,
+    required this.isSending,
+    required this.onSend,
+    required this.onOpenEmojiPicker,
+    required this.onQuickEmoji,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = controller.text.trim().isNotEmpty;
+    return Row(
+      children: [
+        PopupMenuButton<String>(
+          tooltip: 'story_emoji_tooltip'.tr,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          icon: const Icon(Icons.emoji_emotions_outlined, color: Colors.white, size: 26),
+          color: const Color(0xFF292929),
+          onSelected: (emoji) {
+            if (emoji == '__more__') {
+              onOpenEmojiPicker();
+              return;
+            }
+            onQuickEmoji(emoji);
+          },
+          itemBuilder: (_) => [
+            ...['❤️', '😂', '😍', '🔥', '👏', '👍'].map(
+              (emoji) => PopupMenuItem<String>(value: emoji,
+                child: Text(emoji, style: const TextStyle(fontSize: 22))),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem<String>(value: '__more__',
+              child: Center(child: Icon(Icons.add_circle_outline, color: Colors.white, size: 22))),
+          ],
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 5, 6, 5),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.32)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    onChanged: (_) {},
+                    minLines: 1,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSend(),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    cursorColor: Colors.white,
+                    decoration: InputDecoration(
+                      hintText: 'story_reply_hint'.tr,
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 13),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      isCollapsed: false,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+                    ),
                   ),
                 ),
-                const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  value: '__more__',
-                  child: Center(
-                    child: Icon(Icons.add_circle_outline, color: Colors.white, size: 22),
+                if (hasText)
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'story_send'.tr,
+                    onPressed: isSending ? null : onSend,
+                    icon: isSending
+                        ? const SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
                   ),
-                ),
               ],
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 5, 6, 5),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.32)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: commentController,
-                        focusNode: commentFocusNode,
-                        onChanged: (_) {},
-                        minLines: 1,
-                        maxLines: 3,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => onSendComment(),
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        cursorColor: Colors.white,
-                        decoration: InputDecoration(
-                          hintText: 'story_reply_hint'.tr,
-                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.72), fontSize: 13),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          focusedErrorBorder: InputBorder.none,
-                          isCollapsed: false,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
-                        ),
-                      ),
-                    ),
-                    if (hasText)
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: 'story_send'.tr,
-                        onPressed: isSendingComment ? null : onSendComment,
-                        icon: isSendingComment
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
