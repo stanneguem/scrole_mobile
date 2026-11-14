@@ -37,7 +37,7 @@ class StoryViewerScreen extends StatefulWidget {
 }
 
 class _StoryViewerScreenState extends State<StoryViewerScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late int _groupIndex;
   late int _storyIndex;
   late AnimationController _animController;
@@ -59,6 +59,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _groupIndex = widget.initialGroupIndex;
     _storyIndex = 0;
     _animController =
@@ -100,6 +101,14 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       // visibility and live counters with Supabase without blocking playback.
       unawaited(_refreshCurrentGroupFromServer());
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) return; // Le visionnage reste en pause après retour.
+    if (!mounted) return;
+    _animController.stop();
+    if (!_isPaused) setState(() => _isPaused = true);
   }
 
   @override
@@ -327,6 +336,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _animController.dispose();
     _heartsAnimationController.dispose();
     _replyController.dispose();
