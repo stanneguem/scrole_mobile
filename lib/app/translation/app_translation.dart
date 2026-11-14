@@ -549,6 +549,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Autorisez l’accès à la galerie pour enregistrer ce média.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Créer une story",
+      'story_share_title': "Partager en story",
+      'story_publish': "Partager",
+      'story_your_story': "Votre story",
+      'story_text_hint': "Ajouter du texte à votre story…",
+      'story_remove_media': "Retirer le média",
+      'story_add_media': "Ajouter des médias",
+      'story_mention': "Mentionner",
+      'story_video_preview_error': "Impossible de prévisualiser cette vidéo",
+      'story_error_title': "Erreur",
+      'story_error_message': "Impossible de publier la story. Vérifie ta connexion et réessaie.",
+      'story_share_success_title': "Story publiée",
+      'story_share_success_message': "Publication ajoutée à votre story avec succès !",
+      'story_voice': "Story vocale",
     },
     'en': {
       'home_feed_profile_request_sent': 'Request sent',
@@ -1042,6 +1057,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Allow gallery access to save this media.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Create a story",
+      'story_share_title': "Share to story",
+      'story_publish': "Share",
+      'story_your_story': "Your story",
+      'story_text_hint': "Add text to your story…",
+      'story_remove_media': "Remove media",
+      'story_add_media': "Add media",
+      'story_mention': "Mention",
+      'story_video_preview_error': "Unable to preview this video",
+      'story_error_title': "Error",
+      'story_error_message': "Couldn't publish the story. Check your connection and try again.",
+      'story_share_success_title': "Story published",
+      'story_share_success_message': "Post successfully added to your story!",
+      'story_voice': "Voice story",
     },
     'es': {
       'home_feed_profile_request_sent': 'Solicitud enviada',
@@ -1502,6 +1532,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Permite el acceso a la galería para guardar este contenido.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Crear una historia",
+      'story_share_title': "Compartir en historia",
+      'story_publish': "Compartir",
+      'story_your_story': "Tu historia",
+      'story_text_hint': "Añade texto a tu historia…",
+      'story_remove_media': "Quitar contenido",
+      'story_add_media': "Añadir contenido",
+      'story_mention': "Mencionar",
+      'story_video_preview_error': "No se puede previsualizar este vídeo",
+      'story_error_title': "Error",
+      'story_error_message': "No se pudo publicar la historia. Comprueba tu conexión e inténtalo de nuevo.",
+      'story_share_success_title': "Historia publicada",
+      'story_share_success_message': "¡Publicación añadida a tu historia!",
+      'story_voice': "Historia de voz",
     },
     'de': {
       'home_feed_profile_request_sent': 'Anfrage gesendet',
@@ -1972,6 +2017,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Erlaube den Galeriezugriff, um dieses Medium zu speichern.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Story erstellen",
+      'story_share_title': "In Story teilen",
+      'story_publish': "Teilen",
+      'story_your_story': "Deine Story",
+      'story_text_hint': "Text zu deiner Story hinzufügen…",
+      'story_remove_media': "Medien entfernen",
+      'story_add_media': "Medien hinzufügen",
+      'story_mention': "Erwähnen",
+      'story_video_preview_error': "Dieses Video kann nicht in der Vorschau angezeigt werden",
+      'story_error_title': "Fehler",
+      'story_error_message': "Die Story konnte nicht veröffentlicht werden. Prüfe deine Verbindung und versuche es erneut.",
+      'story_share_success_title': "Story veröffentlicht",
+      'story_share_success_message': "Beitrag wurde deiner Story hinzugefügt!",
+      'story_voice': "Sprach-Story",
     },
     'it': {
       'home_feed_profile_request_sent': 'Richiesta inviata',
@@ -2415,6 +2475,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Consenti l’accesso alla galleria per salvare questo contenuto.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Crea una storia",
+      'story_share_title': "Condividi nella storia",
+      'story_publish': "Condividi",
+      'story_your_story': "La tua storia",
+      'story_text_hint': "Aggiungi testo alla tua storia…",
+      'story_remove_media': "Rimuovi contenuto",
+      'story_add_media': "Aggiungi contenuti",
+      'story_mention': "Menziona",
+      'story_video_preview_error': "Impossibile visualizzare l’anteprima del video",
+      'story_error_title': "Errore",
+      'story_error_message': "Impossibile pubblicare la storia. Controlla la connessione e riprova.",
+      'story_share_success_title': "Storia pubblicata",
+      'story_share_success_message': "Pubblicazione aggiunta alla tua storia!",
+      'story_voice': "Storia vocale",
     },
     'pt': {
       'home_feed_profile_request_sent': 'Solicitação enviada',
@@ -2910,6 +2985,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Permita o acesso à galeria para salvar esta mídia.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Criar story",
+      'story_share_title': "Compartilhar no story",
+      'story_publish': "Compartilhar",
+      'story_your_story': "Seu story",
+      'story_text_hint': "Adicione texto ao seu story…",
+      'story_remove_media': "Remover mídia",
+      'story_add_media': "Adicionar mídia",
+      'story_mention': "Mencionar",
+      'story_video_preview_error': "Não foi possível pré-visualizar este vídeo",
+      'story_error_title': "Erro",
+      'story_error_message': "Não foi possível publicar o story. Verifique sua conexão e tente novamente.",
+      'story_share_success_title': "Story publicada",
+      'story_share_success_message': "Publicação adicionada ao seu story!",
+      'story_voice': "Story de voz",
     },
     'ar': {
       'home_feed_profile_request_sent': 'تم إرسال الطلب',
@@ -3842,6 +3932,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': '请允许访问相册以保存此媒体。',
 
+      // Story composer labels and feedback.
+      'story_create_title': "创建快拍",
+      'story_share_title': "分享到快拍",
+      'story_publish': "分享",
+      'story_your_story': "你的快拍",
+      'story_text_hint': "为快拍添加文字…",
+      'story_remove_media': "移除媒体",
+      'story_add_media': "添加媒体",
+      'story_mention': "提及",
+      'story_video_preview_error': "无法预览此视频",
+      'story_error_title': "错误",
+      'story_error_message': "无法发布快拍。请检查网络连接后重试。",
+      'story_share_success_title': "快拍已发布",
+      'story_share_success_message': "帖子已成功添加到你的快拍！",
+      'story_voice': "语音快拍",
     },
     'ja': {
       'home_feed_profile_request_sent': 'リクエスト送信済み',
@@ -4284,6 +4389,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'メディアを保存するには、ギャラリーへのアクセスを許可してください。',
 
+      // Story composer labels and feedback.
+      'story_create_title': "ストーリーを作成",
+      'story_share_title': "ストーリーにシェア",
+      'story_publish': "シェア",
+      'story_your_story': "あなたのストーリー",
+      'story_text_hint': "ストーリーにテキストを追加…",
+      'story_remove_media': "メディアを削除",
+      'story_add_media': "メディアを追加",
+      'story_mention': "メンション",
+      'story_video_preview_error': "この動画をプレビューできません",
+      'story_error_title': "エラー",
+      'story_error_message': "ストーリーを公開できませんでした。接続を確認して、もう一度お試しください。",
+      'story_share_success_title': "ストーリーを公開しました",
+      'story_share_success_message': "投稿をストーリーに追加しました！",
+      'story_voice': "音声ストーリー",
     },
     'ru': {
       'home_feed_profile_request_sent': 'Запрос отправлен',
@@ -4727,6 +4847,21 @@ class AppTranslations extends Translations {
 
       'media_save_permission_denied': 'Разрешите доступ к галерее, чтобы сохранить это медиа.',
 
+      // Story composer labels and feedback.
+      'story_create_title': "Создать историю",
+      'story_share_title': "Поделиться в истории",
+      'story_publish': "Поделиться",
+      'story_your_story': "Ваша история",
+      'story_text_hint': "Добавьте текст в историю…",
+      'story_remove_media': "Удалить медиа",
+      'story_add_media': "Добавить медиа",
+      'story_mention': "Упомянуть",
+      'story_video_preview_error': "Не удалось предварительно просмотреть это видео",
+      'story_error_title': "Ошибка",
+      'story_error_message': "Не удалось опубликовать историю. Проверьте подключение и попробуйте снова.",
+      'story_share_success_title': "История опубликована",
+      'story_share_success_message': "Публикация добавлена в вашу историю!",
+      'story_voice': "Голосовая история",
     },
   };
 }
