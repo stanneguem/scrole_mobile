@@ -1,7 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,12 +50,19 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final Map<String, String> _followStates = {};
   final Set<String> _followRequestsInFlight = {};
   bool _isSendingComment = false;
+  final List<_ReelItem> _scutItems = [];
+  final Map<String, String> _localVideoPaths = {};
+  bool _scutLoading = true;
+  bool _scutLoaded = false;
+  bool _loadingMoreScuts = false;
+  int _scutRequestGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     _commentController.addListener(_onCommentDraftChanged);
     _commentFocusNode.addListener(_onCommentFocusChanged);
+    unawaited(_loadScutFeed());
   }
 
   void _onCommentDraftChanged() {
@@ -207,7 +220,106 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
+  Future<void> _loadScutFeed({bool append = false}) async {
+    if (_loadingMoreScuts || (_scutLoaded && !append)) return;
+    final generation = ++_scutRequestGeneration;
+    if (append) {
+      _loadingMoreScuts = true;
+    } else {
+      _scutLoading = true;
+      if (mounted) setState(() {});
+    }
+    try {
+      final feed = Get.find<HomeFeedController>();
+      final existing = List<_ReelItem>.from(_scutItems);
+      final excluded = existing.map((item) => item.post.id).toSet();
+      if (!append && widget.initialPostId != null && widget.initialPostId!.isNotEmpty) {
+        CommunityPost? opened = feed.posts.cast<CommunityPost?>().firstWhere(
+          (post) => post?.id == widget.initialPostId,
+          orElse: () => null,
+        );
+        opened ??= await _feedRepository.getPost(widget.initialPostId!);
+        final media = opened.media.where((m) => m.isVideo && m.url.trim().isNotEmpty);
+        final selected = media.where((m) => widget.initialMediaUrl == null || m.url == widget.initialMediaUrl).firstOrNull
+            ?? media.firstOrNull;
+        if (selected != null) {
+          existing.insert(0, _ReelItem(post: opened, media: selected));
+          excluded.add(opened.id);
+        }
+      }
+      final recommended = await _feedRepository.getScutsFeed(
+        limit: 10,
+        excludeIds: excluded.toList(growable: false),
+      );
+      if (!mounted || generation != _scutRequestGeneration) return;
+      final next = <_ReelItem>[...existing];
+      final keys = next.map((e) => '${e.post.id}|${e.media.url}').toSet();
+      for (final post in recommended) {
+        for (final media in post.media.where((m) => m.isVideo && m.url.trim().isNotEmpty)) {
+          if (keys.add('${post.id}|${media.url}')) {
+            next.add(_ReelItem(post: post, media: media));
+          }
+        }
+      }
+      _scutItems
+        ..clear()
+        ..addAll(next);
+      _scutLoaded = true;
+      _scutLoading = false;
+      _loadingMoreScuts = false;
+      if (mounted) setState(() {});
+      unawaited(_cacheScutWindow(_currentIndex));
+    } catch (error, stack) {
+      debugPrint('[SCUT] personalized feed load failed: $error\\n$stack');
+      if (mounted && generation == _scutRequestGeneration) {
+        setState(() {
+          _scutLoading = false;
+          _loadingMoreScuts = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cacheScutWindow(int currentIndex) async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
+      await cacheDir.create(recursive: true);
+      final start = (currentIndex - 8).clamp(0, _scutItems.length);
+      final end = (currentIndex + 2).clamp(0, _scutItems.length);
+      final window = _scutItems.sublist(start, end);
+      final keep = <String>{};
+      for (final item in window) {
+        final key = sha256.convert(utf8.encode(item.media.url)).toString();
+        final file = File(p.join(cacheDir.path, '$key.video'));
+        keep.add(file.path);
+        if (!await file.exists()) {
+          try {
+            final response = await http.get(Uri.parse(item.media.url)).timeout(const Duration(seconds: 45));
+            if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+              await file.writeAsBytes(response.bodyBytes, flush: true);
+            }
+          } catch (error) {
+            debugPrint('[SCUT_CACHE] download skipped for ${item.post.id}: $error');
+          }
+        }
+        if (await file.exists()) _localVideoPaths[item.media.url] = file.path;
+      }
+      // Keep exactly the rolling 10-video window on disk; never delete files still in it.
+      for (final file in cacheDir.listSync().whereType<File>()) {
+        if (!keep.contains(file.path)) {
+          try { await file.delete(); } catch (_) {}
+        }
+      }
+      if (mounted) setState(() {});
+      debugPrint('[SCUT_CACHE] Cached window: ${window.length} videos (8 previous/current/next).');
+    } catch (error) {
+      debugPrint('[SCUT_CACHE] cache maintenance failed: $error');
+    }
+  }
+
   List<_ReelItem> _buildItems(HomeFeedController controller) {
+    if (_scutLoaded) return _scutItems;
     final result = <_ReelItem>[];
     final seen = <String>{};
     for (final sourcePost in [...controller.posts, ...controller.sponsoredPosts]) {
@@ -267,6 +379,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       body: Obx(() {
         final items = _buildItems(feed);
         if (items.isEmpty) {
+          if (_scutLoading) return const ColoredBox(color: Colors.black, child: Center(child: CircularProgressIndicator(color: Colors.white)));
           return Stack(
             children: [
               const Center(
@@ -341,6 +454,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
                   _currentIndex = value;
                   _descriptionExpanded = false;
                 });
+                unawaited(_cacheScutWindow(value));
+                if (value >= items.length - 2 && !_loadingMoreScuts) unawaited(_loadScutFeed(append: true));
                 _loadRelationship(items[value].post.authorId);
               },
               itemBuilder: (context, pageIndex) {
@@ -353,6 +468,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
                       key: ValueKey('${item.post.id}_${item.media.url}'),
                       item: item,
                       active: isActive,
+                      prepare: (pageIndex - index).abs() <= 1,
+                      localVideoPath: _localVideoPaths[item.media.url],
                       muted: _muted,
                       paused: isActive &&
                           (_descriptionExpanded || _commentFocusNode.hasFocus),
@@ -412,6 +529,8 @@ class _ReelItem {
 class _ReelVideoPage extends StatefulWidget {
   final _ReelItem item;
   final bool active;
+  final bool prepare;
+  final String? localVideoPath;
   final bool muted;
   // Nullable backing field keeps existing PageView children safe during hot reload.
   final bool? paused;
@@ -421,6 +540,8 @@ class _ReelVideoPage extends StatefulWidget {
     super.key,
     required this.item,
     required this.active,
+    this.prepare = false,
+    this.localVideoPath,
     required this.muted,
     this.paused = false,
   });
@@ -441,7 +562,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (widget.active) unawaited(_initialize());
+    if (widget.prepare) unawaited(_initialize());
   }
 
   @override
@@ -460,21 +581,32 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
         }
       }
     }
-    if (oldWidget.active != widget.active) {
-      if (widget.active) {
+    if (oldWidget.prepare != widget.prepare) {
+      if (widget.prepare) {
         unawaited(_initialize());
       } else {
         unawaited(_release());
       }
     }
+    if (oldWidget.active != widget.active && _video?.value.isInitialized == true) {
+      if (widget.active && !widget.isPaused) {
+        unawaited(_video!.play());
+      } else {
+        unawaited(_video!.pause());
+      }
+    }
   }
 
   Future<void> _initialize() async {
-    if (!widget.active || widget.isPaused || _video != null || !_loading) return;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.item.media.url));
+    if (!widget.prepare || _video != null || !_loading) return;
+    final localPath = widget.localVideoPath;
+    final localFile = localPath == null ? null : File(localPath);
+    final controller = localFile != null && await localFile.exists()
+        ? VideoPlayerController.file(localFile)
+        : VideoPlayerController.networkUrl(Uri.parse(widget.item.media.url));
     try {
       await controller.initialize();
-      if (!mounted || !widget.active) {
+      if (!mounted || !widget.prepare) {
         await controller.dispose();
         return;
       }
@@ -483,7 +615,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       _video = controller;
       controller.addListener(_onVideoChanged);
       setState(() => _loading = false);
-      if (!widget.isPaused) await controller.play();
+      if (widget.active && !widget.isPaused) await controller.play();
     } catch (error) {
       debugPrint('[REELS] video initialization failed: $error');
       await controller.dispose();
@@ -531,13 +663,35 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) unawaited(_release());
-    else if (widget.active && !_failed) unawaited(_initialize());
+    if (state != AppLifecycleState.resumed) unawaited(_pauseForLifecycle());
+    else if (widget.prepare && !_failed) unawaited(_initialize());
+  }
+
+  Future<void> _pauseForLifecycle() async {
+    final controller = _video;
+    if (controller != null && controller.value.isInitialized) {
+      try { await controller.pause(); } catch (_) {}
+    }
+  }
+
+  Future<void> _persistWatchSignal() async {
+    final controller = _video;
+    if (_watched <= Duration.zero || controller == null || !controller.value.isInitialized) return;
+    try {
+      await Get.find<HomeFeedRepository>().recordScutWatch(
+        postId: widget.item.post.id,
+        watchedMs: _watched.inMilliseconds,
+        durationMs: controller.value.duration.inMilliseconds,
+      );
+    } catch (error) {
+      debugPrint('[SCUT] watch signal not persisted: $error');
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_persistWatchSignal());
     final controller = _video;
     _video = null;
     controller?.removeListener(_onVideoChanged);
