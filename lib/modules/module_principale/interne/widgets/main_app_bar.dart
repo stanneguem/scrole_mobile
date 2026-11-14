@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:scrole/app/utils/boot_timing.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
-import '../pages/create_community_post_screen.dart';
+import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 
 import '../../../../../shared/widgets/glas_buton.dart';
 import '../controllers/main_layout_controller.dart';
