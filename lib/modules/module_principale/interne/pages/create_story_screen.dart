@@ -208,8 +208,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         );
         await storiesController.fetchStories();
         Get.snackbar(
-          'Succès',
-          'Publication ajoutée à votre story avec succès !',
+          'story_share_success_title'.tr,
+          'story_share_success_message'.tr,
           snackPosition: SnackPosition.BOTTOM,
         );
         return;
@@ -231,7 +231,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       );
     } catch (e) {
       Get.snackbar(
-        'Erreur',
+        'story_error_title'.tr,
         e.toString().replaceFirst('Exception: ', ''),
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
@@ -268,7 +268,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
         centerTitle: false,
-        title: Text(widget.sharedPost == null ? 'Créer une story' : 'Partager en story'),
+        title: Text(widget.sharedPost == null ? 'story_create_title'.tr : 'story_share_title'.tr),
         titleTextStyle: AppTextStyles.h5.copyWith(color: colorScheme.onSurface),
         leading: IconButton(
           onPressed: () => Get.back(),
@@ -288,7 +288,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               child: _isPublishing
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(
-                      'Partager',
+                      'story_publish'.tr,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -366,8 +366,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                                     color: AppColors.primary.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
-                                    'Votre Story',
+                                  child: Text(
+                                    'story_your_story'.tr,
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -394,7 +394,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                         maxLines: null,
                         style: AppTextStyles.bodyXL.copyWith(fontSize: 18, height: 1.4, color: colorScheme.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'Ajouter du texte à votre story...',
+                          hintText: 'story_text_hint'.tr,
                           hintStyle: AppTextStyles.bodyXL.copyWith(fontSize: 18, color: colorScheme.outline.withValues(alpha: 0.5)),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
@@ -430,7 +430,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                                 color: Colors.black54,
                                 shape: const CircleBorder(),
                                 child: IconButton(
-                                  tooltip: 'Retirer le média',
+                                  tooltip: 'story_remove_media'.tr,
                                   onPressed: () => setState(() => _selectedFiles.clear()),
                                   icon: const Icon(Icons.close_rounded, color: Colors.white),
                                 ),
@@ -457,12 +457,12 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                     IconButton(
                     onPressed: _openMediaPicker,
                     icon: Icon(Icons.photo_library_outlined, color: colorScheme.primary),
-                    tooltip: 'Ajouter des médias',
+                    tooltip: 'story_add_media'.tr,
                   ),
                   IconButton(
                     onPressed: _openMentions,
                     icon: Icon(Icons.alternate_email_rounded, color: colorScheme.primary),
-                    tooltip: 'Mentionner',
+                    tooltip: 'story_mention'.tr,
                   ),
 
                 ],
@@ -627,7 +627,7 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
               children: [
                 Icon(Icons.error_outline_rounded, color: Colors.white, size: 32),
                 SizedBox(height: 8),
-                Text('Impossible de prévisualiser cette vidéo', style: TextStyle(color: Colors.white)),
+                Text('story_video_preview_error'.tr, style: TextStyle(color: Colors.white)),
               ],
             ),
           );
