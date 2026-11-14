@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:scrole/app/utils/boot_timing.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
+import '../pages/create_community_post_screen.dart';
 
 import '../../../../../shared/widgets/glas_buton.dart';
 import '../controllers/main_layout_controller.dart';
@@ -60,6 +61,15 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             Row(
               children: [
                 GlassmorphismButton(
+                  icon: const Icon(Icons.add_rounded, size: 25),
+                  onTap: () => Get.to(
+                    () => const CreateCommunityPostScreen(
+                      communityName: 'Fil d\'actualité général',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GlassmorphismButton(
                   icon: SvgPicture.asset(
                     'assets/svg_icons/search.svg',
                     width: 22,
@@ -84,20 +94,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                       badgeCount: double.tryParse(controller.messageBadge),
                       onTap: controller.openMessages,
-                    )),
-                const SizedBox(width: 8),
-                Obx(() => GlassmorphismButton(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/notification-svgrepo-com.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurface,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      badgeCount: double.tryParse(controller.notificationBadge),
-                      onTap: controller.openNotifications,
                     )),
               ],
             ),
