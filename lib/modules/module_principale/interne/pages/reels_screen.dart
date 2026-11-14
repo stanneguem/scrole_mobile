@@ -307,7 +307,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
             // proviennent toujours de la publication actuellement affichée.
             Positioned(
               right: 12,
-              bottom: safeBottom + 142,
+              bottom: safeBottom + 144,
               child: _ReelActionRail(
                 post: activeItem.post,
                 onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
