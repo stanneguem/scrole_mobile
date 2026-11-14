@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
@@ -87,6 +88,11 @@ class ExpandableTextWidget extends StatefulWidget {
 class _ExpandableTextWidgetState extends State<ExpandableTextWidget> {
   bool _isExpanded = false;
 
+  Future<void> _copyDescription() async {
+    await Clipboard.setData(ClipboardData(text: widget.text));
+    await HapticFeedback.selectionClick();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -105,10 +111,13 @@ class _ExpandableTextWidgetState extends State<ExpandableTextWidget> {
         tp.dispose();
 
         if (!isOverflowing) {
-          return LinkifiedText(
-            text: widget.text,
-            style: defaultStyle,
-            onHashtagTap: widget.onHashtagTap,
+          return GestureDetector(
+            onLongPress: _copyDescription,
+            child: LinkifiedText(
+              text: widget.text,
+              style: defaultStyle,
+              onHashtagTap: widget.onHashtagTap,
+            ),
           );
         }
 
@@ -117,6 +126,7 @@ class _ExpandableTextWidgetState extends State<ExpandableTextWidget> {
           children: [
             GestureDetector(
               onTap: () => setState(() => _isExpanded = !_isExpanded),
+              onLongPress: _copyDescription,
               child: LinkifiedText(
                 text: widget.text,
                 maxLines: _isExpanded ? null : widget.maxLines,
