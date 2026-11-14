@@ -49,12 +49,24 @@ class SuggestedProfileModel {
       reasonKey = 'home_feed_profile_reason_discover';
       reasonParams = const {};
     }
+    var reasonSubtitle = reasonKey.tr;
+    if (mutual > 0) {
+      final mutualCount = mutual.toString();
+      reasonSubtitle = reasonSubtitle
+          .replaceAll('@count', mutualCount)
+          .replaceAll('{count}', mutualCount)
+          .replaceAll('{ count}', mutualCount)
+          .replaceAll('{count }', mutualCount);
+    } else if (reasonParams.isNotEmpty) {
+      reasonSubtitle = reasonKey.trParams(reasonParams);
+    }
+
     return SuggestedProfileModel(
       id: (json['user_id'] ?? json['id'] ?? '').toString(),
       name: fullName.isNotEmpty ? fullName : username,
       username: username,
       photoUrl: (json['photo_url'] ?? json['avatar_url'])?.toString(),
-      reasonSubtitle: reasonKey.trParams(reasonParams),
+      reasonSubtitle: reasonSubtitle,
       isCertified: json['is_certified'] == true || json['is_verified'] == true,
       isAdded: json['is_added'] == true || json['is_following'] == true,
       isRequestSent: json['request_sent'] == true,
