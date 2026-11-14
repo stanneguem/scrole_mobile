@@ -135,7 +135,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
     super.dispose();
   }
 
-  void _onSequentialVideoCompleted() {
+  Future<void> _onSequentialVideoCompleted() async {
     if (!mounted || _sequentialVideoIndex >= widget.media.length - 1) return;
     setState(() => _sequentialVideoIndex++);
   }
