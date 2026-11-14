@@ -252,7 +252,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                     label: 'nav_profile'.tr,
                   ),
                 ],
-              ),,
+              ),
               ),
             ),
           ),
