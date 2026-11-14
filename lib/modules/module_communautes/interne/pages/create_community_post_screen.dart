@@ -7,7 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:video_compress/video_compress.dart';
+import 'package:video_compress_next/video_compress.dart';
 import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/shared/widgets/video_preview_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
