@@ -47,7 +47,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
           setState(() {
             _currentIndex = stackIdx;
             _visited[stackIdx] = true;
-            _isBottomNavVisible = true;
+            _isBottomNavVisible = stackIdx != 3;
           });
         }
       });
@@ -132,7 +132,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: CustomAppBar(controller: controller),
+      appBar: _currentIndex == 3 ? null : CustomAppBar(controller: controller),
       drawer: const AppDrawer(),
       body: Stack(
         children: [
