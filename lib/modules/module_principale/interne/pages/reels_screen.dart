@@ -9,6 +9,7 @@ import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../controllers/home_feed_controller.dart';
+import '../controllers/main_layout_controller.dart';
 import '../widgets/community_comments_sheet.dart';
 import '../../centre/models/community_post.dart';
 
@@ -22,6 +23,12 @@ class ReelsScreen extends StatefulWidget {
 class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+
+  void _goHome() {
+    if (Get.isRegistered<MainLayoutController>()) {
+      Get.find<MainLayoutController>().changeTab(0);
+    }
+  }
 
   List<_ReelItem> _buildItems(HomeFeedController controller) {
     final result = <_ReelItem>[];
@@ -38,7 +45,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   Future<void> _openComments(_ReelItem item) async {
-    final feedController = Get.find<HomeFeedController>();
     final communityController = Get.isRegistered<CommunityFeedController>()
         ? Get.find<CommunityFeedController>()
         : Get.put(CommunityFeedController(null, item.post.eventId));
@@ -63,7 +69,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
   @override
   Widget build(BuildContext context) {
     final feed = Get.find<HomeFeedController>();
-    final size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Obx(() {
@@ -87,7 +92,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: IconButton(
-                    onPressed: Get.back,
+                    onPressed: _goHome,
                     icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                   ),
                 ),
@@ -115,7 +120,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
             key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
             item: items[pageIndex],
             active: pageIndex == index,
-            onBack: Get.back,
+            onBack: _goHome,
             onLike: () => feed.handleReaction(items[pageIndex].post.id, PostReaction.like),
             onComments: () => _openComments(items[pageIndex]),
             onShare: () => Share.share(items[pageIndex].post.content.isEmpty
@@ -240,7 +245,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       try { await controller.pause(); } catch (_) {}
       await controller.dispose();
     }
-    if (mounted) setState(() {});
+    if (mounted && !widget.active) setState(() => _loading = true);
   }
 
   @override
