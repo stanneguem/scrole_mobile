@@ -633,7 +633,7 @@ class _ReelsTopBar extends StatelessWidget {
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           ),
           const SizedBox(width: 4),
-          const Text('Réels', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700)),
+          const Text('Scut', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700)),
         ],
       ),
     ),
