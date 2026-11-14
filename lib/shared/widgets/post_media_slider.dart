@@ -47,6 +47,7 @@ class PostMediaSlider extends StatefulWidget {
 
 class _PostMediaSliderState extends State<PostMediaSlider> {
   int _currentIndex = 0;
+  int _sequentialVideoIndex = 0;
   double _videoOverlayOpacity = 1;
   late final PageController _pageController;
   final Map<int, double> _mediaAspectRatios = {};
@@ -119,6 +120,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.media != widget.media) {
       _currentIndex = 0;
+      _sequentialVideoIndex = 0;
       if (_pageController.hasClients) {
         _pageController.jumpToPage(0);
       }
@@ -131,6 +133,11 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
     _ratioLoadGeneration++;
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _onSequentialVideoCompleted() {
+    if (!mounted || _sequentialVideoIndex >= widget.media.length - 1) return;
+    setState(() => _sequentialVideoIndex++);
   }
 
   String get _computedPrefix => widget.heroTagPrefix ?? 'media_${identityHashCode(widget)}';
@@ -188,6 +195,9 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
         .clamp(availableWidth / 1.91, availableWidth * 1.25)
         .toDouble();
 
+    final sequentialVideoLayout =
+        (len == 2 || len == 3) && widget.media.every((media) => media.isVideo);
+
     Widget buildMedia(int index, {required BorderRadius radius}) {
       final item = widget.media[index];
       return ClipRRect(
@@ -207,6 +217,9 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                       key: ValueKey('feed_video_${_getHeroTag(index)}'),
                       autoplayPostId: widget.autoplayPostId,
                       forceAutoplay: widget.forceAutoplayVideos,
+                      sequentialPlayback: sequentialVideoLayout,
+                      sequentialActive: !sequentialVideoLayout || index == _sequentialVideoIndex,
+                      onSequentialCompleted: sequentialVideoLayout ? _onSequentialVideoCompleted : null,
                       onQualifiedView: widget.onVideoQualifiedView,
                       qualifiedViewPercent: widget.qualifiedViewPercent,
                       onPlaybackOverlayOpacityChanged: (opacity) {
@@ -398,6 +411,9 @@ class FeedVideoAutoplayGate {
 class _InlineFeedVideo extends StatefulWidget {
   final String? autoplayPostId;
   final bool forceAutoplay;
+  final bool sequentialPlayback;
+  final bool sequentialActive;
+  final VoidCallback? onSequentialCompleted;
   final ValueChanged<double>? onPlaybackOverlayOpacityChanged;
   final VoidCallback? onQualifiedView;
   final double qualifiedViewPercent;
@@ -409,6 +425,9 @@ class _InlineFeedVideo extends StatefulWidget {
     super.key,
     this.autoplayPostId,
     this.forceAutoplay = false,
+    this.sequentialPlayback = false,
+    this.sequentialActive = true,
+    this.onSequentialCompleted,
     this.onPlaybackOverlayOpacityChanged,
     this.onQualifiedView,
     this.qualifiedViewPercent = 0.5,
@@ -435,6 +454,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
   Duration _lastPlaybackPosition = Duration.zero;
   Duration _accumulatedPlayback = Duration.zero;
   bool _qualifiedViewSent = false;
+  bool _sequentialCompletionSent = false;
 
   @override
   void initState() {
@@ -466,8 +486,23 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     } catch (_) {}
   }
 
+  @override
+  void didUpdateWidget(covariant _InlineFeedVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sequentialActive != widget.sequentialActive ||
+        oldWidget.sequentialPlayback != widget.sequentialPlayback) {
+      _sequentialCompletionSent = false;
+      if (!widget.sequentialActive) {
+        unawaited(_releaseController());
+      } else if (_visible && _cardEligible && _autoPlay) {
+        _initializeIfNeeded();
+      }
+    }
+  }
+
   Future<void> _initializeIfNeeded() async {
-    if (!_autoPlay || !_visible || !_cardEligible || _initializing || _controller != null ||
+    if (!_autoPlay || !_visible || !_cardEligible ||
+        (widget.sequentialPlayback && !widget.sequentialActive) || _initializing || _controller != null ||
         widget.url.trim().isEmpty || _failed) return;
     _initializing = true;
     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
@@ -477,7 +512,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         await controller.dispose();
         return;
       }
-      await controller.setLooping(true);
+      await controller.setLooping(!widget.sequentialPlayback);
       // Feed autoplay starts with sound enabled. The in-card control lets
       // the viewer mute/unmute without opening the fullscreen player.
       await controller.setVolume(_isMuted ? 0 : 1);
@@ -512,6 +547,11 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         _qualifiedViewSent = true;
         widget.onQualifiedView?.call();
       }
+    }
+    if (widget.sequentialPlayback && widget.sequentialActive &&
+        value.isCompleted && !_sequentialCompletionSent) {
+      _sequentialCompletionSent = true;
+      widget.onSequentialCompleted?.call();
     }
     _lastPlaybackPosition = position;
     _updatePlaybackOverlayOpacity();
@@ -549,7 +589,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     _cardEligible = eligible;
     if (!eligible) {
       _controller?.pause();
-    } else if (_visible && _autoPlay) {
+    } else if (_visible && _autoPlay &&
+        (!widget.sequentialPlayback || widget.sequentialActive)) {
       _initializeIfNeeded();
       final controller = _controller;
       if (controller != null && controller.value.isInitialized) controller.play();
@@ -580,7 +621,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     if (_visible == visible) return;
     _visible = visible;
     final controller = _controller;
-    if (!visible || !_cardEligible) {
+    if (!visible || !_cardEligible ||
+        (widget.sequentialPlayback && !widget.sequentialActive)) {
       _releaseController();
     } else {
       _initializeIfNeeded();
