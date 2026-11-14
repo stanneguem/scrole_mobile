@@ -330,29 +330,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
-  List<_ReelItem> _buildItems(HomeFeedController controller) {
-    if (!_scutLoaded) return const <_ReelItem>[];
-    return _scutItems;
-    /* final result = <_ReelItem>[];
-    final seen = <String>{};
-    for (final sourcePost in [...controller.posts, ...controller.sponsoredPosts]) {
-      final source = controller.reelPostOverrides[sourcePost.id] ?? sourcePost;
-      final candidates = <CommunityPost>[
-        source,
-        if (source.sharedPost != null)
-          (controller.reelPostOverrides[source.sharedPost!.id] ?? source.sharedPost!),
-      ];
-      for (final post in candidates) {
-        if (post.isPublishing || !seen.add(post.id)) continue;
-        for (final media in post.media) {
-          if (media.isVideo && media.url.trim().isNotEmpty) {
-            result.add(_ReelItem(post: post, media: media));
-          }
-        }
-      }
-    }
-    return result; */
-  }
+  List<_ReelItem> _buildItems() => _scutLoaded ? _scutItems : const <_ReelItem>[];
 
   Future<void> _openComments(_ReelItem item) async {
     final communityController = Get.isRegistered<CommunityFeedController>()
@@ -390,7 +368,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
       // de commentaire se repositionne au-dessus du clavier.
       resizeToAvoidBottomInset: false,
       body: Obx(() {
-        final items = _buildItems(feed);
+        final items = _buildItems();
         if (items.isEmpty) {
           if (_scutLoading) return const ColoredBox(color: Colors.black, child: Center(child: CircularProgressIndicator(color: Colors.white)));
           return Stack(
