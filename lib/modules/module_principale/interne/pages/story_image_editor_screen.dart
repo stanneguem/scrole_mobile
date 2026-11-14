@@ -587,7 +587,7 @@ class _TrashDropTarget extends StatelessWidget {
         children: [
           Icon(Icons.delete_outline_rounded, color: Colors.white),
           SizedBox(width: 8),
-          Text('Déposer ici pour supprimer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          Text('story_editor_delete_text'.tr, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         ],
       ),
     );
