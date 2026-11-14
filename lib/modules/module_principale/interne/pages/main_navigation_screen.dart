@@ -40,7 +40,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         int navIdx = idx;
         int stackIdx = 0;
         if (navIdx == 1) stackIdx = 1;
-        else if (navIdx == 4) stackIdx = 2;
+        else if (navIdx == 3) stackIdx = 2;
         else stackIdx = 0;
         if (mounted && _currentIndex != stackIdx) {
           setState(() {
@@ -65,7 +65,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       Get.to(() => const ReelsScreen(), fullscreenDialog: true);
       return;
     }
-    if (index == 3) {
+    if (index == 4) {
       // Notifications are opened from the bottom navigation bar.
       Get.find<MainLayoutController>().openNotifications();
       return;
@@ -78,7 +78,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     int stackIndex = 0;
     if (index == 1) {
       stackIndex = 1;
-    } else if (index == 4) {
+    } else if (index == 3) {
       stackIndex = 2;
     } else {
       stackIndex = 0;
@@ -209,6 +209,21 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                     label: 'Réels',
                   ),
                   BottomNavigationBarItem(
+                    icon: SvgPicture.asset(
+                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    ),
+                    activeIcon: SvgPicture.asset(
+                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    ),
+                    label: 'nav_events'.tr,
+                  ),
+                  BottomNavigationBarItem(
                     icon: Obx(() => Badge(
                       isLabelVisible: controller.hasNotifications,
                       label: Text(controller.notificationBadge),
@@ -230,21 +245,6 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                       ),
                     )),
                     label: 'Notifications',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: SvgPicture.asset(
-                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                    ),
-                    activeIcon: SvgPicture.asset(
-                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                    ),
-                    label: 'nav_events'.tr,
                   ),
                   BottomNavigationBarItem(
                     icon: const _BottomNavProfileIcon(isSelected: false),
