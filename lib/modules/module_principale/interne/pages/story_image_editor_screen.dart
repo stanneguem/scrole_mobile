@@ -22,7 +22,8 @@ class StoryImageEditorScreen extends StatefulWidget {
 class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   final GlobalKey _canvasKey = GlobalKey();
   final List<_StoryTextOverlay> _overlays = [];
-  late File _editedImageFile;
+  File? _croppedImageFile;
+  File get _editedImageFile => _croppedImageFile ?? widget.imageFile;
   bool _isCropping = false;
   int? _selectedOverlay;
   bool _isSaving = false;
@@ -31,12 +32,6 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _isDraggingOverlay = false;
   double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _editedImageFile = widget.imageFile;
-  }
 
   static const List<Color> _colors = [
     Colors.white,
@@ -178,7 +173,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
       );
       if (cropped != null && mounted) {
         setState(() {
-          _editedImageFile = File(cropped.path);
+          _croppedImageFile = File(cropped.path);
           _imageReady = false;
           _imageLoadFailed = false;
         });
