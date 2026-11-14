@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../module_creation_de_compte/centre/services/user_service.dart';
 import '../../../module_notification/externe/repositories/fcm_token_repository.dart';
 import '../../../../app/service_global/notification_service.dart';
-import '../../../../app/local_storage/scut_cache_cleanup.dart';
+import '../../../../app/local_storage/scut_video_cache.dart';
 import '../../externe/repositories/auth_repository.dart';
 
 class AuthService extends GetxService {
@@ -92,7 +92,7 @@ class AuthService extends GetxService {
       }
 
       await _authRepository.signOut();
-      await clearScutOfflineCache();
+      await clearScutVideoCache();
       currentUser.value = null;
       isAuthenticated.value = false;
       _lastUserId = null;
