@@ -55,6 +55,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _scutLoading = true;
   bool _scutLoaded = false;
   bool _loadingMoreScuts = false;
+  bool _cacheBusy = false;
+  int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
 
   @override
@@ -240,8 +242,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
         );
         opened ??= await _feedRepository.getPost(widget.initialPostId!);
         final media = opened.media.where((m) => m.isVideo && m.url.trim().isNotEmpty);
-        final selected = media.where((m) => widget.initialMediaUrl == null || m.url == widget.initialMediaUrl).firstOrNull
-            ?? media.firstOrNull;
+        final matchingMedia = media.where((m) => widget.initialMediaUrl == null || m.url == widget.initialMediaUrl).toList();
+        final selected = matchingMedia.isNotEmpty ? matchingMedia.first : (media.isNotEmpty ? media.first : null);
         if (selected != null) {
           existing.insert(0, _ReelItem(post: opened, media: selected));
           excluded.add(opened.id);
@@ -281,6 +283,9 @@ class _ReelsScreenState extends State<ReelsScreen> {
   }
 
   Future<void> _cacheScutWindow(int currentIndex) async {
+    _pendingCacheIndex = currentIndex;
+    if (_cacheBusy) return;
+    _cacheBusy = true;
     try {
       final directory = await getTemporaryDirectory();
       final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
@@ -315,12 +320,20 @@ class _ReelsScreenState extends State<ReelsScreen> {
       debugPrint('[SCUT_CACHE] Cached window: ${window.length} videos (8 previous/current/next).');
     } catch (error) {
       debugPrint('[SCUT_CACHE] cache maintenance failed: $error');
+    } finally {
+      _cacheBusy = false;
+      final pending = _pendingCacheIndex;
+      if (pending != null && pending != currentIndex && mounted) {
+        _pendingCacheIndex = null;
+        unawaited(_cacheScutWindow(pending));
+      }
     }
   }
 
   List<_ReelItem> _buildItems(HomeFeedController controller) {
-    if (_scutLoaded) return _scutItems;
-    final result = <_ReelItem>[];
+    if (!_scutLoaded) return const <_ReelItem>[];
+    return _scutItems;
+    /* final result = <_ReelItem>[];
     final seen = <String>{};
     for (final sourcePost in [...controller.posts, ...controller.sponsoredPosts]) {
       final source = controller.reelPostOverrides[sourcePost.id] ?? sourcePost;
@@ -338,7 +351,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         }
       }
     }
-    return result;
+    return result; */
   }
 
   Future<void> _openComments(_ReelItem item) async {
@@ -678,7 +691,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     final controller = _video;
     if (_watched <= Duration.zero || controller == null || !controller.value.isInitialized) return;
     try {
-      await Get.find<HomeFeedRepository>().recordScutWatch(
+      await HomeFeedRepository().recordScutWatch(
         postId: widget.item.post.id,
         watchedMs: _watched.inMilliseconds,
         durationMs: controller.value.duration.inMilliseconds,
