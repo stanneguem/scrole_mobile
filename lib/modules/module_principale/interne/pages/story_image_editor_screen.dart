@@ -457,7 +457,13 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                 children: [
                   if (_isDraggingOverlay)
                     const _TrashDropTarget()
-                  else if (_selectedOverlay != null)
+                  else if (_selectedOverlay != null) ...[
+                    _EditorTool(
+                      icon: Icons.text_fields_rounded,
+                      label: 'story_editor_add_text'.tr,
+                      onTap: _addText,
+                    ),
+                    const SizedBox(width: 22),
                     _EditorTool(
                       icon: Icons.delete_outline_rounded,
                       label: 'story_editor_delete_text'.tr,
@@ -468,7 +474,8 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                           _activeTextPanel = 'font';
                         });
                       },
-                    )
+                    ),
+                  ]
                   else ...[
                     _EditorTool(
                       icon: Icons.text_fields_rounded,
