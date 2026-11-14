@@ -30,6 +30,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _imageReady = false;
   bool _imageLoadFailed = false;
   bool _isDraggingOverlay = false;
+  String? _activeTextPanel = 'font';
   double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
 
@@ -191,6 +192,12 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     }
   }
 
+  void _changeSelectedFont(String? fontFamily) {
+    final index = _selectedOverlay;
+    if (index == null) return;
+    setState(() => _overlays[index].fontFamily = fontFamily);
+  }
+
   void _changeSelectedColor(Color color) {
     final index = _selectedOverlay;
     if (index == null) return;
@@ -206,6 +213,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   void _startOverlayGesture(int index) {
     setState(() {
       _selectedOverlay = index;
+      _activeTextPanel ??= 'font';
       _isDraggingOverlay = true;
       _scaleStartFontSize = _overlays[index].fontSize;
     });
@@ -398,60 +406,50 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
               ),
             ),
             if (_selectedOverlay != null)
-              Container(
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.text_fields_rounded, color: Colors.white70, size: 17),
-                        const SizedBox(width: 10),
-                        ..._colors.map((color) => _ColorDot(
-                          color: color,
-                          selected: _overlays[_selectedOverlay!].color == color,
-                          onTap: () => _changeSelectedColor(color),
-                        )),
-                      ],
-                    ),
-                    const SizedBox(height: 9),
+                    _buildTextOptionsPanel(),
+                    const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _MiniTextAction(icon: Icons.keyboard_capslock_rounded, label: 'ABC', onTap: () => _transformSelectedText('upper')),
-                          _MiniTextAction(icon: Icons.text_fields_rounded, label: 'abc', onTap: () => _transformSelectedText('lower')),
-                          _MiniTextAction(icon: Icons.title_rounded, label: 'Abc', onTap: () => _transformSelectedText('title')),
-                          _MiniTextAction(icon: Icons.rotate_left_rounded, label: '−90°', onTap: () => _rotateSelectedText(-90)),
-                          _MiniTextAction(icon: Icons.rotate_right_rounded, label: '+90°', onTap: () => _rotateSelectedText(90)),
-                          _MiniTextAction(icon: Icons.rotate_90_degrees_ccw_rounded, label: '−15°', onTap: () => _rotateSelectedText(-15)),
-                          _MiniTextAction(icon: Icons.rotate_90_degrees_cw_rounded, label: '+15°', onTap: () => _rotateSelectedText(15)),
+                          _TextMenuTab(
+                            label: 'story_editor_font'.tr,
+                            icon: Icons.font_download_rounded,
+                            selected: _activeTextPanel == 'font',
+                            onTap: () => setState(() => _activeTextPanel = 'font'),
+                          ),
+                          _TextMenuTab(
+                            label: 'story_editor_text_color'.tr,
+                            icon: Icons.palette_outlined,
+                            selected: _activeTextPanel == 'text_color',
+                            onTap: () => setState(() => _activeTextPanel = 'text_color'),
+                          ),
+                          _TextMenuTab(
+                            label: 'story_editor_background'.tr,
+                            icon: Icons.format_color_fill_rounded,
+                            selected: _activeTextPanel == 'background',
+                            onTap: () => setState(() => _activeTextPanel = 'background'),
+                          ),
+                          _TextMenuTab(
+                            label: 'story_editor_format'.tr,
+                            icon: Icons.text_format_rounded,
+                            selected: _activeTextPanel == 'format',
+                            onTap: () => setState(() => _activeTextPanel = 'format'),
+                          ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 9),
-                    Row(
-                      children: [
-                        const Icon(Icons.format_color_fill_rounded, color: Colors.white70, size: 17),
-                        const SizedBox(width: 10),
-                        _ColorDot(
-                          color: Colors.transparent,
-                          selected: _overlays[_selectedOverlay!].backgroundColor == null,
-                          transparent: true,
-                          onTap: () => _changeSelectedBackground(null),
-                        ),
-                        ..._colors.map((color) => _ColorDot(
-                          color: color.withValues(alpha: 0.78),
-                          selected: _overlays[_selectedOverlay!].backgroundColor == color.withValues(alpha: 0.78),
-                          onTap: () => _changeSelectedBackground(color.withValues(alpha: 0.78)),
-                        )),
-                      ],
                     ),
                   ],
                 ),
               )
             else
-              const SizedBox(height: 58),
+              const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
               child: Row(
@@ -459,6 +457,18 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                 children: [
                   if (_isDraggingOverlay)
                     const _TrashDropTarget()
+                  else if (_selectedOverlay != null)
+                    _EditorTool(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'story_editor_delete_text'.tr,
+                      onTap: () {
+                        setState(() {
+                          _overlays.removeAt(_selectedOverlay!);
+                          _selectedOverlay = null;
+                          _activeTextPanel = 'font';
+                        });
+                      },
+                    )
                   else ...[
                     _EditorTool(
                       icon: Icons.text_fields_rounded,
@@ -471,18 +481,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       label: 'story_editor_crop_tab'.tr,
                       onTap: _cropImage,
                     ),
-                    const SizedBox(width: 22),
-                    if (_selectedOverlay != null)
-                      _EditorTool(
-                        icon: Icons.delete_outline_rounded,
-                        label: 'story_editor_delete_text'.tr,
-                        onTap: () {
-                          setState(() {
-                            _overlays.removeAt(_selectedOverlay!);
-                            _selectedOverlay = null;
-                          });
-                        },
-                      ),
+                  ]
                   ],
                 ],
               ),
@@ -490,6 +489,122 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTextOptionsPanel() {
+    final overlay = _overlays[_selectedOverlay!];
+    switch (_activeTextPanel) {
+      case 'text_color':
+        return _buildOptionSurface(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: _colors.map((color) => _ColorDot(
+              color: color,
+              selected: overlay.color == color,
+              onTap: () => _changeSelectedColor(color),
+            )).toList(),
+          ),
+        );
+      case 'background':
+        return _buildOptionSurface(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _ColorDot(
+                color: Colors.transparent,
+                selected: overlay.backgroundColor == null,
+                transparent: true,
+                onTap: () => _changeSelectedBackground(null),
+              ),
+              ..._colors.map((color) {
+                final background = color.withValues(alpha: 0.78);
+                return _ColorDot(
+                  color: background,
+                  selected: overlay.backgroundColor == background,
+                  onTap: () => _changeSelectedBackground(background),
+                );
+              }),
+            ],
+          ),
+        );
+      case 'format':
+        return _buildOptionSurface(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _MiniTextAction(icon: Icons.keyboard_capslock_rounded, label: 'ABC', onTap: () => _transformSelectedText('upper')),
+                _MiniTextAction(icon: Icons.text_fields_rounded, label: 'abc', onTap: () => _transformSelectedText('lower')),
+                _MiniTextAction(icon: Icons.title_rounded, label: 'Abc', onTap: () => _transformSelectedText('title')),
+                _MiniTextAction(icon: Icons.rotate_left_rounded, label: '−90°', onTap: () => _rotateSelectedText(-90)),
+                _MiniTextAction(icon: Icons.rotate_right_rounded, label: '+90°', onTap: () => _rotateSelectedText(90)),
+                _MiniTextAction(icon: Icons.rotate_90_degrees_ccw_rounded, label: '−15°', onTap: () => _rotateSelectedText(-15)),
+                _MiniTextAction(icon: Icons.rotate_90_degrees_cw_rounded, label: '+15°', onTap: () => _rotateSelectedText(15)),
+              ],
+            ),
+          ),
+        );
+      case 'font':
+      default:
+        const fonts = <(String, String)>[
+          ('Roboto', 'Roboto'),
+          ('serif', 'Serif'),
+          ('monospace', 'Mono'),
+          ('cursive', 'Cursive'),
+        ];
+        return _buildOptionSurface(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: fonts.map((font) {
+                final selected = overlay.fontFamily == font.$1;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _changeSelectedFont(font.$1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected ? const Color(0xFFFFD21F).withValues(alpha: 0.18) : const Color(0xFF303030),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: selected ? const Color(0xFFFFD21F) : Colors.white12),
+                      ),
+                      child: Text(
+                        font.$2,
+                        style: TextStyle(
+                          color: selected ? const Color(0xFFFFD21F) : Colors.white,
+                          fontFamily: font.$1,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+    }
+  }
+
+  Widget _buildOptionSurface({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D1D1D),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: child,
     );
   }
 
@@ -503,7 +618,10 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
       ),
       child: GestureDetector(
         onTap: () {
-          setState(() => _selectedOverlay = index);
+          setState(() {
+            _selectedOverlay = index;
+            _activeTextPanel = 'font';
+          });
           _editText(index);
         },
         onScaleStart: (_) => _startOverlayGesture(index),
@@ -529,6 +647,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                 fontSize: overlay.fontSize,
                 height: 1.15,
                 fontWeight: FontWeight.w700,
+                fontFamily: overlay.fontFamily,
                 shadows: const [
                   Shadow(
                     color: Colors.black54,
@@ -702,6 +821,51 @@ class _MiniTextAction extends StatelessWidget {
   );
 }
 
+class _TextMenuTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TextMenuTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFFFD21F).withValues(alpha: 0.16) : const Color(0xFF292929),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected ? const Color(0xFFFFD21F) : Colors.white10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: selected ? const Color(0xFFFFD21F) : Colors.white70),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(
+                color: selected ? const Color(0xFFFFD21F) : Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ColorDot extends StatelessWidget {
   final Color color;
   final bool selected;
@@ -768,6 +932,7 @@ class _StoryTextOverlay {
   Color? backgroundColor = Colors.black.withValues(alpha: 0.38);
   double fontSize = 27;
   double rotationDegrees = 0;
+  String? fontFamily = 'Roboto';
 
   _StoryTextOverlay({
     required this.text,
