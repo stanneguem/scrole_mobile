@@ -23,7 +23,7 @@ class VideoPreviewScreen extends StatefulWidget {
   State<VideoPreviewScreen> createState() => _VideoPreviewScreenState();
 }
 
-class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
+class _VideoPreviewScreenState extends State<VideoPreviewScreen> with WidgetsBindingObserver {
   late File _videoFile;
   VideoPlayerController? _controller;
   bool _isInitializing = true;
@@ -33,8 +33,22 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _videoFile = widget.videoFile;
     _initializePlayer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Le retour au premier plan ne relance jamais automatiquement la vidéo.
+      if (_controller == null && !_isInitializing) _initializePlayer();
+      return;
+    }
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) unawaited(controller.dispose());
+    if (mounted) setState(() => _isInitializing = false);
   }
 
   Future<void> _initializePlayer() async {
@@ -108,6 +122,7 @@ class _VideoPreviewScreenState extends State<VideoPreviewScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
   }
