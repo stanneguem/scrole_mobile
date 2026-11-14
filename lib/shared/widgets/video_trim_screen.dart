@@ -470,7 +470,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
                 if (ready) _buildBottomBar(),
               ],
             ),
-            if (_isSaving)
+            if (_isSaving || _isConverting)
               Positioned.fill(
                 child: Container(
                   color: Colors.black.withValues(alpha: .72),
