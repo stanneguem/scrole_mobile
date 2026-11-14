@@ -32,7 +32,6 @@ class ExternalProfileModel {
   final String relationshipState;
   final String? requestId;
   final DateTime? retryAt;
-  final double rating;
   final int postsCount;
   final int totalLikesReceived;
   final int totalDislikesReceived;
@@ -73,7 +72,6 @@ class ExternalProfileModel {
     this.relationshipState = 'none',
     this.requestId,
     this.retryAt,
-    this.rating = 0.0,
     this.postsCount = 0,
     this.totalLikesReceived = 0,
     this.totalDislikesReceived = 0,
@@ -110,7 +108,6 @@ class ExternalProfileModel {
     bool clearRequestId = false,
     bool clearRetryAt = false,
     bool? canMessage,
-    double? rating,
     int? postsCount,
     int? totalLikesReceived,
     int? totalDislikesReceived,
@@ -150,7 +147,6 @@ class ExternalProfileModel {
       relationshipState: relationshipState ?? this.relationshipState,
       requestId: clearRequestId ? null : (requestId ?? this.requestId),
       retryAt: clearRetryAt ? null : (retryAt ?? this.retryAt),
-      rating: rating ?? this.rating,
       postsCount: postsCount ?? this.postsCount,
       totalLikesReceived: totalLikesReceived ?? this.totalLikesReceived,
       totalDislikesReceived: totalDislikesReceived ?? this.totalDislikesReceived,
@@ -210,7 +206,6 @@ class ExternalProfileModel {
       relationshipState: (json['relationship'] is Map ? (json['relationship']['state'] ?? 'none') : (json['state'] ?? 'none')).toString(),
       requestId: (json['relationship'] is Map ? json['relationship']['request_id'] : json['request_id'])?.toString(),
       retryAt: (json['relationship'] is Map ? json['relationship']['retry_at'] : json['retry_at']) == null ? null : DateTime.tryParse((json['relationship'] is Map ? json['relationship']['retry_at'] : json['retry_at']).toString()),
-      rating: 0.0,
       postsCount: (json['posts_count'] as num?)?.toInt() ?? 0,
       totalLikesReceived: (json['total_likes_received'] as num?)?.toInt() ?? 0,
       totalDislikesReceived: (json['total_dislikes_received'] as num?)?.toInt() ?? 0,
