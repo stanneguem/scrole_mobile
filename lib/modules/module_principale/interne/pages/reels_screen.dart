@@ -289,6 +289,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
         final matchingMedia = media.where((m) => widget.initialMediaUrl == null || m.url == widget.initialMediaUrl).toList();
         final selected = matchingMedia.isNotEmpty ? matchingMedia.first : (media.isNotEmpty ? media.first : null);
         if (selected != null) {
+          existing.removeWhere((item) => item.post.id == opened.id &&
+              (widget.initialMediaUrl == null || item.media.url == widget.initialMediaUrl));
           existing.insert(0, _ReelItem(post: opened, media: selected));
           excluded.add(opened.id);
         }
