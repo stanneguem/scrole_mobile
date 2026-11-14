@@ -34,6 +34,7 @@ import 'package:scrole/app/local_storage/fast/fast_cache_service.dart';
 import 'package:scrole/app/local_storage/structured/app_cache_database.dart';
 import 'package:scrole/app/local_storage/structured/database_factory.dart';
 import 'package:scrole/app/routes/app_pages.dart';
+import 'package:scrole/app/routes/scrole_route_observer.dart';
 import 'package:scrole/app/routes/app_routes.dart';
 import 'package:scrole/app/theme/app_theme.dart';
 import 'package:scrole/app/translation/scrole_translations.dart';
@@ -347,6 +348,7 @@ class MyApp extends StatelessWidget {
         ],
         initialRoute: AppPages.root,
         getPages: AppRoutes.routes,
+        navigatorObservers: [scroleRouteObserver],
         builder: (context, child) {
           bootLog('GetMaterialApp.builder start');
           final result = bootMeasure('ResponsiveBreakpoints.builder', () => ResponsiveBreakpoints.builder(
