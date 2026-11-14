@@ -331,7 +331,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     // de cette page : elles glissent avec la vidéo au swipe.
                     Positioned(
                         right: 12,
-                        bottom: safeBottom + 181,
+                        bottom: safeBottom + 181 + keyboardInset,
                         child: _ReelActionRail(
                           key: ValueKey('actions_${item.post.id}'),
                           post: item.post,
@@ -343,7 +343,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     Positioned(
                         left: 16,
                         right: 82,
-                        bottom: safeBottom + 82,
+                        bottom: safeBottom + 82 + keyboardInset,
                         child: _ReelAuthorInfo(
                           key: ValueKey('author_${item.post.id}_${item.media.url}'),
                           post: item.post,
