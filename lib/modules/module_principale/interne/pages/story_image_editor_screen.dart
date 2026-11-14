@@ -420,7 +420,6 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       ],
                     ),
                     const SizedBox(height: 9),
-                    const SizedBox(height: 9),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -515,34 +514,34 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
         onScaleStart: (_) => _startOverlayGesture(index),
         onScaleUpdate: (details) => _updateOverlayGesture(index, details),
         onScaleEnd: (_) => _endOverlayGesture(index),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: overlay.backgroundColor,
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? Border.all(color: Colors.white70, width: 1)
-                : null,
-          ),
-          child: Transform.rotate(
-            angle: overlay.rotationDegrees * 3.141592653589793 / 180,
-            child: Text(
-            overlay.text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: overlay.color,
-              fontSize: overlay.fontSize,
-              height: 1.15,
-              fontWeight: FontWeight.w700,
-              shadows: const [
-                Shadow(
-                  color: Colors.black54,
-                  blurRadius: 5,
-                  offset: Offset(0, 2),
-                ),
-              ],
+        child: Transform.rotate(
+          angle: overlay.rotationDegrees * 3.141592653589793 / 180,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: overlay.backgroundColor,
+              borderRadius: BorderRadius.circular(8),
+              border: selected
+                  ? Border.all(color: Colors.white70, width: 1)
+                  : null,
             ),
+            child: Text(
+              overlay.text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: overlay.color,
+                fontSize: overlay.fontSize,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+                shadows: const [
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 5,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
