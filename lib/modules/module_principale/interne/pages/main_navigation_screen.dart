@@ -231,24 +231,32 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                       label: 'Communautés',
                     ),
                     NavigationDestination(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/notification-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurfaceVariant,
-                          BlendMode.srcIn,
+                      icon: Obx(() => Badge(
+                        isLabelVisible: controller.hasNotifications,
+                        label: Text(controller.notificationBadge),
+                        child: SvgPicture.asset(
+                          'assets/svg_icons/notification-svgrepo-com.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: ColorFilter.mode(
+                            colorScheme.onSurfaceVariant,
+                            BlendMode.srcIn,
+                          ),
                         ),
-                      ),
-                      selectedIcon: SvgPicture.asset(
-                        'assets/svg_icons/notification-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.primary,
-                          BlendMode.srcIn,
+                      )),
+                      selectedIcon: Obx(() => Badge(
+                        isLabelVisible: controller.hasNotifications,
+                        label: Text(controller.notificationBadge),
+                        child: SvgPicture.asset(
+                          'assets/svg_icons/notification-svgrepo-com.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: ColorFilter.mode(
+                            colorScheme.primary,
+                            BlendMode.srcIn,
+                          ),
                         ),
-                      ),
+                      )),
                       label: 'Notifications',
                     ),
                     NavigationDestination(
