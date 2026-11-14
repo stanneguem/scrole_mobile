@@ -531,7 +531,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "Voir moins",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Suivre',
-      'home_feed_profile_reason_mutual_friends': '{count} ami(s) en commun',
+      'home_feed_profile_reason_mutual_friends': '@count ami(s) en commun',
       'home_feed_profile_reason_same_city': 'Même ville',
       'home_feed_profile_reason_common_community': 'Communauté en commun',
       'home_feed_profile_reason_common_interests': 'Centres d’intérêt communs',
@@ -1024,7 +1024,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "See less",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Follow',
-      'home_feed_profile_reason_mutual_friends': '{count} mutual friend(s)',
+      'home_feed_profile_reason_mutual_friends': '@count mutual friend(s)',
       'home_feed_profile_reason_same_city': 'Same city',
       'home_feed_profile_reason_common_community': 'Common community',
       'home_feed_profile_reason_common_interests': 'Common interests',
@@ -1484,7 +1484,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "Ver menos",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Seguir',
-      'home_feed_profile_reason_mutual_friends': '{count} amigo(s) en común',
+      'home_feed_profile_reason_mutual_friends': '@count amigo(s) en común',
       'home_feed_profile_reason_same_city': 'Misma ciudad',
       'home_feed_profile_reason_common_community': 'Comunidad en común',
       'home_feed_profile_reason_common_interests': 'Intereses en común',
@@ -1954,7 +1954,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "Weniger anzeigen",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Folgen',
-      'home_feed_profile_reason_mutual_friends': '{count} gemeinsame(r) Freund(e)',
+      'home_feed_profile_reason_mutual_friends': '@count gemeinsame(r) Freund(e)',
       'home_feed_profile_reason_same_city': 'Gleiche Stadt',
       'home_feed_profile_reason_common_community': 'Gemeinsame Community',
       'home_feed_profile_reason_common_interests': 'Gemeinsame Interessen',
@@ -2397,7 +2397,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "Mostra meno",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Segui',
-      'home_feed_profile_reason_mutual_friends': '{count} amicə in comune',
+      'home_feed_profile_reason_mutual_friends': '@count amicə in comune',
       'home_feed_profile_reason_same_city': 'Stessa città',
       'home_feed_profile_reason_common_community': 'Community in comune',
       'home_feed_profile_reason_common_interests': 'Interessi in comune',
@@ -2892,7 +2892,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "Ver menos",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'Seguir',
-      'home_feed_profile_reason_mutual_friends': '{count} amigo(s) em comum',
+      'home_feed_profile_reason_mutual_friends': '@count amigo(s) em comum',
       'home_feed_profile_reason_same_city': 'Mesma cidade',
       'home_feed_profile_reason_common_community': 'Comunidade em comum',
       'home_feed_profile_reason_common_interests': 'Interesses em comum',
@@ -3377,7 +3377,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "عرض أقل",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': 'متابعة',
-      'home_feed_profile_reason_mutual_friends': '{count} أصدقاء مشتركون',
+      'home_feed_profile_reason_mutual_friends': '@count أصدقاء مشتركون',
       'home_feed_profile_reason_same_city': 'من نفس المدينة',
       'home_feed_profile_reason_common_community': 'مجتمع مشترك',
       'home_feed_profile_reason_common_interests': 'اهتمامات مشتركة',
@@ -3824,7 +3824,7 @@ class AppTranslations extends Translations {
       'community_chat_settings_see_less': "收起",
       // Suggested profile action and recommendation reasons.
       'home_feed_add_profile': '关注',
-      'home_feed_profile_reason_mutual_friends': '{count} 位共同好友',
+      'home_feed_profile_reason_mutual_friends': '@count 位共同好友',
       'home_feed_profile_reason_same_city': '同一城市',
       'home_feed_profile_reason_common_community': '共同社群',
       'home_feed_profile_reason_common_interests': '共同兴趣',
