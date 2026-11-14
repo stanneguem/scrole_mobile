@@ -275,7 +275,13 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     return GestureDetector(
       onTap: () {
         final current = _video;
-        if (current == null || !current.value.isInitialized) return;
+        if (current == null || !current.value.isInitialized) {
+          if (widget.active && !_failed) {
+            setState(() => _loading = true);
+            unawaited(_initialize());
+          }
+          return;
+        }
         if (current.value.isPlaying) {
           current.pause();
         } else {
