@@ -21,3 +21,12 @@ VideoPlayerController createScutVideoController(String? localPath, String url) =
     platform.createScutVideoController(localPath, url);
 
 Future<void> clearScutVideoCache() => platform.clearScutVideoCache();
+
+Future<void> queueScutWatchSignal(Map<String, dynamic> signal) =>
+    platform.queueScutWatchSignal(signal);
+
+Future<List<Map<String, dynamic>>> readPendingScutWatchSignals() =>
+    platform.readPendingScutWatchSignals();
+
+Future<void> removePendingScutWatchSignal(String signalId) =>
+    platform.removePendingScutWatchSignal(signalId);
