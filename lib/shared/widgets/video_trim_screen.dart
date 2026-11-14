@@ -4,7 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:video_compress_next/video_compress.dart';
+import 'package:video_compress_next/video_compress_next.dart';
 import 'package:video_trimmer/video_trimmer.dart';
 import '../../app/theme/app_colors.dart';
 
@@ -42,7 +43,11 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
   /// Durée visible en même temps sur la timeline (le reste se fait au scroll).
   static const _viewSpanMs = 60000.0;
 
-  final Trimmer _trimmer = Trimmer();
+  Trimmer _trimmer = Trimmer();
+  File? _workingVideoFile;
+  StreamSubscription<double>? _conversionSubscription;
+  double _conversionProgress = 0;
+  bool _isConverting = false;
   final ValueNotifier<double> _playhead = ValueNotifier<double>(0);
   final ScrollController _scroll = ScrollController();
   Timer? _ticker;
@@ -87,30 +92,63 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
   @override
   void initState() {
     super.initState();
+    _workingVideoFile = widget.videoFile;
     _loadVideo();
   }
 
   Future<void> _loadVideo() async {
     try {
       await _trimmer.loadVideo(videoFile: widget.videoFile);
-      final duration =
-          _trimmer.videoPlayerController?.value.duration ?? Duration.zero;
-      final durationMs = duration.inMilliseconds.toDouble();
-      if (durationMs <= 0) throw Exception('durée invalide');
+      await _finishVideoLoading();
+      return;
+    } catch (error, stack) {
+      debugPrint('[VideoTrimScreen] native load failed; trying H.264 normalization: $error\n$stack');
+    }
 
+    // Fallback codec/container: re-encode only when the native trimmer cannot
+    // open the original. Media3 (Android) / AVFoundation (iOS) decode the source
+    // and write a broadly compatible MP4 (H.264 + AAC) using hardware encoders.
+    try {
+      await _trimmer.dispose();
       if (!mounted) return;
       setState(() {
-        _videoDuration = duration;
-        _selectedStartMs = 0;
-        _selectedEndMs = math.min(durationMs, _maxMs);
-        _isLoadingVideo = false;
+        _isConverting = true;
+        _conversionProgress = 0;
       });
 
-      _ticker = Timer.periodic(const Duration(milliseconds: 40), (_) => _tick());
-    } catch (e, stack) {
-      debugPrint('[VideoTrimScreen] load error: $e\n$stack');
+      final task = VideoCompressor.compress(
+        (_workingVideoFile ?? widget.videoFile).path,
+        options: const CompressOptions(
+          maxShortSide: 1080,
+          maxFrameRate: 30,
+          includeAudio: true,
+          codec: VideoCodec.h264,
+        ),
+      );
+      _conversionSubscription = task.progress.listen((progress) {
+        if (mounted) setState(() => _conversionProgress = progress.clamp(0, 1));
+      });
+      final converted = await task.result;
+      await _conversionSubscription?.cancel();
+      _conversionSubscription = null;
+
+      final normalizedFile = File(converted.path);
+      if (!await normalizedFile.exists() || await normalizedFile.length() == 0) {
+        throw StateError('Le fichier MP4 normalisé est introuvable ou vide.');
+      }
+
+      _workingVideoFile = normalizedFile;
+      _trimmer = Trimmer();
+      await _trimmer.loadVideo(videoFile: normalizedFile);
+      if (mounted) setState(() => _isConverting = false);
+      await _finishVideoLoading();
+    } catch (error, stack) {
+      debugPrint('[VideoTrimScreen] codec normalization failed: $error\n$stack');
+      await _conversionSubscription?.cancel();
+      _conversionSubscription = null;
       if (mounted) {
         setState(() {
+          _isConverting = false;
           _isLoadingVideo = false;
           _loadFailed = true;
         });
@@ -118,9 +156,27 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
     }
   }
 
+  Future<void> _finishVideoLoading() async {
+    final duration =
+        _trimmer.videoPlayerController?.value.duration ?? Duration.zero;
+    final durationMs = duration.inMilliseconds.toDouble();
+    if (durationMs <= 0) throw Exception('durée invalide');
+
+    if (!mounted) return;
+    setState(() {
+      _videoDuration = duration;
+      _selectedStartMs = 0;
+      _selectedEndMs = math.min(durationMs, _maxMs);
+      _isLoadingVideo = false;
+      _isConverting = false;
+    });
+    _ticker ??= Timer.periodic(const Duration(milliseconds: 40), (_) => _tick());
+  }
+
   @override
   void dispose() {
     _ticker?.cancel();
+    _conversionSubscription?.cancel();
     _playhead.dispose();
     _scroll.dispose();
     // Libère le décodeur natif à la fermeture de l'écran.
