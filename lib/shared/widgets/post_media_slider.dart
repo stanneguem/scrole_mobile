@@ -413,7 +413,7 @@ class _InlineFeedVideo extends StatefulWidget {
   final bool forceAutoplay;
   final bool sequentialPlayback;
   final bool sequentialActive;
-  final VoidCallback? onSequentialCompleted;
+  final Future<void> Function()? onSequentialCompleted;
   final ValueChanged<double>? onPlaybackOverlayOpacityChanged;
   final VoidCallback? onQualifiedView;
   final double qualifiedViewPercent;
@@ -551,10 +551,28 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     if (widget.sequentialPlayback && widget.sequentialActive &&
         value.isCompleted && !_sequentialCompletionSent) {
       _sequentialCompletionSent = true;
-      widget.onSequentialCompleted?.call();
+      unawaited(_finishSequentialVideo());
     }
     _lastPlaybackPosition = position;
     _updatePlaybackOverlayOpacity();
+  }
+
+  Future<void> _finishSequentialVideo() async {
+    // Release the completed decoder before the next tile is allowed to
+    // initialize. This prevents two native video decoders overlapping on
+    // memory-constrained phones during an automatic handoff.
+    final controller = _controller;
+    _controller = null;
+    controller?.removeListener(_onVideoValueChanged);
+    if (controller != null) {
+      try {
+        await controller.pause();
+      } catch (_) {}
+      await controller.dispose();
+    }
+    if (!mounted) return;
+    setState(() {});
+    await widget.onSequentialCompleted?.call();
   }
 
   void _updatePlaybackOverlayOpacity() {
