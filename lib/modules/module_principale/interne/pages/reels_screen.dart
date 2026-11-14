@@ -719,7 +719,7 @@ class _ReelPostInfo extends StatelessWidget {
                       child: TextField(
                         controller: commentController,
                         focusNode: commentFocusNode,
-                        onChanged: (_) => (context as Element).markNeedsBuild(),
+                        onChanged: (_) {},
                         minLines: 1,
                         maxLines: 3,
                         textInputAction: TextInputAction.send,
