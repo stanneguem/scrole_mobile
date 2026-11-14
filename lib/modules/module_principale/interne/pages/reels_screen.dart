@@ -1,10 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:get/get.dart';
-import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
@@ -31,6 +31,15 @@ class ReelsScreen extends StatefulWidget {
 
   @override
   State<ReelsScreen> createState() => _ReelsScreenState();
+}
+
+String _createReelCommentId() {
+  final random = math.Random.secure();
+  final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
 class _ReelsScreenState extends State<ReelsScreen> {
@@ -138,7 +147,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     setState(() => _isSendingComment = true);
     try {
       await _feedRepository.commentCommunityPost(
-        p_id: const Uuid().v4(),
+        p_id: _createReelCommentId(),
         postId: item.post.id,
         content: text,
         mentions: const [],
