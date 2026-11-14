@@ -320,6 +320,14 @@ class _ReelsScreenState extends State<ReelsScreen> {
     try {
       final feed = Get.find<HomeFeedController>();
       final existing = List<_ReelItem>.from(_scutItems);
+      // On a fresh online entry, ask the recommendation engine for the first
+      // videos instead of replaying yesterday's cached queue. Keep the cache
+      // only for offline startup or when a feed video was explicitly tapped.
+      if (!append && _hasInternet && widget.initialPostId == null) {
+        existing.clear();
+      } else if (!append && _hasInternet && widget.initialPostId != null) {
+        existing.removeWhere((item) => item.post.id != widget.initialPostId);
+      }
       final excluded = existing.map((item) => item.post.id).toSet();
       if (!append && widget.initialPostId != null && widget.initialPostId!.isNotEmpty) {
         CommunityPost? opened = feed.posts.cast<CommunityPost?>().firstWhere(
@@ -381,6 +389,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   Future<void> _cacheScutWindow(int currentIndex) async {
     _pendingCacheIndex = currentIndex;
     if (_cacheBusy) return;
+    _pendingCacheIndex = null;
     _cacheBusy = true;
     try {
       final start = (currentIndex - 8).clamp(0, _scutItems.length).toInt();
@@ -406,7 +415,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     } finally {
       _cacheBusy = false;
       final pending = _pendingCacheIndex;
-      if (pending != null && pending != currentIndex && mounted) {
+      if (pending != null && mounted) {
         _pendingCacheIndex = null;
         unawaited(_cacheScutWindow(pending));
       }
