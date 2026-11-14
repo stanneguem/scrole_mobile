@@ -222,6 +222,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _conversionSubscription?.unsubscribe();
+    if (_isConverting) unawaited(VideoCompress.cancelCompression());
     _playhead.dispose();
     _scroll.dispose();
     // Libère le décodeur natif à la fermeture de l'écran.
@@ -681,6 +682,8 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
                   }
                   return Image.file(
                     f,
+                    cacheWidth: 96,
+                    cacheHeight: 96,
                     fit: BoxFit.cover,
                     height: double.infinity,
                     gaplessPlayback: true,
