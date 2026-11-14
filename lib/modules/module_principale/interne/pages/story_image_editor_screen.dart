@@ -38,6 +38,13 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   final TextEditingController _inlineTextController = TextEditingController();
   final FocusNode _inlineTextFocusNode = FocusNode();
   bool _isEditingInlineText = false;
+  late Future<Size> _imageSizeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageSizeFuture = _loadEditorImageSize();
+  }
 
   static const List<Color> _colors = [
     Colors.white,
@@ -307,6 +314,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
       if (cropped != null && mounted) {
         setState(() {
           _croppedImageFile = File(cropped.path);
+          _imageSizeFuture = _loadEditorImageSize();
           _imageReady = false;
           _imageLoadFailed = false;
         });
@@ -377,12 +385,14 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   }
 
 
-  Future<ui.Image> _decodeEditorImage() async {
+  Future<Size> _loadEditorImageSize() async {
     final bytes = await _editedImageFile.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
+    final size = Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+    frame.image.dispose();
     codec.dispose();
-    return frame.image;
+    return size;
   }
 
   Future<void> _save() async {
@@ -493,8 +503,8 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       child: LayoutBuilder(
                         builder: (context, canvasConstraints) {
                           // Preserve the source image ratio; never crop it to 9:16.
-                          return FutureBuilder<ui.Image>(
-                            future: _decodeEditorImage(),
+                          return FutureBuilder<Size>(
+                            future: _imageSizeFuture,
                             builder: (context, snapshot) {
                               final decoded = snapshot.data;
                               final ratio = decoded == null || decoded.height == 0
