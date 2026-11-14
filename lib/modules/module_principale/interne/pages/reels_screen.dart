@@ -210,7 +210,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
   List<_ReelItem> _buildItems(HomeFeedController controller) {
     final result = <_ReelItem>[];
     final seen = <String>{};
-    for (final post in [...controller.posts, ...controller.sponsoredPosts]) {
+    for (final sourcePost in [...controller.posts, ...controller.sponsoredPosts]) {
+      final post = controller.reelPostOverrides[sourcePost.id] ?? sourcePost;
       if (post.isPublishing || !seen.add(post.id)) continue;
       for (final media in post.media) {
         if (media.isVideo && media.url.trim().isNotEmpty) {
@@ -234,6 +235,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         controller: communityController,
       ),
     );
+    await Get.find<HomeFeedController>().refreshPostCountersFor(item.post);
     if (mounted) setState(() {});
   }
 
@@ -356,7 +358,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                         child: _ReelActionRail(
                           key: ValueKey('actions_${item.post.id}'),
                           post: item.post,
-                          onReaction: (reaction) => feed.handleReaction(item.post.id, reaction),
+                          onReaction: (reaction) => feed.handleReaction(item.post.id, reaction, fallbackPost: item.post),
                           onComments: () => _openComments(item),
                           onShare: () => showFeedPostShareSheet(context, item.post),
                         ),
@@ -496,7 +498,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     }
     _lastPosition = value.position;
     if (!_qualified && value.duration > Duration.zero &&
-        _watched >= Duration(microseconds: (value.duration.inMicroseconds * 0.5).round())) {
+        _watched >= Duration(microseconds: (value.duration.inMicroseconds * 0.25).round())) {
       _qualified = true;
       final feed = Get.find<HomeFeedController>();
       feed.queueQualifiedVideoPostView(widget.item.post.id, widget.item.post);
