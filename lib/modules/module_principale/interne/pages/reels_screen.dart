@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -533,23 +534,70 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (controller != null && controller.value.isInitialized)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: controller.value.size.width,
-                height: controller.value.size.height,
-                child: VideoPlayer(controller),
+          // Fond « liquid glass » : la même image vidéo est agrandie,
+          // floutée et assombrie derrière la vidéo originale.
+          if (controller != null && controller.value.isInitialized) ...[
+            Positioned.fill(
+              child: ClipRect(
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
+                  child: Transform.scale(
+                    scale: 1.28,
+                    child: SizedBox.expand(
+                      child: FittedBox(
+                        fit: BoxFit.cover,
+                        child: SizedBox(
+                          width: controller.value.size.width,
+                          height: controller.value.size.height,
+                          child: VideoPlayer(controller),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            )
-          else if (widget.item.media.thumbnailUrl?.isNotEmpty == true)
-            AppCachedImage(
-              imageUrl: widget.item.media.thumbnailUrl!,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            )
-          else
+            ),
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.38)),
+            ),
+            // La vidéo originale reste entière : aucune coupe ni aucun zoom.
+            Center(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
+                  child: VideoPlayer(controller),
+                ),
+              ),
+            ),
+          ] else if (widget.item.media.thumbnailUrl?.isNotEmpty == true) ...[
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
+                child: Transform.scale(
+                  scale: 1.28,
+                  child: AppCachedImage(
+                    imageUrl: widget.item.media.thumbnailUrl!,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.38)),
+            ),
+            Center(
+              child: AppCachedImage(
+                imageUrl: widget.item.media.thumbnailUrl!,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ] else
             const ColoredBox(color: Colors.black),
           if (_loading && widget.active)
             const Center(child: CircularProgressIndicator(color: Colors.white))
