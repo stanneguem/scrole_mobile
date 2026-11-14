@@ -25,6 +25,8 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _isSaving = false;
   bool _imageReady = false;
   bool _imageLoadFailed = false;
+  bool _isDraggingOverlay = false;
+  double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
 
   static const List<Color> _colors = [
@@ -77,6 +79,44 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     final index = _selectedOverlay;
     if (index == null) return;
     setState(() => _overlays[index].color = color);
+  }
+
+  void _changeSelectedBackground(Color? color) {
+    final index = _selectedOverlay;
+    if (index == null) return;
+    setState(() => _overlays[index].backgroundColor = color);
+  }
+
+  void _startOverlayGesture(int index) {
+    setState(() {
+      _selectedOverlay = index;
+      _isDraggingOverlay = true;
+      _scaleStartFontSize = _overlays[index].fontSize;
+    });
+  }
+
+  void _updateOverlayGesture(int index, ScaleUpdateDetails details) {
+    if (_canvasSize.isEmpty) return;
+    final overlay = _overlays[index];
+    setState(() {
+      overlay.x = (overlay.x + details.focalPointDelta.dx / _canvasSize.width)
+          .clamp(0.04, 0.96);
+      overlay.y = (overlay.y + details.focalPointDelta.dy / _canvasSize.height)
+          .clamp(0.04, 0.96);
+      overlay.fontSize = (_scaleStartFontSize * details.scale).clamp(12.0, 96.0);
+      _selectedOverlay = index;
+    });
+  }
+
+  void _endOverlayGesture(int index) {
+    final shouldDelete = _overlays[index].y > 0.84;
+    setState(() {
+      _isDraggingOverlay = false;
+      if (shouldDelete) {
+        _overlays.removeAt(index);
+        _selectedOverlay = null;
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -242,28 +282,40 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
               ),
             ),
             if (_selectedOverlay != null)
-              SizedBox(
-                height: 58,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final color in _colors)
-                      GestureDetector(
-                        onTap: () => _changeSelectedColor(color),
-                        child: Container(
-                          width: 29,
-                          height: 29,
-                          margin: const EdgeInsets.symmetric(horizontal: 7),
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white70,
-                              width: 1.5,
-                            ),
-                          ),
+                    Row(
+                      children: [
+                        const Icon(Icons.text_fields_rounded, color: Colors.white70, size: 17),
+                        const SizedBox(width: 10),
+                        ..._colors.map((color) => _ColorDot(
+                          color: color,
+                          selected: _overlays[_selectedOverlay!].color == color,
+                          onTap: () => _changeSelectedColor(color),
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        const Icon(Icons.format_color_fill_rounded, color: Colors.white70, size: 17),
+                        const SizedBox(width: 10),
+                        _ColorDot(
+                          color: Colors.transparent,
+                          selected: _overlays[_selectedOverlay!].backgroundColor == null,
+                          transparent: true,
+                          onTap: () => _changeSelectedBackground(null),
                         ),
-                      ),
+                        ..._colors.map((color) => _ColorDot(
+                          color: color.withValues(alpha: 0.78),
+                          selected: _overlays[_selectedOverlay!].backgroundColor == color.withValues(alpha: 0.78),
+                          onTap: () => _changeSelectedBackground(color.withValues(alpha: 0.78)),
+                        )),
+                      ],
+                    ),
                   ],
                 ),
               )
@@ -272,24 +324,29 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _EditorTool(
-                    icon: Icons.text_fields_rounded,
-                    label: 'story_editor_add_text'.tr,
-                    onTap: _addText,
-                  ),
-                  const SizedBox(width: 22),
-                  if (_selectedOverlay != null)
+                  if (_isDraggingOverlay)
+                    const _TrashDropTarget()
+                  else ...[
                     _EditorTool(
-                      icon: Icons.delete_outline_rounded,
-                      label: 'story_editor_delete_text'.tr,
-                      onTap: () {
-                        setState(() {
-                          _overlays.removeAt(_selectedOverlay!);
-                          _selectedOverlay = null;
-                        });
-                      },
+                      icon: Icons.text_fields_rounded,
+                      label: 'story_editor_add_text'.tr,
+                      onTap: _addText,
                     ),
+                    const SizedBox(width: 22),
+                    if (_selectedOverlay != null)
+                      _EditorTool(
+                        icon: Icons.delete_outline_rounded,
+                        label: 'story_editor_delete_text'.tr,
+                        onTap: () {
+                          setState(() {
+                            _overlays.removeAt(_selectedOverlay!);
+                            _selectedOverlay = null;
+                          });
+                        },
+                      ),
+                  ],
                 ],
               ),
             ),
@@ -312,13 +369,14 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
           setState(() => _selectedOverlay = index);
           _editText(index);
         },
-        onPanStart: (_) => setState(() => _selectedOverlay = index),
-        onPanUpdate: (details) => _moveOverlay(index, details),
+        onScaleStart: (_) => _startOverlayGesture(index),
+        onScaleUpdate: (details) => _updateOverlayGesture(index, details),
+        onScaleEnd: (_) => _endOverlayGesture(index),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 300),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.38),
+            color: overlay.backgroundColor,
             borderRadius: BorderRadius.circular(8),
             border: selected
                 ? Border.all(color: Colors.white70, width: 1)
@@ -329,7 +387,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: overlay.color,
-              fontSize: 27,
+              fontSize: overlay.fontSize,
               height: 1.15,
               fontWeight: FontWeight.w700,
               shadows: const [
@@ -382,40 +440,156 @@ class _StoryTextDialogState extends State<_StoryTextDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF242424),
-      title: Text(
-        'story_editor_add_text'.tr,
-        style: const TextStyle(color: Colors.white),
-      ),
-      content: TextField(
-        controller: _controller,
-        focusNode: _focusNode,
-        autofocus: true,
-        maxLines: 4,
-        minLines: 1,
-        style: const TextStyle(color: Colors.white, fontSize: 18),
-        decoration: InputDecoration(
-          hintText: 'story_editor_text_hint'.tr,
-          hintStyle: const TextStyle(color: Colors.white54),
-          enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.white38),
-          ),
-          focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.white),
-          ),
+    return Dialog(
+      backgroundColor: const Color(0xFF191919),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD21F).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.text_fields_rounded, color: Color(0xFFFFD21F)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'story_editor_add_text'.tr,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _close,
+                  icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              autofocus: true,
+              maxLines: 4,
+              minLines: 2,
+              style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.4),
+              decoration: InputDecoration(
+                hintText: 'story_editor_text_hint'.tr,
+                hintStyle: const TextStyle(color: Colors.white38),
+                filled: true,
+                fillColor: const Color(0xFF2B2B2B),
+                contentPadding: const EdgeInsets.all(16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFFFFD21F), width: 1.2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _close,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24),
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text('story_editor_cancel'.tr),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _close(submit: true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFD21F),
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text('story_editor_done'.tr, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _close,
-          child: Text('story_editor_cancel'.tr),
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  final Color color;
+  final bool selected;
+  final bool transparent;
+  final VoidCallback onTap;
+
+  const _ColorDot({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    this.transparent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 27,
+        height: 27,
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: selected ? const Color(0xFFFFD21F) : Colors.white54, width: selected ? 2.2 : 1),
         ),
-        TextButton(
-          onPressed: () => _close(submit: true),
-          child: Text('story_editor_done'.tr),
-        ),
-      ],
+        child: transparent
+            ? const Icon(Icons.block_rounded, color: Colors.white, size: 17)
+            : null,
+      ),
+    );
+  }
+}
+
+class _TrashDropTarget extends StatelessWidget {
+  const _TrashDropTarget();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE53935).withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE53935), width: 1.2),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.delete_outline_rounded, color: Colors.white),
+          SizedBox(width: 8),
+          Text('Déposer ici pour supprimer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -425,12 +599,16 @@ class _StoryTextOverlay {
   double x;
   double y;
   Color color;
+  Color? backgroundColor = Colors.black.withValues(alpha: 0.38);
+  double fontSize = 27;
 
   _StoryTextOverlay({
     required this.text,
     this.x = 0.5,
     this.y = 0.5,
     this.color = Colors.white,
+    this.backgroundColor = const Color(0x61000000),
+    this.fontSize = 27,
   });
 }
 
