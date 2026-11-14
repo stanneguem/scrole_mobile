@@ -354,20 +354,31 @@ class _ReelsScreenState extends State<ReelsScreen> {
           orElse: () => null,
         );
         opened ??= await _feedRepository.getPost(widget.initialPostId!);
-        final media = opened.media.where((m) => m.isVideo && m.url.trim().isNotEmpty);
-        final matchingMedia = media.where((m) => widget.initialMediaUrl == null || m.url == widget.initialMediaUrl).toList();
-        final selected = matchingMedia.isNotEmpty ? matchingMedia.first : (media.isNotEmpty ? media.first : null);
-        if (selected != null) {
-          existing.removeWhere((item) => item.post.id == opened.id &&
-              (widget.initialMediaUrl == null || item.media.url == widget.initialMediaUrl));
-          existing.insert(0, _ReelItem(post: opened, media: selected));
-          excluded.add(opened.id);
-          // Start the tapped feed video immediately; recommendations load behind it.
-          _scutItems
-            ..clear()
-            ..addAll(existing);
-          _scutLoaded = true;
-          if (mounted) setState(() {});
+        if (opened != null) {
+          final media = opened.media.where(
+            (m) => m.isVideo && m.url.trim().isNotEmpty,
+          );
+          final matchingMedia = media
+              .where((m) => widget.initialMediaUrl == null ||
+                  m.url == widget.initialMediaUrl)
+              .toList();
+          final selected = matchingMedia.isNotEmpty
+              ? matchingMedia.first
+              : (media.isNotEmpty ? media.first : null);
+          if (selected != null) {
+            existing.removeWhere((item) =>
+                item.post.id == opened.id &&
+                (widget.initialMediaUrl == null ||
+                    item.media.url == widget.initialMediaUrl));
+            existing.insert(0, _ReelItem(post: opened, media: selected));
+            excluded.add(opened.id);
+            // Start the tapped feed video immediately; recommendations load behind it.
+            _scutItems
+              ..clear()
+              ..addAll(existing);
+            _scutLoaded = true;
+            if (mounted) setState(() {});
+          }
         }
       }
       final recommended = await _feedRepository.getScutsFeed(
