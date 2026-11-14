@@ -53,6 +53,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _loadingMoreScuts = false;
   bool _scutRequestInFlight = false;
   bool _hasInternet = false;
+  bool _initialScutSetupFinished = false;
   bool _cacheBusy = false;
   int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
@@ -66,7 +67,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     unawaited(_restoreThenLoadScutFeed());
     _connectionSubscription = InternetConnection().onStatusChange.listen((status) {
       _hasInternet = status == InternetStatus.connected;
-      if (_hasInternet && mounted) {
+      if (_hasInternet && mounted && _initialScutSetupFinished) {
         debugPrint('[SCUT] Internet restored; requesting fresh recommendations.');
         unawaited(_loadScutFeed(append: _scutLoaded));
       }
@@ -230,6 +231,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
 
   Future<void> _restoreThenLoadScutFeed() async {
     await _restoreCachedScutFeed();
+    _initialScutSetupFinished = true;
     if (mounted) await _loadScutFeed();
   }
 
