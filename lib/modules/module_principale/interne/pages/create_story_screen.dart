@@ -18,6 +18,7 @@ import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_mentions_screen.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_settings_screen.dart';
 import 'package:scrole/modules/module_principale/interne/controllers/stories_controller.dart';
+import 'package:scrole/modules/module_principale/interne/pages/story_image_editor_screen.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
@@ -102,6 +103,12 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           final isVideo = mimeType.startsWith('video/') || _isVideoFile(file);
           var selectedFile = file;
 
+          if (!isVideo) {
+            final edited = await _openImageEditor(file);
+            if (edited == null || !mounted) return;
+            selectedFile = edited;
+          }
+
           if (isVideo) {
             try {
               // Le trimmer gère aussi les vidéos courtes : il applique la
@@ -137,6 +144,24 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         },
       ),
     );
+  }
+
+  Future<File?> _openImageEditor(File imageFile) async {
+    return Get.to<File>(
+      () => StoryImageEditorScreen(imageFile: imageFile),
+      fullscreenDialog: true,
+    );
+  }
+
+  Future<void> _editSelectedImage() async {
+    if (_selectedFiles.isEmpty || _isVideoFile(_selectedFiles.first)) return;
+    final edited = await _openImageEditor(_selectedFiles.first);
+    if (edited == null || !mounted) return;
+    setState(() {
+      _selectedFiles
+        ..clear()
+        ..add(edited);
+    });
   }
 
   Future<void> _openMentions() async {
@@ -417,11 +442,14 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                               borderRadius: BorderRadius.circular(18),
                               child: _isVideoFile(_selectedFiles.first)
                                   ? _StoryVideoPreview(file: _selectedFiles.first)
-                                  : Image.file(
-                                      _selectedFiles.first,
-                                      width: double.infinity,
-                                      height: 300,
-                                      fit: BoxFit.contain,
+                                  : GestureDetector(
+                                      onTap: _editSelectedImage,
+                                      child: Image.file(
+                                        _selectedFiles.first,
+                                        width: double.infinity,
+                                        height: 300,
+                                        fit: BoxFit.contain,
+                                      ),
                                     ),
                             ),
                             Positioned(
