@@ -436,7 +436,7 @@ class EventRepository {
 
   Future<List<EventModel>> getSuggestedEvents({bool forceRefresh = false}) async {
     final userId = Supabase.instance.client.auth.currentUser?.id ?? 'guest';
-    final cacheKey = 'event_suggestions_v2_$userId';
+    final cacheKey = 'event_suggestions_v3_$userId';
     if (!forceRefresh) {
       final cached = await _dao.getDiscoveryCache(cacheKey);
       if (cached != null) {
