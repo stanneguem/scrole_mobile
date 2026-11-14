@@ -106,26 +106,53 @@ class _ReelsScreenState extends State<ReelsScreen> {
           );
         }
         final index = _currentIndex.clamp(0, items.length - 1);
-        return PageView.builder(
-          controller: _pageController,
-          scrollDirection: Axis.vertical,
-          itemCount: items.length,
-          onPageChanged: (value) => setState(() => _currentIndex = value),
-          itemBuilder: (context, pageIndex) => _ReelVideoPage(
-            key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
-            item: items[pageIndex],
-            active: pageIndex == index,
-            onBack: _goHome,
-            onLike: () => feed.handleReaction(items[pageIndex].post.id, PostReaction.like),
-            onComments: () => _openComments(items[pageIndex]),
-            onShare: () => Share.share(items[pageIndex].post.content.isEmpty
-                ? 'Découvre ce réel sur Scrole'
-                : items[pageIndex].post.content),
-            onQualifiedView: () => feed.queueQualifiedVideoPostView(
-              items[pageIndex].post.id,
-              items[pageIndex].post,
+        final activeItem = items[index];
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              itemCount: items.length,
+              onPageChanged: (value) => setState(() => _currentIndex = value),
+              itemBuilder: (context, pageIndex) => _ReelVideoPage(
+                key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
+                item: items[pageIndex],
+                active: pageIndex == index,
+              ),
             ),
-          ),
+            // Barre supérieure persistante : elle ne fait pas partie du PageView.
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _ReelsTopBar(),
+            ),
+            // Les commandes restent ancrées à l'écran, mais leurs données
+            // proviennent toujours de la publication actuellement affichée.
+            Positioned(
+              right: 12,
+              bottom: 112,
+              child: _ReelActionRail(
+                post: activeItem.post,
+                onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
+                onComments: () => _openComments(activeItem),
+                onShare: () => Share.share(activeItem.post.content.isEmpty
+                    ? 'Découvre ce réel sur Scrole'
+                    : activeItem.post.content),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 82,
+              bottom: 24,
+              child: _ReelPostInfo(
+                key: ValueKey('info_${activeItem.post.id}_${activeItem.media.url}'),
+                post: activeItem.post,
+                onComments: () => _openComments(activeItem),
+              ),
+            ),
+          ],
         );
       }),
     );
@@ -141,21 +168,11 @@ class _ReelItem {
 class _ReelVideoPage extends StatefulWidget {
   final _ReelItem item;
   final bool active;
-  final VoidCallback onBack;
-  final VoidCallback onLike;
-  final VoidCallback onComments;
-  final VoidCallback onShare;
-  final VoidCallback onQualifiedView;
 
   const _ReelVideoPage({
     super.key,
     required this.item,
     required this.active,
-    required this.onBack,
-    required this.onLike,
-    required this.onComments,
-    required this.onShare,
-    required this.onQualifiedView,
   });
 
   @override
@@ -228,7 +245,8 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     if (!_qualified && value.duration > Duration.zero &&
         _watched >= Duration(microseconds: (value.duration.inMicroseconds * 0.5).round())) {
       _qualified = true;
-      widget.onQualifiedView();
+      final feed = Get.find<HomeFeedController>();
+      feed.queueQualifiedVideoPostView(widget.item.post.id, widget.item.post);
     }
   }
 
@@ -246,6 +264,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) unawaited(_release());
+    else if (widget.active && !_failed) unawaited(_initialize());
   }
 
   @override
@@ -261,13 +280,8 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   @override
   Widget build(BuildContext context) {
     final controller = _video;
-    final post = widget.item.post;
-    final author = post.authorObj;
-    final username = author?.username.isNotEmpty == true ? author!.username : post.authorName;
-    final avatar = author?.photoUrl;
-    final colorScheme = Theme.of(context).colorScheme;
-
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         final current = _video;
         if (current == null || !current.value.isInitialized) {
@@ -305,138 +319,136 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
             )
           else
             const ColoredBox(color: Colors.black),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x66000000), Colors.transparent, Color(0xB9000000)],
-                stops: [0, 0.38, 1],
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: widget.onBack,
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  ),
-                  const SizedBox(width: 4),
-                  const Text('Réels', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700)),
-                ],
-              ),
-            ),
-          ),
-          if (_loading)
+          if (_loading && widget.active)
             const Center(child: CircularProgressIndicator(color: Colors.white))
           else if (_failed)
             const Center(child: Icon(Icons.error_outline_rounded, color: Colors.white, size: 46)),
           if (controller != null && controller.value.isInitialized && !controller.value.isPlaying)
             const Center(child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 68)),
-          Positioned(
-            right: 12,
-            bottom: 112,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ReelActionButton(
-                  icon: post.userReaction == PostReaction.like ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  label: post.likeCount.toString(),
-                  color: post.userReaction == PostReaction.like ? Colors.pinkAccent : Colors.white,
-                  onTap: widget.onLike,
-                ),
-                const SizedBox(height: 22),
-                _ReelActionButton(
-                  icon: Icons.mode_comment_outlined,
-                  label: post.commentCount.toString(),
-                  onTap: widget.onComments,
-                ),
-                const SizedBox(height: 22),
-                _ReelActionButton(
-                  icon: Icons.send_rounded,
-                  label: post.shareCount.toString(),
-                  onTap: widget.onShare,
-                ),
-                const SizedBox(height: 22),
-                IconButton(
-                  tooltip: _muted ? 'Activer le son' : 'Couper le son',
-                  onPressed: () async {
-                    final current = _video;
-                    if (current == null || !current.value.isInitialized) return;
-                    final nextMuted = !_muted;
-                    await current.setVolume(nextMuted ? 0 : 1);
-                    if (mounted) setState(() => _muted = nextMuted);
-                  },
-                  icon: Icon(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 28),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 82,
-            bottom: 24,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 17,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                      child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 18) : null,
-                    ),
-                    const SizedBox(width: 9),
-                    Flexible(
-                      child: Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                    ),
-                    const SizedBox(width: 10),
-                    OutlinedButton(
-                      onPressed: () {
-                        final id = post.authorId;
-                        if (id.isNotEmpty) Get.toNamed('/user-profile/$id');
-                      },
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white70),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        minimumSize: const Size(0, 30),
-                      ),
-                      child: const Text('Voir le profil', style: TextStyle(fontSize: 11)),
-                    ),
-                  ],
-                ),
-                if (post.content.trim().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(post.content, maxLines: 3, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25)),
-                ],
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: widget.onComments,
-                  child: Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: const Text('Ajouter un commentaire...', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _ReelsTopBar extends StatelessWidget {
+  const _ReelsTopBar();
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Align(
+      alignment: Alignment.topLeft,
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: Get.back,
+            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 4),
+          const Text('Réels', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ReelActionRail extends StatelessWidget {
+  final CommunityPost post;
+  final VoidCallback onLike;
+  final VoidCallback onComments;
+  final VoidCallback onShare;
+
+  const _ReelActionRail({
+    required this.post,
+    required this.onLike,
+    required this.onComments,
+    required this.onShare,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _ReelActionButton(
+        icon: post.userReaction == PostReaction.like ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        label: post.likeCount.toString(),
+        color: post.userReaction == PostReaction.like ? Colors.pinkAccent : Colors.white,
+        onTap: onLike,
+      ),
+      const SizedBox(height: 22),
+      _ReelActionButton(icon: Icons.mode_comment_outlined, label: post.commentCount.toString(), onTap: onComments),
+      const SizedBox(height: 22),
+      _ReelActionButton(icon: Icons.send_rounded, label: post.shareCount.toString(), onTap: onShare),
+    ],
+  );
+}
+
+class _ReelPostInfo extends StatelessWidget {
+  final CommunityPost post;
+  final VoidCallback onComments;
+
+  const _ReelPostInfo({super.key, required this.post, required this.onComments});
+
+  @override
+  Widget build(BuildContext context) {
+    final author = post.authorObj;
+    final username = author?.username.isNotEmpty == true ? author!.username : post.authorName;
+    final avatar = author?.photoUrl;
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              backgroundImage: avatar != null && avatar.isNotEmpty ? NetworkImage(avatar) : null,
+              child: avatar == null || avatar.isEmpty ? const Icon(Icons.person, size: 18) : null,
+            ),
+            const SizedBox(width: 9),
+            Flexible(
+              child: Text('@$username', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+            ),
+            const SizedBox(width: 10),
+            OutlinedButton(
+              onPressed: () {
+                final id = post.authorId;
+                if (id.isNotEmpty) Get.toNamed('/user-profile/$id');
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white70),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                minimumSize: const Size(0, 30),
+              ),
+              child: const Text('Voir le profil', style: TextStyle(fontSize: 11)),
+            ),
+          ],
+        ),
+        if (post.content.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(post.content, maxLines: 3, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25)),
+        ],
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: onComments,
+          child: Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+            ),
+            alignment: Alignment.centerLeft,
+            child: const Text('Ajouter un commentaire...', style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+        ),
+      ],
     );
   }
 }
