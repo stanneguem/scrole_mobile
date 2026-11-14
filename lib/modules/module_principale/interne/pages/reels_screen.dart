@@ -119,6 +119,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
                 item: items[pageIndex],
                 active: pageIndex == index,
+                muted: _muted,
               ),
             ),
             // Barre supérieure persistante : elle ne fait pas partie du PageView.
@@ -140,6 +141,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 onShare: () => Share.share(activeItem.post.content.isEmpty
                     ? 'Découvre ce réel sur Scrole'
                     : activeItem.post.content),
+                muted: _muted,
+                onToggleSound: () => setState(() => _muted = !_muted),
               ),
             ),
             Positioned(
@@ -168,11 +171,13 @@ class _ReelItem {
 class _ReelVideoPage extends StatefulWidget {
   final _ReelItem item;
   final bool active;
+  final bool muted;
 
   const _ReelVideoPage({
     super.key,
     required this.item,
     required this.active,
+    required this.muted,
   });
 
   @override
@@ -198,6 +203,9 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   @override
   void didUpdateWidget(covariant _ReelVideoPage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.muted != widget.muted && _video?.value.isInitialized == true) {
+      unawaited(_video!.setVolume(widget.muted ? 0 : 1));
+    }
     if (oldWidget.active != widget.active) {
       if (widget.active) {
         unawaited(_initialize());
@@ -217,7 +225,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
         return;
       }
       await controller.setLooping(true);
-      await controller.setVolume(_muted ? 0 : 1);
+      await controller.setVolume(widget.muted ? 0 : 1);
       _video = controller;
       controller.addListener(_onVideoChanged);
       setState(() => _loading = false);
@@ -341,7 +349,7 @@ class _ReelsTopBar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: Get.back,
+            onPressed: () => Get.back(),
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           ),
           const SizedBox(width: 4),
@@ -357,12 +365,16 @@ class _ReelActionRail extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onComments;
   final VoidCallback onShare;
+  final bool muted;
+  final VoidCallback onToggleSound;
 
   const _ReelActionRail({
     required this.post,
     required this.onLike,
     required this.onComments,
     required this.onShare,
+    required this.muted,
+    required this.onToggleSound,
   });
 
   @override
@@ -379,6 +391,12 @@ class _ReelActionRail extends StatelessWidget {
       _ReelActionButton(icon: Icons.mode_comment_outlined, label: post.commentCount.toString(), onTap: onComments),
       const SizedBox(height: 22),
       _ReelActionButton(icon: Icons.send_rounded, label: post.shareCount.toString(), onTap: onShare),
+      const SizedBox(height: 18),
+      IconButton(
+        tooltip: muted ? 'Activer le son' : 'Couper le son',
+        onPressed: onToggleSound,
+        icon: Icon(muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 28),
+      ),
     ],
   );
 }
