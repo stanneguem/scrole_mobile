@@ -821,25 +821,19 @@ class _SuggestedProfileActionCardState extends State<_SuggestedProfileActionCard
   bool _dismissing = false;
 
   Future<void> _follow() async {
-    if (_following || _dismissing || widget.profile.isAdded) return;
+    if (_following || _dismissing || widget.profile.isAdded || widget.profile.isRequestSent) return;
     setState(() => _following = true);
     try {
       await widget.controller.followSuggestedProfile(widget.profile);
       if (mounted) {
-        Get.snackbar(
-          'home_feed_suggested_profiles_title'.tr,
-          'home_feed_profile_followed'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        Get.snackbar('home_feed_suggested_profiles_title'.tr, 'home_feed_profile_followed'.tr,
+            snackPosition: SnackPosition.BOTTOM);
       }
     } catch (error) {
       debugPrint('[SuggestedProfileCard] follow failed: $error');
       if (mounted) {
-        Get.snackbar(
-          'home_feed_suggested_profiles_title'.tr,
-          'home_feed_profile_follow_error'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        Get.snackbar('home_feed_suggested_profiles_title'.tr, 'home_feed_profile_follow_error'.tr,
+            snackPosition: SnackPosition.BOTTOM);
       }
     } finally {
       if (mounted) setState(() => _following = false);
@@ -854,11 +848,8 @@ class _SuggestedProfileActionCardState extends State<_SuggestedProfileActionCard
     } catch (error) {
       debugPrint('[SuggestedProfileCard] dismiss failed: $error');
       if (mounted) {
-        Get.snackbar(
-          'home_feed_suggested_profiles_title'.tr,
-          'home_feed_profile_dismiss_error'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        Get.snackbar('home_feed_suggested_profiles_title'.tr, 'home_feed_profile_dismiss_error'.tr,
+            snackPosition: SnackPosition.BOTTOM);
       }
     } finally {
       if (mounted) setState(() => _dismissing = false);
@@ -874,168 +865,141 @@ class _SuggestedProfileActionCardState extends State<_SuggestedProfileActionCard
 
     return Container(
       width: 204,
-      height: 218,
+      height: 238,
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.42)),
         boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.07),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: colors.shadow.withValues(alpha: 0.07), blurRadius: 12, offset: const Offset(0, 4)),
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
+      child: Column(
         children: [
-          Positioned(
-            top: 7,
-            right: 7,
-            child: Material(
-              color: colors.surfaceContainerHighest.withValues(alpha: 0.85),
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _dismissing || _following ? null : _dismiss,
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: _dismissing
-                      ? const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: CircularProgressIndicator(strokeWidth: 1.8),
-                        )
-                      : Icon(Icons.close_rounded, size: 17, color: colors.onSurfaceVariant),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 18, 12, 11),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+          Expanded(
+            flex: 5,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
                 GestureDetector(
                   onTap: () => Get.toNamed(AppPages.externalProfilePath(profile.id)),
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colors.primary.withValues(alpha: 0.65), width: 1.7),
-                    ),
-                    child: ClipOval(
-                      child: profile.photoUrl != null && profile.photoUrl!.isNotEmpty
-                          ? AppCachedImage(
-                              imageUrl: profile.photoUrl!,
-                              width: 67,
-                              height: 67,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              color: colors.primaryContainer,
-                              alignment: Alignment.center,
-                              child: Text(
-                                displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
-                                style: TextStyle(
-                                  color: colors.onPrimaryContainer,
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => Get.toNamed(AppPages.externalProfilePath(profile.id)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: colors.onSurface,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                  child: profile.photoUrl != null && profile.photoUrl!.isNotEmpty
+                      ? AppCachedImage(imageUrl: profile.photoUrl!, width: double.infinity, fit: BoxFit.cover)
+                      : Container(
+                          color: colors.primaryContainer,
+                          alignment: Alignment.center,
+                          child: Text(
+                            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                            style: TextStyle(color: colors.onPrimaryContainer, fontSize: 42, fontWeight: FontWeight.w700),
                           ),
                         ),
-                      ),
-                      if (profile.isCertified) ...[
-                        const SizedBox(width: 3),
-                        UserCertifiedBadge(userId: profile.id, size: 14, showTooltip: false),
-                      ],
-                    ],
-                  ),
                 ),
-                if (profile.username.isNotEmpty)
-                  Text(
-                    '@${profile.username}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-                  ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      profile.reasonSubtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        height: 1.2,
-                        color: colors.onSurfaceVariant,
+                Positioned(
+                  top: 7,
+                  right: 7,
+                  child: Material(
+                    color: colors.surface.withValues(alpha: 0.88),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: _dismissing || _following ? null : _dismiss,
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: _dismissing
+                            ? const Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 1.8))
+                            : Icon(Icons.close_rounded, size: 17, color: colors.onSurfaceVariant),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 36,
-                  child: ElevatedButton(
-                    onPressed: isUnavailable ? null : _follow,
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      elevation: 0,
-                      backgroundColor: profile.isAdded || profile.isRequestSent
-                          ? colors.surfaceContainerHighest
-                          : colors.primary,
-                      foregroundColor: profile.isAdded || profile.isRequestSent
-                          ? colors.onSurface
-                          : colors.onPrimary,
-                      disabledBackgroundColor: colors.surfaceContainerHighest,
-                      disabledForegroundColor: colors.onSurface,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: _following
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            profile.isRequestSent
-                                ? 'home_feed_profile_request_sent'.tr
-                                : (profile.isAdded
-                                    ? 'home_feed_profile_following'.tr
-                                    : 'home_feed_add_profile'.tr),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                          ),
                   ),
                 ),
               ],
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(9, 7, 9, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: colors.onSurface, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                      ),
+                      if (profile.isCertified) ...[
+                        const SizedBox(width: 3),
+                        UserCertifiedBadge(userId: profile.id, size: 13, showTooltip: false),
+                      ],
+                    ],
+                  ),
+                  if (profile.username.isNotEmpty)
+                    Text('@${profile.username}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                  const SizedBox(height: 2),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(profile.reasonSubtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: SizedBox(
+                          height: 31,
+                          child: ElevatedButton(
+                            onPressed: isUnavailable ? null : _follow,
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              elevation: 0,
+                              backgroundColor: profile.isAdded || profile.isRequestSent ? colors.surfaceContainerHighest : colors.primary,
+                              foregroundColor: profile.isAdded || profile.isRequestSent ? colors.onSurface : colors.onPrimary,
+                              disabledBackgroundColor: colors.surfaceContainerHighest,
+                              disabledForegroundColor: colors.onSurface,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                            ),
+                            child: _following
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Text(
+                                    profile.isRequestSent
+                                        ? 'home_feed_profile_request_sent'.tr
+                                        : (profile.isAdded ? 'home_feed_profile_following'.tr : 'home_feed_add_profile'.tr),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: false,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        flex: 1,
+                        child: SizedBox(
+                          height: 31,
+                          child: OutlinedButton(
+                            onPressed: () => Get.toNamed(AppPages.externalProfilePath(profile.id)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 3),
+                              visualDensity: VisualDensity.compact,
+                              side: BorderSide(color: colors.outlineVariant),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                            ),
+                            child: Text('chats_view_profile'.tr, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                softWrap: false, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1043,7 +1007,6 @@ class _SuggestedProfileActionCardState extends State<_SuggestedProfileActionCard
     );
   }
 }
-
 class _SuggestedEventsCarousel extends StatelessWidget {
   const _SuggestedEventsCarousel({required this.controller});
 
