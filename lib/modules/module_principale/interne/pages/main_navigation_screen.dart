@@ -161,146 +161,98 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 250),
                 opacity: _isBottomNavVisible ? 1.0 : 0.0,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    0,
-                    12,
-                    MediaQuery.of(context).padding.bottom > 0 ? 8 : 12,
+                child: BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                currentIndex: _currentIndex == 2 ? 4 : _currentIndex,
+                onTap: _onTabChanged,
+                backgroundColor: colorScheme.surface,
+                selectedItemColor: colorScheme.primary,
+                unselectedItemColor: colorScheme.onSurfaceVariant,
+                showSelectedLabels: false,
+                showUnselectedLabels: false,
+                elevation: 8,
+                iconSize: 25,
+                items: [
+                  BottomNavigationBarItem(
+                    icon: SvgPicture.asset(
+                      'assets/svg_icons/japan-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    ),
+                    activeIcon: SvgPicture.asset(
+                      'assets/svg_icons/japan-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    ),
+                    label: 'nav_home'.tr,
                   ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: Theme.of(context).brightness == Brightness.dark ? 0.22 : 0.08,
-                          ),
-                          blurRadius: 22,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                  BottomNavigationBarItem(
+                    icon: SvgPicture.asset(
+                      'assets/svg_icons/discussion.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: NavigationBar(
-                  height: 66,
-                  elevation: 0,
-                  backgroundColor: colorScheme.surface,
-                  indicatorColor: colorScheme.surfaceContainerHighest,
-                  indicatorShape: const StadiumBorder(),
-                  selectedIndex: _currentIndex == 2 ? 4 : _currentIndex,
-                  onDestinationSelected: _onTabChanged,
-                  labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-                  destinations: [
-                    NavigationDestination(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/japan-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurfaceVariant,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      selectedIcon: SvgPicture.asset(
-                        'assets/svg_icons/japan-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.primary,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      label: 'nav_home'.tr,
+                    activeIcon: SvgPicture.asset(
+                      'assets/svg_icons/discussion.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
                     ),
-                    NavigationDestination(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/discussion.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurfaceVariant,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      selectedIcon: SvgPicture.asset(
-                        'assets/svg_icons/discussion.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.primary,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      label: 'Communautés',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.video_library_outlined, color: colorScheme.onSurfaceVariant, size: 25),
-                      selectedIcon: Icon(Icons.video_library_rounded, color: colorScheme.primary, size: 25),
-                      label: 'Réels',
-                    ),
-                    NavigationDestination(
-                      icon: Obx(() => Badge(
-                        isLabelVisible: controller.hasNotifications,
-                        label: Text(controller.notificationBadge),
-                        child: SvgPicture.asset(
-                          'assets/svg_icons/notification-svgrepo-com.svg',
-                          width: 24,
-                          height: 24,
-                          colorFilter: ColorFilter.mode(
-                            colorScheme.onSurfaceVariant,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      )),
-                      selectedIcon: Obx(() => Badge(
-                        isLabelVisible: controller.hasNotifications,
-                        label: Text(controller.notificationBadge),
-                        child: SvgPicture.asset(
-                          'assets/svg_icons/notification-svgrepo-com.svg',
-                          width: 24,
-                          height: 24,
-                          colorFilter: ColorFilter.mode(
-                            colorScheme.primary,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      )),
-                      label: 'Notifications',
-                    ),
-                    NavigationDestination(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurfaceVariant,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      selectedIcon: SvgPicture.asset(
-                        'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.primary,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      label: 'nav_events'.tr,
-                    ),
-                    NavigationDestination(
-                      icon: const _BottomNavProfileIcon(isSelected: false),
-                      selectedIcon: const _BottomNavProfileIcon(isSelected: true),
-                      label: 'nav_profile'.tr,
-                    ),
-                  ],
-                      ),
-                    ),
+                    label: 'Communautés',
                   ),
-                ),
+                  const BottomNavigationBarItem(
+                    icon: Icon(Icons.video_library_outlined),
+                    activeIcon: Icon(Icons.video_library_rounded),
+                    label: 'Réels',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Obx(() => Badge(
+                      isLabelVisible: controller.hasNotifications,
+                      label: Text(controller.notificationBadge),
+                      child: SvgPicture.asset(
+                        'assets/svg_icons/notification-svgrepo-com.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                      ),
+                    )),
+                    activeIcon: Obx(() => Badge(
+                      isLabelVisible: controller.hasNotifications,
+                      label: Text(controller.notificationBadge),
+                      child: SvgPicture.asset(
+                        'assets/svg_icons/notification-svgrepo-com.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                      ),
+                    )),
+                    label: 'Notifications',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: SvgPicture.asset(
+                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    ),
+                    activeIcon: SvgPicture.asset(
+                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    ),
+                    label: 'nav_events'.tr,
+                  ),
+                  const BottomNavigationBarItem(
+                    icon: _BottomNavProfileIcon(isSelected: false),
+                    activeIcon: _BottomNavProfileIcon(isSelected: true),
+                    label: 'nav_profile'.tr,
+                  ),
+                ],
+              ),,
               ),
             ),
           ),
