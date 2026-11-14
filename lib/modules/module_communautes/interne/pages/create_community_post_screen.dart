@@ -66,6 +66,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
+  bool _videoThumbnailTimedOut = false;
   Map<String, dynamic>? _selectedEvent;
 
   bool _commentsEnabled = true;
@@ -889,10 +890,17 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   /// Lit uniquement les métadonnées natives du média.
   /// Évite d'initialiser un lecteur/décodeur vidéo complet pour connaître la durée.
   Future<File?> _createVideoThumbnail(File file) async {
+    if (_videoThumbnailTimedOut) return null;
     try {
       return await VideoCompress.getFileThumbnail(
-        file.path, quality: 75, position: 0,
+        file.path, quality: 50, position: 0,
       ).timeout(const Duration(seconds: 20));
+    } on TimeoutException catch (error) {
+      // Future.timeout does not stop the native extractor. Disable subsequent
+      // thumbnail jobs in this composer to prevent overlapping native work.
+      _videoThumbnailTimedOut = true;
+      debugPrint('[POST_COMPOSER] thumbnail extraction timed out; disabling more thumbnail jobs: $error');
+      return null;
     } catch (error) {
       // La miniature est facultative : une erreur de génération ne doit pas
       // empêcher l'ajout de la vidéo qui a déjà été validée dans le trim.
