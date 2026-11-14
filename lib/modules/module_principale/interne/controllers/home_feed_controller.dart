@@ -118,7 +118,7 @@ class HomeFeedController extends GetxController {
       (post.sharedPost?.media.any((media) => media.isVideo) ?? false);
 
   void queuePostView(CommunityPost post) {
-    // Video views are recorded only after 50% of effective playback.
+    // Video views are recorded only after 25% of effective playback.
     if (_containsVideo(post)) return;
     _queuePostViewId(post.id, post);
   }
