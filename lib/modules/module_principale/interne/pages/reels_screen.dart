@@ -68,8 +68,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
     _connectionSubscription = InternetConnection().onStatusChange.listen((status) {
       _hasInternet = status == InternetStatus.connected;
       if (_hasInternet && mounted && _initialScutSetupFinished) {
-        debugPrint('[SCUT] Internet restored; requesting fresh recommendations.');
-        unawaited(_loadScutFeed(append: _scutLoaded));
+        debugPrint('[SCUT] Internet restored; syncing watch history and refreshing recommendations.');
+        unawaited(_handleScutReconnect());
       }
     });
   }
@@ -232,6 +232,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   Future<void> _restoreThenLoadScutFeed() async {
     await _restoreCachedScutFeed();
     _initialScutSetupFinished = true;
+    if (_hasInternet) await _syncPendingScutWatchSignals();
     if (mounted) await _loadScutFeed();
   }
 
@@ -266,6 +267,37 @@ class _ReelsScreenState extends State<ReelsScreen> {
       }
     } catch (error) {
       debugPrint('[SCUT_CACHE] manifest restore failed: $error');
+    }
+  }
+
+  Future<void> _handleScutReconnect() async {
+    await _syncPendingScutWatchSignals();
+    if (mounted) await _loadScutFeed(append: _scutLoaded);
+  }
+
+  Future<void> _syncPendingScutWatchSignals() async {
+    if (!_hasInternet) return;
+    final pending = await readPendingScutWatchSignals();
+    for (final signal in pending) {
+      final postId = signal['post_id']?.toString() ?? '';
+      final watchedMs = (signal['watched_ms'] as num?)?.toInt() ?? 0;
+      final durationMs = (signal['duration_ms'] as num?)?.toInt() ?? 0;
+      final signalId = signal['signal_id']?.toString() ?? '';
+      if (postId.isEmpty || watchedMs <= 0 || durationMs <= 0 || signalId.isEmpty) {
+        await removePendingScutWatchSignal(signalId);
+        continue;
+      }
+      try {
+        await _feedRepository.recordScutWatch(
+          postId: postId,
+          watchedMs: watchedMs,
+          durationMs: durationMs,
+        );
+        await removePendingScutWatchSignal(signalId);
+      } catch (error) {
+        debugPrint('[SCUT] pending watch sync paused: $error');
+        break;
+      }
     }
   }
 
@@ -739,7 +771,12 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
         durationMs: controller.value.duration.inMilliseconds,
       );
     } catch (error) {
-      debugPrint('[SCUT] watch signal not persisted: $error');
+      await queueScutWatchSignal({
+        'post_id': widget.item.post.id,
+        'watched_ms': watchedMs,
+        'duration_ms': controller.value.duration.inMilliseconds,
+      });
+      debugPrint('[SCUT] watch signal queued for reconnect: $error');
     }
   }
 
