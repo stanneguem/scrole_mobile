@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:scrole/shared/widgets/video_trim_screen.dart';
+import 'package:scrole/app/routes/scrole_route_observer.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/theme/app_colors.dart';
@@ -483,31 +485,134 @@ class _StoryVideoPreview extends StatefulWidget {
   State<_StoryVideoPreview> createState() => _StoryVideoPreviewState();
 }
 
-class _StoryVideoPreviewState extends State<_StoryVideoPreview> {
-  late final VideoPlayerController _controller;
-  late final Future<void> _initialized;
+class _StoryVideoPreviewState extends State<_StoryVideoPreview>
+    with WidgetsBindingObserver, RouteAware {
+  VideoPlayerController? _controller;
+  Future<void>? _initialized;
+  PageRoute<dynamic>? _route;
+  bool _isPlaying = false;
+  int _generation = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file);
-    _initialized = _initialize();
+    WidgetsBinding.instance.addObserver(this);
+    _initializePlayer();
   }
 
-  Future<void> _initialize() async {
-    await _controller.initialize();
-    await _controller.setLooping(true);
-    await _controller.setVolume(1);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute<dynamic> && route != _route) {
+      if (_route != null) scroleRouteObserver.unsubscribe(this);
+      _route = route;
+      scroleRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    // Another page covers the story composer. Dispose the native player even
+    // though this widget remains mounted underneath that route.
+    _releasePlayer();
+  }
+
+  @override
+  void didPopNext() {
+    // Recreate a silent preview when the composer becomes visible again.
+    // Playback requires a fresh tap from the user.
+    _initializePlayer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _releasePlayer();
+  }
+
+  Future<void> _initializePlayer() async {
+    if (!mounted || _controller != null) return;
+    final generation = ++_generation;
+    final controller = VideoPlayerController.file(widget.file);
+    _controller = controller;
+    final initialized = _initializeController(controller, generation);
+    _initialized = initialized;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _initializeController(
+    VideoPlayerController controller,
+    int generation,
+  ) async {
+    try {
+      await controller.initialize();
+      if (!mounted ||
+          generation != _generation ||
+          !identical(_controller, controller)) {
+        await controller.dispose();
+        return;
+      }
+      await controller.setLooping(true);
+      await controller.setVolume(1);
+      controller.addListener(_onPlayerChanged);
+      if (mounted) setState(() => _isPlaying = false);
+    } catch (error) {
+      debugPrint('[STORY_COMPOSER] Video preview initialization failed: $error');
+      if (identical(_controller, controller)) _controller = null;
+      await controller.dispose();
+      if (mounted) setState(() {});
+      rethrow;
+    }
+  }
+
+  void _onPlayerChanged() {
+    final controller = _controller;
+    if (!mounted || controller == null || !controller.value.isInitialized) return;
+    final playing = controller.value.isPlaying;
+    if (_isPlaying != playing) setState(() => _isPlaying = playing);
+  }
+
+  Future<void> _releasePlayer() async {
+    ++_generation;
+    final controller = _controller;
+    _controller = null;
+    _initialized = null;
+    _isPlaying = false;
+    if (controller != null) {
+      controller.removeListener(_onPlayerChanged);
+      try {
+        await controller.pause();
+      } catch (_) {}
+      await controller.dispose();
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _togglePlayback() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      await controller.play();
+    }
+    if (mounted) setState(() => _isPlaying = controller.value.isPlaying);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    scroleRouteObserver.unsubscribe(this);
+    final controller = _controller;
+    _controller = null;
+    controller?.removeListener(_onPlayerChanged);
+    if (controller != null) unawaited(controller.dispose());
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
     return FutureBuilder<void>(
       future: _initialized,
       builder: (context, snapshot) {
@@ -527,8 +632,9 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview> {
             ),
           );
         }
-        if (snapshot.connectionState != ConnectionState.done ||
-            !_controller.value.isInitialized) {
+        if (controller == null ||
+            snapshot.connectionState != ConnectionState.done ||
+            !controller.value.isInitialized) {
           return const SizedBox(
             height: 280,
             width: double.infinity,
@@ -541,16 +647,9 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview> {
           );
         }
 
-        final ratio = _controller.value.aspectRatio;
+        final ratio = controller.value.aspectRatio;
         return GestureDetector(
-          onTap: () {
-            if (_controller.value.isPlaying) {
-              _controller.pause();
-            } else {
-              _controller.play();
-            }
-            setState(() {});
-          },
+          onTap: _togglePlayback,
           child: Container(
             width: double.infinity,
             constraints: const BoxConstraints(maxHeight: 380),
@@ -560,8 +659,8 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  VideoPlayer(_controller),
-                  if (!_controller.value.isPlaying)
+                  VideoPlayer(controller),
+                  if (!_isPlaying)
                     Container(
                       decoration: const BoxDecoration(
                         color: Colors.black38,
@@ -579,7 +678,7 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview> {
                     right: 12,
                     bottom: 10,
                     child: VideoProgressIndicator(
-                      _controller,
+                      controller,
                       allowScrubbing: true,
                       colors: const VideoProgressColors(
                         playedColor: Colors.white,
