@@ -23,6 +23,8 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   final List<_StoryTextOverlay> _overlays = [];
   int? _selectedOverlay;
   bool _isSaving = false;
+  bool _imageReady = false;
+  bool _imageLoadFailed = false;
   Size _canvasSize = Size.zero;
 
   static const List<Color> _colors = [
@@ -110,7 +112,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   }
 
   Future<void> _save() async {
-    if (_isSaving) return;
+    if (_isSaving || !_imageReady || _imageLoadFailed) return;
     setState(() {
       _isSaving = true;
       // Selection handles are editor-only and must not be baked into the image.
@@ -184,7 +186,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: _isSaving ? null : _save,
+                    onPressed: (_isSaving || !_imageReady || _imageLoadFailed) ? null : _save,
                     child: _isSaving
                         ? const SizedBox(
                             width: 18,
@@ -228,16 +230,36 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                                 Image.file(
                                   widget.imageFile,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const ColoredBox(
-                                    color: Color(0xFF202020),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.broken_image_outlined,
-                                        color: Colors.white54,
-                                        size: 42,
+                                  frameBuilder: (context, child, frame, synchronous) {
+                                    if ((frame != null || synchronous) && !_imageReady) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (mounted) setState(() => _imageReady = true);
+                                      });
+                                    }
+                                    if (frame == null && !synchronous) {
+                                      return const Center(
+                                        child: CircularProgressIndicator(color: Colors.white),
+                                      );
+                                    }
+                                    return child;
+                                  },
+                                  errorBuilder: (_, __, ___) {
+                                    if (!_imageLoadFailed) {
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        if (mounted) setState(() => _imageLoadFailed = true);
+                                      });
+                                    }
+                                    return const ColoredBox(
+                                      color: Color(0xFF202020),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                          color: Colors.white54,
+                                          size: 42,
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
                                 for (var i = 0; i < _overlays.length; i++)
                                   _buildOverlay(i),
