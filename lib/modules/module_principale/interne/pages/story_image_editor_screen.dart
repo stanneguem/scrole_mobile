@@ -35,6 +35,9 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _showFilters = false;
   double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
+  final TextEditingController _inlineTextController = TextEditingController();
+  final FocusNode _inlineTextFocusNode = FocusNode();
+  bool _isEditingInlineText = false;
 
   static const List<Color> _colors = [
     Colors.white,
@@ -45,7 +48,54 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     Color(0xFFCE93D8),
   ];
 
-  Future<void> _addText() => _editText(null);
+  void _addText() => _beginInlineText(null);
+
+  void _beginInlineText(int? overlayIndex) {
+    if (overlayIndex != null && (overlayIndex < 0 || overlayIndex >= _overlays.length)) return;
+    if (_isEditingInlineText) _finishInlineText();
+    setState(() {
+      if (overlayIndex == null) {
+        _overlays.add(_StoryTextOverlay(text: ''));
+        _selectedOverlay = _overlays.length - 1;
+      } else {
+        _selectedOverlay = overlayIndex;
+      }
+      _inlineTextController.text = _overlays[_selectedOverlay!].text;
+      _inlineTextController.selection = TextSelection.collapsed(
+        offset: _inlineTextController.text.length,
+      );
+      _isEditingInlineText = true;
+      _activeTextPanel = 'font';
+      _showFilters = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _isEditingInlineText) _inlineTextFocusNode.requestFocus();
+    });
+  }
+
+  void _finishInlineText() {
+    if (!_isEditingInlineText) return;
+    final index = _selectedOverlay;
+    final value = _inlineTextController.text.trim();
+    _inlineTextFocusNode.unfocus();
+    setState(() {
+      if (index != null && index < _overlays.length) {
+        _overlays[index].text = value;
+        if (value.isEmpty) {
+          _overlays.removeAt(index);
+          _selectedOverlay = null;
+        }
+      }
+      _isEditingInlineText = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _inlineTextFocusNode.dispose();
+    _inlineTextController.dispose();
+    super.dispose();
+  }
 
   Future<void> _addEmoji() async {
     const emojis = [
@@ -315,6 +365,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   }
 
   void _endOverlayGesture(int index) {
+    if (_isEditingInlineText) return;
     final shouldDelete = _overlays[index].y > 0.84;
     setState(() {
       _isDraggingOverlay = false;
@@ -326,6 +377,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   }
 
   Future<void> _save() async {
+    if (_isEditingInlineText) _finishInlineText();
     if (_isSaving || !_imageReady || _imageLoadFailed) return;
     setState(() {
       _isSaving = true;
@@ -798,46 +850,70 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
       ),
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            _selectedOverlay = index;
-            _activeTextPanel = 'font';
-          });
-          _editText(index);
+          _beginInlineText(index);
         },
         onScaleStart: (_) => _startOverlayGesture(index),
         onScaleUpdate: (details) => _updateOverlayGesture(index, details),
         onScaleEnd: (_) => _endOverlayGesture(index),
         child: Transform.rotate(
           angle: overlay.rotationDegrees * 3.141592653589793 / 180,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: overlay.backgroundColor,
-              borderRadius: BorderRadius.circular(8),
-              border: selected
-                  ? Border.all(color: Colors.white70, width: 1)
-                  : null,
-            ),
-            child: Text(
-              overlay.text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: overlay.color,
-                fontSize: overlay.fontSize,
-                height: 1.15,
-                fontWeight: FontWeight.w700,
-                fontFamily: overlay.fontFamily,
-                shadows: const [
-                  Shadow(
-                    color: Colors.black54,
-                    blurRadius: 5,
-                    offset: Offset(0, 2),
+          child: _isEditingInlineText && _selectedOverlay == index
+              ? SizedBox(
+                  width: _canvasSize.width * 0.88,
+                  child: TextField(
+                    controller: _inlineTextController,
+                    focusNode: _inlineTextFocusNode,
+                    autofocus: true,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    minLines: 1,
+                    maxLines: null,
+                    textAlign: TextAlign.center,
+                    cursorColor: const Color(0xFFFFD21F),
+                    style: TextStyle(
+                      color: overlay.color,
+                      fontSize: overlay.fontSize,
+                      height: 1.15,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: overlay.fontFamily,
+                      shadows: const [
+                        Shadow(color: Colors.black54, blurRadius: 5, offset: Offset(0, 2)),
+                      ],
+                    ),
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      filled: false,
+                    ),
+                    onChanged: (value) => overlay.text = value,
                   ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : Container(
+                  constraints: const BoxConstraints(maxWidth: 300),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: overlay.backgroundColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: selected ? Border.all(color: Colors.white70, width: 1) : null,
+                  ),
+                  child: Text(
+                    overlay.text,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: overlay.color,
+                      fontSize: overlay.fontSize,
+                      height: 1.15,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: overlay.fontFamily,
+                      shadows: const [
+                        Shadow(color: Colors.black54, blurRadius: 5, offset: Offset(0, 2)),
+                      ],
+                    ),
+                  ),
+                ),
         ),
       ),
     );
