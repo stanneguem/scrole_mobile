@@ -68,7 +68,9 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   final Set<int> _wanted = {};
   final Set<int> _failed = {};
   bool _thumbLoop = false;
+  bool _thumbnailPipelineFailed = false;
   int _thumbSlots = 0;
+  File? _normalizedTempFile;
 
   // Géométrie de la timeline, recalculée à chaque build.
   double _viewportW = 0;
@@ -139,6 +141,11 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
         throw StateError('Le fichier MP4 normalisé est introuvable ou vide.');
       }
 
+      if (!mounted || _isClosing) {
+        try { await normalizedFile.delete(); } catch (_) {}
+        return;
+      }
+      _normalizedTempFile = normalizedFile;
       _workingVideoFile = normalizedFile;
       _trimmer = Trimmer();
       await _trimmer.loadVideo(videoFile: normalizedFile);
@@ -183,6 +190,11 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
       _trimmer.videoPlayerController?.pause();
       _isPlaying = false;
       _ticker?.cancel();
+      if (_isConverting) {
+        // video_compress exposes native cancellation; don't keep a full transcode
+        // running while the app is backgrounded on a low-memory device.
+        unawaited(VideoCompress.cancelCompression());
+      }
     }
   }
 
@@ -190,6 +202,9 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
     if (_isClosing || _isSaving) return;
     _isClosing = true;
     _ticker?.cancel();
+    if (_isConverting) {
+      try { await VideoCompress.cancelCompression(); } catch (_) {}
+    }
     final controller = _trimmer.videoPlayerController;
     if (controller != null) {
       try {
@@ -211,6 +226,14 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
     _scroll.dispose();
     // Libère le décodeur natif à la fermeture de l'écran.
     _trimmer.dispose();
+    final normalized = _normalizedTempFile;
+    if (normalized != null && normalized.path != widget.videoFile.path) {
+      unawaited(() async {
+        try { if (await normalized.exists()) await normalized.delete(); } catch (e) {
+          debugPrint('[VideoTrimScreen] normalized temp cleanup failed: $e');
+        }
+      }());
+    }
     super.dispose();
   }
 
@@ -240,7 +263,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   }
 
   Future<void> _togglePlayback() async {
-    if (_isLoadingVideo || _loadFailed || _isSaving) return;
+    if (_isLoadingVideo || _loadFailed || _isSaving || _isClosing) return;
     final c = _trimmer.videoPlayerController;
     if (c == null) return;
     try {
@@ -274,7 +297,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   /// Charge les miniatures une par une, en commençant par celles
   /// les plus proches du centre de la zone visible.
   Future<void> _pumpThumbs() async {
-    if (_thumbLoop) return;
+    if (_thumbLoop || _thumbnailPipelineFailed || _isClosing) return;
     _thumbLoop = true;
     try {
       while (mounted && _wanted.isNotEmpty) {
@@ -299,6 +322,14 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
           if (slots == _thumbSlots && frame != null) {
             setState(() => _thumbs[next] = frame);
           }
+        } on TimeoutException catch (e) {
+          // Future.timeout cannot stop the native extraction. Stop requesting
+          // more frames so a slow device never accumulates native jobs.
+          _failed.add(next);
+          _thumbnailPipelineFailed = true;
+          _wanted.clear();
+          debugPrint('[VideoTrimScreen] thumbnail pipeline timed out: $e');
+          break;
         } catch (e) {
           _failed.add(next);
           debugPrint('[VideoTrimScreen] thumbnail $next failed: $e');
@@ -309,44 +340,27 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
     }
   }
 
-  /// Frames plats / noirs (fondus, transitions) : on cherche une image plus
-  /// parlante dans la même tranche de temps. Un JPEG très léger = peu de détails.
-  static const _flatFrameBytes = 12 * 1024;
-
-  /// Retourne l'image la plus représentative de la tranche [slot].
-  /// On prend d'abord le milieu ; si l'image est quasi vide, on essaie
-  /// à 25 % et 75 % de la tranche et on garde la plus détaillée.
+  /// Une seule extraction native par vignette. Multiplier les tentatives
+  /// (milieu + 25 % + 75 %) augmente fortement le travail sur les téléphones lents.
   Future<File?> _grabKeyFrame(int slot, int slots) async {
     final maxPos = math.max(0, _totalMs.toInt() - 1);
     final slotMs = _totalMs / slots;
-
-    Future<File?> grab(double fraction) async {
-      final pos = ((slot + fraction) * slotMs).round().clamp(0, maxPos).toInt();
-      final f = await VideoCompress.getFileThumbnail(
-        widget.videoFile.path,
-        quality: 50,
-        position: pos,
-      ).timeout(const Duration(seconds: 8));
-      return await f.exists() ? f : null;
-    }
-
-    var best = await grab(.5);
-    if (best != null && await best.length() >= _flatFrameBytes) return best;
-
-    for (final fraction in const [.25, .75]) {
-      try {
-        final alt = await grab(fraction);
-        if (alt == null) continue;
-        if (best == null || await alt.length() > await best.length()) best = alt;
-      } catch (_) {}
-    }
-    return best;
+    final pos = ((slot + .5) * slotMs).round().clamp(0, maxPos).toInt();
+    final source = _workingVideoFile ?? widget.videoFile;
+    final frame = await VideoCompress.getFileThumbnail(
+      source.path,
+      quality: 40,
+      position: pos,
+    ).timeout(const Duration(seconds: 8));
+    return await frame.exists() ? frame : null;
   }
 
   // ───────────────────────── Sauvegarde ─────────────────────────
 
   Future<void> _saveVideo() async {
+    if (_isSaving || _isClosing || !mounted) return;
     await _trimmer.videoPlayerController?.pause();
+    if (!mounted || _isClosing) return;
     setState(() => _isSaving = true);
 
     try {
