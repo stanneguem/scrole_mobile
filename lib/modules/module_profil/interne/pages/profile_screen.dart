@@ -337,7 +337,7 @@ class ProfileScreen extends GetView<ProfileController> {
           Expanded(
             child: _engagementStat(
               NumberFormatter.formatCount(controller.totalLikesReceived.value),
-              'profile_stat_likes_received'.tr,
+              'profile_stat_likes'.tr,
               colorScheme,
             ),
           ),
@@ -356,7 +356,7 @@ class ProfileScreen extends GetView<ProfileController> {
         runSpacing: 12,
         children: [
           _engagementStat(controller.postsCount.value.toString(), 'profile_stat_posts'.tr, colors),
-          _engagementStat(NumberFormatter.formatCount(controller.totalLikesReceived.value), 'profile_stat_likes_received'.tr, colors),
+          _engagementStat(NumberFormatter.formatCount(controller.totalLikesReceived.value), 'profile_stat_likes'.tr, colors),
         ],
       )),
     );
