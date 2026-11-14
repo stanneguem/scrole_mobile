@@ -34,9 +34,11 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     Color(0xFFCE93D8),
   ];
 
-  Future<void> _addText() async {
+  Future<void> _addText() => _editText(null);
+
+  Future<void> _editText(int? overlayIndex) async {
     final controller = TextEditingController(
-      text: _selectedOverlay == null ? '' : _overlays[_selectedOverlay!].text,
+      text: overlayIndex == null ? '' : _overlays[overlayIndex].text,
     );
     final result = await Get.dialog<String>(
       AlertDialog(
@@ -79,8 +81,9 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
 
     if (result == null || result.isEmpty || !mounted) return;
     setState(() {
-      if (_selectedOverlay != null) {
-        _overlays[_selectedOverlay!].text = result;
+      if (overlayIndex != null) {
+        _overlays[overlayIndex].text = result;
+        _selectedOverlay = overlayIndex;
       } else {
         _overlays.add(_StoryTextOverlay(text: result));
         _selectedOverlay = _overlays.length - 1;
@@ -317,7 +320,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
       child: GestureDetector(
         onTap: () {
           setState(() => _selectedOverlay = index);
-          _addText();
+          _editText(index);
         },
         onPanStart: (_) => setState(() => _selectedOverlay = index),
         onPanUpdate: (details) => _moveOverlay(index, details),
