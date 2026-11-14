@@ -28,6 +28,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
   bool _muted = false;
+  bool _descriptionExpanded = false;
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
   final SocialRepository _socialRepository = SocialRepository();
@@ -40,10 +41,20 @@ class _ReelsScreenState extends State<ReelsScreen> {
   void initState() {
     super.initState();
     _commentController.addListener(_onCommentDraftChanged);
+    _commentFocusNode.addListener(_onCommentFocusChanged);
   }
 
   void _onCommentDraftChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onCommentFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onDescriptionExpandedChanged(bool expanded) {
+    if (_descriptionExpanded == expanded) return;
+    setState(() => _descriptionExpanded = expanded);
   }
 
   void _goHome() => Get.back();
@@ -222,6 +233,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   void dispose() {
     _pageController.dispose();
     _commentController.removeListener(_onCommentDraftChanged);
+    _commentFocusNode.removeListener(_onCommentFocusChanged);
     _commentController.dispose();
     _commentFocusNode.dispose();
     super.dispose();
@@ -296,6 +308,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 item: items[pageIndex],
                 active: pageIndex == index,
                 muted: _muted,
+                paused: pageIndex == index &&
+                    (_descriptionExpanded || _commentFocusNode.hasFocus),
               ),
             ),
             // Barre supérieure persistante : elle ne fait pas partie du PageView.
@@ -332,6 +346,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 isSendingComment: _isSendingComment,
                 onSendComment: () => _sendReelComment(activeItem),
                 onOpenEmojiPicker: () => _showReelEmojis(activeItem),
+                onDescriptionExpandedChanged: _onDescriptionExpandedChanged,
                 onQuickEmoji: (emoji) => _sendReelComment(activeItem, quickEmoji: emoji),
               ),
             ),
@@ -352,12 +367,14 @@ class _ReelVideoPage extends StatefulWidget {
   final _ReelItem item;
   final bool active;
   final bool muted;
+  final bool paused;
 
   const _ReelVideoPage({
     super.key,
     required this.item,
     required this.active,
     required this.muted,
+    required this.paused,
   });
 
   @override
@@ -385,6 +402,16 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
     if (oldWidget.muted != widget.muted && _video?.value.isInitialized == true) {
       unawaited(_video!.setVolume(widget.muted ? 0 : 1));
     }
+    if (oldWidget.paused != widget.paused && widget.active) {
+      final controller = _video;
+      if (controller != null && controller.value.isInitialized) {
+        if (widget.paused) {
+          unawaited(controller.pause());
+        } else {
+          unawaited(controller.play());
+        }
+      }
+    }
     if (oldWidget.active != widget.active) {
       if (widget.active) {
         unawaited(_initialize());
@@ -395,7 +422,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   }
 
   Future<void> _initialize() async {
-    if (!widget.active || _video != null || !_loading) return;
+    if (!widget.active || widget.paused || _video != null || !_loading) return;
     final controller = VideoPlayerController.networkUrl(Uri.parse(widget.item.media.url));
     try {
       await controller.initialize();
@@ -408,7 +435,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       _video = controller;
       controller.addListener(_onVideoChanged);
       setState(() => _loading = false);
-      await controller.play();
+      if (!widget.paused) await controller.play();
     } catch (error) {
       debugPrint('[REELS] video initialization failed: $error');
       await controller.dispose();
@@ -578,6 +605,7 @@ class _ReelPostInfo extends StatelessWidget {
   final VoidCallback onSendComment;
   final ValueChanged<String> onQuickEmoji;
   final VoidCallback onOpenEmojiPicker;
+  final ValueChanged<bool> onDescriptionExpandedChanged;
 
   const _ReelPostInfo({
     super.key,
@@ -592,6 +620,7 @@ class _ReelPostInfo extends StatelessWidget {
     required this.onSendComment,
     required this.onQuickEmoji,
     required this.onOpenEmojiPicker,
+    required this.onDescriptionExpandedChanged,
   });
 
   @override
@@ -704,7 +733,10 @@ class _ReelPostInfo extends StatelessWidget {
         ),
         if (post.content.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
-          _ExpandableReelDescription(text: post.content),
+          _ExpandableReelDescription(
+            text: post.content,
+            onExpandedChanged: onDescriptionExpandedChanged,
+          ),
         ],
         const SizedBox(height: 10),
         // Copie exacte du compositeur _buildQuickStoryReply() de StoryViewerScreen.
@@ -834,8 +866,12 @@ class _ReelActionButton extends StatelessWidget {
 /// avec le même comportement « Voir plus / Voir moins » que le fil.
 class _ExpandableReelDescription extends StatefulWidget {
   final String text;
+  final ValueChanged<bool> onExpandedChanged;
 
-  const _ExpandableReelDescription({required this.text});
+  const _ExpandableReelDescription({
+    required this.text,
+    required this.onExpandedChanged,
+  });
 
   @override
   State<_ExpandableReelDescription> createState() =>
@@ -883,7 +919,11 @@ class _ExpandableReelDescriptionState
             ),
             const SizedBox(height: 4),
             GestureDetector(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              onTap: () {
+                final next = !_isExpanded;
+                setState(() => _isExpanded = next);
+                widget.onExpandedChanged(next);
+              },
               child: Text(
                 _isExpanded ? 'post_see_less'.tr : 'post_see_more'.tr,
                 style: const TextStyle(
