@@ -60,6 +60,7 @@ class CommunityPost {
   final CommunityPostAuthor? authorObj;
   final String timeAgo;
   final String content;
+  final String? location;
   final List<PostMedia> media;
   final List<HashtagModel> hashtags;
   final List<CommunityPostMention>? mentionedUsers;
@@ -108,6 +109,7 @@ class CommunityPost {
     this.authorObj,
     required this.timeAgo,
     required this.content,
+    this.location,
     this.media = const [],
     this.hashtags = const [],
     this.mentionedUsers,
@@ -275,6 +277,19 @@ class CommunityPost {
       }
     }
 
+    final rawLocation = map['location'] ?? map['location_name'] ?? map['place_name'] ??
+        map['location_address'] ?? map['address'] ?? map['formatted_address'];
+    final locationMap = rawLocation is Map
+        ? Map<String, dynamic>.from(rawLocation)
+        : (map['place'] is Map ? Map<String, dynamic>.from(map['place']) : <String, dynamic>{});
+    final locationText = rawLocation is Map
+        ? (rawLocation['name'] ?? rawLocation['label'] ?? rawLocation['address'] ??
+            rawLocation['formatted_address'] ?? rawLocation['city'])?.toString()
+        : (rawLocation?.toString().trim().isNotEmpty == true
+            ? rawLocation.toString()
+            : (locationMap['name'] ?? locationMap['label'] ?? locationMap['address'] ??
+                locationMap['formatted_address'] ?? locationMap['city'])?.toString());
+
     return CommunityPost(
       id: map['id']?.toString() ?? '',
       authorName: authorName,
@@ -282,6 +297,7 @@ class CommunityPost {
       authorObj: authorObj,
       timeAgo: map['created_at']?.toString() ?? '',
       content: map['content']?.toString() ?? '',
+      location: locationText?.trim().isNotEmpty == true ? locationText!.trim() : null,
       media: mediaList,
       hashtags: parsedHashtags,
       mentionedUsers: parsedMentions,
@@ -340,6 +356,7 @@ class CommunityPost {
         },
         'created_at': timeAgo,
         'content': content,
+        'location': location,
         'media': media.map((item) => item.toJson()).toList(),
         'hashtags': hashtags.map((tag) => tag.name).toList(),
         'mentions': (mentionedUsers ?? const <CommunityPostMention>[])
@@ -445,6 +462,7 @@ class CommunityPost {
       authorObj: authorObj,
       timeAgo: timeAgo,
       content: content,
+      location: location,
       media: media,
       hashtags: hashtags,
       mentionedUsers: mentionedUsers ?? this.mentionedUsers,
