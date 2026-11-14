@@ -121,7 +121,7 @@ class MainLayoutController extends GetxController
   void goToEventSuggestionsTab() {
     closeAddMenu();
     eventSuggestionsNavigationRequest.value++;
-    changeTab(3);
+    changeTab(4);
   }
 
   void goToProfilScreen() {
