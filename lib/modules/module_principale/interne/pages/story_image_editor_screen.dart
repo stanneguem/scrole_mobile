@@ -582,7 +582,7 @@ class _TrashDropTarget extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE53935), width: 1.2),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.delete_outline_rounded, color: Colors.white),
