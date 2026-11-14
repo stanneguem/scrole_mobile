@@ -623,12 +623,12 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
             width: double.infinity,
             color: Colors.black,
             alignment: Alignment.center,
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline_rounded, color: Colors.white, size: 32),
-                SizedBox(height: 8),
-                Text('story_video_preview_error'.tr, style: TextStyle(color: Colors.white)),
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 32),
+                const SizedBox(height: 8),
+                Text('story_video_preview_error'.tr, style: const TextStyle(color: Colors.white)),
               ],
             ),
           );
