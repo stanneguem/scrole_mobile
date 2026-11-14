@@ -295,6 +295,12 @@ class _ReelsScreenState extends State<ReelsScreen> {
               (widget.initialMediaUrl == null || item.media.url == widget.initialMediaUrl));
           existing.insert(0, _ReelItem(post: opened, media: selected));
           excluded.add(opened.id);
+          // Start the tapped feed video immediately; recommendations load behind it.
+          _scutItems
+            ..clear()
+            ..addAll(existing);
+          _scutLoaded = true;
+          if (mounted) setState(() {});
         }
       }
       final recommended = await _feedRepository.getScutsFeed(
