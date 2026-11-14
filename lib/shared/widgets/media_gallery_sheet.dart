@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import '../constants/post_media_limits.dart';
@@ -45,14 +44,11 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
   static const Duration _galleryOperationTimeout = Duration(seconds: 20);
   
   bool _isOpeningMedia = false;
-  static const Set<String> _videoExtensions = {'mp4', 'mov', 'm4v'};
-  bool _isSupportedAsset(AssetEntity asset) {
-    if (asset.type == AssetType.image) return true;
-    if (asset.type != AssetType.video) return false;
-    final title = asset.title ?? '';
-    final extension = p.extension(title).replaceFirst('.', '').toLowerCase();
-    return _videoExtensions.contains(extension);
-  }
+  // La galerie native identifie le type MIME du média. Ne pas filtrer les
+  // vidéos par extension : Android/iOS peuvent exposer MKV, WebM, 3GP, TS,
+  // AVI et d'autres conteneurs selon les codecs installés sur l'appareil.
+  bool _isSupportedAsset(AssetEntity asset) =>
+      asset.type == AssetType.video;
   AssetPathEntity? _imagePath;
   AssetPathEntity? _videoPath;
 
@@ -409,7 +405,7 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
         if (file == null || !await file.exists()) {
           throw StateError('Un des fichiers sélectionnés est inaccessible.');
         }
-        xFiles.add(XFile(file.path));
+        xFiles.add(XFile(file.path, mimeType: asset.mimeType));
       }
 
       debugPrint('[MEDIA_GALLERY] Selection resolved: selected=$expectedCount resolved=${xFiles.length}');
