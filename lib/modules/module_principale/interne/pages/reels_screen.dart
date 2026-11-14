@@ -293,7 +293,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
           if (mounted) _loadRelationship(activeItem.post.authorId);
         });
         final safeBottom = MediaQuery.of(context).viewPadding.bottom;
-        final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -310,14 +309,51 @@ class _ReelsScreenState extends State<ReelsScreen> {
                 });
                 _loadRelationship(items[value].post.authorId);
               },
-              itemBuilder: (context, pageIndex) => _ReelVideoPage(
-                key: ValueKey('${items[pageIndex].post.id}_${items[pageIndex].media.url}'),
-                item: items[pageIndex],
-                active: pageIndex == index,
-                muted: _muted,
-                paused: pageIndex == index &&
-                    (_descriptionExpanded || _commentFocusNode.hasFocus),
-              ),
+              itemBuilder: (context, pageIndex) {
+                final item = items[pageIndex];
+                final isActive = pageIndex == index;
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _ReelVideoPage(
+                      key: ValueKey('${item.post.id}_${item.media.url}'),
+                      item: item,
+                      active: isActive,
+                      muted: _muted,
+                      paused: isActive &&
+                          (_descriptionExpanded || _commentFocusNode.hasFocus),
+                    ),
+                    // Les interactions et les informations auteur font partie
+                    // de cette page : elles glissent avec la vidéo au swipe.
+                    if (isActive)
+                      Positioned(
+                        right: 12,
+                        bottom: safeBottom + 181,
+                        child: _ReelActionRail(
+                          key: ValueKey('actions_${item.post.id}'),
+                          post: item.post,
+                          onReaction: (reaction) => feed.handleReaction(item.post.id, reaction),
+                          onComments: () => _openComments(item),
+                          onShare: () => showFeedPostShareSheet(context, item.post),
+                        ),
+                      ),
+                    if (isActive)
+                      Positioned(
+                        left: 16,
+                        right: 82,
+                        bottom: safeBottom + 82,
+                        child: _ReelAuthorInfo(
+                          key: ValueKey('author_${item.post.id}_${item.media.url}'),
+                          post: item.post,
+                          followStatus: _followStates[item.post.authorId] ?? 'loading',
+                          isFollowBusy: _followRequestsInFlight.contains(item.post.authorId),
+                          onFollow: () => _followAuthor(item.post.authorId),
+                          onDescriptionExpandedChanged: _onDescriptionExpandedChanged,
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
             // Barre supérieure persistante : elle ne fait pas partie du PageView.
             const Positioned(
@@ -325,33 +361,6 @@ class _ReelsScreenState extends State<ReelsScreen> {
               left: 0,
               right: 0,
               child: _ReelsTopBar(),
-            ),
-            // Les commandes restent ancrées à l'écran, mais leurs données
-            // proviennent toujours de la publication actuellement affichée.
-            Positioned(
-              right: 12,
-              bottom: safeBottom + 181,
-              child: _ReelActionRail(
-                key: ValueKey('actions_${activeItem.post.id}'),
-                post: activeItem.post,
-                onReaction: (reaction) => feed.handleReaction(activeItem.post.id, reaction),
-                onComments: () => _openComments(activeItem),
-                onShare: () => showFeedPostShareSheet(context, activeItem.post),
-              ),
-            ),
-            // Bloc auteur + description : il change avec le réel actif.
-            Positioned(
-              left: 16,
-              right: 82,
-              bottom: safeBottom + 82 + keyboardInset,
-              child: _ReelAuthorInfo(
-                key: ValueKey('author_${activeItem.post.id}_${activeItem.media.url}'),
-                post: activeItem.post,
-                followStatus: _followStates[activeItem.post.authorId] ?? 'loading',
-                isFollowBusy: _followRequestsInFlight.contains(activeItem.post.authorId),
-                onFollow: () => _followAuthor(activeItem.post.authorId),
-                onDescriptionExpandedChanged: _onDescriptionExpandedChanged,
-              ),
             ),
             // Compositeur fixe : il reste à la même place pendant le défilement.
             Positioned(
