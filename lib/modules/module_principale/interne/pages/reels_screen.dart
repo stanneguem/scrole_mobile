@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
+import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../controllers/home_feed_controller.dart';
 import '../widgets/community_comments_sheet.dart';
@@ -600,7 +601,6 @@ class _ReelPostInfo extends StatelessWidget {
         ? author!.fullName.trim()
         : post.authorName;
     final avatar = author?.photoUrl;
-    final isCertified = author?.isCertified == true;
     final colorScheme = Theme.of(context).colorScheme;
     final isOwnPost = post.authorId == Supabase.instance.client.auth.currentUser?.id;
     final languageCode = Localizations.localeOf(context).languageCode.toLowerCase();
@@ -669,9 +669,16 @@ class _ReelPostInfo extends StatelessWidget {
                 ],
               ),
             ),
-            if (isCertified) ...[
+            if (author?.isCertified == true) ...[
               const SizedBox(width: 5),
-              const Icon(Icons.verified_rounded, color: Color(0xFF35A7FF), size: 17),
+              UserCertifiedBadge(
+                size: 17,
+                showTooltip: false,
+                type: CertificationBadgeType.basic,
+                userId: author?.userId.isNotEmpty == true
+                    ? author!.userId
+                    : post.authorId,
+              ),
             ],
             if (!isOwnPost) ...[
               const SizedBox(width: 9),
