@@ -78,7 +78,49 @@ Future<void> clearScutVideoCache() async {
     if (await directory.exists()) await directory.delete(recursive: true);
     final manifest = File(p.join(root.path, 'scut_feed_cache.json'));
     if (await manifest.exists()) await manifest.delete();
+    final pending = File(p.join(root.path, 'scut_pending_watch_signals.json'));
+    if (await pending.exists()) await pending.delete();
   } catch (_) {
     // Logout must complete even if the OS temporarily denies cache deletion.
   }
+}
+
+Future<File> _pendingWatchFile() async {
+  final root = await getApplicationSupportDirectory();
+  return File(p.join(root.path, 'scut_pending_watch_signals.json'));
+}
+
+Future<List<Map<String, dynamic>>> readPendingScutWatchSignals() async {
+  try {
+    final file = await _pendingWatchFile();
+    if (!await file.exists()) return const [];
+    final decoded = jsonDecode(await file.readAsString());
+    if (decoded is! List) return const [];
+    return decoded.whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: true);
+  } catch (_) {
+    return const [];
+  }
+}
+
+Future<void> queueScutWatchSignal(Map<String, dynamic> signal) async {
+  try {
+    final pending = await readPendingScutWatchSignals();
+    pending.add({
+      ...signal,
+      'signal_id': DateTime.now().microsecondsSinceEpoch.toString(),
+    });
+    final file = await _pendingWatchFile();
+    await file.writeAsString(jsonEncode(pending.length > 1000 ? pending.sublist(pending.length - 1000) : pending), flush: true);
+  } catch (_) {}
+}
+
+Future<void> removePendingScutWatchSignal(String signalId) async {
+  try {
+    final pending = await readPendingScutWatchSignals();
+    pending.removeWhere((entry) => entry['signal_id']?.toString() == signalId);
+    final file = await _pendingWatchFile();
+    await file.writeAsString(jsonEncode(pending), flush: true);
+  } catch (_) {}
 }
