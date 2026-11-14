@@ -53,6 +53,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
 
   bool _isPlaying = false;
   bool _isSaving = false;
+  bool _isClosing = false;
   bool _isLoadingVideo = true;
   bool _loadFailed = false;
   bool _muted = false;
@@ -99,6 +100,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   Future<void> _loadVideo() async {
     try {
       await _trimmer.loadVideo(videoFile: widget.videoFile);
+      if (!mounted || _isClosing) return;
       await _finishVideoLoading();
       return;
     } catch (error, stack) {
@@ -110,7 +112,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
     // and write a broadly compatible MP4 (H.264 + AAC) using hardware encoders.
     try {
       _trimmer.dispose();
-      if (!mounted) return;
+      if (!mounted || _isClosing) return;
       setState(() {
         _isConverting = true;
         _conversionProgress = 0;
@@ -140,7 +142,8 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
       _workingVideoFile = normalizedFile;
       _trimmer = Trimmer();
       await _trimmer.loadVideo(videoFile: normalizedFile);
-      if (mounted) setState(() => _isConverting = false);
+      if (!mounted || _isClosing) return;
+      setState(() => _isConverting = false);
       await _finishVideoLoading();
     } catch (error, stack) {
       debugPrint('[VideoTrimScreen] codec normalization failed: $error\n$stack');
@@ -181,6 +184,22 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
       _isPlaying = false;
       _ticker?.cancel();
     }
+  }
+
+  Future<void> _closeTrimScreen() async {
+    if (_isClosing || _isSaving) return;
+    _isClosing = true;
+    _ticker?.cancel();
+    final controller = _trimmer.videoPlayerController;
+    if (controller != null) {
+      try {
+        await controller.pause();
+        await controller.setVolume(0);
+      } catch (error) {
+        debugPrint('[VideoTrimScreen] pause before close failed: $error');
+      }
+    }
+    if (mounted) Get.back<File?>(result: null);
   }
 
   @override
@@ -512,7 +531,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
         children: [
           IconButton(
             icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
-            onPressed: _isSaving ? null : () => Get.back<File?>(result: null),
+            onPressed: _isSaving || _isClosing ? null : _closeTrimScreen,
           ),
           IconButton(
             icon: Icon(
