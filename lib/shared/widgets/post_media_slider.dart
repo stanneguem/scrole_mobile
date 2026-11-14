@@ -231,6 +231,9 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                       url: item.url,
                       thumbnailUrl: item.thumbnailUrl,
                       onOpenFullScreen: () => _openFullScreen(context, index),
+                       onOpenVideoReel: widget.onOpenVideoReel == null
+                           ? null
+                           : () => widget.onOpenVideoReel!(index),
                     )
                   : GestureDetector(
                       onTap: () => _openFullScreen(context, index),
