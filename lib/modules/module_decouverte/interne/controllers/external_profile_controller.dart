@@ -245,7 +245,6 @@ class ExternalProfileController extends GetxController {
               debugPrint('[ExternalProfileController] follow stats unavailable: $e');
             }
             Map<String, dynamic> engagementStats = <String, dynamic>{};
-            double? reputationV2Score;
             try {
               final rawStats = await Supabase.instance.client.rpc(
                 'get_profile_engagement_stats',
@@ -256,18 +255,6 @@ class ExternalProfileController extends GetxController {
               }
             } catch (e) {
               debugPrint('[ExternalProfileController] engagement stats unavailable: $e');
-            }
-            try {
-              final rawReputation = await Supabase.instance.client.rpc(
-                'get_user_reputation',
-                params: {'p_user_id': userId, 'p_community_id': null},
-              );
-              if (rawReputation is Map) {
-                reputationV2Score = ((rawReputation['score'] as num?)?.toDouble() ?? 0.0)
-                    .clamp(0.0, 5.0).toDouble();
-              }
-            } catch (e) {
-              debugPrint('[ExternalProfileController] V2 reputation unavailable; legacy fallback used: $e');
             }
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
@@ -284,7 +271,6 @@ class ExternalProfileController extends GetxController {
               followersCount: (stats['followers_count'] as num?)?.toInt() ?? result.profile!.followersCount,
               followingCount: (stats['following_count'] as num?)?.toInt() ?? result.profile!.followingCount,
               friendsCount: (stats['friends_count'] as num?)?.toInt() ?? result.profile!.friendsCount,
-              rating: reputationV2Score ?? ((engagementStats['reputation'] as num?)?.toDouble() ?? result.profile!.rating).clamp(0.0, 5.0).toDouble(),
               postsCount: (engagementStats['posts_count'] as num?)?.toInt() ?? result.profile!.postsCount,
               totalLikesReceived: (engagementStats['total_likes_received'] as num?)?.toInt() ?? result.profile!.totalLikesReceived,
               totalDislikesReceived: (engagementStats['total_dislikes_received'] as num?)?.toInt() ?? result.profile!.totalDislikesReceived,
