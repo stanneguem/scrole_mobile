@@ -18,7 +18,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(72);
 
-  final GlobalKey _actionsKey = GlobalKey();
+  static final GlobalKey _actionsKey = GlobalKey();
 
   Future<void> _showCreationMenu(BuildContext context) async {
     final actionsContext = _actionsKey.currentContext;
@@ -85,7 +85,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     // Les publications contenant une vidéo alimentent le fil des Scuts.
     Get.to(
       () => const CreateCommunityPostScreen(
-        communityName: 'Fil d\\'actualité général',
+        communityName: 'Fil d\'actualité général',
       ),
     );
   }
