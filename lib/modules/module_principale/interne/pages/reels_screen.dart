@@ -10,6 +10,9 @@ import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/linkified_text.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../shared/utils/number_formatter.dart';
+import '../widgets/feed_post_card.dart';
 import '../../../module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../controllers/home_feed_controller.dart';
 import '../widgets/community_comments_sheet.dart';
@@ -328,9 +331,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
               right: 12,
               bottom: safeBottom + 181,
               child: _ReelActionRail(
+                key: ValueKey('actions_${activeItem.post.id}'),
                 post: activeItem.post,
-                onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
+                onReaction: (reaction) => feed.handleReaction(activeItem.post.id, reaction),
                 onComments: () => _openComments(activeItem),
+                onShare: () => showFeedPostShareSheet(context, activeItem.post),
               ),
             ),
             // Bloc auteur + description : il change avec le réel actif.
@@ -579,31 +584,108 @@ class _ReelsTopBar extends StatelessWidget {
   );
 }
 
-class _ReelActionRail extends StatelessWidget {
+class _ReelActionRail extends StatefulWidget {
   final CommunityPost post;
-  final VoidCallback onLike;
+  final ValueChanged<PostReaction> onReaction;
   final VoidCallback onComments;
+  final VoidCallback onShare;
 
   const _ReelActionRail({
     required this.post,
-    required this.onLike,
+    required this.onReaction,
     required this.onComments,
+    required this.onShare,
   });
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      _ReelActionButton(
-        icon: post.userReaction == PostReaction.like ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-        label: post.likeCount.toString(),
-        color: post.userReaction == PostReaction.like ? Colors.pinkAccent : Colors.white,
-        onTap: onLike,
-      ),
-      const SizedBox(height: 22),
-      _ReelActionButton(icon: Icons.mode_comment_outlined, label: post.commentCount.toString(), onTap: onComments),
-    ],
-  );
+  State<_ReelActionRail> createState() => _ReelActionRailState();
+}
+
+class _ReelActionRailState extends State<_ReelActionRail> {
+  late PostReaction _reaction;
+  late int _likes;
+  late int _dislikes;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncFromPost();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReelActionRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.id != widget.post.id ||
+        oldWidget.post.userReaction != widget.post.userReaction ||
+        oldWidget.post.likeCount != widget.post.likeCount ||
+        oldWidget.post.dislikeCount != widget.post.dislikeCount) {
+      _syncFromPost();
+    }
+  }
+
+  void _syncFromPost() {
+    _reaction = widget.post.userReaction;
+    _likes = widget.post.likeCount;
+    _dislikes = widget.post.dislikeCount;
+  }
+
+  void _handleReaction(PostReaction next) {
+    setState(() {
+      if (_reaction == next) {
+        if (next == PostReaction.like) {
+          _likes = (_likes - 1).clamp(0, 1 << 30);
+        } else if (next == PostReaction.dislike) {
+          _dislikes = (_dislikes - 1).clamp(0, 1 << 30);
+        }
+        _reaction = PostReaction.none;
+      } else {
+        if (_reaction == PostReaction.like) {
+          _likes = (_likes - 1).clamp(0, 1 << 30);
+        } else if (_reaction == PostReaction.dislike) {
+          _dislikes = (_dislikes - 1).clamp(0, 1 << 30);
+        }
+        if (next == PostReaction.like) _likes++;
+        if (next == PostReaction.dislike) _dislikes++;
+        _reaction = next;
+      }
+    });
+    widget.onReaction(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final inactive = Colors.white.withValues(alpha: 0.92);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ReelActionButton(
+          icon: Icons.north_rounded,
+          label: NumberFormatter.formatCount(_likes),
+          color: _reaction == PostReaction.like ? AppColors.primary : inactive,
+          onTap: () => _handleReaction(PostReaction.like),
+        ),
+        const SizedBox(height: 17),
+        _ReelActionButton(
+          icon: Icons.south_rounded,
+          label: NumberFormatter.formatCount(_dislikes),
+          color: _reaction == PostReaction.dislike ? Colors.orangeAccent : inactive,
+          onTap: () => _handleReaction(PostReaction.dislike),
+        ),
+        const SizedBox(height: 17),
+        _ReelActionButton(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: NumberFormatter.formatCount(widget.post.commentCount),
+          onTap: widget.onComments,
+        ),
+        const SizedBox(height: 17),
+        _ReelActionButton(
+          icon: Icons.ios_share_rounded,
+          label: NumberFormatter.formatCount(widget.post.shareCount),
+          onTap: widget.onShare,
+        ),
+      ],
+    );
+  }
 }
 
 class _ReelAuthorInfo extends StatelessWidget {
