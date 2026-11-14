@@ -889,6 +889,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       filled: false,
                     ),
                     onChanged: (value) => overlay.text = value,
+                    onTapOutside: (_) => _finishInlineText(),
                   ),
                 )
               : Container(
