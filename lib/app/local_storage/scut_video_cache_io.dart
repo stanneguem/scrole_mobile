@@ -72,9 +72,13 @@ VideoPlayerController createScutVideoController(String? localPath, String url) {
 }
 
 Future<void> clearScutVideoCache() async {
-  final root = await getApplicationSupportDirectory();
-  final directory = Directory(p.join(root.path, 'scut_video_cache'));
-  if (await directory.exists()) await directory.delete(recursive: true);
-  final manifest = File(p.join(root.path, 'scut_feed_cache.json'));
-  if (await manifest.exists()) await manifest.delete();
+  try {
+    final root = await getApplicationSupportDirectory();
+    final directory = Directory(p.join(root.path, 'scut_video_cache'));
+    if (await directory.exists()) await directory.delete(recursive: true);
+    final manifest = File(p.join(root.path, 'scut_feed_cache.json'));
+    if (await manifest.exists()) await manifest.delete();
+  } catch (_) {
+    // Logout must complete even if the OS temporarily denies cache deletion.
+  }
 }
