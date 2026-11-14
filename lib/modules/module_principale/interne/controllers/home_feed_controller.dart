@@ -46,6 +46,9 @@ class HomeFeedController extends GetxController {
   Timer? _dwellBatchTimer;
 
   final Set<String> _sentViewIds = {};
+  // Counter snapshots for reel items whose original post is not in the loaded home feed (e.g. reposts).
+  final RxMap<String, CommunityPost> reelPostOverrides = <String, CommunityPost>{}.obs;
+  final Map<String, CommunityPost> _qualifiedVideoPosts = {};
   final List<String> _pendingViewIds = [];
   Timer? _viewBatchTimer;
   Timer? _counterRefreshTimer;
@@ -121,7 +124,35 @@ class HomeFeedController extends GetxController {
   }
 
   void queueQualifiedVideoPostView(String postId, CommunityPost post) {
+    _qualifiedVideoPosts[postId] = post;
     _queuePostViewId(postId, post);
+  }
+
+  /// Refreshes the counters for a reel's original post, including originals
+  /// that are only present inside a repost and not in [posts].
+  Future<void> refreshPostCountersFor(CommunityPost post) async {
+    if (post.id.isEmpty) return;
+    try {
+      final counters = await _feedRepo.getPostCounters([post.id]);
+      if (counters.isEmpty) return;
+      final c = counters.first;
+      final updated = post.copyWith(
+        viewCount: (c['views_count'] as num?)?.toInt() ?? post.viewCount,
+        likeCount: (c['likes_count'] as num?)?.toInt() ?? post.likeCount,
+        dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? post.dislikeCount,
+        commentCount: (c['comments_count'] as num?)?.toInt() ?? post.commentCount,
+        shareCount: (c['shares_count'] as num?)?.toInt() ?? post.shareCount,
+      );
+      reelPostOverrides[post.id] = updated;
+      final idx = posts.indexWhere((item) => item.id == post.id);
+      if (idx != -1) posts[idx] = updated;
+      final sponsoredIdx = sponsoredPosts.indexWhere((item) => item.id == post.id);
+      if (sponsoredIdx != -1) sponsoredPosts[sponsoredIdx] = updated;
+      posts.refresh();
+      sponsoredPosts.refresh();
+    } catch (e) {
+      debugPrint('[POST_ACTIONS] Reel counter refresh failed for ${post.id}: $e');
+    }
   }
 
   void _queuePostViewId(String postId, CommunityPost post) {
@@ -159,15 +190,17 @@ class HomeFeedController extends GetxController {
           final id = c['id']?.toString();
           if (id == null) continue;
           final idx = posts.indexWhere((p) => p.id == id);
-          if (idx != -1) {
-            final p = posts[idx];
-            posts[idx] = p.copyWith(
-              viewCount: (c['views_count'] as num?)?.toInt() ?? p.viewCount,
-              likeCount: (c['likes_count'] as num?)?.toInt() ?? p.likeCount,
-              dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? p.dislikeCount,
-              commentCount: (c['comments_count'] as num?)?.toInt() ?? p.commentCount,
-              shareCount: (c['shares_count'] as num?)?.toInt() ?? p.shareCount,
+          final base = idx != -1 ? posts[idx] : _qualifiedVideoPosts[id];
+          if (base != null) {
+            final updated = base.copyWith(
+              viewCount: (c['views_count'] as num?)?.toInt() ?? base.viewCount,
+              likeCount: (c['likes_count'] as num?)?.toInt() ?? base.likeCount,
+              dislikeCount: (c['dislikes_count'] as num?)?.toInt() ?? base.dislikeCount,
+              commentCount: (c['comments_count'] as num?)?.toInt() ?? base.commentCount,
+              shareCount: (c['shares_count'] as num?)?.toInt() ?? base.shareCount,
             );
+            reelPostOverrides[id] = updated;
+            if (idx != -1) posts[idx] = updated;
           }
         }
         posts.refresh();
@@ -600,11 +633,12 @@ class HomeFeedController extends GetxController {
     }
   }
 
-  Future<void> handleReaction(String postId, PostReaction reaction) async {
+  Future<void> handleReaction(String postId, PostReaction reaction, {CommunityPost? fallbackPost}) async {
     final index = posts.indexWhere((p) => p.id == postId);
-    if (index == -1) return;
-
-    final post = posts[index];
+    final post = index == -1
+        ? (reelPostOverrides[postId] ?? fallbackPost)
+        : posts[index];
+    if (post == null) return;
     if (post.isPublishing) return;
 
     final newReaction = post.userReaction == reaction ? PostReaction.none : reaction;
@@ -616,13 +650,17 @@ class HomeFeedController extends GetxController {
     if (newReaction == PostReaction.like) likes++;
     if (newReaction == PostReaction.dislike) dislikes++;
 
-    posts[index] = post.copyWith(
+    final updatedPost = post.copyWith(
       userReaction: newReaction,
       likeCount: likes,
       dislikeCount: dislikes,
     );
-    posts.refresh();
-    unawaited(_cacheCurrentFeed());
+    reelPostOverrides[postId] = updatedPost;
+    if (index != -1) {
+      posts[index] = updatedPost;
+      posts.refresh();
+      unawaited(_cacheCurrentFeed());
+    }
 
     _reactionDebouncers[postId]?.cancel();
 
@@ -635,6 +673,7 @@ class HomeFeedController extends GetxController {
         debugPrint('[POST_ACTIONS] Error reacting to post: $e');
         if (!isClosed) {
           final curIdx = posts.indexWhere((p) => p.id == postId);
+          reelPostOverrides[postId] = post;
           if (curIdx != -1) {
             posts[curIdx] = post;
             posts.refresh();
