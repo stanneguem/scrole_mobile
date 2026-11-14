@@ -321,6 +321,24 @@ class FeedPostCard extends StatelessWidget {
                       textTheme,
                       username,
                     ),
+                  if (post.location?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_rounded, size: 14, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            post.location!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: TextStyle(fontSize: 11.5, color: colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
                   // Le libellé « Suggestion » est intégré à l'en-tête
                   // auteur pour rester sur la même ligne que le nom, le pseudo,
