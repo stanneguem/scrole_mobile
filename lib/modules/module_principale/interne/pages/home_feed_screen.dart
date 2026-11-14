@@ -1069,7 +1069,7 @@ class _SuggestedEventsCarousel extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 278,
+            height: 252,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1185,7 +1185,6 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
     final ev = widget.event;
     return Container(
       width: 238,
-      height: 248,
       margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHigh.withValues(alpha: 0.55),
@@ -1212,7 +1211,7 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+            padding: const EdgeInsets.fromLTRB(10, 7, 10, 0),
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1232,14 +1231,26 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Row(
                     children: [
                       Icon(Icons.location_on_rounded, size: 12, color: colors.primary),
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text(
-                          ev.isOnline ? 'Virtuel' : (ev.city?.name ?? ev.address ?? ''),
+                          ev.isOnline
+                              ? 'Virtuel'
+                              : [
+                                  ev.address?.trim(),
+                                  ev.city?.name.trim(),
+                                  ev.country?.name.trim(),
+                                ].whereType<String>().where((part) => part.isNotEmpty).join(', ').isNotEmpty
+                                  ? [
+                                      ev.address?.trim(),
+                                      ev.city?.name.trim(),
+                                      ev.country?.name.trim(),
+                                    ].whereType<String>().where((part) => part.isNotEmpty).join(', ')
+                                  : 'Lieu à préciser',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 10.5, color: colors.onSurfaceVariant),
@@ -1262,7 +1273,8 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
                       ),
                     ],
                   ),
-                          Row(
+                  const SizedBox(height: 6),
+                  Row(
                     children: [
                       Expanded(
                         flex: 3,
