@@ -2669,7 +2669,7 @@ class _StorySharedVideoPost extends StatefulWidget {
   State<_StorySharedVideoPost> createState() => _StorySharedVideoPostState();
 }
 
-class _StorySharedVideoPostState extends State<_StorySharedVideoPost> {
+class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _failed = false;
   bool _isDownloading = false;
@@ -2679,6 +2679,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final video = widget.post.media.firstWhere(
       (media) => media.isVideo && (media.url ?? '').trim().isNotEmpty,
     );
@@ -2706,6 +2707,11 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> {
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _controller?.pause();
+  }
+
   void _onVideoChanged() {
     final controller = _controller;
     if (!mounted || controller == null || !controller.value.isInitialized) return;
@@ -2730,6 +2736,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Keep the expiry timer alive after leaving the viewer so cached media
     // is deleted at the story's actual expiration time.
     _controller?.removeListener(_onVideoChanged);
@@ -2870,7 +2877,7 @@ class _StoryVideoPlayer extends StatefulWidget {
   State<_StoryVideoPlayer> createState() => _StoryVideoPlayerState();
 }
 
-class _StoryVideoPlayerState extends State<_StoryVideoPlayer> {
+class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _failed = false;
   bool _isDownloading = false;
@@ -2880,6 +2887,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final untilExpiry = widget.expiresAt.difference(DateTime.now());
     if (untilExpiry > Duration.zero) {
       _expiryCleanupTimer = Timer(untilExpiry, _deleteExpiredLocalVideo);
@@ -2905,6 +2913,11 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> {
     } catch (e) {
       debugPrint('[STORY_CACHE] Expiry cleanup failed: $e');
     }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _controller?.pause();
   }
 
   @override
@@ -3058,6 +3071,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.removeListener(_onVideoChanged);
     _controller?.dispose();
     super.dispose();
