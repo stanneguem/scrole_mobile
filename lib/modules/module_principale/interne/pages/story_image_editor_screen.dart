@@ -309,7 +309,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
           .clamp(0.04, 0.96);
       overlay.y = (overlay.y + details.focalPointDelta.dy / _canvasSize.height)
           .clamp(0.04, 0.96);
-      overlay.fontSize = (_scaleStartFontSize * details.scale).clamp(12.0, 96.0);
+      overlay.fontSize = _scaleStartFontSize * details.scale;
       _selectedOverlay = index;
     });
   }
