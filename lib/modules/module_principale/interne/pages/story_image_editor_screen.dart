@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -21,6 +22,8 @@ class StoryImageEditorScreen extends StatefulWidget {
 class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   final GlobalKey _canvasKey = GlobalKey();
   final List<_StoryTextOverlay> _overlays = [];
+  late File _editedImageFile;
+  bool _isCropping = false;
   int? _selectedOverlay;
   bool _isSaving = false;
   bool _imageReady = false;
@@ -28,6 +31,12 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _isDraggingOverlay = false;
   double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _editedImageFile = widget.imageFile;
+  }
 
   static const List<Color> _colors = [
     Colors.white,
@@ -73,6 +82,118 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
           .clamp(0.08, 0.92);
       _selectedOverlay = index;
     });
+  }
+
+  void _transformSelectedText(String mode) {
+    final index = _selectedOverlay;
+    if (index == null) return;
+    final text = _overlays[index].text;
+    String transformed;
+    switch (mode) {
+      case 'upper':
+        transformed = text.toUpperCase();
+        break;
+      case 'lower':
+        transformed = text.toLowerCase();
+        break;
+      default:
+        transformed = text.split(RegExp(r'\s+')).map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        }).join(' ');
+    }
+    setState(() => _overlays[index].text = transformed);
+  }
+
+  void _rotateSelectedText(double degrees) {
+    final index = _selectedOverlay;
+    if (index == null) return;
+    setState(() {
+      _overlays[index].rotationDegrees =
+          (_overlays[index].rotationDegrees + degrees) % 360;
+    });
+  }
+
+  Future<void> _cropImage() async {
+    if (_isCropping || _isSaving) return;
+    final ratios = <String, CropAspectRatio?>{
+      'story_editor_crop_free': null,
+      'story_editor_crop_square': const CropAspectRatio(ratioX: 1, ratioY: 1),
+      'story_editor_crop_portrait': const CropAspectRatio(ratioX: 4, ratioY: 5),
+      'story_editor_crop_story': const CropAspectRatio(ratioX: 9, ratioY: 16),
+      'story_editor_crop_landscape': const CropAspectRatio(ratioX: 16, ratioY: 9),
+    };
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF1D1D1D),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('story_editor_crop_title'.tr,
+                  style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 9,
+                runSpacing: 9,
+                children: ratios.keys.map((key) => ActionChip(
+                  label: Text(key.tr),
+                  onPressed: () => Navigator.pop(context, key),
+                  backgroundColor: const Color(0xFF303030),
+                  labelStyle: const TextStyle(color: Colors.white),
+                )).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => _isCropping = true);
+    try {
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: _editedImageFile.path,
+        aspectRatio: ratios[selected],
+        compressFormat: ImageCompressFormat.png,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'story_editor_crop_title'.tr,
+            toolbarColor: const Color(0xFF151515),
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: Colors.black,
+            activeControlsWidgetColor: const Color(0xFFFFD21F),
+            lockAspectRatio: ratios[selected] != null,
+          ),
+          IOSUiSettings(
+            title: 'story_editor_crop_title'.tr,
+            aspectRatioLockEnabled: ratios[selected] != null,
+          ),
+        ],
+      );
+      if (cropped != null && mounted) {
+        setState(() {
+          _editedImageFile = File(cropped.path);
+          _imageReady = false;
+          _imageLoadFailed = false;
+        });
+      }
+    } catch (error) {
+      debugPrint('[STORY_IMAGE_EDITOR] crop failed: $error');
+      if (mounted) {
+        Get.snackbar('story_error_title'.tr, 'story_editor_crop_error'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.black87,
+            colorText: Colors.white);
+      }
+    } finally {
+      if (mounted) setState(() => _isCropping = false);
+    }
   }
 
   void _changeSelectedColor(Color color) {
@@ -236,7 +357,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                               fit: StackFit.expand,
                               children: [
                                 Image.file(
-                                  widget.imageFile,
+                                  _editedImageFile,
                                   fit: BoxFit.cover,
                                   frameBuilder: (context, child, frame, synchronous) {
                                     if ((frame != null || synchronous) && !_imageReady) {
@@ -299,6 +420,22 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       ],
                     ),
                     const SizedBox(height: 9),
+                    const SizedBox(height: 9),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _MiniTextAction(icon: Icons.keyboard_capslock_rounded, label: 'ABC', onTap: () => _transformSelectedText('upper')),
+                          _MiniTextAction(icon: Icons.text_fields_rounded, label: 'abc', onTap: () => _transformSelectedText('lower')),
+                          _MiniTextAction(icon: Icons.title_rounded, label: 'Abc', onTap: () => _transformSelectedText('title')),
+                          _MiniTextAction(icon: Icons.rotate_left_rounded, label: '−90°', onTap: () => _rotateSelectedText(-90)),
+                          _MiniTextAction(icon: Icons.rotate_right_rounded, label: '+90°', onTap: () => _rotateSelectedText(90)),
+                          _MiniTextAction(icon: Icons.rotate_90_degrees_ccw_rounded, label: '−15°', onTap: () => _rotateSelectedText(-15)),
+                          _MiniTextAction(icon: Icons.rotate_90_degrees_cw_rounded, label: '+15°', onTap: () => _rotateSelectedText(15)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 9),
                     Row(
                       children: [
                         const Icon(Icons.format_color_fill_rounded, color: Colors.white70, size: 17),
@@ -333,6 +470,12 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       icon: Icons.text_fields_rounded,
                       label: 'story_editor_add_text'.tr,
                       onTap: _addText,
+                    ),
+                    const SizedBox(width: 22),
+                    _EditorTool(
+                      icon: Icons.crop_rounded,
+                      label: 'story_editor_crop_tab'.tr,
+                      onTap: _cropImage,
                     ),
                     const SizedBox(width: 22),
                     if (_selectedOverlay != null)
@@ -382,7 +525,9 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                 ? Border.all(color: Colors.white70, width: 1)
                 : null,
           ),
-          child: Text(
+          child: Transform.rotate(
+            angle: overlay.rotationDegrees * 3.141592653589793 / 180,
+            child: Text(
             overlay.text,
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -397,6 +542,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                   offset: Offset(0, 2),
                 ),
               ],
+            ),
             ),
           ),
         ),
@@ -536,6 +682,32 @@ class _StoryTextDialogState extends State<_StoryTextDialog> {
   }
 }
 
+class _MiniTextAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MiniTextAction({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(right: 8),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(color: const Color(0xFF303030), borderRadius: BorderRadius.circular(10)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16, color: Colors.white70),
+          const SizedBox(width: 5),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ),
+  );
+}
+
 class _ColorDot extends StatelessWidget {
   final Color color;
   final bool selected;
@@ -601,6 +773,7 @@ class _StoryTextOverlay {
   Color color;
   Color? backgroundColor = Colors.black.withValues(alpha: 0.38);
   double fontSize = 27;
+  double rotationDegrees = 0;
 
   _StoryTextOverlay({
     required this.text,
