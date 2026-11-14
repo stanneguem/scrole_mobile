@@ -44,7 +44,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
 
   Trimmer _trimmer = Trimmer();
   File? _workingVideoFile;
-  StreamSubscription<double>? _conversionSubscription;
+  Subscription? _conversionSubscription;
   double _conversionProgress = 0;
   bool _isConverting = false;
   final ValueNotifier<double> _playhead = ValueNotifier<double>(0);
@@ -115,7 +115,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
         _conversionProgress = 0;
       });
 
-      final subscription = VideoCompress.compressProgress$.listen((progress) {
+      final subscription = VideoCompress.compressProgress$.subscribe((progress) {
         if (mounted) setState(() => _conversionProgress = (progress / 100).clamp(0, 1));
       });
       _conversionSubscription = subscription;
@@ -125,7 +125,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
         deleteOrigin: false,
         includeAudio: true,
       );
-      await subscription.cancel();
+      subscription.unsubscribe();
       _conversionSubscription = null;
 
       final normalizedFile = converted?.file;
@@ -143,7 +143,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
       await _finishVideoLoading();
     } catch (error, stack) {
       debugPrint('[VideoTrimScreen] codec normalization failed: $error\n$stack');
-      await _conversionSubscription?.cancel();
+      _conversionSubscription?.unsubscribe();
       _conversionSubscription = null;
       if (mounted) {
         setState(() {
@@ -175,7 +175,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
-    _conversionSubscription?.cancel();
+    _conversionSubscription?.unsubscribe();
     _playhead.dispose();
     _scroll.dispose();
     // Libère le décodeur natif à la fermeture de l'écran.
