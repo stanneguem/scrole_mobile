@@ -31,6 +31,8 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
   bool _imageLoadFailed = false;
   bool _isDraggingOverlay = false;
   String? _activeTextPanel = 'font';
+  String _selectedFilter = 'original';
+  bool _showFilters = false;
   double _scaleStartFontSize = 27;
   Size _canvasSize = Size.zero;
 
@@ -359,7 +361,9 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
-                                Image.file(
+                                ColorFiltered(
+                                  colorFilter: ColorFilter.matrix(_storyFilter(_selectedFilter).matrix),
+                                  child: Image.file(
                                   _editedImageFile,
                                   fit: BoxFit.cover,
                                   frameBuilder: (context, child, frame, synchronous) {
@@ -393,6 +397,7 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                                     );
                                   },
                                 ),
+                                ),
                                 for (var i = 0; i < _overlays.length; i++)
                                   _buildOverlay(i),
                               ],
@@ -405,6 +410,11 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                 ),
               ),
             ),
+            if (_selectedOverlay == null && _showFilters)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: _buildFilterOptionsPanel(),
+              ),
             if (_selectedOverlay != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
@@ -482,11 +492,20 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
                       label: 'story_editor_add_text'.tr,
                       onTap: _addText,
                     ),
-                    const SizedBox(width: 22),
+                    const SizedBox(width: 18),
                     _EditorTool(
                       icon: Icons.crop_rounded,
                       label: 'story_editor_crop_tab'.tr,
-                      onTap: _cropImage,
+                      onTap: () {
+                        setState(() => _showFilters = false);
+                        _cropImage();
+                      },
+                    ),
+                    const SizedBox(width: 18),
+                    _EditorTool(
+                      icon: Icons.auto_awesome_rounded,
+                      label: 'Filtres',
+                      onTap: () => setState(() => _showFilters = !_showFilters),
                     ),
                   ],
                 ],
@@ -494,6 +513,67 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterOptionsPanel() {
+    return Container(
+      height: 112,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1D1D1D),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: _storyFilters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final filter = _storyFilters[index];
+          final selected = _selectedFilter == filter.id;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = filter.id),
+            child: SizedBox(
+              width: 62,
+              child: Column(
+                children: [
+                  Container(
+                    width: 58,
+                    height: 68,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected ? const Color(0xFFFFD21F) : Colors.white12,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(7),
+                      child: ColorFiltered(
+                        colorFilter: ColorFilter.matrix(filter.matrix),
+                        child: Image.file(_editedImageFile, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    filter.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? const Color(0xFFFFD21F) : Colors.white70,
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -669,6 +749,62 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     );
   }
 }
+
+// Lightweight GPU-backed color presets: no extra native dependency is required.
+class _StoryImageFilter {
+  final String id;
+  final String label;
+  final List<double> matrix;
+
+  const _StoryImageFilter(this.id, this.label, this.matrix);
+}
+
+List<double> _makeStoryFilter({
+  double saturation = 1,
+  double red = 1,
+  double green = 1,
+  double blue = 1,
+  double brightness = 0,
+  double contrast = 1,
+}) {
+  final sr = 0.213 * (1 - saturation);
+  final sg = 0.715 * (1 - saturation);
+  final sb = 0.072 * (1 - saturation);
+  final offset = (brightness + (1 - contrast) / 2) * 255;
+  return <double>[
+    (sr + saturation) * red * contrast, sg * red * contrast, sb * red * contrast, 0, offset,
+    sr * green * contrast, (sg + saturation) * green * contrast, sb * green * contrast, 0, offset,
+    sr * blue * contrast, sg * blue * contrast, (sb + saturation) * blue * contrast, 0, offset,
+    0, 0, 0, 1, 0,
+  ];
+}
+
+final List<_StoryImageFilter> _storyFilters = [
+  _StoryImageFilter('original', 'Original', _makeStoryFilter()),
+  _StoryImageFilter('soft', 'Soft', _makeStoryFilter(saturation: 0.82, brightness: 0.045, contrast: 0.94, red: 1.03, green: 1.01, blue: 1.02)),
+  _StoryImageFilter('beauty', 'Beauty', _makeStoryFilter(saturation: 0.88, brightness: 0.075, contrast: 0.91, red: 1.05, green: 1.01, blue: 1.02)),
+  _StoryImageFilter('glow', 'Glow', _makeStoryFilter(saturation: 0.92, brightness: 0.12, contrast: 0.88, red: 1.06, green: 1.03, blue: 1.00)),
+  _StoryImageFilter('porcelain', 'Porcelain', _makeStoryFilter(saturation: 0.72, brightness: 0.09, contrast: 0.90, red: 1.04, green: 1.02, blue: 1.04)),
+  _StoryImageFilter('peach', 'Peach', _makeStoryFilter(saturation: 1.03, brightness: 0.035, red: 1.08, green: 1.00, blue: 0.94)),
+  _StoryImageFilter('rose', 'Rose', _makeStoryFilter(saturation: 0.94, brightness: 0.025, red: 1.07, green: 0.96, blue: 1.02)),
+  _StoryImageFilter('warm', 'Warm', _makeStoryFilter(saturation: 1.08, brightness: 0.025, red: 1.09, green: 1.02, blue: 0.91)),
+  _StoryImageFilter('golden', 'Golden', _makeStoryFilter(saturation: 1.14, brightness: 0.045, contrast: 1.02, red: 1.12, green: 1.04, blue: 0.86)),
+  _StoryImageFilter('fresh', 'Fresh', _makeStoryFilter(saturation: 1.16, brightness: 0.025, red: 0.98, green: 1.06, blue: 1.02)),
+  _StoryImageFilter('vivid', 'Vivid', _makeStoryFilter(saturation: 1.42, contrast: 1.08)),
+  _StoryImageFilter('pop', 'Pop', _makeStoryFilter(saturation: 1.28, contrast: 1.18, brightness: 0.015)),
+  _StoryImageFilter('cool', 'Cool', _makeStoryFilter(saturation: 0.96, red: 0.94, green: 1.00, blue: 1.10, brightness: 0.015)),
+  _StoryImageFilter('ocean', 'Ocean', _makeStoryFilter(saturation: 1.12, red: 0.88, green: 1.00, blue: 1.16, contrast: 1.04)),
+  _StoryImageFilter('vintage', 'Vintage', _makeStoryFilter(saturation: 0.72, brightness: 0.055, contrast: 0.88, red: 1.08, green: 1.00, blue: 0.86)),
+  _StoryImageFilter('fade', 'Fade', _makeStoryFilter(saturation: 0.78, brightness: 0.075, contrast: 0.78)),
+  _StoryImageFilter('film', 'Film', _makeStoryFilter(saturation: 0.92, contrast: 1.12, red: 1.05, green: 1.00, blue: 0.94)),
+  _StoryImageFilter('cinema', 'Cinema', _makeStoryFilter(saturation: 0.86, contrast: 1.2, red: 1.08, green: 1.00, blue: 0.91)),
+  _StoryImageFilter('noir', 'Noir', _makeStoryFilter(saturation: 0, contrast: 1.22, brightness: -0.015)),
+  _StoryImageFilter('mono', 'Mono', _makeStoryFilter(saturation: 0, contrast: 1.04)),
+  _StoryImageFilter('dream', 'Dream', _makeStoryFilter(saturation: 0.78, brightness: 0.085, contrast: 0.84, red: 1.04, green: 1.02, blue: 1.08)),
+];
+
+_StoryImageFilter _storyFilter(String id) =>
+    _storyFilters.firstWhere((filter) => filter.id == id, orElse: () => _storyFilters.first);
 
 class _StoryTextDialog extends StatefulWidget {
   final String initialText;
