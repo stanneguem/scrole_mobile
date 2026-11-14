@@ -15,7 +15,7 @@ class VideoFullScreenViewer extends StatefulWidget {
   State<VideoFullScreenViewer> createState() => _VideoFullScreenViewerState();
 }
 
-class _VideoFullScreenViewerState extends State<VideoFullScreenViewer> {
+class _VideoFullScreenViewerState extends State<VideoFullScreenViewer> with WidgetsBindingObserver {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   bool _isPlaying = false;
@@ -28,6 +28,7 @@ class _VideoFullScreenViewerState extends State<VideoFullScreenViewer> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initController();
   }
 
@@ -59,6 +60,14 @@ class _VideoFullScreenViewerState extends State<VideoFullScreenViewer> {
     }
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) return; // Ne pas reprendre sans action de l'utilisateur.
+    _hideTimer?.cancel();
+    if (_isInitialized) _controller.pause();
+    if (mounted) setState(() => _isPlaying = false);
+  }
+
   void _playerListener() {
     if (!mounted) return;
     setState(() {
@@ -69,6 +78,7 @@ class _VideoFullScreenViewerState extends State<VideoFullScreenViewer> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _controller.removeListener(_playerListener);
     _controller.dispose();
