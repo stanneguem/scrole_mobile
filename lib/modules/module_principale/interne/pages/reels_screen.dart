@@ -9,7 +9,6 @@ import '../../../../shared/models/post_media.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../module_communautes/interne/controllers/community/community_feed_controller.dart';
 import '../controllers/home_feed_controller.dart';
-import '../controllers/main_layout_controller.dart';
 import '../widgets/community_comments_sheet.dart';
 import '../../centre/models/community_post.dart';
 
@@ -24,11 +23,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
-  void _goHome() {
-    if (Get.isRegistered<MainLayoutController>()) {
-      Get.find<MainLayoutController>().changeTab(0);
-    }
-  }
+  void _goHome() => Get.back();
 
   List<_ReelItem> _buildItems(HomeFeedController controller) {
     final result = <_ReelItem>[];
