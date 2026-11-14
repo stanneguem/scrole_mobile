@@ -342,7 +342,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
                     Positioned(
                         left: 16,
                         right: 82,
-                        bottom: safeBottom + 82,
+                        bottom: safeBottom + 77,
                         child: _ReelAuthorInfo(
                           key: ValueKey('author_${item.post.id}_${item.media.url}'),
                           post: item.post,
@@ -753,6 +753,22 @@ class _ReelActionRailState extends State<_ReelActionRail> {
           icon: Icons.ios_share_rounded,
           label: NumberFormatter.formatCount(widget.post.shareCount),
           onTap: widget.onShare,
+        ),
+        const SizedBox(height: 17),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bar_chart_outlined, color: inactive, size: 31),
+            const SizedBox(height: 4),
+            Text(
+              NumberFormatter.formatCount(widget.post.viewCount),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ],
     );
