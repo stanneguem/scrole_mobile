@@ -1256,40 +1256,57 @@ class _SuggestedEventActionCardState extends State<_SuggestedEventActionCard> {
                       ),
                     ],
                   ),
-                          SizedBox(
-                    width: double.infinity,
-                    height: 34,
-                    child: FilledButton.icon(
-                      onPressed: (_adding || _dismissing) ? null : _addToCalendar,
-                      icon: _adding
-                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.calendar_month_rounded, size: 16),
-                      label: Text('home_feed_suggested_add'.tr,
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 7),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 29,
-                    child: Center(
-                      child: TextButton(
-                        onPressed: (_adding || _dismissing) ? null : _dismiss,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          minimumSize: const Size(0, 28),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          foregroundColor: colors.onSurfaceVariant,
+                          Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: SizedBox(
+                          height: 34,
+                          child: FilledButton.icon(
+                            onPressed: (_adding || _dismissing) ? null : _addToCalendar,
+                            icon: _adding
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.calendar_month_rounded, size: 15),
+                            label: Text(
+                              'home_feed_suggested_add'.tr,
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
                         ),
-                        child: _dismissing
-                            ? const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2))
-                            : Text('home_feed_suggested_not_interested'.tr,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
-                    ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        flex: 1,
+                        child: SizedBox(
+                          height: 34,
+                          child: TextButton(
+                            onPressed: (_adding || _dismissing) ? null : _dismiss,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 3),
+                              minimumSize: const Size(0, 30),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: colors.onSurfaceVariant,
+                            ),
+                            child: _dismissing
+                                ? const SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Text(
+                                    'home_feed_suggested_not_interested'.tr,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
