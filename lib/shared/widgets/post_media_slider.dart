@@ -23,6 +23,7 @@ class PostMediaSlider extends StatefulWidget {
   final int sharesCount;
   final VoidCallback? onVideoQualifiedView;
   final ValueChanged<int>? onPageChanged;
+  final ValueChanged<int>? onOpenVideoReel;
   final double qualifiedViewPercent;
 
   const PostMediaSlider({
@@ -38,6 +39,7 @@ class PostMediaSlider extends StatefulWidget {
     this.sharesCount = 0,
     this.onVideoQualifiedView,
     this.onPageChanged,
+    this.onOpenVideoReel,
     this.qualifiedViewPercent = 0.5,
   });
 
@@ -420,6 +422,7 @@ class _InlineFeedVideo extends StatefulWidget {
   final String url;
   final String? thumbnailUrl;
   final VoidCallback onOpenFullScreen;
+  final VoidCallback? onOpenVideoReel;
 
   const _InlineFeedVideo({
     super.key,
@@ -434,6 +437,7 @@ class _InlineFeedVideo extends StatefulWidget {
     required this.url,
     required this.thumbnailUrl,
     required this.onOpenFullScreen,
+    this.onOpenVideoReel,
   });
 
   @override
@@ -671,7 +675,11 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       child: GestureDetector(
         onTap: () {
           _controller?.pause();
-          widget.onOpenFullScreen();
+          if (widget.onOpenVideoReel != null) {
+            widget.onOpenVideoReel!();
+          } else {
+            widget.onOpenFullScreen();
+          }
         },
         child: Stack(
           fit: StackFit.expand,
