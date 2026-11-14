@@ -703,6 +703,7 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   }
 
   Future<void> _release() async {
+    unawaited(_persistWatchSignal());
     final controller = _video;
     _video = null;
     controller?.removeListener(_onVideoChanged);
@@ -737,10 +738,12 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
   Future<void> _persistWatchSignal() async {
     final controller = _video;
     if (_watched <= Duration.zero || controller == null || !controller.value.isInitialized) return;
+    final watchedMs = _watched.inMilliseconds;
+    _watched = Duration.zero;
     try {
       await HomeFeedRepository().recordScutWatch(
         postId: widget.item.post.id,
-        watchedMs: _watched.inMilliseconds,
+        watchedMs: watchedMs,
         durationMs: controller.value.duration.inMilliseconds,
       );
     } catch (error) {
