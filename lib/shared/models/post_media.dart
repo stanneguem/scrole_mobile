@@ -19,7 +19,9 @@ class PostMedia {
 
   factory PostMedia.fromJson(Map<String, dynamic> json) {
     final rawType = (json['type'] ?? json['media_type'] ?? json['mime_type'] ?? 'photo').toString().toLowerCase();
-    final type = rawType.contains('video') ? 'video' : (rawType.contains('gif') ? 'gif' : 'photo');
+    final type = (rawType.contains('video') || rawType == 'reel')
+        ? 'video'
+        : (rawType.contains('gif') ? 'gif' : 'photo');
     return PostMedia(
       type: type,
       storage: json['storage']?.toString() ?? 'supabase',
