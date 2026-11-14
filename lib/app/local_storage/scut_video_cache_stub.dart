@@ -14,3 +14,9 @@ VideoPlayerController createScutVideoController(String? localPath, String url) =
     VideoPlayerController.networkUrl(Uri.parse(url));
 
 Future<void> clearScutVideoCache() async {}
+
+Future<void> queueScutWatchSignal(Map<String, dynamic> signal) async {}
+
+Future<List<Map<String, dynamic>>> readPendingScutWatchSignals() async => const [];
+
+Future<void> removePendingScutWatchSignal(String signalId) async {}
