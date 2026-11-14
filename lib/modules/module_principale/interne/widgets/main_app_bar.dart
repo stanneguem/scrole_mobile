@@ -54,7 +54,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               Icon(Icons.post_add_rounded,
                   color: Theme.of(context).colorScheme.onSurface, size: 21),
               const SizedBox(width: 12),
-              Text('Créer un post',
+              Text('creation_menu_create_post'.tr,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                   )),
@@ -68,7 +68,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               Icon(Icons.video_library_rounded,
                   color: Theme.of(context).colorScheme.onSurface, size: 21),
               const SizedBox(width: 12),
-              Text('Créer un Scut',
+              Text('creation_menu_create_scut'.tr,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
                   )),
