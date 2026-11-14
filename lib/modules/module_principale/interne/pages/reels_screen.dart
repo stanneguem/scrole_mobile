@@ -57,6 +57,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
   bool _scutLoaded = false;
   bool _loadingMoreScuts = false;
   bool _scutRequestInFlight = false;
+  bool _hasInternet = false;
   bool _cacheBusy = false;
   int? _pendingCacheIndex;
   int _scutRequestGeneration = 0;
@@ -69,7 +70,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
     _commentFocusNode.addListener(_onCommentFocusChanged);
     unawaited(_restoreThenLoadScutFeed());
     _connectionSubscription = InternetConnection().onStatusChange.listen((status) {
-      if (status == InternetStatus.connected && mounted) {
+      _hasInternet = status == InternetStatus.connected;
+      if (_hasInternet && mounted) {
         debugPrint('[SCUT] Internet restored; requesting fresh recommendations.');
         unawaited(_loadScutFeed(append: _scutLoaded));
       }
@@ -357,7 +359,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
         final key = sha256.convert(utf8.encode(item.media.url)).toString();
         final file = File(p.join(cacheDir.path, '$key.video'));
         keep.add(file.path);
-        if (!await file.exists()) {
+        if (!await file.exists() && _hasInternet) {
           try {
             final response = await http.get(Uri.parse(item.media.url)).timeout(const Duration(seconds: 45));
             if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
