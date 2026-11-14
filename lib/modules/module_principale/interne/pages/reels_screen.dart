@@ -211,11 +211,18 @@ class _ReelsScreenState extends State<ReelsScreen> {
     final result = <_ReelItem>[];
     final seen = <String>{};
     for (final sourcePost in [...controller.posts, ...controller.sponsoredPosts]) {
-      final post = controller.reelPostOverrides[sourcePost.id] ?? sourcePost;
-      if (post.isPublishing || !seen.add(post.id)) continue;
-      for (final media in post.media) {
-        if (media.isVideo && media.url.trim().isNotEmpty) {
-          result.add(_ReelItem(post: post, media: media));
+      final source = controller.reelPostOverrides[sourcePost.id] ?? sourcePost;
+      final candidates = <CommunityPost>[
+        source,
+        if (source.sharedPost != null)
+          (controller.reelPostOverrides[source.sharedPost!.id] ?? source.sharedPost!),
+      ];
+      for (final post in candidates) {
+        if (post.isPublishing || !seen.add(post.id)) continue;
+        for (final media in post.media) {
+          if (media.isVideo && media.url.trim().isNotEmpty) {
+            result.add(_ReelItem(post: post, media: media));
+          }
         }
       }
     }
@@ -502,6 +509,12 @@ class _ReelVideoPageState extends State<_ReelVideoPage> with WidgetsBindingObser
       _qualified = true;
       final feed = Get.find<HomeFeedController>();
       feed.queueQualifiedVideoPostView(widget.item.post.id, widget.item.post);
+      // The view RPC is batched; refresh after its normal flush window so
+      // Scut's visible counter reflects the newly recorded view.
+      unawaited(Future<void>.delayed(
+        const Duration(seconds: 4),
+        () => feed.refreshPostCountersFor(widget.item.post),
+      ));
     }
   }
 
