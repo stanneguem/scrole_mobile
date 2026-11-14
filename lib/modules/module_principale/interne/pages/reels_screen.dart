@@ -64,7 +64,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
     super.initState();
     _commentController.addListener(_onCommentDraftChanged);
     _commentFocusNode.addListener(_onCommentFocusChanged);
-    unawaited(_loadScutFeed());
+    unawaited(_restoreThenLoadScutFeed());
   }
 
   void _onCommentDraftChanged() {
@@ -222,8 +222,52 @@ class _ReelsScreenState extends State<ReelsScreen> {
     }
   }
 
+  Future<void> _restoreThenLoadScutFeed() async {
+    await _restoreCachedScutFeed();
+    if (mounted) await _loadScutFeed();
+  }
+
+  Future<void> _restoreCachedScutFeed() async {
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final manifest = File(p.join(directory.path, 'scut_feed_cache.json'));
+      if (!await manifest.exists()) return;
+      final decoded = jsonDecode(await manifest.readAsString());
+      if (decoded is! List) return;
+      final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
+      final restored = <_ReelItem>[];
+      for (final entry in decoded) {
+        if (entry is! Map) continue;
+        final row = Map<String, dynamic>.from(entry);
+        if (row['post'] is! Map || row['media'] is! Map) continue;
+        try {
+          final post = CommunityPost.fromMap(Map<String, dynamic>.from(row['post'] as Map));
+          final media = PostMedia.fromJson(Map<String, dynamic>.from(row['media'] as Map));
+          if (post.id.isEmpty || !media.isVideo || media.url.isEmpty) continue;
+          final key = sha256.convert(utf8.encode(media.url)).toString();
+          final file = File(p.join(cacheDir.path, '$key.video'));
+          if (await file.exists()) _localVideoPaths[media.url] = file.path;
+          restored.add(_ReelItem(post: post, media: media));
+        } catch (error) {
+          debugPrint('[SCUT_CACHE] invalid cached item skipped: $error');
+        }
+      }
+      if (restored.isNotEmpty && mounted) {
+        _scutItems
+          ..clear()
+          ..addAll(restored);
+        _scutLoaded = true;
+        _scutLoading = false;
+        setState(() {});
+        debugPrint('[SCUT_CACHE] Restored ${restored.length} offline Scut videos.');
+      }
+    } catch (error) {
+      debugPrint('[SCUT_CACHE] manifest restore failed: $error');
+    }
+  }
+
   Future<void> _loadScutFeed({bool append = false}) async {
-    if (_loadingMoreScuts || (_scutLoaded && !append)) return;
+    if (_loadingMoreScuts || (!append && _scutLoaded && _scutLoading)) return;
     final generation = ++_scutRequestGeneration;
     if (append) {
       _loadingMoreScuts = true;
@@ -291,7 +335,8 @@ class _ReelsScreenState extends State<ReelsScreen> {
       final cacheDir = Directory(p.join(directory.path, 'scut_video_cache'));
       await cacheDir.create(recursive: true);
       final start = (currentIndex - 8).clamp(0, _scutItems.length);
-      final end = (currentIndex + 2).clamp(0, _scutItems.length);
+      var end = (currentIndex + 2).clamp(0, _scutItems.length);
+      if (end - start < 10) end = (start + 10).clamp(0, _scutItems.length);
       final window = _scutItems.sublist(start, end);
       final keep = <String>{};
       for (final item in window) {
@@ -316,6 +361,11 @@ class _ReelsScreenState extends State<ReelsScreen> {
           try { await file.delete(); } catch (_) {}
         }
       }
+      final manifest = File(p.join(directory.path, 'scut_feed_cache.json'));
+      await manifest.writeAsString(jsonEncode(window.map((item) => {
+        'post': item.post.toCacheMap(),
+        'media': item.media.toJson(),
+      }).toList(growable: false)), flush: true);
       if (mounted) setState(() {});
       debugPrint('[SCUT_CACHE] Cached window: ${window.length} videos (8 previous/current/next).');
     } catch (error) {
