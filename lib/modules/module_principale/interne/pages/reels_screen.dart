@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
@@ -312,9 +311,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
               child: _ReelActionRail(
                 post: activeItem.post,
                 onLike: () => feed.handleReaction(activeItem.post.id, PostReaction.like),
-                onShare: () => Share.share(activeItem.post.content.isEmpty
-                    ? 'Découvre ce réel sur Scrole'
-                    : activeItem.post.content),
+                onComments: () => _openComments(activeItem),
               ),
             ),
             Positioned(
@@ -543,12 +540,12 @@ class _ReelsTopBar extends StatelessWidget {
 class _ReelActionRail extends StatelessWidget {
   final CommunityPost post;
   final VoidCallback onLike;
-  final VoidCallback onShare;
+  final VoidCallback onComments;
 
   const _ReelActionRail({
     required this.post,
     required this.onLike,
-    required this.onShare,
+    required this.onComments,
   });
 
   @override
@@ -562,7 +559,7 @@ class _ReelActionRail extends StatelessWidget {
         onTap: onLike,
       ),
       const SizedBox(height: 22),
-      _ReelActionButton(icon: Icons.send_rounded, label: post.shareCount.toString(), onTap: onShare),
+      _ReelActionButton(icon: Icons.mode_comment_outlined, label: post.commentCount.toString(), onTap: onComments),
     ],
   );
 }
@@ -641,13 +638,6 @@ class _ReelPostInfo extends StatelessWidget {
                   : Text(followLabel, style: const TextStyle(fontSize: 11)),
             ),
           ],
-          const Spacer(),
-          IconButton(
-            tooltip: 'Voir les commentaires',
-            visualDensity: VisualDensity.compact,
-            onPressed: onComments,
-            icon: const Icon(Icons.mode_comment_outlined, color: Colors.white, size: 21),
-          ),
         ]),
         if (post.content.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
