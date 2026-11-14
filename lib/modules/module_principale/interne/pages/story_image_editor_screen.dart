@@ -376,6 +376,15 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
     });
   }
 
+
+  Future<ui.Image> _decodeEditorImage() async {
+    final bytes = await _editedImageFile.readAsBytes();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    codec.dispose();
+    return frame.image;
+  }
+
   Future<void> _save() async {
     if (_isEditingInlineText) _finishInlineText();
     if (_isSaving || !_imageReady || _imageLoadFailed) return;
@@ -476,73 +485,101 @@ class _StoryImageEditorScreenState extends State<StoryImageEditorScreen> {
               ),
             ),
             Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: AspectRatio(
-                    aspectRatio: 9 / 16,
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        _canvasSize = Size(
-                          constraints.maxWidth,
-                          constraints.maxHeight,
-                        );
-                        return RepaintBoundary(
-                          key: _canvasKey,
-                          child: ClipRect(
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                ColorFiltered(
-                                  colorFilter: ColorFilter.matrix(_storyFilter(_selectedFilter).matrix),
-                                  child: Image.file(
-                                  _editedImageFile,
-                                  fit: BoxFit.cover,
-                                  frameBuilder: (context, child, frame, synchronous) {
-                                    if ((frame != null || synchronous) && !_imageReady) {
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        if (mounted) setState(() => _imageReady = true);
-                                      });
-                                    }
-                                    if (frame == null && !synchronous) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(color: Colors.white),
-                                      );
-                                    }
-                                    return child;
-                                  },
-                                  errorBuilder: (_, __, ___) {
-                                    if (!_imageLoadFailed) {
-                                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        if (mounted) setState(() => _imageLoadFailed = true);
-                                      });
-                                    }
-                                    return const ColoredBox(
-                                      color: Color(0xFF202020),
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.broken_image_outlined,
-                                          color: Colors.white54,
-                                          size: 42,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: LayoutBuilder(
+                        builder: (context, canvasConstraints) {
+                          // Preserve the source image ratio; never crop it to 9:16.
+                          return FutureBuilder<ui.Image>(
+                            future: _decodeEditorImage(),
+                            builder: (context, snapshot) {
+                              final decoded = snapshot.data;
+                              final ratio = decoded == null || decoded.height == 0
+                                  ? 9 / 16
+                                  : decoded.width / decoded.height;
+                              final maxWidth = canvasConstraints.maxWidth;
+                              final maxHeight = canvasConstraints.maxHeight;
+                              var imageWidth = maxWidth;
+                              var imageHeight = imageWidth / ratio;
+                              if (imageHeight > maxHeight) {
+                                imageHeight = maxHeight;
+                                imageWidth = imageHeight * ratio;
+                              }
+                              _canvasSize = Size(imageWidth, imageHeight);
+                              return SizedBox(
+                                width: imageWidth,
+                                height: imageHeight,
+                                child: RepaintBoundary(
+                                  key: _canvasKey,
+                                  child: ClipRect(
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        // Blurred, enlarged copy fills the canvas behind the full image.
+                                        Image.file(
+                                          _editedImageFile,
+                                          fit: BoxFit.cover,
+                                          filterQuality: FilterQuality.high,
                                         ),
-                                      ),
-                                    );
-                                  },
+                                        BackdropFilter(
+                                          filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                                          child: Container(
+                                            color: Colors.black.withValues(alpha: 0.28),
+                                          ),
+                                        ),
+                                        ColorFiltered(
+                                          colorFilter: ColorFilter.matrix(_storyFilter(_selectedFilter).matrix),
+                                          child: Image.file(
+                                            _editedImageFile,
+                                            fit: BoxFit.contain,
+                                            frameBuilder: (context, child, frame, synchronous) {
+                                              if ((frame != null || synchronous) && !_imageReady) {
+                                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                  if (mounted) setState(() => _imageReady = true);
+                                                });
+                                              }
+                                              if (frame == null && !synchronous) {
+                                                return const Center(
+                                                  child: CircularProgressIndicator(color: Colors.white),
+                                                );
+                                              }
+                                              return child;
+                                            },
+                                            errorBuilder: (_, __, ___) {
+                                              if (!_imageLoadFailed) {
+                                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                  if (mounted) setState(() => _imageLoadFailed = true);
+                                                });
+                                              }
+                                              return const ColoredBox(
+                                                color: Color(0xFF202020),
+                                                child: Center(
+                                                  child: Icon(Icons.broken_image_outlined, color: Colors.white54, size: 42),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        for (var i = 0; i < _overlays.length; i++)
+                                          _buildOverlay(i),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                ),
-                                for (var i = 0; i < _overlays.length; i++)
-                                  _buildOverlay(i),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
-            if (_selectedOverlay == null && _showFilters)
+                        if (_selectedOverlay == null && _showFilters)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                 child: _buildFilterOptionsPanel(),
