@@ -421,7 +421,7 @@ class _InlineFeedVideo extends StatefulWidget {
   State<_InlineFeedVideo> createState() => _InlineFeedVideoState();
 }
 
-class _InlineFeedVideoState extends State<_InlineFeedVideo> {
+class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _initializing = false;
   bool _autoPlay = true;
@@ -439,6 +439,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final postId = widget.autoplayPostId;
     if (postId != null) {
       _cardEligible = FeedVideoAutoplayGate.isEligible(postId);
@@ -556,6 +557,21 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
     if (mounted) setState(() {});
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) return; // Reprise uniquement après un nouveau signal de visibilité.
+    _visible = false;
+    _releaseController();
+  }
+
+  Future<void> _releaseController() async {
+    final controller = _controller;
+    _controller = null;
+    controller?.removeListener(_onVideoValueChanged);
+    if (controller != null) await controller.dispose();
+    if (mounted) setState(() {});
+  }
+
   void _onVisibilityChanged(VisibilityInfo info) {
     // VisibilityDetector may deliver a queued callback after this widget starts
     // disposing. Never touch a controller once the State is no longer mounted.
@@ -565,7 +581,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
     _visible = visible;
     final controller = _controller;
     if (!visible || !_cardEligible) {
-      controller?.pause();
+      _releaseController();
     } else {
       _initializeIfNeeded();
       if (_autoPlay && controller != null && controller.value.isInitialized) controller.play();
@@ -574,6 +590,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _preferencesWorker?.dispose();
     final postId = widget.autoplayPostId;
     if (postId != null) FeedVideoAutoplayGate.unregister(postId, _onCardVisibilityChanged);
