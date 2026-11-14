@@ -13,6 +13,7 @@ import '../../../module_evenement/interne/pages/event_screen.dart';
 import '../../../module_communautes/interne/pages/community_screen.dart';
 import '../../../module_communautes/interne/controllers/community/community_controller.dart';
 import '../pages/home_feed_screen.dart';
+import '../pages/reels_screen.dart';
 import '../../../../app_controller.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../controllers/main_layout_controller.dart';
@@ -28,7 +29,7 @@ class MainLayoutPage extends StatefulWidget {
 class _MainLayoutPageState extends State<MainLayoutPage> {
   final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
   int _currentIndex = 0;
-  final List<bool> _visited = [true, false, false]; // Home, Community, Events
+  final List<bool> _visited = [true, false, false, false]; // Home, Community, Events, Reels
   bool _isBottomNavVisible = true;
 
   @override
@@ -39,7 +40,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         int navIdx = idx;
         int stackIdx = 0;
         if (navIdx == 1) stackIdx = 1;
-        else if (navIdx == 3) stackIdx = 2;
+        else if (navIdx == 4) stackIdx = 2;
+        else if (navIdx == 2) stackIdx = 3;
         else stackIdx = 0;
         if (mounted && _currentIndex != stackIdx) {
           setState(() {
@@ -56,15 +58,16 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     HomeFeedScreen(key: _homeFeedKey), // 0. Accueil
     CommunityScreen(),    // 1. Communautés
     EventScreen(),        // 2. Événements
+    const ReelsScreen(),  // 3. Réels
   ];
 
   void _onTabChanged(int index) {
-    if (index == 2) {
+    if (index == 3) {
       // Notifications are opened from the bottom navigation bar.
       Get.find<MainLayoutController>().openNotifications();
       return;
     }
-    if (index == 4) {
+    if (index == 5) {
       // Profile avatar
       Get.toNamed(AppPages.myprofil);
       return;
@@ -72,8 +75,10 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     int stackIndex = 0;
     if (index == 1) {
       stackIndex = 1;
-    } else if (index == 3) {
+    } else if (index == 4) {
       stackIndex = 2;
+    } else if (index == 2) {
+      stackIndex = 3;
     } else {
       stackIndex = 0;
     }
@@ -83,7 +88,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     setState(() {
       _currentIndex = stackIndex;
       _visited[stackIndex] = true;
-      _isBottomNavVisible = true;
+      _isBottomNavVisible = stackIndex != 3;
     });
 
     if (Get.isRegistered<MainLayoutController>()) {
@@ -184,7 +189,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                   backgroundColor: colorScheme.surface,
                   indicatorColor: colorScheme.surfaceContainerHighest,
                   indicatorShape: const StadiumBorder(),
-                  selectedIndex: _currentIndex == 2 ? 3 : _currentIndex,
+                  selectedIndex: _currentIndex == 2 ? 4 : (_currentIndex == 3 ? 2 : _currentIndex),
                   onDestinationSelected: _onTabChanged,
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
                   destinations: [
@@ -229,6 +234,11 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                         ),
                       ),
                       label: 'Communautés',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.video_library_outlined, color: colorScheme.onSurfaceVariant, size: 25),
+                      selectedIcon: Icon(Icons.video_library_rounded, color: colorScheme.primary, size: 25),
+                      label: 'Réels',
                     ),
                     NavigationDestination(
                       icon: Obx(() => Badge(
