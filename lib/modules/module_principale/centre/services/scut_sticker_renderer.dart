@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -64,12 +65,15 @@ class ScutStickerRenderer {
       VideoFrame? frame;
       while ((frame = await reader.nextFrame()) != null) {
         final current = frame!;
-        final image = await ui.decodeImageFromPixels(
+        final imageCompleter = Completer<ui.Image>();
+        ui.decodeImageFromPixels(
           current.rgba,
           reader.info.width,
           reader.info.height,
           ui.PixelFormat.rgba8888,
+          imageCompleter.complete,
         );
+        final image = await imageCompleter.future;
         final recorder = ui.PictureRecorder();
         final canvas = Canvas(recorder);
         canvas.drawImage(image, Offset.zero, Paint());
