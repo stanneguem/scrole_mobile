@@ -114,7 +114,7 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
               const SizedBox(height: 18),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'scut_sticker_picker_title'.tr,
                       style: TextStyle(
