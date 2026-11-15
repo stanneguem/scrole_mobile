@@ -7,6 +7,7 @@ import 'app_translation_additions.dart';
 /// for the current UI flows. Arabic is deliberately excluded at runtime.
 const Map<String, Map<String, String>> _scutStickerTranslations = {
   'fr': {
+    'event_price_not_specified': 'Prix non renseigné',
     'scut_sticker_editor_title': 'Modifier ton Scut',
     'scut_sticker_editor_done': 'Terminer',
     'scut_sticker_add': 'Ajouter un sticker',
@@ -25,6 +26,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'BD Afrique',
   },
   'en': {
+    'event_price_not_specified': 'Price not specified',
     'scut_sticker_editor_title': 'Edit your Scut',
     'scut_sticker_editor_done': 'Done',
     'scut_sticker_add': 'Add a sticker',
@@ -43,6 +45,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'African comics',
   },
   'es': {
+    'event_price_not_specified': 'Precio no especificado',
     'scut_sticker_editor_title': 'Editar tu Scut',
     'scut_sticker_editor_done': 'Terminar',
     'scut_sticker_add': 'Añadir un sticker',
@@ -61,6 +64,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'Cómics africanos',
   },
   'de': {
+    'event_price_not_specified': 'Preis nicht angegeben',
     'scut_sticker_editor_title': 'Deinen Scut bearbeiten',
     'scut_sticker_editor_done': 'Fertig',
     'scut_sticker_add': 'Sticker hinzufügen',
@@ -79,6 +83,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'Afrikanische Comics',
   },
   'it': {
+    'event_price_not_specified': 'Prezzo non specificato',
     'scut_sticker_editor_title': 'Modifica il tuo Scut',
     'scut_sticker_editor_done': 'Fine',
     'scut_sticker_add': 'Aggiungi uno sticker',
@@ -97,6 +102,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'Fumetti africani',
   },
   'pt': {
+    'event_price_not_specified': 'Preço não informado',
     'scut_sticker_editor_title': 'Editar seu Scut',
     'scut_sticker_editor_done': 'Concluir',
     'scut_sticker_add': 'Adicionar figurinha',
@@ -115,6 +121,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'Quadrinhos africanos',
   },
   'zh': {
+    'event_price_not_specified': '未注明价格',
     'scut_sticker_editor_title': '编辑你的 Scut',
     'scut_sticker_editor_done': '完成',
     'scut_sticker_add': '添加贴纸',
@@ -133,6 +140,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': '非洲漫画',
   },
   'ja': {
+    'event_price_not_specified': '料金未設定',
     'scut_sticker_editor_title': 'Scutを編集',
     'scut_sticker_editor_done': '完了',
     'scut_sticker_add': 'ステッカーを追加',
@@ -151,6 +159,7 @@ const Map<String, Map<String, String>> _scutStickerTranslations = {
     'scut_sticker_category_africa_comics': 'アフリカの漫画',
   },
   'ru': {
+    'event_price_not_specified': 'Цена не указана',
     'scut_sticker_editor_title': 'Редактировать Scut',
     'scut_sticker_editor_done': 'Готово',
     'scut_sticker_add': 'Добавить стикер',
