@@ -36,6 +36,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   int? _draggingStickerIndex;
   Offset? _lastStickerGlobalPosition;
   final GlobalKey _stickerTrashKey = GlobalKey();
+  double _stickerGestureStartSize = .18;
+  double _stickerGestureStartRotation = 0;
 
   bool _isStickerOverTrash(Offset position) {
     final renderObject = _stickerTrashKey.currentContext?.findRenderObject();
@@ -394,22 +396,26 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 left: sticker.x * size.width - 28,
                 top: sticker.y * size.height - 28,
                 child: GestureDetector(
-                  onPanStart: (details) {
+                  onScaleStart: (details) {
+                    _stickerGestureStartSize = sticker.size;
+                    _stickerGestureStartRotation = sticker.rotation;
                     setState(() {
                       _draggingStickerIndex = entry.key;
-                      _lastStickerGlobalPosition = details.globalPosition;
+                      _lastStickerGlobalPosition = details.focalPoint;
                     });
                   },
-                  onPanUpdate: (details) {
-                    _lastStickerGlobalPosition = details.globalPosition;
+                  onScaleUpdate: (details) {
+                    _lastStickerGlobalPosition = details.focalPoint;
                     setState(() {
-                      _stickers[entry.key] = sticker.copyWith(
-                        x: (sticker.x + details.delta.dx / size.width).clamp(.02, .98),
-                        y: (sticker.y + details.delta.dy / size.height).clamp(.02, .98),
+                      _stickers[entry.key] = _stickers[entry.key].copyWith(
+                        x: (_stickers[entry.key].x + details.focalPointDelta.dx / size.width).clamp(.02, .98).toDouble(),
+                        y: (_stickers[entry.key].y + details.focalPointDelta.dy / size.height).clamp(.02, .98).toDouble(),
+                        size: (_stickerGestureStartSize * details.scale).clamp(.06, .65).toDouble(),
+                        rotation: _stickerGestureStartRotation + details.rotation,
                       );
                     });
                   },
-                  onPanEnd: (details) => _endCameraStickerDrag(entry.key, details.globalPosition),
+                  onScaleEnd: (details) => _endCameraStickerDrag(entry.key, _lastStickerGlobalPosition ?? Offset.zero),
                   child: Transform.rotate(
                     angle: sticker.rotation,
                     child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
