@@ -53,7 +53,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     _ScutBeautyFilter('Vintage', Icons.photo_camera_back_outlined, <double>[
       0.90, 0.08, 0.02, 0, 12, 0.04, 0.88, 0.04, 0, 8, 0.02, 0.06, 0.78, 0, 2, 0, 0, 0, 1, 0,
     ]),
-    _ScutBeautyFilter('N&B', Icons monochrome_photos, <double>[
+    _ScutBeautyFilter('N&B', Icons.monochrome_photos, <double>[
       0.2126, 0.7152, 0.0722, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0, 0, 0, 0, 1, 0,
     ]),
     _ScutBeautyFilter('Pastel', Icons.palette_outlined, <double>[
