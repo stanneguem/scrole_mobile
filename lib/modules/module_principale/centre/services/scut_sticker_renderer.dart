@@ -79,7 +79,8 @@ class ScutStickerRenderer {
         canvas.drawImage(image, Offset.zero, Paint());
         for (final sticker in stickers) {
           if (current.pts.inMilliseconds < sticker.startMs) continue;
-          final fontSize = reader.info.width * sticker.size;
+          final fontSize = reader.info.width * sticker.size *
+              (sticker.emoji.length > 3 ? .22 : 1);
           final painter = TextPainter(
             text: TextSpan(
               text: sticker.emoji,
