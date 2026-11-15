@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
+import 'package:scrole/shared/utils/number_formatter.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import '../../../module_discussion_direct/externe/repositories/social_repository.dart';
 import '../controllers/profile_controller.dart';
@@ -199,7 +200,7 @@ class _ProfileShareCard extends StatelessWidget {
               Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 14), color: Colors.white.withValues(alpha: .3)),
               _ProfileMetric(value: profile.followingCount.value.toString(), label: 'share_profile_following'.tr),
               Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 14), color: Colors.white.withValues(alpha: .3)),
-              _ProfileMetric(value: profile.reputation.value.toStringAsFixed(1), label: 'share_profile_reputation'.tr),
+              _ProfileMetric(value: NumberFormatter.formatCount(profile.totalLikesReceived.value), label: 'profile_stat_likes'.tr),
             ],
           ),
           const SizedBox(height: 24),
