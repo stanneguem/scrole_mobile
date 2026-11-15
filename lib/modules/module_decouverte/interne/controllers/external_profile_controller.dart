@@ -34,6 +34,7 @@ class ExternalProfileController extends GetxController {
   final RxMap<int, List<Map<String, dynamic>>> profileTabItems = <int, List<Map<String, dynamic>>>{}.obs;
   final RxSet<int> loadingProfileTabs = <int>{}.obs;
   final RxSet<int> loadedProfileTabs = <int>{}.obs;
+  final RxMap<int, bool> hasMoreProfileTabs = <int, bool>{}.obs;
   final RxMap<int, String> profileTabErrors = <int, String>{}.obs;
   late final String userId;
   RealtimeChannel? _relationshipChannel;
@@ -102,7 +103,9 @@ class ExternalProfileController extends GetxController {
 
   Future<void> selectProfileTab(int index) async {
     selectedTab.value = index;
-    await loadProfileTab(index, forceRefresh: true);
+    if (!loadedProfileTabs.contains(index)) {
+      await loadProfileTab(index);
+    }
   }
 
   Future<void> loadProfileTab(int index, {bool forceRefresh = false}) async {
@@ -111,24 +114,51 @@ class ExternalProfileController extends GetxController {
       profileTabItems.remove(index);
       profileTabErrors.remove(index);
       loadedProfileTabs.add(index);
+      hasMoreProfileTabs[index] = false;
       return;
     }
-    if (!forceRefresh && loadedProfileTabs.contains(index)) return;
+    final isPagedPostsTab = index == 0 || index == 2;
+    if (!forceRefresh && loadedProfileTabs.contains(index) &&
+        !isPagedPostsTab) return;
+    if (!forceRefresh && isPagedPostsTab &&
+        hasMoreProfileTabs[index] == false) return;
+
+    final tab = _profileTabRpcName(index);
+    final currentItems = profileTabItems[index] ?? const <Map<String, dynamic>>[];
+    final pageSize = isPagedPostsTab ? 20 : 60;
+    final offset = forceRefresh ? 0 : currentItems.length;
 
     loadingProfileTabs.add(index);
     profileTabErrors.remove(index);
+    if (forceRefresh) {
+      hasMoreProfileTabs[index] = true;
+      profileTabItems[index] = <Map<String, dynamic>>[];
+      loadedProfileTabs.remove(index);
+    }
     try {
       final items = await _repository.fetchProfileTab(
         userId: userId,
-        tab: _profileTabRpcName(index),
-        limit: 24,
-        offset: 0,
+        tab: tab,
+        limit: pageSize,
+        offset: offset,
       );
-      profileTabItems[index] = items;
+      if (isPagedPostsTab) {
+        hasMoreProfileTabs[index] = items.length == pageSize;
+      }
+      if (forceRefresh) {
+        profileTabItems[index] = items;
+      } else {
+        final current = profileTabItems[index] ?? <Map<String, dynamic>>[];
+        final knownIds = current.map((item) => item['id']?.toString()).toSet();
+        profileTabItems[index] = [
+          ...current,
+          ...items.where((item) => knownIds.add(item['id']?.toString())),
+        ];
+      }
       final viewerId = Supabase.instance.client.auth.currentUser?.id ?? 'anonymous';
       await _profileCache?.set(
-        FastCacheKey.externalProfileTab(viewerId, userId, _profileTabRpcName(index)),
-        items,
+        FastCacheKey.externalProfileTab(viewerId, userId, tab),
+        profileTabItems[index] ?? <Map<String, dynamic>>[],
       );
       loadedProfileTabs.add(index);
     } catch (e, stack) {
@@ -137,6 +167,14 @@ class ExternalProfileController extends GetxController {
     } finally {
       loadingProfileTabs.remove(index);
     }
+  }
+
+  Future<void> loadMoreProfileTab(int index) async {
+    if ((index != 0 && index != 2) ||
+        loadingProfileTabs.contains(index) ||
+        hasMoreProfileTabs[index] == false ||
+        !loadedProfileTabs.contains(index)) return;
+    await loadProfileTab(index);
   }
 
   void _subscribeToRelationshipChanges() {
