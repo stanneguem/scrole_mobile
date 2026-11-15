@@ -35,6 +35,29 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
   int _activeIndex = -1;
   double _gestureStartSize = .18;
   double _gestureStartRotation = 0;
+  bool _isDraggingSticker = false;
+  Offset? _lastStickerGlobalPosition;
+  final GlobalKey _trashKey = GlobalKey();
+
+  bool _isOverTrash(Offset position) {
+    final renderObject = _trashKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox) return false;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    return rect.inflate(18).contains(position);
+  }
+
+  void _finishStickerDrag(int index) {
+    final position = _lastStickerGlobalPosition;
+    final shouldDelete = position != null && _isOverTrash(position);
+    setState(() {
+      if (shouldDelete && index >= 0 && index < _items.length) {
+        _items.removeAt(index);
+        _activeIndex = -1;
+      }
+      _isDraggingSticker = false;
+      _lastStickerGlobalPosition = null;
+    });
+  }
 
   @override
   void initState() {
@@ -218,6 +241,25 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                                             style: TextStyle(fontSize: area.width * _items[i].size),
                                           ),
                                         ),
+                                      ),
+                                    ),
+                                  ),
+                                if (_isDraggingSticker)
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 22,
+                                    child: Center(
+                                      child: Container(
+                                        key: _trashKey,
+                                        width: 62,
+                                        height: 62,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.92),
+                                          shape: BoxShape.circle,
+                                          boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 14)],
+                                        ),
+                                        child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 30),
                                       ),
                                     ),
                                   ),
