@@ -106,7 +106,7 @@ class EventBottomSheet extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 event.price == null
-                                    ? 'Prix non renseigné'
+                                    ? 'event_price_not_specified'.tr
                                     : '${event.price!.toStringAsFixed(2)} ${event.currency}',
                                 style: AppTextStyles.labelSmall.copyWith(
                                   color: event.price == null
