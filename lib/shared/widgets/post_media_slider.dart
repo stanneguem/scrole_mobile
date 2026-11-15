@@ -462,6 +462,10 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
   Duration _accumulatedPlayback = Duration.zero;
   bool _qualifiedViewSent = false;
   bool _sequentialCompletionSent = false;
+  // Non-sequential feed videos play once, then repeat at most twice.
+  int _repeatCount = 0;
+  bool _restartingAfterCompletion = false;
+  bool _playbackEnded = false;
 
   @override
   void initState() {
@@ -519,7 +523,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         await controller.dispose();
         return;
       }
-      await controller.setLooping(!widget.sequentialPlayback);
+      // Handle repetitions ourselves: native infinite looping would never stop.
+      await controller.setLooping(false);
       // Feed autoplay starts with sound enabled. The in-card control lets
       // the viewer mute/unmute without opening the fullscreen player.
       await controller.setVolume(_isMuted ? 0 : 1);
@@ -559,9 +564,54 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         value.isCompleted && !_sequentialCompletionSent) {
       _sequentialCompletionSent = true;
       unawaited(_finishSequentialVideo());
+    } else if (!widget.sequentialPlayback && value.isCompleted &&
+        !_restartingAfterCompletion && !_playbackEnded) {
+      if (_repeatCount < 2) {
+        _repeatCount++;
+        unawaited(_repeatInlineVideo(controller));
+      } else {
+        // Initial playback + two repetitions: stop and wait for a tap.
+        _playbackEnded = true;
+        if (mounted) setState(() {});
+      }
     }
     _lastPlaybackPosition = position;
     _updatePlaybackOverlayOpacity();
+  }
+
+  Future<void> _repeatInlineVideo(VideoPlayerController controller) async {
+    _restartingAfterCompletion = true;
+    try {
+      await controller.seekTo(Duration.zero);
+      if (!mounted || !identical(_controller, controller) || !_visible || !_cardEligible) return;
+      await controller.play();
+    } catch (error) {
+      debugPrint('[POST_MEDIA] inline video repeat failed: $error');
+      if (mounted) {
+        _playbackEnded = true;
+        setState(() {});
+      }
+    } finally {
+      _restartingAfterCompletion = false;
+    }
+  }
+
+  Future<void> _replayInlineVideo() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    _repeatCount = 0;
+    _playbackEnded = false;
+    _restartingAfterCompletion = true;
+    try {
+      await controller.seekTo(Duration.zero);
+      await controller.play();
+    } catch (error) {
+      debugPrint('[POST_MEDIA] inline video replay failed: $error');
+      _playbackEnded = true;
+    } finally {
+      _restartingAfterCompletion = false;
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _finishSequentialVideo() async {
@@ -677,6 +727,10 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       onVisibilityChanged: _onVisibilityChanged,
       child: GestureDetector(
         onTap: () {
+          if (_playbackEnded) {
+            unawaited(_replayInlineVideo());
+            return;
+          }
           _controller?.pause();
           if (widget.onOpenVideoReel != null) {
             widget.onOpenVideoReel!();
