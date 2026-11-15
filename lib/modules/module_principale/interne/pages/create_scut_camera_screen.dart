@@ -55,11 +55,12 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
 
   Future<void> _previewReady() async {
     try {
-      await _sdk.prepareBeautyFilters();
+      final prepared = await _sdk.prepareBeautyFilters();
+      if (!prepared) throw StateError('Le moteur beauté n’a pas pu être préparé.');
       if (!mounted) return;
       setState(() { _ready = true; _error = null; });
       await _presetApply(1, toast: false);
-    } catch (e) { if (mounted) setState(() { _ready = true; _error = 'Préparation des filtres impossible : ' + e.toString(); }); }
+    } catch (e) { if (mounted) { setState(() => _ready = true); _showError('Filtres beauté indisponibles', e); } }
   }
 
   void _previewError(String e) { if (mounted) setState(() { _ready = false; _error = e; }); }
