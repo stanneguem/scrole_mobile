@@ -190,6 +190,11 @@ class ScroleTranslations extends Translations {
       merged[entry.key]!.addAll(entry.value);
     }
 
+    for (final entry in _scutStickerTranslations.entries) {
+      merged.putIfAbsent(entry.key, () => <String, String>{});
+      merged[entry.key]!.addAll(entry.value);
+    }
+
     _cachedKeys = merged;
     return _cachedKeys!;
   }
