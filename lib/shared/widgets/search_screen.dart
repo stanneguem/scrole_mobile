@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../modules/module_principale/centre/models/community_post.dart';
+import '../../modules/module_principale/interne/controllers/home_feed_controller.dart';
 import '../controllers/search_controller.dart';
 import '../widgets/app_cached_image.dart';
 import '../widgets/user_certified_badge.dart';
@@ -9,6 +11,7 @@ import '../../app/theme/text_styles.dart';
 import '../../app/routes/app_pages.dart';
 import '../../modules/module_decouverte/interne/widgets/account_list_tile.dart';
 import 'relation_button_widget.dart';
+import 'profile_post_detail_screen.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -19,6 +22,12 @@ class SearchScreen extends StatelessWidget {
       Get.put(AppSearchController());
     }
     final controller = Get.find<AppSearchController>();
+    // Search is opened from the main app bar, where the cache-first home feed
+    // is already available. Reuse its organic posts for the default Discover grid.
+    if (!Get.isRegistered<HomeFeedController>()) {
+      Get.put(HomeFeedController(), permanent: true);
+    }
+    final discoverFeed = Get.find<HomeFeedController>();
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -91,7 +100,7 @@ class SearchScreen extends StatelessWidget {
         children: [
           // --- Instagram-style Tabs ---
           Obx(() {
-            if (controller.state.value == SearchState.initial && controller.recentSearches.isEmpty) {
+            if (controller.state.value == SearchState.initial) {
               return const SizedBox.shrink();
             }
             return Container(
@@ -150,78 +159,7 @@ class SearchScreen extends StatelessWidget {
 
               switch (state) {
                 case SearchState.initial:
-                  final recent = controller.recentSearches;
-                  if (recent.isEmpty && controller.suggestedProfiles.isEmpty && !controller.isLoadingSuggestions.value) {
-                    return Center(
-                      child: Text(
-                        'no_recent_searches'.tr,
-                        style: AppTextStyles.body.copyWith(color: colorScheme.onSurfaceVariant),
-                      ),
-                    );
-                  }
-                  return ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    children: [
-                      if (recent.isNotEmpty) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'recent_searches'.tr,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: controller.clearHistory,
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                              child: Text('clear_history'.tr, style: TextStyle(color: colorScheme.error, fontSize: 13, fontWeight: FontWeight.w600)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ...recent.map((q) => Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(Icons.history_rounded, size: 18, color: colorScheme.onSurfaceVariant),
-                            ),
-                            title: Text(q, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w500, fontSize: 14.5)),
-                            trailing: Icon(Icons.north_west_rounded, size: 16, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-                            onTap: () => controller.selectRecentSearch(q),
-                          ),
-                        )),
-                      ],
-                      if (controller.suggestedProfiles.isNotEmpty) ...[
-                        const SizedBox(height: 18),
-                        Text(
-                          'suggested_profiles_title'.tr,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: colorScheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 8),
-                        ...controller.suggestedProfiles.map((account) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: AccountListTile(
-                            account: account,
-                            onTap: () => Get.toNamed(AppPages.externalProfilePath(account.id)),
-                          ),
-                        )),
-                      ],
-                      if (controller.isLoadingSuggestions.value && controller.suggestedProfiles.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                    ],
-                  );
+                  return _DiscoverPostsGrid(controller: discoverFeed);
 
                 case SearchState.loading:
                   return Center(
@@ -300,6 +238,218 @@ class SearchScreen extends StatelessWidget {
             }),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// Pinterest-style media discovery grid shown before the user starts searching.
+/// The grid reuses the same post objects and detail screen as profile posts.
+class _DiscoverPostsGrid extends StatefulWidget {
+  final HomeFeedController controller;
+
+  const _DiscoverPostsGrid({required this.controller});
+
+  @override
+  State<_DiscoverPostsGrid> createState() => _DiscoverPostsGridState();
+}
+
+class _DiscoverPostsGridState extends State<_DiscoverPostsGrid> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.extentAfter < 700 &&
+        widget.controller.hasMore.value &&
+        !widget.controller.isLoadingMore.value) {
+      widget.controller.loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Obx(() {
+      final posts = widget.controller.posts
+          .where((post) => !post.isPublishing && post.media.isNotEmpty)
+          .toList(growable: false);
+
+      if (posts.isEmpty &&
+          (widget.controller.state.value == HomeFeedState.loading ||
+              widget.controller.state.value == HomeFeedState.initial)) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (posts.isEmpty) {
+        return RefreshIndicator(
+          onRefresh: () => widget.controller.fetchFeed(refresh: true),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.55,
+                child: Center(
+                  child: Text(
+                    'Aucune publication à découvrir pour le moment.',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final leftColumn = <Widget>[];
+      final rightColumn = <Widget>[];
+      for (var index = 0; index < posts.length; index++) {
+        final tile = _DiscoverPostTile(post: posts[index], index: index);
+        (index.isEven ? leftColumn : rightColumn).add(tile);
+      }
+
+      return RefreshIndicator(
+        onRefresh: () => widget.controller.fetchFeed(refresh: true),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 100),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Column(children: leftColumn)),
+              const SizedBox(width: 8),
+              Expanded(child: Column(children: rightColumn)),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _DiscoverPostTile extends StatelessWidget {
+  final CommunityPost post;
+  final int index;
+
+  const _DiscoverPostTile({required this.post, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final media = post.media.first;
+    final imageUrl = media.isVideo
+        ? (media.thumbnailUrl?.trim().isNotEmpty == true
+            ? media.thumbnailUrl!
+            : media.url)
+        : media.url;
+    final tileHeight = 178.0 + ((index * 37) % 91).toDouble();
+    final caption = post.content.trim();
+
+    return GestureDetector(
+      onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
+      child: Container(
+        height: tileHeight,
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(13),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (imageUrl.trim().isNotEmpty)
+              AppCachedImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                progressive: true,
+                lowResolutionWidth: 480,
+                highResolutionWidth: 720,
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    caption.isEmpty ? 'Scrole' : caption,
+                    maxLines: 7,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: colors.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            if (caption.isNotEmpty && imageUrl.trim().isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 28, 10, 10),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xB8000000)],
+                    ),
+                  ),
+                  child: Text(
+                    caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+              ),
+            if (media.isVideo)
+              const Positioned(
+                top: 8,
+                right: 8,
+                child: Icon(
+                  Icons.play_circle_fill_rounded,
+                  color: Colors.white,
+                  size: 23,
+                  shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
+                ),
+              ),
+            if (post.media.length > 1)
+              const Positioned(
+                top: 8,
+                left: 8,
+                child: Icon(
+                  Icons.collections_rounded,
+                  color: Colors.white,
+                  size: 20,
+                  shadows: [Shadow(blurRadius: 6, color: Colors.black54)],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
