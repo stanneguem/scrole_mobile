@@ -55,43 +55,8 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
   final Map<int, double> _mediaAspectRatios = {};
   int _ratioLoadGeneration = 0;
 
-  // Load intrinsic dimensions from photos and video thumbnails. The feed
-  // uses one shared viewport ratio for a carousel, so swiping never changes
-  // the card height.
-  void _loadMediaAspectRatios() {
-    final generation = ++_ratioLoadGeneration;
-    _mediaAspectRatios.clear();
-
-    for (var index = 0; index < widget.media.length; index++) {
-      final media = widget.media[index];
-      // A video URL is not an image stream. Use its poster only; when no
-      // poster exists, the conservative video fallback ratio is used below.
-      if (media.isVideo &&
-          (media.thumbnailUrl == null || media.thumbnailUrl!.trim().isEmpty)) {
-        continue;
-      }
-      final source = media.isVideo ? media.thumbnailUrl! : media.url;
-      if (source.trim().isEmpty) continue;
-
-      final provider = NetworkImage(source);
-      final stream = provider.resolve(ImageConfiguration.empty);
-      late final ImageStreamListener listener;
-      listener = ImageStreamListener(
-        (ImageInfo info, bool synchronousCall) {
-          stream.removeListener(listener);
-          final ratio = info.image.width / info.image.height;
-          info.dispose();
-          if (!mounted || generation != _ratioLoadGeneration ||
-              !ratio.isFinite || ratio <= 0) return;
-          setState(() => _mediaAspectRatios[index] = ratio);
-        },
-        onError: (Object error, StackTrace? stackTrace) {
-          stream.removeListener(listener);
-        },
-      );
-      stream.addListener(listener);
-    }
-  }
+  // Avoid fetching every carousel image a second time just to inspect
+  // intrinsic dimensions. The media viewport uses its stable fallback ratio.
 
   double _getSharedAspectRatio() {
     if (widget.media.isEmpty) return 1;
@@ -244,6 +209,11 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                           width: tileWidth,
                           height: tileHeight,
                           fit: BoxFit.cover,
+                          // Request one feed-sized Supabase rendition. URLs
+                          // from other providers remain unchanged.
+                          progressive: true,
+                          lowResolutionWidth: 720,
+                          highResolutionWidth: 720,
                         ),
                       ),
                     );
@@ -756,9 +726,11 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,
+              // A single 720px rendition avoids fetching both a small
+              // preview and a larger/original thumbnail at once.
               progressive: true,
-              lowResolutionWidth: 400,
-              highResolutionWidth: 1080,
+              lowResolutionWidth: 720,
+              highResolutionWidth: 720,
             )
           else
             const ColoredBox(color: Colors.black),
