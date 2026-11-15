@@ -208,7 +208,7 @@ class R2MediaRepository {
       ..contentLength = bytes.length;
 
     Stream<List<int>> uploadChunks() async* {
-      const chunkSize = 64 * 1024;
+      const chunkSize = 256 * 1024;
       var sentBytes = 0;
       while (sentBytes < bytes.length) {
         final end = (sentBytes + chunkSize).clamp(0, bytes.length).toInt();
