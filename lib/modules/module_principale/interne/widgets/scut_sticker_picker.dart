@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 /// Sélecteur commun d'emojis et de stickers intégrés pour la création de Scut.
 class ScutStickerPicker {
@@ -82,6 +83,14 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
   int _tab = 0;
   String _stickerCategory = 'Pop';
 
+  static const Map<String, String> _categoryTranslationKeys = {
+    'Pop': 'scut_sticker_category_pop',
+    'Naruto': 'scut_sticker_category_naruto',
+    'One Piece': 'scut_sticker_category_one_piece',
+    'Anime': 'scut_sticker_category_anime',
+    'BD Afrique': 'scut_sticker_category_africa_comics',
+  };
+
   @override
   Widget build(BuildContext context) {
     final items = _tab == 0
@@ -130,8 +139,8 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
                 ),
                 child: Row(
                   children: [
-                    _tabButton('Émojis', 0, Icons.emoji_emotions_outlined),
-                    _tabButton('Stickers', 1, Icons.auto_awesome_outlined),
+                    _tabButton('scut_sticker_tab_emojis'.tr, 0, Icons.emoji_emotions_outlined),
+                    _tabButton('scut_sticker_tab_stickers'.tr, 1, Icons.auto_awesome_outlined),
                   ],
                 ),
               ),
@@ -146,7 +155,7 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
-                          label: Text(category),
+                          label: Text((_categoryTranslationKeys[category] ?? category).tr),
                           selected: selected,
                           onSelected: (_) => setState(() => _stickerCategory = category),
                           backgroundColor: Colors.white.withValues(alpha: .06),
