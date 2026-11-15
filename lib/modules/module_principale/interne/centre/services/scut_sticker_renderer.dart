@@ -46,6 +46,15 @@ class ScutSticker {
   }
 }
 
+class _RasterSticker {
+  const _RasterSticker(this.sticker, this.image);
+
+  final ScutSticker sticker;
+  final ui.Image image;
+
+  void dispose() => image.dispose();
+}
+
 /// Incruste les stickers sur chaque frame et conserve la piste audio compatible.
 class ScutStickerRenderer {
   static Future<File> render(
@@ -62,11 +71,21 @@ class ScutStickerRenderer {
     final reader = await VideoReader.open(source.path, maxDimension: 1920);
     VideoWriter? writer;
     var writerFinished = false;
+    final rasterStickers = <_RasterSticker>[];
     try {
       final info = reader.info;
       final maxDuration = duration == null || duration > info.duration
           ? info.duration
           : duration;
+
+      // Les textes, ombres et glyphes sont dessinés une seule fois, pas 28 à 30
+      // fois par seconde. La boucle vidéo ne fait ensuite que composer des images.
+      for (final sticker in stickers) {
+        rasterStickers.add(
+          await _rasterizeSticker(sticker, info.width),
+        );
+      }
+
       final temp = await getTemporaryDirectory();
       final outputPath = p.join(
         temp.path,
@@ -87,7 +106,7 @@ class ScutStickerRenderer {
         final frame = await reader.nextFrame();
         if (frame == null || frame.pts > maxDuration) break;
 
-        final renderedRgba = await _drawStickers(frame, stickers);
+        final renderedRgba = await _drawStickers(frame, rasterStickers);
         await writer.addFrame(renderedRgba, frame.pts);
         writtenFrames++;
         if (totalFrames > 0) {
@@ -115,13 +134,55 @@ class ScutStickerRenderer {
       }
       rethrow;
     } finally {
+      for (final sticker in rasterStickers) {
+        sticker.dispose();
+      }
       await reader.close();
+    }
+  }
+
+  static Future<_RasterSticker> _rasterizeSticker(
+    ScutSticker sticker,
+    int videoWidth,
+  ) async {
+    final fontSize = videoWidth * sticker.size *
+        (sticker.emoji.length > 3 ? .22 : 1);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: sticker.emoji,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w900,
+          height: 1,
+          shadows: const [
+            Shadow(color: Colors.black87, blurRadius: 7, offset: Offset(0, 2)),
+            Shadow(color: Colors.black54, blurRadius: 2),
+          ],
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout(maxWidth: videoWidth.toDouble());
+
+    final width = painter.width.ceil().clamp(1, videoWidth);
+    final height = painter.height.ceil().clamp(1, videoWidth);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    painter.paint(canvas, Offset.zero);
+    final picture = recorder.endRecording();
+    try {
+      final image = await picture.toImage(width, height);
+      return _RasterSticker(sticker, image);
+    } finally {
+      painter.dispose();
+      picture.dispose();
     }
   }
 
   static Future<Uint8List> _drawStickers(
     VideoFrame frame,
-    List<ScutSticker> stickers,
+    List<_RasterSticker> stickers,
   ) async {
     final sourceImage = await _imageFromRgba(
       frame.rgba,
@@ -130,62 +191,51 @@ class ScutStickerRenderer {
     );
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    final bounds = Rect.fromLTWH(
-      0,
-      0,
-      frame.width.toDouble(),
-      frame.height.toDouble(),
-    );
     canvas.drawImage(sourceImage, Offset.zero, Paint());
 
-    for (final sticker in stickers) {
+    for (final raster in stickers) {
+      final sticker = raster.sticker;
       if (frame.pts.inMilliseconds < sticker.startMs) continue;
-
-      final fontSize = frame.width * sticker.size *
-          (sticker.emoji.length > 3 ? .22 : 1);
-      final painter = TextPainter(
-        text: TextSpan(
-          text: sticker.emoji,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            height: 1,
-            shadows: const [
-              Shadow(color: Colors.black87, blurRadius: 7, offset: Offset(0, 2)),
-              Shadow(color: Colors.black54, blurRadius: 2),
-            ],
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        maxLines: 1,
-      )..layout(maxWidth: frame.width.toDouble());
 
       final center = Offset(
         sticker.x.clamp(0.0, 1.0).toDouble() * frame.width,
         sticker.y.clamp(0.0, 1.0).toDouble() * frame.height,
       );
+      final image = raster.image;
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(sticker.rotation);
-      painter.paint(
-        canvas,
-        Offset(-painter.width / 2, -painter.height / 2),
+      canvas.drawImage(
+        image,
+        Offset(-image.width / 2, -image.height / 2),
+        Paint()..filterQuality = FilterQuality.high,
       );
       canvas.restore();
-      painter.dispose();
     }
 
     final picture = recorder.endRecording();
-    final outputImage = await picture.toImage(frame.width, frame.height);
-    final data = await outputImage.toByteData(format: ui.ImageByteFormat.rawRgba);
-    sourceImage.dispose();
-    outputImage.dispose();
-    picture.dispose();
-    if (data == null) {
-      throw const FormatException('Impossible de convertir une image avec ses stickers.');
+    try {
+      final outputImage = await picture.toImage(frame.width, frame.height);
+      try {
+        final data = await outputImage.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        if (data == null) {
+          throw const FormatException(
+            'Impossible de convertir une image avec ses stickers.',
+          );
+        }
+        return data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        );
+      } finally {
+        outputImage.dispose();
+      }
+    } finally {
+      sourceImage.dispose();
+      picture.dispose();
     }
-    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
   }
 
   static Future<ui.Image> _imageFromRgba(
