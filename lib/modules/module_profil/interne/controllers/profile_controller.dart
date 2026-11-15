@@ -73,6 +73,7 @@ class ProfileController extends GetxController {
   final RxList<CommunityPost> savedPosts = <CommunityPost>[].obs;
   final RxSet<int> loadingProfileTabs = <int>{}.obs;
   final RxSet<int> loadedProfileTabs = <int>{}.obs;
+  final RxMap<int, bool> hasMoreProfileTabs = <int, bool>{}.obs;
   final RxMap<int, String> profileTabErrors = <int, String>{}.obs;
 
   // ============================================
@@ -137,52 +138,91 @@ class ProfileController extends GetxController {
 
   Future<void> selectProfileTab(int index) async {
     selectedTab.value = index;
-    await _loadProfileTab(index, forceRefresh: true);
+    if (!loadedProfileTabs.contains(index)) {
+      await _loadProfileTab(index);
+    }
   }
 
   Future<void> _loadProfileTab(int index, {bool forceRefresh = false}) async {
     final uid = userId.value;
     if (uid.isEmpty || loadingProfileTabs.contains(index)) return;
-    if (!forceRefresh && loadedProfileTabs.contains(index)) return;
+    if (!forceRefresh && loadedProfileTabs.contains(index) &&
+        index != 0 && index != 2) return;
+    if (!forceRefresh && (index == 0 || index == 2) &&
+        hasMoreProfileTabs[index] == false) return;
+
+    final isPagedPostsTab = index == 0 || index == 2;
+    final tab = switch (index) {
+      0 => 'posts',
+      1 => 'events',
+      2 => 'liked',
+      _ => throw ArgumentError.value(index, 'index', 'Onglet de profil invalide'),
+    };
+    final pageSize = isPagedPostsTab ? 20 : 60;
+    final currentCount = index == 0
+        ? userPosts.length
+        : index == 2
+            ? savedPosts.length
+            : userEvents.length;
+    final offset = forceRefresh ? 0 : currentCount;
 
     loadingProfileTabs.add(index);
     profileTabErrors.remove(index);
+    if (forceRefresh) {
+      hasMoreProfileTabs[index] = true;
+      if (index == 0) userPosts.clear();
+      if (index == 2) savedPosts.clear();
+      if (index == 1) userEvents.clear();
+      loadedProfileTabs.remove(index);
+    }
     try {
-      final tab = switch (index) {
-        0 => 'posts',
-        1 => 'events',
-        2 => 'liked',
-        _ => throw ArgumentError.value(index, 'index', 'Onglet de profil invalide'),
-      };
       final response = index == 1
           ? await Supabase.instance.client.rpc(
               'get_profile_attended_event_series',
-              params: {'p_user_id': uid, 'p_limit': 60, 'p_offset': 0},
+              params: {'p_user_id': uid, 'p_limit': pageSize, 'p_offset': offset},
             )
           : await Supabase.instance.client.rpc(
               'get_external_profile_tab',
               params: {
                 'p_user_id': uid,
                 'p_tab': tab,
-                'p_limit': 24,
-                'p_offset': 0,
+                'p_limit': pageSize,
+                'p_offset': offset,
               },
             );
       final rows = response is List
           ? response.whereType<Map>().map((row) => Map<String, dynamic>.from(row)).toList()
           : <Map<String, dynamic>>[];
 
-      await _profileCache?.set(FastCacheKey.profileTab(uid, tab), rows);
-
+      if (isPagedPostsTab) {
+        hasMoreProfileTabs[index] = rows.length == pageSize;
+      }
       if (index == 0) {
-        // Sur le profil personnel, afficher toutes les publications de l'utilisateur,
-        // y compris celles publiées dans ses communautés.
-        userPosts.assignAll(rows.map(CommunityPost.fromMap));
+        final page = rows.map(CommunityPost.fromMap).toList();
+        if (forceRefresh) {
+          userPosts.assignAll(page);
+        } else {
+          final knownIds = userPosts.map((post) => post.id).toSet();
+          userPosts.addAll(page.where((post) => knownIds.add(post.id)));
+        }
       } else if (index == 2) {
-        savedPosts.assignAll(rows.map(CommunityPost.fromMap));
+        final page = rows.map(CommunityPost.fromMap).toList();
+        if (forceRefresh) {
+          savedPosts.assignAll(page);
+        } else {
+          final knownIds = savedPosts.map((post) => post.id).toSet();
+          savedPosts.addAll(page.where((post) => knownIds.add(post.id)));
+        }
       } else {
         userEvents.assignAll(rows);
       }
+
+      final cachedRows = index == 0
+          ? userPosts.map((post) => post.toMap()).toList()
+          : index == 2
+              ? savedPosts.map((post) => post.toMap()).toList()
+              : rows;
+      await _profileCache?.set(FastCacheKey.profileTab(uid, tab), cachedRows);
       loadedProfileTabs.add(index);
     } catch (e, stack) {
       debugPrint('[ProfileController] _loadProfileTab($index) failed: $e\\n$stack');
@@ -192,7 +232,16 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> refreshProfileTab(int index) => _loadProfileTab(index, forceRefresh: true);
+  Future<void> loadMoreProfileTab(int index) async {
+    if ((index != 0 && index != 2) ||
+        loadingProfileTabs.contains(index) ||
+        hasMoreProfileTabs[index] == false ||
+        !loadedProfileTabs.contains(index)) return;
+    await _loadProfileTab(index);
+  }
+
+  Future<void> refreshProfileTab(int index) =>
+      _loadProfileTab(index, forceRefresh: true);
 
   void _subscribeToRelationshipChanges() {
     final uid = Supabase.instance.client.auth.currentUser?.id;
