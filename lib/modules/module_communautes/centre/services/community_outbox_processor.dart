@@ -25,6 +25,7 @@ class CommunityOutboxProcessor extends GetxService {
   final RxBool isProcessing = false.obs;
   final RxBool isPublishingPost = false.obs;
   final RxDouble postPublishingProgress = 0.0.obs;
+  final RxString publishingCommunityId = ''.obs;
   bool _isProcessingPosts = false;
   static const int _maxPostAttempts = 5;
   Timer? _pollingTimer;
@@ -307,6 +308,8 @@ class CommunityOutboxProcessor extends GetxService {
         postPublishingProgress.value = 0.04;
       }
       for (final item in pendingList) {
+        final communityId = item['community_id']?.toString() ?? '';
+        publishingCommunityId.value = communityId;
         postPublishingProgress.value = 0.04;
         final id = (item['id'] as num).toInt();
         final operationId = item['operation_id'].toString();
@@ -804,6 +807,7 @@ class CommunityOutboxProcessor extends GetxService {
       _isProcessingPosts = false;
       isPublishingPost.value = false;
       postPublishingProgress.value = 0.0;
+      publishingCommunityId.value = '';
       debugPrint('[POST_CREATE] PROCESS_FINISHED userId=$currentUserId');
     }
   }
