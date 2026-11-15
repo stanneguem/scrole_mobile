@@ -58,6 +58,11 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
   // Avoid fetching every carousel image a second time just to inspect
   // intrinsic dimensions. The media viewport uses its stable fallback ratio.
 
+  void _loadMediaAspectRatios() {
+    // Intentionally empty: dimensions must not trigger background downloads.
+    _mediaAspectRatios.clear();
+  }
+
   double _getSharedAspectRatio() {
     if (widget.media.isEmpty) return 1;
     final ratios = List<double>.generate(
