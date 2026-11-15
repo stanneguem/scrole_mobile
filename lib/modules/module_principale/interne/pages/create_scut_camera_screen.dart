@@ -5,9 +5,9 @@ import 'dart:ui' show FontFeature;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 
 import 'package:scrole/modules/module_communautes/interne/pages/create_community_post_screen.dart';
+import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 
 class CreateScutCameraScreen extends StatefulWidget {
   const CreateScutCameraScreen({super.key});
@@ -18,7 +18,6 @@ class CreateScutCameraScreen extends StatefulWidget {
 
 class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     with WidgetsBindingObserver {
-  final ImagePicker _galleryPicker = ImagePicker();
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   Timer? _recordingTimer;
@@ -173,7 +172,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         final captured = await controller.stopVideoRecording();
         if (!mounted) return;
         setState(() => _isRecording = false);
-        await _openComposer(File(captured.path));
+        await _openComposer(File(captured.path), isVideo: true);
       }
     } catch (error) {
       _recordingTimer?.cancel();
@@ -191,12 +190,31 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   Future<void> _openGallery() async {
     if (_isRecording || _isOpeningNextScreen) return;
     try {
-      final selected = await _galleryPicker.pickVideo(
-        source: ImageSource.gallery,
-        maxDuration: const Duration(minutes: 10),
+      final selected = await showModalBottomSheet<List<XFile>>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => MediaGallerySheet(
+          maxSelection: 1,
+          allowMixedMedia: true,
+          onSelected: (_) async {},
+        ),
       );
-      if (selected == null || !mounted) return;
-      await _openComposer(File(selected.path));
+      if (!mounted || selected == null || selected.isEmpty) return;
+
+      final media = selected.first;
+      final file = File(media.path);
+      final isVideo = media.mimeType?.startsWith('video/') ??
+          _isVideoFile(media.path);
+      if (!isVideo) {
+        Get.snackbar(
+          'Format non pris en charge',
+          'Pour créer un Scut, sélectionne une vidéo dans l’onglet Vidéos.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+      await _openComposer(file, isVideo: true);
     } catch (error) {
       if (!mounted) return;
       Get.snackbar(
@@ -207,18 +225,24 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     }
   }
 
-  Future<void> _openComposer(File videoFile) async {
+  bool _isVideoFile(String path) {
+    final extension = path.split('.').last.toLowerCase();
+    return const {'mp4', 'mov', 'm4v', 'webm', 'mkv', '3gp', 'avi', 'ts'}
+        .contains(extension);
+  }
+
+  Future<void> _openComposer(File mediaFile, {required bool isVideo}) async {
     if (_isOpeningNextScreen || !mounted) return;
-    if (!await videoFile.exists() || await videoFile.length() <= 0) {
-      Get.snackbar('Vidéo indisponible', 'Le fichier vidéo sélectionné est introuvable.');
+    if (!await mediaFile.exists() || await mediaFile.length() <= 0) {
+      Get.snackbar('Média indisponible', 'Le fichier sélectionné est introuvable.');
       return;
     }
     setState(() => _isOpeningNextScreen = true);
     Get.off(
       () => CreateCommunityPostScreen(
         communityName: 'Fil d’actualité général',
-        prefilledMediaUrl: videoFile.path,
-        prefilledMediaIsVideo: true,
+        prefilledMediaUrl: mediaFile.path,
+        prefilledMediaIsVideo: isVideo,
       ),
     );
   }
