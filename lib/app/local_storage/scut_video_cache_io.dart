@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
+import 'feed_video_cache_io.dart';
 
 Future<Directory> _cacheDirectory() async {
   final root = await getApplicationSupportDirectory();
@@ -99,6 +100,7 @@ Future<void> clearScutVideoCache() async {
     final root = await getApplicationSupportDirectory();
     final directory = Directory(p.join(root.path, 'scut_video_cache'));
     if (await directory.exists()) await directory.delete(recursive: true);
+    await clearFeedVideoCache();
     final manifest = File(p.join(root.path, 'scut_feed_cache.json'));
     if (await manifest.exists()) await manifest.delete();
     final pending = File(p.join(root.path, 'scut_pending_watch_signals.json'));
