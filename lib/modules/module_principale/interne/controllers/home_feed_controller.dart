@@ -345,26 +345,15 @@ class HomeFeedController extends GetxController {
         return;
       }
 
-      // 1. Cache-first loading (load cached posts + outbox pending posts)
+      // 1. Cache-first loading. Pending outbox entries are represented by
+      // the publishing progress bar above Stories, never by incomplete feed cards.
       if (!refresh) {
         await _loadCachedFeedAndOutbox(userId);
       }
 
       debugPrint('[HOME_FEED] fetchFeed started with refresh=$refresh');
 
-      // 2. Show queued personal posts before waiting on the network.
-      final pendingPosts = await _getPendingOutboxPosts(userId);
-      if (pendingPosts.isNotEmpty) {
-        final existingRemote = posts.where((post) => !post.isPublishing).toList();
-        final previewById = <String, CommunityPost>{};
-        for (final post in [...pendingPosts, ...existingRemote]) {
-          previewById[post.id] = post;
-        }
-        posts.assignAll(previewById.values);
-        state.value = HomeFeedState.loaded;
-      }
-
-      // 3. Remote fetch via get_home_feed RPC
+      // 2. Remote fetch via get_home_feed RPC
       final result = await _feedRepo.getHomeFeed(limit: 20, cursor: null);
       final remoteItems = result['items'] as List<CommunityPost>;
       nextCursor.value = result['next_cursor']?.toString() ?? '';
@@ -385,13 +374,10 @@ class HomeFeedController extends GetxController {
         unawaited(_feedRepo.recordPostViews(immediatelyCountableIds));
       }
 
-      // Combine pending outbox posts (at top, grayed out) + remote items
-      final combined = <CommunityPost>[...pendingPosts, ...remoteItems];
-
-      // Deduplicate by id
+      // Only fully-created posts are displayed in the feed.
       final Map<String, CommunityPost> uniqueMap = {};
-      for (final p in combined) {
-        uniqueMap[p.id] = p;
+      for (final post in remoteItems) {
+        uniqueMap[post.id] = post;
       }
       posts.value = uniqueMap.values.toList();
 
@@ -514,64 +500,15 @@ class HomeFeedController extends GetxController {
         state.value = HomeFeedState.loaded;
       }
 
-      final pendingPosts = await _getPendingOutboxPosts(userId);
-      if (pendingPosts.isNotEmpty || cachedPosts.isNotEmpty) {
-        final unique = <String, CommunityPost>{};
-        for (final post in [...pendingPosts, ...cachedPosts]) {
-          unique[post.id] = post;
-        }
-        posts.assignAll(unique.values);
+      if (cachedPosts.isNotEmpty) {
+        posts.assignAll(cachedPosts);
         state.value = HomeFeedState.loaded;
       }
       debugPrint(
-        '[HOME_FEED] Restored ${cachedPosts.length}/$_homeFeedCacheLimit complete cached cards and ${pendingPosts.length} pending posts.',
+        '[HOME_FEED] Restored ${cachedPosts.length}/$_homeFeedCacheLimit complete cached cards.',
       );
     } catch (e, st) {
       debugPrint('[HOME_FEED] Error loading complete cached feed: $e\\n$st');
-    }
-  }
-
-  Future<List<CommunityPost>> _getPendingOutboxPosts(String userId) async {
-    try {
-      final db = await _db.database;
-      final rows = await db.query(
-        'post_outbox',
-        where: 'user_id = ? AND status IN (?, ?) AND community_id IS NULL',
-        whereArgs: [userId, 'pending', 'failed'],
-        orderBy: 'created_at DESC',
-      );
-
-      final List<CommunityPost> pending = [];
-      for (final row in rows) {
-        try {
-          final payload = jsonDecode(row['payload'].toString()) as Map<String, dynamic>;
-          final id = payload['p_id']?.toString() ?? row['operation_id']?.toString() ?? 'pending_${row['id']}';
-          final content = payload['p_content']?.toString() ?? '';
-          final communityId = payload['p_community_id']?.toString();
-
-          pending.add(CommunityPost(
-            id: id,
-            authorName: 'Moi (en attente)',
-            authorId: userId,
-            authorColor: Colors.grey,
-            authorRole: CommunityRole.member,
-            timeAgo: row['status'] == 'failed' ? 'Échec de publication' : 'Publication en cours…',
-            content: content,
-            communityId: communityId,
-            isPublishing: true,
-            reactionsEnabled: false,
-            commentsEnabled: false,
-            sharingEnabled: false,
-            reasonSubtitle: row['status'] == 'failed'
-                ? (payload['p_last_error']?.toString() ?? 'Publication non confirmée')
-                : 'Publication en cours…',
-          ));
-        } catch (_) {}
-      }
-      return pending;
-    } catch (e) {
-      debugPrint('[HOME_FEED] Error reading post_outbox: $e');
-      return [];
     }
   }
 
