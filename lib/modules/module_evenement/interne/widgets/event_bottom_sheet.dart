@@ -88,7 +88,7 @@ class EventBottomSheet extends StatelessWidget {
                             ]),
                             const SizedBox(height: 4),
                             Text(
-                              '${DateFormat('HH:mm').format(event.startsAt.toLocal())}${event.isOnline ? ' · En ligne' : ((event.city?.name.trim().isNotEmpty == true ? event.city!.name.trim() : (event.address?.trim().isNotEmpty == true ? event.address!.trim() : (event.country?.name.trim().isNotEmpty == true ? event.country!.name.trim() : ''))).isNotEmpty ? ' · ${event.city?.name.trim().isNotEmpty == true ? event.city!.name.trim() : (event.address?.trim().isNotEmpty == true ? event.address!.trim() : event.country!.name.trim())}' : '')}',
+                              '${DateFormat('HH:mm').format(event.startsAt.toLocal())}${event.locationLabel == null ? '' : ' · ${event.locationLabel}'}',
                               style: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
                             ),
                             if (!event.isFree) ...[
