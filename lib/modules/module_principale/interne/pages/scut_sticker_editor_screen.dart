@@ -216,17 +216,26 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                                     top: _items[i].y * area.height - 34,
                                     child: GestureDetector(
                                       onTap: () => setState(() => _activeIndex = i),
-                                      onScaleStart: (_) {
+                                      onScaleStart: (details) {
                                         _gestureStartSize = _items[i].size;
                                         _gestureStartRotation = _items[i].rotation;
+                                        setState(() {
+                                          _activeIndex = i;
+                                          _isDraggingSticker = true;
+                                          _lastStickerGlobalPosition = details.focalPoint;
+                                        });
                                       },
-                                      onScaleUpdate: (details) => _updateSticker(
-                                        i,
-                                        details.focalPointDelta,
-                                        area,
-                                        details.scale,
-                                        details.rotation,
-                                      ),
+                                      onScaleUpdate: (details) {
+                                        _lastStickerGlobalPosition = details.focalPoint;
+                                        _updateSticker(
+                                          i,
+                                          details.focalPointDelta,
+                                          area,
+                                          details.scale,
+                                          details.rotation,
+                                        );
+                                      },
+                                      onScaleEnd: (_) => _finishStickerDrag(i),
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
