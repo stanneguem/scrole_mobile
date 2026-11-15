@@ -116,7 +116,7 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Ajouter à ton Scut',
+                      'scut_sticker_picker_title'.tr,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
