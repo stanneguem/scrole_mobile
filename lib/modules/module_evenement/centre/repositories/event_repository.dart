@@ -507,7 +507,7 @@ class EventRepository {
     final startDateStr = '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-01';
     final endDateStr = '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
 
-    final cacheKey = 'home_calendar_${userId}_${startDateStr}_$endDateStr';
+    final cacheKey = 'home_calendar_v2_${userId}_${startDateStr}_$endDateStr';
 
     if (!forceRefresh) {
       final cached = await _dao.getDiscoveryCache(cacheKey);
