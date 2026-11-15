@@ -32,7 +32,15 @@ class ProfileScreen extends GetView<ProfileController> {
             RefreshIndicator(
               onRefresh: controller.refreshProfile,
               color: colorScheme.primary,
-              child: SingleChildScrollView(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification.metrics.axis == Axis.vertical &&
+                      notification.metrics.extentAfter < 650) {
+                    controller.loadMoreProfileTab(controller.selectedTab.value);
+                  }
+                  return false;
+                },
+                child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,6 +56,7 @@ class ProfileScreen extends GetView<ProfileController> {
                     _buildTabsAndContent(context, colorScheme),
                     const SizedBox(height: 40),
                   ],
+                ),
                 ),
               ),
             ),
@@ -539,8 +548,16 @@ class ProfileScreen extends GetView<ProfileController> {
           crossAxisSpacing: 2,
           mainAxisSpacing: 2,
         ),
-        itemCount: posts.length,
+        itemCount: posts.length + (loading && posts.isNotEmpty ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index >= posts.length) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
+              ),
+            );
+          }
           final post = posts[index];
           final imageUrl = post.media.isNotEmpty ? (post.media.first.isVideo ? (post.media.first.thumbnailUrl ?? '') : post.media.first.url) : '';
           return GestureDetector(
