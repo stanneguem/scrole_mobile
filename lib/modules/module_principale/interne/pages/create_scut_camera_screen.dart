@@ -400,7 +400,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                           sticker.emoji,
                           maxLines: 1,
                           softWrap: false,
-                          style: TextStyle(fontSize: size.width * sticker.size, height: 1),
+                          style: TextStyle(fontSize: size.width * sticker.size *
+                              (sticker.emoji.length > 3 ? .22 : 1), height: 1),
                         ),
                       ),
                     ),
