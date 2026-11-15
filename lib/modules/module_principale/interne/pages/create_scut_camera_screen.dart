@@ -32,6 +32,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   File? _videoCapturedBeforePause;
   bool _isFlashOn = false;
   final List<ScutSticker> _stickers = [];
+  DateTime? _recordingStartedAt;
 
   @override
   void initState() {
@@ -166,6 +167,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         setState(() {
           _isRecording = true;
           _recordingSeconds = 0;
+          _recordingStartedAt = DateTime.now();
         });
         _recordingTimer?.cancel();
         _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -192,7 +194,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   }
 
   Future<void> _addSticker() async {
-    if (_isRecording || _isOpeningNextScreen) return;
+    if (_isOpeningNextScreen) return;
     const choices = ['😂','❤️','🔥','😍','🥰','😎','😭','✨','⭐','💯','🎉','👏','🤣','🤩','🥳','💖','💕','🌸','🦋','🌈','👑','💫','🤍','🙌'];
     final sticker = await showModalBottomSheet<String>(
       context: context,
@@ -225,7 +227,15 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       ),
     );
     if (sticker == null || !mounted) return;
-    setState(() => _stickers.add(ScutSticker(emoji: sticker, x: .5, y: .48)));
+    final startMs = _isRecording && _recordingStartedAt != null
+        ? DateTime.now().difference(_recordingStartedAt!).inMilliseconds
+        : 0;
+    setState(() => _stickers.add(ScutSticker(
+      emoji: sticker,
+      x: .5,
+      y: .48,
+      startMs: startMs,
+    )));
   }
 
   Future<void> _openGallery() async {
@@ -364,7 +374,6 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 top: sticker.y * size.height - 28,
                 child: GestureDetector(
                   onPanUpdate: (details) {
-                    if (_isRecording) return;
                     setState(() {
                       _stickers[entry.key] = sticker.copyWith(
                         x: (sticker.x + details.delta.dx / size.width).clamp(.02, .98),
