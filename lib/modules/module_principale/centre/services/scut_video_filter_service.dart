@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new_full/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new_full/return_code.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Applies the exact same 4x5 color matrix used by Flutter's camera preview
