@@ -279,6 +279,9 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       return;
     }
     setState(() => _isOpeningNextScreen = true);
+    final activeCamera = _cameraController;
+    _cameraController = null;
+    if (activeCamera != null) await activeCamera.dispose();
     File finalMedia = mediaFile;
     if (isVideo) {
       final edited = await Get.to<File>(
@@ -290,6 +293,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       if (!mounted) return;
       if (edited == null) {
         setState(() => _isOpeningNextScreen = false);
+        await _initializeCamera();
         return;
       }
       finalMedia = edited;
