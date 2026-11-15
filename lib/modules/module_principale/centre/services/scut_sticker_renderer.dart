@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -54,9 +53,8 @@ class ScutStickerRenderer {
             : null,
       );
       var processed = 0;
-      final total = reader.info.duration.inMilliseconds > 0
-          ? reader.info.duration.inMilliseconds
-          : 1;
+      // Les Scuts sont limités à 29 secondes dans le compositeur.
+      const total = 29000;
       VideoFrame? frame;
       while ((frame = await reader.nextFrame()) != null) {
         final current = frame!;
