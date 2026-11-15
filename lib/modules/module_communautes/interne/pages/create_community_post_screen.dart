@@ -782,11 +782,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       } else if (Get.isRegistered<HomeFeedController>()) {
         unawaited(Get.find<HomeFeedController>().fetchFeed(refresh: true));
       }
-      Get.snackbar(
-        'Publication mise en file',
-        'Ta publication apparaît dans le fil et sera activée après confirmation du serveur.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
     } catch (e) {
       debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
 
