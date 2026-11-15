@@ -107,6 +107,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
   @override
   void initState() {
     super.initState();
+    // Keep the post outbox processor available while the home feed is mounted,
+    // so its live upload progress can drive the bar above Stories.
+    if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+      Get.put(CommunityOutboxProcessor());
+    }
     _scrollController.addListener(() {
       if (_scrollController.offset > 300 && !_showScrollToTop.value) {
         _showScrollToTop.value = true;
