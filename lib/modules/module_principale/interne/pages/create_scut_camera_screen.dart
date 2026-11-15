@@ -28,6 +28,23 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   bool _isOpeningNextScreen = false;
   String? _cameraError;
   File? _videoCapturedBeforePause;
+  int _selectedFilterIndex = 0;
+
+  static const List<_ScutBeautyFilter> _beautyFilters = [
+    _ScutBeautyFilter('Original', Icons.videocam_outlined, null),
+    _ScutBeautyFilter('Naturel', Icons.face_retouching_natural, <double>[
+      1.04, 0, 0, 0, 3, 0, 1.04, 0, 0, 3, 0, 0, 1.04, 0, 3, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Doux', Icons.auto_awesome, <double>[
+      1.08, 0, 0, 0, 8, 0, 1.08, 0, 0, 8, 0, 0, 1.08, 0, 8, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Éclat', Icons.wb_sunny_outlined, <double>[
+      1.12, 0, 0, 0, 10, 0, 1.12, 0, 0, 10, 0, 0, 1.12, 0, 10, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Chaud', Icons.wb_twilight, <double>[
+      1.08, 0, 0, 0, 7, 0, 1.02, 0, 0, 2, 0, 0, 0.94, 0, -3, 0, 0, 0, 1, 0,
+    ]),
+  ];
 
   @override
   void initState() {
@@ -129,6 +146,89 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             : error.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Future<void> _showBeautyFilters() async {
+    if (_isRecording || _isInitializing || _isOpeningNextScreen) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF171717),
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white30,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Filtres beauté',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 94,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _beautyFilters.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final filter = _beautyFilters[index];
+                    final selected = _selectedFilterIndex == index;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedFilterIndex = index);
+                        Navigator.of(sheetContext).pop();
+                      },
+                      child: SizedBox(
+                        width: 68,
+                        child: Column(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 58,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                color: selected ? Colors.white : Colors.white12,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: selected ? Colors.white : Colors.white24, width: 2),
+                              ),
+                              child: Icon(filter.icon, color: selected ? Colors.black : Colors.white, size: 25),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(filter.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: selected ? Colors.white : Colors.white70, fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Choisis un rendu avant de commencer ta vidéo.',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _switchCamera() async {
@@ -242,7 +342,12 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 child: SizedBox(
                   width: controller.value.previewSize?.height ?? size.width,
                   height: controller.value.previewSize?.width ?? size.height,
-                  child: CameraPreview(controller),
+                  child: ColorFiltered(
+                    colorFilter: _beautyFilters[_selectedFilterIndex].matrix == null
+                        ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                        : ColorFilter.matrix(_beautyFilters[_selectedFilterIndex].matrix!),
+                    child: CameraPreview(controller),
+                  ),
                 ),
               ),
             )
@@ -384,7 +489,12 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 54, height: 54),
+                        _RoundCameraButton(
+                          icon: Icons.face_retouching_natural,
+                          onTap: _showBeautyFilters,
+                          size: 54,
+                          enabled: !_isRecording,
+                        ),
                       ],
                     ),
                   ),
@@ -430,4 +540,12 @@ class _RoundCameraButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ScutBeautyFilter {
+  const _ScutBeautyFilter(this.name, this.icon, this.matrix);
+
+  final String name;
+  final IconData icon;
+  final List<double>? matrix;
 }
