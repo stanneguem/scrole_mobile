@@ -37,7 +37,7 @@ class ScutSticker {
 /// Bakes stickers into every frame using the device codecs (no FFmpeg).
 class ScutStickerRenderer {
   static Future<File> render(File source, List<ScutSticker> stickers,
-      {ValueChanged<double>? onProgress}) async {
+      {Duration? duration, ValueChanged<double>? onProgress}) async {
     if (stickers.isEmpty) return source;
     final reader = await VideoReader.open(source.path, maxDimension: 1920);
     final directory = await getTemporaryDirectory();
@@ -60,8 +60,7 @@ class ScutStickerRenderer {
         audio: audioFallback,
       );
       var processed = 0;
-      // Les Scuts sont limités à 29 secondes dans le compositeur.
-      const total = 29000;
+      final total = duration?.inMilliseconds ?? 29000;
       VideoFrame? frame;
       while ((frame = await reader.nextFrame()) != null) {
         final current = frame!;
