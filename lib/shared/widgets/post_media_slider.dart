@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../app/local_storage/feed_video_cache_io.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -518,8 +519,15 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         (widget.sequentialPlayback && !widget.sequentialActive) || _initializing || _controller != null ||
         widget.url.trim().isEmpty || _failed) return;
     _initializing = true;
-    final controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
+    VideoPlayerController? controller;
     try {
+      // Cache small MP4-like clips for subsequent visits/replays. Large files
+      // and adaptive streams fall back to native streaming without a copy.
+      final localPath = await findOrCacheFeedVideo(widget.url);
+      if (!mounted || !_visible || !_cardEligible || !_autoPlay) return;
+      controller = localPath != null
+          ? VideoPlayerController.file(File(localPath))
+          : VideoPlayerController.networkUrl(Uri.parse(widget.url));
       await controller.initialize();
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) {
         await controller.dispose();
@@ -536,7 +544,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       await controller.play();
     } catch (error) {
       debugPrint('[POST_MEDIA] inline video initialization failed: $error');
-      await controller.dispose();
+      await controller?.dispose();
       if (mounted) setState(() => _failed = true);
     } finally {
       _initializing = false;
