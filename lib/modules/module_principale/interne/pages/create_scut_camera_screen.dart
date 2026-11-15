@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show FontFeature;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
