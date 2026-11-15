@@ -593,7 +593,7 @@ class _SuggestionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat('EEE d MMM · HH:mm').format(event.startsAt),
+                    DateFormat('EEE d MMM · HH:mm').format(event.startsAt.toLocal()),
                     style: AppTextStyles.caption.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                   const SizedBox(height: 6),
@@ -701,7 +701,7 @@ class _SuggestionListTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat('EEEE d MMMM · HH:mm').format(event.startsAt),
+                    DateFormat('EEEE d MMMM · HH:mm').format(event.startsAt.toLocal()),
                     style: AppTextStyles.caption.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                   const SizedBox(height: 4),
@@ -713,7 +713,13 @@ class _SuggestionListTile extends StatelessWidget {
                         child: Text(
                           event.isOnline
                               ? 'events_is_online'.tr
-                              : (event.address?.split(',').first ?? 'Paris'),
+                              : (event.city?.name.trim().isNotEmpty == true
+                                   ? event.city!.name.trim()
+                                   : (event.address?.trim().isNotEmpty == true
+                                       ? event.address!.trim()
+                                       : (event.country?.name.trim().isNotEmpty == true
+                                           ? event.country!.name.trim()
+                                           : ''))),
                           style: AppTextStyles.caption.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
