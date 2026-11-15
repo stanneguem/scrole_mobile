@@ -175,6 +175,19 @@ class EventModel {
     return 'events_price_from'.trParams({'price': formattedPrice});
   }
 
+  /// Libellé compact basé uniquement sur les informations réellement
+  /// enregistrées pour l'événement. null signifie qu'aucun lieu n'est fourni.
+  String? get locationLabel {
+    if (isOnline) return 'events_is_online'.tr;
+    final cityName = city?.name.trim() ?? '';
+    if (cityName.isNotEmpty) return cityName;
+    final addressValue = address?.trim() ?? '';
+    if (addressValue.isNotEmpty) return addressValue;
+    final countryName = country?.name.trim() ?? '';
+    if (countryName.isNotEmpty) return countryName;
+    return null;
+  }
+
   String get locationDisplay {
     if (isOnline) {
       return onlineUrl != null && onlineUrl!.isNotEmpty ? onlineUrl! : 'Événement virtuel';
