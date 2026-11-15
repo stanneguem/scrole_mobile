@@ -6,6 +6,8 @@ import 'package:camera/camera.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
+import 'package:scrole/shared/widgets/video_trim_screen.dart';
 
 import 'package:scrole/modules/module_communautes/interne/pages/create_community_post_screen.dart';
 import 'package:scrole/modules/module_principale/centre/services/scut_sticker_renderer.dart';
@@ -293,9 +295,55 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         );
         return;
       }
-      await _openComposer(file, isVideo: true);
+
+      if (!await file.exists() || await file.length() <= 0) {
+        Get.snackbar('Média indisponible', 'Le fichier vidéo sélectionné est introuvable.');
+        return;
+      }
+
+      // Les Scuts sont limités à 28 secondes. On n'ouvre le découpeur
+      // que si la vidéo choisie dépasse réellement cette durée.
+      final probe = VideoPlayerController.file(file);
+      Duration duration;
+      try {
+        await probe.initialize();
+        duration = probe.value.duration;
+      } finally {
+        await probe.dispose();
+      }
+
+      File videoToEdit = file;
+      if (duration > const Duration(seconds: 28)) {
+        setState(() => _isOpeningNextScreen = true);
+        final activeCamera = _cameraController;
+        _cameraController = null;
+        if (activeCamera != null) await activeCamera.dispose();
+
+        final trimmed = await Get.to<File>(
+          () => VideoTrimScreen(
+            videoFile: file,
+            maxDuration: const Duration(seconds: 28),
+          ),
+        );
+        if (!mounted) return;
+        if (trimmed == null) {
+          setState(() => _isOpeningNextScreen = false);
+          await _initializeCamera();
+          return;
+        }
+        videoToEdit = trimmed;
+        setState(() => _isOpeningNextScreen = false);
+      }
+
+      await _openComposer(videoToEdit, isVideo: true);
     } catch (error) {
       if (!mounted) return;
+      if (_isOpeningNextScreen) {
+        setState(() => _isOpeningNextScreen = false);
+      }
+      if (_cameraController == null) {
+        await _initializeCamera();
+      }
       Get.snackbar(
         'Galerie indisponible',
         error.toString().replaceFirst('Exception: ', ''),
