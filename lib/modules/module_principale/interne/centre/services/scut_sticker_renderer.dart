@@ -162,8 +162,8 @@ class ScutStickerRenderer {
       )..layout(maxWidth: frame.width.toDouble());
 
       final center = Offset(
-        sticker.x.clamp(0.0, 1.0) * frame.width,
-        sticker.y.clamp(0.0, 1.0) * frame.height,
+        sticker.x.clamp(0.0, 1.0).toDouble() * frame.width,
+        sticker.y.clamp(0.0, 1.0).toDouble() * frame.height,
       );
       canvas.save();
       canvas.translate(center.dx, center.dy);
