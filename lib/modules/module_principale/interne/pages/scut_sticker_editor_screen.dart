@@ -204,7 +204,11 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                                           angle: _items[i].rotation,
                                           child: Text(
                                             _items[i].emoji,
-                                            style: TextStyle(fontSize: area.width * _items[i].size),
+                                            style: TextStyle(
+                                              fontSize: area.width * _items[i].size *
+                                                  (_items[i].emoji.length > 3 ? .22 : 1),
+                                              fontWeight: FontWeight.w900,
+                                            ),
                                           ),
                                         ),
                                       ),
