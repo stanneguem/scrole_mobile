@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:scrole/modules/module_communautes/interne/pages/create_community_post_screen.dart';
+import 'package:scrole/modules/module_principale/centre/services/scut_video_filter_service.dart';
 
 class CreateScutCameraScreen extends StatefulWidget {
   const CreateScutCameraScreen({super.key});
@@ -26,6 +27,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   bool _isInitializing = true;
   bool _isRecording = false;
   bool _isOpeningNextScreen = false;
+  bool _isProcessingFilter = false;
   String? _cameraError;
   File? _videoCapturedBeforePause;
   int _selectedFilterIndex = 0;
@@ -104,7 +106,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       if (_videoCapturedBeforePause != null) {
         final file = _videoCapturedBeforePause!;
         _videoCapturedBeforePause = null;
-        _openComposer(file);
+        _openCapturedVideoWithFilter(file);
       } else {
         _initializeCamera();
       }
@@ -179,7 +181,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   }
 
   Future<void> _showBeautyFilters() async {
-    if (_isRecording || _isInitializing || _isOpeningNextScreen) return;
+    if (_isRecording || _isInitializing || _isOpeningNextScreen || _isProcessingFilter) return;
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF171717),
@@ -262,7 +264,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   }
 
   Future<void> _switchCamera() async {
-    if (_isRecording || _isInitializing || _cameras.length < 2) return;
+    if (_isRecording || _isInitializing || _isProcessingFilter || _cameras.length < 2) return;
     final current = _cameraController?.description;
     if (current == null) return;
     final next = _cameras.firstWhere(
@@ -278,7 +280,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   Future<void> _toggleRecording() async {
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized ||
-        _isInitializing || _isOpeningNextScreen) {
+        _isInitializing || _isOpeningNextScreen || _isProcessingFilter) {
       return;
     }
 
@@ -300,7 +302,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         final captured = await controller.stopVideoRecording();
         if (!mounted) return;
         setState(() => _isRecording = false);
-        await _openComposer(File(captured.path));
+        await _openCapturedVideoWithFilter(File(captured.path));
       }
     } catch (error) {
       _recordingTimer?.cancel();
@@ -316,7 +318,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   }
 
   Future<void> _openGallery() async {
-    if (_isRecording || _isOpeningNextScreen) return;
+    if (_isRecording || _isOpeningNextScreen || _isProcessingFilter) return;
     try {
       final selected = await _galleryPicker.pickVideo(
         source: ImageSource.gallery,
@@ -331,6 +333,36 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         error.toString().replaceFirst('Exception: ', ''),
         snackPosition: SnackPosition.BOTTOM,
       );
+    }
+  }
+
+  Future<void> _openCapturedVideoWithFilter(File originalVideo) async {
+    if (!mounted || _isOpeningNextScreen || _isProcessingFilter) return;
+    final filterName = _beautyFilters[_selectedFilterIndex].name;
+    if (filterName == 'Original') {
+      await _openComposer(originalVideo);
+      return;
+    }
+
+    setState(() => _isProcessingFilter = true);
+    try {
+      final filteredVideo = await ScutVideoFilterService.applyFilter(
+        input: originalVideo,
+        filterName: filterName,
+      );
+      if (mounted) await _openComposer(filteredVideo);
+    } catch (error) {
+      debugPrint('[SCUT_CAMERA] Video filter rendering failed: $error');
+      if (!mounted) return;
+      Get.snackbar(
+        'Filtre non appliqué',
+        'La vidéo originale a été conservée. Réessaie ou publie-la sans filtre.',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 5),
+      );
+      await _openComposer(originalVideo);
+    } finally {
+      if (mounted) setState(() => _isProcessingFilter = false);
     }
   }
 
@@ -455,6 +487,32 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                       ),
                     ),
                   ),
+                if (_isProcessingFilter)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Application du filtre à la vidéo…',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const Spacer(),
                 if (_isInitializing)
                   const Padding(
@@ -493,9 +551,10 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                           icon: Icons.photo_library_outlined,
                           onTap: _openGallery,
                           size: 54,
+                          enabled: !_isProcessingFilter,
                         ),
                         GestureDetector(
-                          onTap: _toggleRecording,
+                          onTap: _isProcessingFilter ? null : _toggleRecording,
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 160),
                             width: _isRecording ? 78 : 72,
@@ -523,7 +582,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                           icon: Icons.face_retouching_natural,
                           onTap: _showBeautyFilters,
                           size: 54,
-                          enabled: !_isRecording,
+                          enabled: !_isRecording && !_isProcessingFilter,
                         ),
                       ],
                     ),
