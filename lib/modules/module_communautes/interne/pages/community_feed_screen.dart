@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
 import 'package:scrole/shared/widgets/post_media_slider.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/community_comments_sheet.dart';
@@ -44,6 +45,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       CommunityFeedController(null, widget.communityId),
       tag: widget.communityId,
     );
+    if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+      Get.put(CommunityOutboxProcessor(), permanent: true);
+    }
     controller.communityName.value = widget.communityName;
     final args = Get.arguments;
     if (args is Map) {
@@ -387,7 +391,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               onRefresh: () => controller.fetchCommunityFeed(isRefresh: true),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                child: Container(
+                child: Column(
+                  children: [
+                    _CommunityPostPublishingProgressBar(communityId: communityId),
+                    Container(
                   constraints: BoxConstraints(
                     minHeight: MediaQuery.of(context).size.height * 0.7,
                   ),
@@ -443,6 +450,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                       ),
                     ],
                   ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -454,9 +463,13 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.only(bottom: 90),
-                itemCount: posts.length + (controller.hasMore ? 1 : 0),
+                itemCount: posts.length + 1 + (controller.hasMore ? 1 : 0),
                 itemBuilder: (context, index) {
-                  if (index == posts.length) {
+                  if (index == 0) {
+                    return _CommunityPostPublishingProgressBar(communityId: communityId);
+                  }
+                  final postIndex = index - 1;
+                  if (postIndex == posts.length) {
                     controller.loadMorePosts();
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 20),
@@ -464,7 +477,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     );
                   }
 
-                  final post = posts[index];
+                  final post = posts[postIndex];
                   final postKey = _postKeys.putIfAbsent(post.id, () => GlobalKey());
                   return KeyedSubtree(
                     key: postKey,
@@ -511,5 +524,43 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         }
       }),
     );
+  }
+}
+
+
+class _CommunityPostPublishingProgressBar extends StatelessWidget {
+  final String communityId;
+
+  const _CommunityPostPublishingProgressBar({required this.communityId});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+      return const SizedBox.shrink();
+    }
+    final processor = Get.find<CommunityOutboxProcessor>();
+    return Obx(() {
+      final isPublishingHere = processor.isPublishingPost.value &&
+          processor.publishingCommunityId.value == communityId;
+      if (!isPublishingHere) return const SizedBox.shrink();
+      final progress = processor.postPublishingProgress.value.clamp(0.0, 1.0);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+        child: SizedBox(
+          height: 3,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 }
