@@ -376,9 +376,9 @@ class CommunityOutboxProcessor extends GetxService {
             void reportUploadProgress(int sentBytes, int totalBytes) {
               final fraction = totalBytes <= 0 ? 0.0 : sentBytes / totalBytes;
               final overall = (i + fraction) / totalMediaCount;
-              postPublishingProgress.value = (0.06 + overall * 0.78).clamp(0.06, 0.84);
+              postPublishingProgress.value = (0.06 + overall * 0.78).clamp(0.06, 0.84).toDouble();
             }
-            postPublishingProgress.value = (0.06 + (i / totalMediaCount) * 0.78).clamp(0.06, 0.84);
+            postPublishingProgress.value = (0.06 + (i / totalMediaCount) * 0.78).clamp(0.06, 0.84).toDouble();
             var localPath = (localMediaItems[i]['upload_path'] ?? localMediaItems[i]['path']).toString();
             final originalPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
