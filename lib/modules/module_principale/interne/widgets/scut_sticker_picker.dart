@@ -79,7 +79,8 @@ class _ScutStickerPickerSheet extends StatefulWidget {
 }
 
 class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
-  int _tab = 0;\n  String _stickerCategory = 'Pop';
+  int _tab = 0;
+  String _stickerCategory = 'Pop';
 
   @override
   Widget build(BuildContext context) {
