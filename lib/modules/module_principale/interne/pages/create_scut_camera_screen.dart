@@ -393,9 +393,10 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             ..._stickers.asMap().entries.map((entry) {
               final sticker = entry.value;
               return Positioned(
-                left: sticker.x * size.width - 28,
-                top: sticker.y * size.height - 28,
+                left: sticker.x * size.width - 40,
+                top: sticker.y * size.height - 40,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onScaleStart: (details) {
                     _stickerGestureStartSize = sticker.size;
                     _stickerGestureStartRotation = sticker.rotation;
@@ -416,9 +417,15 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                     });
                   },
                   onScaleEnd: (details) => _endCameraStickerDrag(entry.key, _lastStickerGlobalPosition ?? Offset.zero),
-                  child: Transform.rotate(
-                    angle: sticker.rotation,
-                    child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
+                  child: SizedBox(
+                    width: 80,
+                    height: 80,
+                    child: Center(
+                      child: Transform.rotate(
+                        angle: sticker.rotation,
+                        child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -442,7 +449,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 ),
               ),
             ),
-          const DecoratedBox(
+          IgnorePointer(
+            child: const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -451,6 +459,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 stops: [0, 0.38, 1],
               ),
             ),
+          ),
           ),
           SafeArea(
             child: Column(
