@@ -121,7 +121,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
       setState(() => _exporting = false);
       Get.snackbar(
         'Export des stickers impossible',
-        'La vidéo originale est conservée. Réessaie ou retire les stickers. $error',
+        'La vidéo originale est conservée. Réessaie après avoir vérifié l’espace disponible. Détail : $error',
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 5),
       );
