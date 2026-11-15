@@ -364,14 +364,6 @@ class HomeFeedController extends GetxController {
       int communityPostCount = remoteItems.where((p) => p.communityId != null).length;
       debugPrint('[HOME_FEED] Item counts per type -> Standard Posts: $postTypeCount, Community Posts: $communityPostCount');
 
-      final immediatelyCountableIds = remoteItems
-          .where((post) => !_containsVideo(post))
-          .map((post) => post.id)
-          .toList();
-      if (immediatelyCountableIds.isNotEmpty) {
-        unawaited(_feedRepo.recordPostViews(immediatelyCountableIds));
-      }
-
       // Only fully-created posts are displayed in the feed.
       final Map<String, CommunityPost> uniqueMap = {};
       for (final post in remoteItems) {
@@ -493,11 +485,6 @@ class HomeFeedController extends GetxController {
       }
 
       // Render cached cards immediately; do not wait for the outbox DB read.
-      if (cachedPosts.isNotEmpty) {
-        posts.assignAll(cachedPosts);
-        state.value = HomeFeedState.loaded;
-      }
-
       if (cachedPosts.isNotEmpty) {
         posts.assignAll(cachedPosts);
         state.value = HomeFeedState.loaded;
