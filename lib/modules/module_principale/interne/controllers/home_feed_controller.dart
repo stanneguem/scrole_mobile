@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
-import 'package:scrole/modules/module_principale/interne/enums/community_role_enum.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
 import 'package:scrole/modules/module_evenement/centre/repositories/event_repository.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
