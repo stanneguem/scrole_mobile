@@ -2057,7 +2057,6 @@ class AppTranslationAdditions {
       'profile_stat_likes_received': 'Likes received',
       'profile_stat_reputation': 'Reputation',
       'profile_stat_likes': 'Likes',
-      'profile_stat_likes': 'Likes',
       'edit_profile_gender': 'Gender',
       'edit_profile_birth_date': 'Birth date',
       'profile_stat_organized': 'Events organized',
