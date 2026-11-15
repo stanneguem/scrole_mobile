@@ -915,6 +915,7 @@ class FeedPostCard extends StatelessWidget {
       child: Stack(
         children: [
           PostMediaSlider(
+            autoplayPostId: post.id,
             onPageChanged: (index) => mediaPageNotifier.value = index,
             onOpenVideoReel: (index) => Get.to(() => ReelsScreen(
               initialPostId: post.id,
@@ -3428,6 +3429,7 @@ class _RepublicationPostCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: PostMediaSlider(
+              autoplayPostId: post.id,
               heroTagPrefix: 'shared_${shared.id}_${post.id}',
               forceAutoplayVideos: autoplayVideos,
               onOpenVideoReel: onOpenVideoReel,
