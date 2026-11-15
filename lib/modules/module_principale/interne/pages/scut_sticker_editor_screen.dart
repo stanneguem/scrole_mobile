@@ -33,6 +33,8 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
   bool _exporting = false;
   double _progress = 0;
   int _activeIndex = -1;
+  double _gestureStartSize = .18;
+  double _gestureStartRotation = 0;
 
   @override
   void initState() {
@@ -107,8 +109,8 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
       _items[index] = old.copyWith(
         x: (old.x + delta.dx / area.width).clamp(0.02, 0.98),
         y: (old.y + delta.dy / area.height).clamp(0.02, 0.98),
-        size: (old.size * scale).clamp(.06, .65),
-        rotation: old.rotation + rotation,
+        size: (_gestureStartSize * scale).clamp(.06, .65),
+        rotation: _gestureStartRotation + rotation,
       );
       _activeIndex = index;
     });
@@ -190,6 +192,10 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                                     top: _items[i].y * area.height - 34,
                                     child: GestureDetector(
                                       onTap: () => setState(() => _activeIndex = i),
+                                      onScaleStart: (_) {
+                                        _gestureStartSize = _items[i].size;
+                                        _gestureStartRotation = _items[i].rotation;
+                                      },
                                       onScaleUpdate: (details) => _updateSticker(
                                         i,
                                         details.focalPointDelta,
