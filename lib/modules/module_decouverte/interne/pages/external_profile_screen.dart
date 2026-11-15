@@ -219,25 +219,30 @@ class _Header extends StatelessWidget {
           Positioned(
             bottom: 0,
             left: 20,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.surface, width: 5),
-                color: colors.primary,
-              ),
-              child: ClipOval(
-                child: profile.photoUrl == null || profile.photoUrl!.isEmpty
-                    ? const Icon(
-                        Icons.person_rounded,
-                        size: 48,
-                        color: Colors.white,
-                      )
-                    : AppCachedImage(
-                        imageUrl: profile.photoUrl!,
-                        fit: BoxFit.cover,
-                      ),
+            child: GestureDetector(
+              onTap: profile.photoUrl == null || profile.photoUrl!.isEmpty
+                  ? null
+                  : () => showProfileImageViewer(context, profile.photoUrl!),
+              child: Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.surface, width: 5),
+                  color: colors.primary,
+                ),
+                child: ClipOval(
+                  child: profile.photoUrl == null || profile.photoUrl!.isEmpty
+                      ? const Icon(
+                          Icons.person_rounded,
+                          size: 48,
+                          color: Colors.white,
+                        )
+                      : AppCachedImage(
+                          imageUrl: profile.photoUrl!,
+                          fit: BoxFit.cover,
+                        ),
+                ),
               ),
             ),
           ),
