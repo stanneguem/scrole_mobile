@@ -88,7 +88,7 @@ class EventBottomSheet extends StatelessWidget {
                             ]),
                             const SizedBox(height: 4),
                             Text(
-                              '${event.timeString ?? 'Toute la journée'} · ${event.isOnline ? 'En ligne' : (event.address?.split(',').first ?? 'Paris')}',
+                              '${DateFormat('HH:mm').format(event.startsAt.toLocal())}${event.isOnline ? ' · En ligne' : ((event.city?.name.trim().isNotEmpty == true ? event.city!.name.trim() : (event.address?.trim().isNotEmpty == true ? event.address!.trim() : (event.country?.name.trim().isNotEmpty == true ? event.country!.name.trim() : ''))).isNotEmpty ? ' · ${event.city?.name.trim().isNotEmpty == true ? event.city!.name.trim() : (event.address?.trim().isNotEmpty == true ? event.address!.trim() : event.country!.name.trim())}' : '')}',
                               style: AppTextStyles.bodySmall.copyWith(color: colorScheme.onSurfaceVariant),
                             ),
                             if (!event.isFree) ...[
