@@ -84,6 +84,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
 
   Future<void> _initializeCamera({CameraDescription? preferredCamera}) async {
     if (!mounted) return;
+    _isFlashOn = false;
     setState(() {
       _isInitializing = true;
       _cameraError = null;
@@ -460,4 +461,4 @@ class _RoundCameraButton extends StatelessWidget {
   }
 }
 
-}
+
