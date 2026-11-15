@@ -10,6 +10,7 @@ import 'package:get/get.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/create_community_post_screen.dart';
 import 'package:scrole/modules/module_principale/centre/services/scut_sticker_renderer.dart';
 import 'package:scrole/modules/module_principale/interne/pages/scut_sticker_editor_screen.dart';
+import 'package:scrole/modules/module_principale/interne/widgets/scut_sticker_picker.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 
 class CreateScutCameraScreen extends StatefulWidget {
@@ -217,38 +218,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   }
 
   Future<void> _addSticker() async {
-    if (_isOpeningNextScreen) return;
-    const choices = ['😂','❤️','🔥','😍','🥰','😎','😭','✨','⭐','💯','🎉','👏','🤣','🤩','🥳','💖','💕','🌸','🦋','🌈','👑','💫','🤍','🙌'];
-    final sticker = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: const Color(0xFF171717),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Ajouter un sticker', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 6,
-                shrinkWrap: true,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                children: choices.map((item) => InkWell(
-                  onTap: () => Navigator.pop(context, item),
-                  child: Center(child: Text(item, style: const TextStyle(fontSize: 30))),
-                )).toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    if (_isOpeningNextScreen || _draggingStickerIndex != null) return;
+    final sticker = await ScutStickerPicker.show(context);
     if (sticker == null || !mounted) return;
     final startMs = _isRecording && _recordingStartedAt != null
         ? DateTime.now().difference(_recordingStartedAt!).inMilliseconds
