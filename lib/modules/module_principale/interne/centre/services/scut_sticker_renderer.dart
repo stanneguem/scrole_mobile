@@ -165,8 +165,8 @@ class ScutStickerRenderer {
       maxLines: 1,
     )..layout(maxWidth: videoWidth.toDouble());
 
-    final width = painter.width.ceil().clamp(1, videoWidth);
-    final height = painter.height.ceil().clamp(1, videoWidth);
+    final width = painter.width.ceil().clamp(1, videoWidth).toInt();
+    final height = painter.height.ceil().clamp(1, videoWidth).toInt();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     painter.paint(canvas, Offset.zero);
