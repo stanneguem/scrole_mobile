@@ -28,6 +28,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   int _recordingSeconds = 0;
   bool _isInitializing = true;
   bool _isRecording = false;
+  bool _isStoppingRecording = false;
   bool _isOpeningNextScreen = false;
   String? _cameraError;
   File? _videoCapturedBeforePause;
@@ -194,15 +195,21 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
           _recordingStartedAt = DateTime.now();
         });
         _recordingTimer?.cancel();
-        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (mounted) setState(() => _recordingSeconds++);
+        _isStoppingRecording = false;
+        _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+          if (!mounted || !_isRecording || _recordingStartedAt == null) return;
+          final elapsed = DateTime.now().difference(_recordingStartedAt!);
+          final seconds = elapsed.inSeconds.clamp(0, 28);
+          if (seconds != _recordingSeconds) {
+            setState(() => _recordingSeconds = seconds);
+          }
+          if (elapsed >= const Duration(seconds: 28)) {
+            setState(() => _recordingSeconds = 28);
+            unawaited(_stopRecordingAndOpenComposer());
+          }
         });
       } else {
-        _recordingTimer?.cancel();
-        final captured = await controller.stopVideoRecording();
-        if (!mounted) return;
-        setState(() => _isRecording = false);
-        await _openComposer(File(captured.path), isVideo: true);
+        await _stopRecordingAndOpenComposer();
       }
     } catch (error) {
       _recordingTimer?.cancel();
@@ -214,6 +221,33 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
           snackPosition: SnackPosition.BOTTOM,
         );
       }
+    }
+  }
+
+  Future<void> _stopRecordingAndOpenComposer() async {
+    if (_isStoppingRecording || !_isRecording) return;
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isRecordingVideo) return;
+    _isStoppingRecording = true;
+    _recordingTimer?.cancel();
+    try {
+      final captured = await controller.stopVideoRecording();
+      if (!mounted) return;
+      setState(() {
+        _isRecording = false;
+        _recordingSeconds = _recordingSeconds.clamp(0, 28);
+      });
+      await _openComposer(File(captured.path), isVideo: true);
+    } catch (error) {
+      _isStoppingRecording = false;
+      _recordingTimer?.cancel();
+      if (!mounted) return;
+      setState(() => _isRecording = false);
+      Get.snackbar(
+        'Enregistrement impossible',
+        error.toString().replaceFirst('Exception: ', ''),
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
