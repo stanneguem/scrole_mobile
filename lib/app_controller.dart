@@ -76,9 +76,24 @@ class AppController extends GetxController {
   }
 
   Future<void> _initializeAppStatus() async {
-    // Apply remote maintenance/update policy before selecting the first screen.
-    await _configService.checkConfig();
+    // Never hold the first screen behind a network request. Use the locally
+    // restored auth session/profile immediately; remote policy is refreshed
+    // after the app has selected its initial screen.
     _bootstrap();
+    unawaited(_refreshRemoteStartupPolicy());
+  }
+
+  Future<void> _refreshRemoteStartupPolicy() async {
+    await _configService.checkConfig();
+
+    // A successful remote policy may still require maintenance/update mode.
+    // If the request failed, AppConfigService deliberately keeps both flags
+    // false so an offline user remains in the app.
+    if (_configService.isMaintenance.value) {
+      status.value = AppStatus.maintenance;
+    } else if (_configService.needsUpdate.value) {
+      status.value = AppStatus.updateRequired;
+    }
   }
 
   void _bootstrap() {
