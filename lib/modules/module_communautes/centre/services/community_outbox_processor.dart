@@ -313,11 +313,10 @@ class CommunityOutboxProcessor extends GetxService {
         postPublishingProgress.value = 0.04;
         final id = (item['id'] as num).toInt();
         final operationId = item['operation_id'].toString();
-        final communityId = item['community_id']?.toString();
         final attempts = (item['attempt_count'] as num).toInt();
         final payload = Map<String, dynamic>.from(jsonDecode(item['payload'].toString()));
 
-        final postKind = communityId == null || communityId.isEmpty ? 'feed' : 'community';
+        final postKind = communityId.isEmpty ? 'feed' : 'community';
         final rawLocalMediaForGuard = payload['p_local_media'];
         final localMediaCountForGuard = rawLocalMediaForGuard is List ? rawLocalMediaForGuard.length : 0;
         final cachedMediaForGuard = payload['p_uploaded_media'];
@@ -760,7 +759,7 @@ class CommunityOutboxProcessor extends GetxService {
           postPublishingProgress.value = 1.0;
           await Future.delayed(const Duration(milliseconds: 220));
           await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
-          _refreshVisibleFeed(communityId ?? '');
+          _refreshVisibleFeed(communityId);
         } catch (e, st) {
           final errStr = e.toString();
           debugPrint('[POST_CREATE][$postKind] CANCELLED operationId=$operationId communityId=$communityId attempt=${attempts + 1} error=$errStr\\n$st');
