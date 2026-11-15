@@ -285,10 +285,10 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             const SizedBox(width: 7), Text((_seconds ~/ 60).toString().padLeft(2, '0') + ':' + (_seconds % 60).toString().padLeft(2, '0'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
           ]))),
         const Spacer(),
-        if (_error != null && !_loading) const SizedBox(height: 110) else Padding(padding: const EdgeInsets.fromLTRB(34, 0, 34, 26),
+        Padding(padding: const EdgeInsets.fromLTRB(34, 0, 34, 26),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             _CameraButton(Icons.photo_library_outlined, _gallery, size: 54, enabled: !_recording),
-            GestureDetector(onTap: _recordToggle, child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: _recording ? 78 : 72, height: _recording ? 78 : 72,
+            GestureDetector(onTap: _ready ? _recordToggle : null, child: Opacity(opacity: _ready ? 1 : .35, child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: _recording ? 78 : 72, height: _recording ? 78 : 72,
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 5)),
               child: Center(child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: _recording ? 30 : 56, height: _recording ? 30 : 56,
                 decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(_recording ? 8 : 40)))))),
