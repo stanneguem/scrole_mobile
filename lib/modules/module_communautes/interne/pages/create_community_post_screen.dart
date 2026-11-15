@@ -32,6 +32,7 @@ class CreateCommunityPostScreen extends StatefulWidget {
   final String? communityId;
   final String? prefilledText;
   final String? prefilledMediaUrl;
+  final bool prefilledMediaIsVideo;
   final CommunityPost? sharedPost;
 
   const CreateCommunityPostScreen({
@@ -40,6 +41,7 @@ class CreateCommunityPostScreen extends StatefulWidget {
     this.communityId,
     this.prefilledText,
     this.prefilledMediaUrl,
+    this.prefilledMediaIsVideo = false,
     this.sharedPost,
   });
 
@@ -99,6 +101,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     super.initState();
     _textController = TextEditingController(text: widget.prefilledText ?? '');
     _prefilledUrl = widget.prefilledMediaUrl;
+    if (widget.prefilledMediaIsVideo && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
+      _selectedMedia.add(_SelectedPostMedia(file: File(_prefilledUrl!), isVideo: true));
+      _prefilledUrl = null;
+    }
   }
 
   @override
