@@ -437,25 +437,6 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 ),
               );
             }),
-          if (_draggingStickerIndex != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 118,
-              child: Center(
-                child: Container(
-                  key: _stickerTrashKey,
-                  width: 62,
-                  height: 62,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.94),
-                    shape: BoxShape.circle,
-                    boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 14)],
-                  ),
-                  child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 30),
-                ),
-              ),
-            ),
           IgnorePointer(
             child: const DecoratedBox(
             decoration: BoxDecoration(
@@ -489,17 +470,39 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                         ),
                       ),
                       const Spacer(),
-                      _RoundCameraButton(
-                        icon: _isFlashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
-                        onTap: _toggleFlash,
-                        enabled: !_isRecording && controllerCanUseFlash,
-                      ),
-                      const SizedBox(width: 8),
-                      _RoundCameraButton(
-                        icon: Icons.flip_camera_android_rounded,
-                        onTap: _switchCamera,
-                        enabled: !_isRecording && _cameras.length > 1,
-                      ),
+                      if (_draggingStickerIndex != null)
+                        Container(
+                          key: _stickerTrashKey,
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.96),
+                            shape: BoxShape.circle,
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black45, blurRadius: 12),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.delete_outline_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        )
+                      else ...[
+                        _RoundCameraButton(
+                          icon: _isFlashOn
+                              ? Icons.flash_on_rounded
+                              : Icons.flash_off_rounded,
+                          onTap: _toggleFlash,
+                          enabled: !_isRecording && controllerCanUseFlash,
+                        ),
+                        const SizedBox(width: 8),
+                        _RoundCameraButton(
+                          icon: Icons.flip_camera_android_rounded,
+                          onTap: _switchCamera,
+                          enabled: !_isRecording && _cameras.length > 1,
+                        ),
+                      ],
                     ],
                   ),
                 ),
