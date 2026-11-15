@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' show FontFeature;
 
 import 'package:camera/camera.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -57,7 +58,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       if (_videoCapturedBeforePause != null) {
         final file = _videoCapturedBeforePause!;
         _videoCapturedBeforePause = null;
-        _openComposer(file);
+        _openComposer(file, isVideo: true);
       } else {
         _initializeCamera();
       }
