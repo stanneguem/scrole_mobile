@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -59,8 +60,34 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
   // intrinsic dimensions. The media viewport uses its stable fallback ratio.
 
   void _loadMediaAspectRatios() {
-    // Intentionally empty: dimensions must not trigger background downloads.
     _mediaAspectRatios.clear();
+    if (widget.media.isEmpty) return;
+
+    // Only inspect the first tile. CachedNetworkImageProvider shares the
+    // cache used by AppCachedImage, avoiding a second independent download.
+    // The other carousel pages are not fetched just to calculate card height.
+    final media = widget.media.first;
+    final source = media.isVideo
+        ? (media.thumbnailUrl ?? '')
+        : media.url;
+    if (source.trim().isEmpty) return;
+
+    final provider = CachedNetworkImageProvider(source);
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late final ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        stream.removeListener(listener);
+        final ratio = info.image.width / info.image.height;
+        info.dispose();
+        if (!mounted || !ratio.isFinite || ratio <= 0) return;
+        setState(() => _mediaAspectRatios[0] = ratio);
+      },
+      onError: (Object error, StackTrace? stackTrace) {
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
   }
 
   double _getSharedAspectRatio() {
