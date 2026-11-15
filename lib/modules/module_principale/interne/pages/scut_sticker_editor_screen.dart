@@ -120,8 +120,8 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
       if (!mounted) return;
       setState(() => _exporting = false);
       Get.snackbar(
-        'Export des stickers impossible',
-        'La vidéo originale est conservée. Réessaie après avoir vérifié l’espace disponible. Détail : $error',
+        'scut_sticker_export_error_title'.tr,
+        'scut_sticker_export_error_message'.trParams({'error': error.toString()}),
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 5),
       );
@@ -144,12 +144,12 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                     icon: const Icon(Icons.close_rounded, color: Colors.white),
                   ),
                   const Spacer(),
-                  const Text('Modifier ton Scut',
+                  Text('scut_sticker_editor_title'.tr,
                     style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   TextButton(
                     onPressed: _exporting ? null : _finish,
-                    child: const Text('Terminer',
+                    child: Text('scut_sticker_editor_done'.tr,
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                   ),
                 ],
@@ -248,7 +248,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                   if (_exporting) ...[
                     LinearProgressIndicator(value: _progress, color: Colors.white),
                     const SizedBox(height: 8),
-                    Text('Incrustation des stickers… ${(_progress * 100).round()}%',
+                    Text('scut_sticker_export_progress'.trParams({'progress': '${(_progress * 100).round()}'}),
                       style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   ] else
                     Row(
@@ -257,7 +257,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                           child: OutlinedButton.icon(
                             onPressed: _chooseSticker,
                             icon: const Icon(Icons.emoji_emotions_outlined),
-                            label: const Text('Ajouter un sticker'),
+                            label: Text('scut_sticker_add'.tr),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.white,
                               side: const BorderSide(color: Colors.white38),
@@ -268,7 +268,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                         if (_activeIndex >= 0 && _activeIndex < _items.length) ...[
                           const SizedBox(width: 10),
                           IconButton(
-                            tooltip: 'Supprimer le sticker',
+                            tooltip: 'scut_sticker_delete'.tr,
                             onPressed: () => setState(() {
                               _items.removeAt(_activeIndex);
                               _activeIndex = -1;
@@ -279,7 +279,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
                       ],
                     ),
                   const SizedBox(height: 4),
-                  const Text('Déplace, agrandis ou fais pivoter tes stickers avec les doigts.',
+                  Text('scut_sticker_editor_hint'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
