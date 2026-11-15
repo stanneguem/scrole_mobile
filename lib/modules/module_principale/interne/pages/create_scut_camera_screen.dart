@@ -33,6 +33,27 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   bool _isFlashOn = false;
   final List<ScutSticker> _stickers = [];
   DateTime? _recordingStartedAt;
+  int? _draggingStickerIndex;
+  Offset? _lastStickerGlobalPosition;
+  final GlobalKey _stickerTrashKey = GlobalKey();
+
+  bool _isStickerOverTrash(Offset position) {
+    final renderObject = _stickerTrashKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox) return false;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    return rect.inflate(18).contains(position);
+  }
+
+  void _endCameraStickerDrag(int index, Offset globalPosition) {
+    final shouldDelete = _isStickerOverTrash(globalPosition);
+    setState(() {
+      if (shouldDelete && index >= 0 && index < _stickers.length) {
+        _stickers.removeAt(index);
+      }
+      _draggingStickerIndex = null;
+      _lastStickerGlobalPosition = null;
+    });
+  }
 
   @override
   void initState() {
@@ -373,7 +394,14 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 left: sticker.x * size.width - 28,
                 top: sticker.y * size.height - 28,
                 child: GestureDetector(
+                  onPanStart: (details) {
+                    setState(() {
+                      _draggingStickerIndex = entry.key;
+                      _lastStickerGlobalPosition = details.globalPosition;
+                    });
+                  },
                   onPanUpdate: (details) {
+                    _lastStickerGlobalPosition = details.globalPosition;
                     setState(() {
                       _stickers[entry.key] = sticker.copyWith(
                         x: (sticker.x + details.delta.dx / size.width).clamp(.02, .98),
@@ -381,6 +409,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                       );
                     });
                   },
+                  onPanEnd: (details) => _endCameraStickerDrag(entry.key, details.globalPosition),
                   child: Transform.rotate(
                     angle: sticker.rotation,
                     child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
@@ -388,6 +417,25 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 ),
               );
             }),
+          if (_draggingStickerIndex != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 118,
+              child: Center(
+                child: Container(
+                  key: _stickerTrashKey,
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.94),
+                    shape: BoxShape.circle,
+                    boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 14)],
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 30),
+                ),
+              ),
+            ),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
