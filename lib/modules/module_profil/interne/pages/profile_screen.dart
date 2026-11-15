@@ -194,28 +194,34 @@ class ProfileScreen extends GetView<ProfileController> {
               children: [
                 Obx(() {
                   final avatarUrl = controller.profileImageUrl.value;
-                  return Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: colorScheme.surface, width: 5),
-                      color: colorScheme.primary,
-                    ),
-                    child: avatarUrl.isEmpty
-                        ? Center(
-                            child: Text(
-                              controller.initials,
-                              style: AppTextStyles.h3.copyWith(color: Colors.white),
+                  return GestureDetector(
+                    onTap: avatarUrl.isEmpty
+                        ? null
+                        : () => showProfileImageViewer(context, avatarUrl),
+                    child: Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colorScheme.surface, width: 5),
+                        color: colorScheme.primary,
+                      ),
+                      child: avatarUrl.isEmpty
+                          ? Center(
+                              child: Text(
+                                controller.initials,
+                                style: AppTextStyles.h3.copyWith(color: Colors.white),
+                              ),
+                            )
+                          : ClipOval(
+                              child: AppCachedImage(
+                                imageUrl: avatarUrl,
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                              ),
                             ),
-                          )
-                        : AppCachedImage(
-                            imageUrl: avatarUrl,
-                            width: 90,
-                            height: 90,
-                            borderRadius: BorderRadius.circular(45),
-                            fit: BoxFit.cover,
-                          ),
+                    ),
                   );
                 }),
                 Positioned(
