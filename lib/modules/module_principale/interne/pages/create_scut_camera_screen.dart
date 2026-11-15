@@ -370,10 +370,12 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   @override
   Widget build(BuildContext context) {
     final controller = _cameraController;
-    final size = MediaQuery.sizeOf(context);
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
+      body: LayoutBuilder(
+        builder: (context, viewport) {
+          final size = viewport.biggest;
+          return Stack(
         fit: StackFit.expand,
         children: [
           if (controller != null && controller.value.isInitialized)
@@ -393,8 +395,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             ..._stickers.asMap().entries.map((entry) {
               final sticker = entry.value;
               return Positioned(
-                left: sticker.x * size.width - 40,
-                top: sticker.y * size.height - 40,
+                left: sticker.x * size.width - (size.width * sticker.size + 48) / 2,
+                top: sticker.y * size.height - (size.width * sticker.size + 48) / 2,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onScaleStart: (details) {
@@ -409,21 +411,26 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                     _lastStickerGlobalPosition = details.focalPoint;
                     setState(() {
                       _stickers[entry.key] = _stickers[entry.key].copyWith(
-                        x: (_stickers[entry.key].x + details.focalPointDelta.dx / size.width).clamp(.02, .98).toDouble(),
-                        y: (_stickers[entry.key].y + details.focalPointDelta.dy / size.height).clamp(.02, .98).toDouble(),
-                        size: (_stickerGestureStartSize * details.scale).clamp(.06, .65).toDouble(),
+                        x: (_stickers[entry.key].x + details.focalPointDelta.dx / size.width).clamp(0.0, 1.0).toDouble(),
+                        y: (_stickers[entry.key].y + details.focalPointDelta.dy / size.height).clamp(0.0, 1.0).toDouble(),
+                        size: (_stickerGestureStartSize * details.scale).clamp(.04, 1.5).toDouble(),
                         rotation: _stickerGestureStartRotation + details.rotation,
                       );
                     });
                   },
                   onScaleEnd: (details) => _endCameraStickerDrag(entry.key, _lastStickerGlobalPosition ?? Offset.zero),
                   child: SizedBox(
-                    width: 80,
-                    height: 80,
+                    width: size.width * sticker.size + 48,
+                    height: size.width * sticker.size + 48,
                     child: Center(
                       child: Transform.rotate(
                         angle: sticker.rotation,
-                        child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
+                        child: Text(
+                          sticker.emoji,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(fontSize: size.width * sticker.size, height: 1),
+                        ),
                       ),
                     ),
                   ),
@@ -616,6 +623,8 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             ),
           ),
         ],
+      );
+        },
       ),
     );
   }
