@@ -102,5 +102,5 @@ class ScutVideoFilterService {
   }
 
   static String _quote(String value) =>
-      '"${value.replaceAll(r'\\', r'\\\\').replaceAll('"', r'\\"')}"';
+      '"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"';
 }
