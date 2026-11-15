@@ -74,18 +74,29 @@ class EventBottomSheet extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(children: [
-                              Expanded(child: Text(
-                                event.name,
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.w600,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  fit: FlexFit.loose,
+                                  child: Text(
+                                    event.name,
+                                    style: AppTextStyles.labelLarge.copyWith(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              )),
-                              EntityCertifiedBadge(entityType: 'event', entityId: event.id, size: 16),
-                            ]),
+                                const SizedBox(width: 6),
+                                EntityCertifiedBadge(
+                                  entityType: 'event',
+                                  entityId: event.id,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '${DateFormat('HH:mm').format(event.startsAt.toLocal())}${event.locationLabel == null ? '' : ' · ${event.locationLabel}'}',
@@ -94,9 +105,13 @@ class EventBottomSheet extends StatelessWidget {
                             if (!event.isFree) ...[
                               const SizedBox(height: 4),
                               Text(
-                                '${event.price?.toStringAsFixed(2)} ${event.currency}',
+                                event.price == null
+                                    ? 'Prix non renseigné'
+                                    : '${event.price!.toStringAsFixed(2)} ${event.currency}',
                                 style: AppTextStyles.labelSmall.copyWith(
-                                  color: AppColors.primary,
+                                  color: event.price == null
+                                      ? colorScheme.onSurfaceVariant
+                                      : AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
