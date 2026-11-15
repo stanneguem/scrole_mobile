@@ -130,6 +130,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
       final rendered = await ScutStickerRenderer.render(
         widget.videoFile,
         _items,
+        duration: _player.value.duration,
         onProgress: (value) {
           if (mounted) setState(() => _progress = value);
         },
