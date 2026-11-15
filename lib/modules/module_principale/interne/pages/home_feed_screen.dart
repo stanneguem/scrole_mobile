@@ -14,6 +14,7 @@ import '../../../../shared/widgets/post_media_slider.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../widgets/community_comments_sheet.dart';
 import 'package:scrole/modules/module_communautes/interne/controllers/community/community_feed_controller.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_model.dart';
 import 'package:scrole/modules/module_evenement/centre/models/event_day_models.dart';
 import 'package:scrole/modules/module_evenement/interne/pages/event_days_selector_screen.dart';
@@ -262,6 +263,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const _PostPublishingProgressBar(),
                         const _StoriesRow(),
                         const _TrendingHashtagsStrip(),
                         Container(
@@ -490,6 +492,43 @@ class _StoryPublishingRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _StoryPublishingRingPainter oldDelegate) =>
       oldDelegate.trackColor != trackColor || oldDelegate.colors != colors;
+}
+
+class _PostPublishingProgressBar extends StatelessWidget {
+  const _PostPublishingProgressBar();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<CommunityOutboxProcessor>()) {
+      return const SizedBox.shrink();
+    }
+
+    final processor = Get.find<CommunityOutboxProcessor>();
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Obx(() {
+      if (!processor.isPublishingPost.value) {
+        return const SizedBox.shrink();
+      }
+
+      final progress = processor.postPublishingProgress.value.clamp(0.0, 1.0);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 5, 16, 8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: SizedBox(
+            height: 3,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: colorScheme.onSurface.withValues(alpha: 0.10),
+              valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+            ),
+          ),
+        ),
+      );
+    });
+  }
 }
 
 class _StoriesRow extends GetView<StoriesController> {
