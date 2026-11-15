@@ -6,6 +6,7 @@ import 'package:scrole/app/utils/boot_timing.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
 import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
+import '../pages/create_scut_camera_screen.dart';
 
 import '../../../../../shared/widgets/glas_buton.dart';
 import '../controllers/main_layout_controller.dart';
@@ -81,8 +82,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   void _openCreation(String type) {
-    // Le compositeur général accepte les photos et les vidéos.
-    // Les publications contenant une vidéo alimentent le fil des Scuts.
+    if (type == 'scut') {
+      Get.to(() => const CreateScutCameraScreen(), fullscreenDialog: true);
+      return;
+    }
     Get.to(
       () => const CreateCommunityPostScreen(
         communityName: 'Fil d\'actualité général',
