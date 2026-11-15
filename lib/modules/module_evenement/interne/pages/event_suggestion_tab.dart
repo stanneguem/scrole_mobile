@@ -711,15 +711,7 @@ class _SuggestionListTile extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          event.isOnline
-                              ? 'events_is_online'.tr
-                              : (event.city?.name.trim().isNotEmpty == true
-                                   ? event.city!.name.trim()
-                                   : (event.address?.trim().isNotEmpty == true
-                                       ? event.address!.trim()
-                                       : (event.country?.name.trim().isNotEmpty == true
-                                           ? event.country!.name.trim()
-                                           : ''))),
+                          event.locationLabel ?? '',
                           style: AppTextStyles.caption.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
