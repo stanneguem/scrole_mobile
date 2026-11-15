@@ -13,6 +13,7 @@ class ScutSticker {
     required this.y,
     this.size = 0.18,
     this.rotation = 0,
+    this.startMs = 0,
   });
 
   final String emoji;
@@ -20,6 +21,7 @@ class ScutSticker {
   final double y;
   final double size;
   final double rotation;
+  final int startMs;
 
   ScutSticker copyWith({double? x, double? y, double? size, double? rotation}) =>
       ScutSticker(
@@ -28,6 +30,7 @@ class ScutSticker {
         y: y ?? this.y,
         size: size ?? this.size,
         rotation: rotation ?? this.rotation,
+        startMs: startMs,
       );
 }
 
@@ -72,6 +75,7 @@ class ScutStickerRenderer {
         final canvas = Canvas(recorder);
         canvas.drawImage(image, Offset.zero, Paint());
         for (final sticker in stickers) {
+          if (current.pts.inMilliseconds < sticker.startMs) continue;
           final fontSize = reader.info.width * sticker.size;
           final painter = TextPainter(
             text: TextSpan(
