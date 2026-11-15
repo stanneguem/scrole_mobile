@@ -137,7 +137,16 @@ class ExternalProfileScreen extends GetView<ExternalProfileController> {
           return RefreshIndicator(
             onRefresh: controller.loadProfile,
             color: colors.primary,
-            child: backgroundProfileView,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification.metrics.axis == Axis.vertical &&
+                    notification.metrics.extentAfter < 650) {
+                  controller.loadMoreProfileTab(controller.selectedTab.value);
+                }
+                return false;
+              },
+              child: backgroundProfileView,
+            ),
           );
         }),
       ),
@@ -783,8 +792,16 @@ class _ReactiveProfileBody extends GetView<ExternalProfileController> {
           mainAxisSpacing: 3,
           childAspectRatio: 0.92,
         ),
-        itemCount: items.length,
+        itemCount: items.length + (loading && items.isNotEmpty ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index >= items.length) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.primary),
+              ),
+            );
+          }
           final item = items[index];
           final imageUrl = _profilePostImage(item);
           return GestureDetector(
