@@ -432,3 +432,61 @@ class _R2SignedImageState extends State<_R2SignedImage> {
     );
   }
 }
+
+
+/// Opens a profile avatar in a full-screen, zoomable image viewer.
+Future<void> showProfileImageViewer(BuildContext context, String imageUrl) {
+  if (imageUrl.trim().isEmpty) return Future<void>.value();
+
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Close profile photo',
+    barrierColor: Colors.black.withValues(alpha: 0.96),
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Center(
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 5,
+                    child: AppCachedImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.contain,
+                      errorWidget: const Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.white70,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(opacity: animation, child: child);
+    },
+  );
+}
