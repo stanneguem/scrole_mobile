@@ -380,41 +380,49 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                 else
                   Padding(
                     padding: const EdgeInsets.fromLTRB(34, 0, 34, 26),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _RoundCameraButton(
-                          icon: Icons.photo_library_outlined,
-                          onTap: _openGallery,
-                          size: 54,
-                        ),
-                        GestureDetector(
-                          onTap: _toggleRecording,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 160),
-                            width: _isRecording ? 78 : 72,
-                            height: _isRecording ? 78 : 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 5),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 78,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            left: 0,
+                            child: _RoundCameraButton(
+                              icon: Icons.photo_library_outlined,
+                              onTap: _openGallery,
+                              size: 54,
                             ),
-                            child: Center(
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                width: _isRecording ? 30 : 56,
-                                height: _isRecording ? 30 : 56,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(
-                                    _isRecording ? 8 : 40,
+                          ),
+                          GestureDetector(
+                            onTap: _toggleRecording,
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 5,
+                                ),
+                              ),
+                              child: Center(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  width: _isRecording ? 28 : 56,
+                                  height: _isRecording ? 28 : 56,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(
+                                      _isRecording ? 7 : 40,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
               ],
