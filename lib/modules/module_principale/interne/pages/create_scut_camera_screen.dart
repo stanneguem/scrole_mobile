@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'package:scrole/modules/module_communautes/interne/pages/create_community_post_screen.dart';
+import 'package:scrole/modules/module_principale/centre/services/scut_sticker_renderer.dart';
+import 'package:scrole/modules/module_principale/interne/pages/scut_sticker_editor_screen.dart';
 import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 
 class CreateScutCameraScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
   String? _cameraError;
   File? _videoCapturedBeforePause;
   bool _isFlashOn = false;
+  final List<ScutSticker> _stickers = [];
 
   @override
   void initState() {
@@ -188,6 +191,43 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     }
   }
 
+  Future<void> _addSticker() async {
+    if (_isRecording || _isOpeningNextScreen) return;
+    const choices = ['😂','❤️','🔥','😍','🥰','😎','😭','✨','⭐','💯','🎉','👏','🤣','🤩','🥳','💖','💕','🌸','🦋','🌈','👑','💫','🤍','🙌'];
+    final sticker = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF171717),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Ajouter un sticker', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 6,
+                shrinkWrap: true,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                children: choices.map((item) => InkWell(
+                  onTap: () => Navigator.pop(context, item),
+                  child: Center(child: Text(item, style: const TextStyle(fontSize: 30))),
+                )).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (sticker == null || !mounted) return;
+    setState(() => _stickers.add(ScutSticker(emoji: sticker, x: .5, y: .48)));
+  }
+
   Future<void> _openGallery() async {
     if (_isRecording || _isOpeningNextScreen) return;
     try {
@@ -239,10 +279,25 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       return;
     }
     setState(() => _isOpeningNextScreen = true);
+    File finalMedia = mediaFile;
+    if (isVideo) {
+      final edited = await Get.to<File>(
+        () => ScutStickerEditorScreen(
+          videoFile: mediaFile,
+          initialStickers: List<ScutSticker>.from(_stickers),
+        ),
+      );
+      if (!mounted) return;
+      if (edited == null) {
+        setState(() => _isOpeningNextScreen = false);
+        return;
+      }
+      finalMedia = edited;
+    }
     Get.off(
       () => CreateCommunityPostScreen(
         communityName: 'Fil d’actualité général',
-        prefilledMediaUrl: mediaFile.path,
+        prefilledMediaUrl: finalMedia.path,
         prefilledMediaIsVideo: isVideo,
       ),
     );
@@ -297,6 +352,29 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             )
           else
             const ColoredBox(color: Colors.black),
+          if (_stickers.isNotEmpty)
+            ..._stickers.asMap().entries.map((entry) {
+              final sticker = entry.value;
+              return Positioned(
+                left: sticker.x * size.width - 28,
+                top: sticker.y * size.height - 28,
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    if (_isRecording) return;
+                    setState(() {
+                      _stickers[entry.key] = sticker.copyWith(
+                        x: (sticker.x + details.delta.dx / size.width).clamp(.02, .98),
+                        y: (sticker.y + details.delta.dy / size.height).clamp(.02, .98),
+                      );
+                    });
+                  },
+                  child: Transform.rotate(
+                    angle: sticker.rotation,
+                    child: Text(sticker.emoji, style: TextStyle(fontSize: size.width * sticker.size)),
+                  ),
+                ),
+              );
+            }),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -411,6 +489,14 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
+                          Positioned(
+                            right: 0,
+                            child: _RoundCameraButton(
+                              icon: Icons.emoji_emotions_outlined,
+                              onTap: _addSticker,
+                              size: 54,
+                            ),
+                          ),
                           Positioned(
                             left: 0,
                             child: _RoundCameraButton(
