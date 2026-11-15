@@ -199,7 +199,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
         _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
           if (!mounted || !_isRecording || _recordingStartedAt == null) return;
           final elapsed = DateTime.now().difference(_recordingStartedAt!);
-          final seconds = elapsed.inSeconds.clamp(0, 28);
+          final seconds = elapsed.inSeconds.clamp(0, 28).toInt();
           if (seconds != _recordingSeconds) {
             setState(() => _recordingSeconds = seconds);
           }
@@ -235,7 +235,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       if (!mounted) return;
       setState(() {
         _isRecording = false;
-        _recordingSeconds = _recordingSeconds.clamp(0, 28);
+        _recordingSeconds = _recordingSeconds.clamp(0, 28).toInt();
       });
       await _openComposer(File(captured.path), isVideo: true);
     } catch (error) {
