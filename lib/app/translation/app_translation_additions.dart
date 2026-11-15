@@ -5125,6 +5125,7 @@ class AppTranslationAdditions {
       'external_profile_event_role_participant': 'Teilnehmer',
       'profile_stat_likes_received': 'Erhaltene Likes',
       'profile_stat_reputation': 'Reputation',
+      'profile_stat_likes': 'Likes',
       'edit_profile_gender': 'Geschlecht',
       'edit_profile_birth_date': 'Geburtsdatum',
       'profile_stat_organized': 'Organisierte Veranstaltungen',
