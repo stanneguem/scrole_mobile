@@ -212,7 +212,7 @@ class R2MediaRepository {
       const chunkSize = 64 * 1024;
       var sentBytes = 0;
       while (sentBytes < bytes.length) {
-        final end = (sentBytes + chunkSize).clamp(0, bytes.length);
+        final end = (sentBytes + chunkSize).clamp(0, bytes.length).toInt();
         final chunk = bytes.sublist(sentBytes, end);
         sentBytes = end;
         yield chunk;
