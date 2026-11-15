@@ -338,8 +338,9 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
 
   Future<void> _openCapturedVideoWithFilter(File originalVideo) async {
     if (!mounted || _isOpeningNextScreen || _isProcessingFilter) return;
-    final filterName = _beautyFilters[_selectedFilterIndex].name;
-    if (filterName == 'Original') {
+    final selectedFilter = _beautyFilters[_selectedFilterIndex];
+    final matrix = selectedFilter.matrix;
+    if (matrix == null) {
       await _openComposer(originalVideo);
       return;
     }
@@ -348,7 +349,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     try {
       final filteredVideo = await ScutVideoFilterService.applyFilter(
         input: originalVideo,
-        filterName: filterName,
+        matrix: matrix,
       );
       if (mounted) await _openComposer(filteredVideo);
     } catch (error) {
