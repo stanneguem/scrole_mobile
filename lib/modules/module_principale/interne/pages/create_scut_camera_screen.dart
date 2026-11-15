@@ -291,7 +291,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
             GestureDetector(onTap: _ready ? _recordToggle : null, child: Opacity(opacity: _ready ? 1 : .35, child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: _recording ? 78 : 72, height: _recording ? 78 : 72,
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 5)),
               child: Center(child: AnimatedContainer(duration: const Duration(milliseconds: 160), width: _recording ? 30 : 56, height: _recording ? 30 : 56,
-                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(_recording ? 8 : 40)))))),
+                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(_recording ? 8 : 40))))))),
             _CameraButton(Icons.face_retouching_natural, _filters, size: 54, enabled: _ready && !_recording),
           ])),
       ])),
