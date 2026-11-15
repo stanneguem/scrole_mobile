@@ -44,6 +44,36 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
     _ScutBeautyFilter('Chaud', Icons.wb_twilight, <double>[
       1.08, 0, 0, 0, 7, 0, 1.02, 0, 0, 2, 0, 0, 0.94, 0, -3, 0, 0, 0, 1, 0,
     ]),
+    _ScutBeautyFilter('Golden Hour', Icons.wb_sunny_rounded, <double>[
+      1.16, 0, 0, 0, 13, 0, 1.06, 0, 0, 5, 0, 0, 0.84, 0, -5, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Cinéma froid', Icons.ac_unit_rounded, <double>[
+      0.92, 0, 0, 0, -2, 0, 1.02, 0, 0, 1, 0, 0, 1.16, 0, 8, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Vintage', Icons.photo_camera_back_outlined, <double>[
+      0.90, 0.08, 0.02, 0, 12, 0.04, 0.88, 0.04, 0, 8, 0.02, 0.06, 0.78, 0, 2, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('N&B', Icons monochrome_photos, <double>[
+      0.2126, 0.7152, 0.0722, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0, 0.2126, 0.7152, 0.0722, 0, 0, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Pastel', Icons.palette_outlined, <double>[
+      0.92, 0.04, 0.02, 0, 18, 0.03, 0.94, 0.03, 0, 17, 0.02, 0.04, 0.96, 0, 20, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Moody', Icons.nights_stay_outlined, <double>[
+      0.88, 0, 0.04, 0, -5, 0, 0.91, 0.02, 0, -4, 0.02, 0.04, 1.02, 0, 2, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Rétro 90s', Icons.grain, <double>[
+      1.08, 0.02, 0, 0, 7, 0.02, 0.98, 0.02, 0, 3, 0, 0.03, 0.88, 0, -2, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Dreamy', Icons.blur_on_rounded, <double>[
+      1.04, 0.02, 0.02, 0, 15, 0.02, 1.03, 0.02, 0, 15, 0.02, 0.02, 1.04, 0, 16, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Matte', Icons.filter_vintage_outlined, <double>[
+      0.92, 0, 0, 0, 14, 0, 0.92, 0, 0, 14, 0, 0, 0.92, 0, 14, 0, 0, 0, 1, 0,
+    ]),
+    _ScutBeautyFilter('Teal & Orange', Icons.theater_comedy_outlined, <double>[
+      1.12, 0.02, -0.04, 0, 4, -0.02, 1.02, 0.04, 0, 2, 0.02, 0.08, 0.94, 0, 3, 0, 0, 0, 1, 0,
+    ]),
   ];
 
   @override
