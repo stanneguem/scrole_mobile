@@ -217,12 +217,11 @@ class ProfileController extends GetxController {
         userEvents.assignAll(rows);
       }
 
-      final cachedRows = index == 0
-          ? userPosts.map((post) => post.toMap()).toList()
-          : index == 2
-              ? savedPosts.map((post) => post.toMap()).toList()
-              : rows;
-      await _profileCache?.set(FastCacheKey.profileTab(uid, tab), cachedRows);
+      // Cache only the first page in the existing raw RPC format.
+      // Later pages stay in memory and are fetched again when needed.
+      if (forceRefresh) {
+        await _profileCache?.set(FastCacheKey.profileTab(uid, tab), rows);
+      }
       loadedProfileTabs.add(index);
     } catch (e, stack) {
       debugPrint('[ProfileController] _loadProfileTab($index) failed: $e\\n$stack');
