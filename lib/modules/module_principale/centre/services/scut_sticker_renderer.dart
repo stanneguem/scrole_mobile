@@ -43,6 +43,9 @@ class ScutStickerRenderer {
     );
     VideoWriter? writer;
     try {
+      final audioFallback = reader.info.hasAudio && !reader.info.audioCompatible
+          ? await VideoFrames.decodeAudio(source.path)
+          : null;
       writer = await VideoWriter.create(
         output.path,
         width: reader.info.width,
@@ -51,6 +54,7 @@ class ScutStickerRenderer {
         audioSourcePath: reader.info.hasAudio && reader.info.audioCompatible
             ? source.path
             : null,
+        audio: audioFallback,
       );
       var processed = 0;
       // Les Scuts sont limités à 29 secondes dans le compositeur.
