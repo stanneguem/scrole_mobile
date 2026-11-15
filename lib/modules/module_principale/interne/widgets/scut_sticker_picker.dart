@@ -13,16 +13,50 @@ class ScutStickerPicker {
     '🚀','✈️','🌍','📸','💯','🙌','👏','🤝','🙏','💪','🧿','🪩',
   ];
 
-  /// Petits autocollants typographiques, dessinés et incrustés comme les emojis.
-  static const List<String> stickers = [
-    'WOW!','OMG!','LOL','LOVE','XOXO','BEST DAY','GOOD VIBES',
-    'ON FIRE','NO WAY','SO CUTE','HELLO!','BYE BYE','LET’S GO',
-    'YAY!','MOOD','ICONIC','BLESSED','DREAM BIG','NEW POST',
-    '100%','SUPER!','AMAZING','HOT!','COOL','MISS YOU',
-    '✨ WOW ✨','💖 LOVE 💖','🔥 HOT 🔥','🌸 CUTE 🌸',
-    '⭐ STAR ⭐','💯 PERFECT','🦋 FREE','👑 QUEEN','🚀 GO!',
-    '🎉 PARTY','🤍 PURE','⚡ ENERGY','🌈 HAPPY',
-  ];
+  /// Stickers typographiques et combos thématiques intégrés.
+  /// Les références aux séries sont des créations textuelles originales,
+  /// pas des illustrations ou logos officiels.
+  static const Map<String, List<String>> stickerPacks = {
+    'Pop': [
+      'WOW!', 'OMG!', 'LOL', 'LOVE', 'XOXO', 'BEST DAY', 'GOOD VIBES',
+      'ON FIRE', 'NO WAY', 'SO CUTE', 'HELLO!', 'BYE BYE', 'LET’S GO',
+      'YAY!', 'MOOD', 'ICONIC', 'BLESSED', 'DREAM BIG', '100%',
+      'SUPER!', 'AMAZING', 'HOT!', 'COOL', 'MISS YOU', '✨ WOW ✨',
+      '💖 LOVE 💖', '🔥 HOT 🔥', '🌸 CUTE 🌸', '⭐ STAR ⭐',
+      '💯 PERFECT', '🦋 FREE', '👑 QUEEN', '🚀 GO!', '🎉 PARTY',
+      '🤍 PURE', '⚡ ENERGY', '🌈 HAPPY',
+    ],
+    'Naruto': [
+      '🍥 NARUTO', '忍 NINJA', '火影 HOKAGE', '🍃 KONOHA',
+      'CHAKRA MODE', 'RASENGAN', 'SHINOBI', 'AKATSUKI ☁️',
+      'DATTEBAYO!', 'NINJA WAY', '九尾 KYŪBI', 'TEAM 7',
+      '🌀 JUTSU!', 'SASUKE MODE', 'BELIEVE IT!',
+    ],
+    'One Piece': [
+      '☠️ ONE PIECE', '🏴‍☠️ NAKAMA', '海賊 PIRATE', 'GEAR 5',
+      'KING OF PIRATES', 'GRAND LINE', 'WANTED!', 'DEVIL FRUIT',
+      'ゴムゴム GOMU', 'THOUSAND SUNNY', '👒 LUFFY VIBE',
+      'ZORO MODE', 'NAMI LOVE', 'SANJI KICK', '海賊王',
+    ],
+    'Anime': [
+      '⚔️ DEMON SLAYER', '領域展開', 'JUJUTSU MODE', 'PLUS ULTRA!',
+      '🐉 DRAGON BALL', 'KAMEHAMEHA!', 'BANKAI!', 'BLEACH SOUL',
+      '進撃 ATTACK!', 'SPY FAMILY', 'MY HERO', 'ANIME ADDICT',
+      'OTAKU LIFE', 'SENPAI!', 'MANGA TIME', '✨ ANIME VIBES',
+      '🔥 POWER UP', 'LEVEL UP!', 'PROTAGONIST',
+    ],
+    'BD Afrique': [
+      '🇨🇲 TÉTU', '🕶️ HACKER', 'ÉBÈNE DUTA', 'KAMER BOY',
+      'TUMBU', 'OKADA', 'ZEBRA COMICS', 'WAANDA COMICS',
+      'AKOMA MBA', 'AYA DE YOPOUGON', 'AKISSI', 'GOORGOORLOU',
+      'KWEZI', 'DJELIYA', 'AFRO COMICS', 'MADE IN AFRICA',
+      '🇨🇲 MBOA VIBES', 'AFRO FUTURE', 'BULLE AFRICAINE',
+      '9e ART AFRICAIN', 'TEAM CAMEROUN', 'NOS HISTOIRES',
+    ],
+  };
+
+  static List<String> get stickers =>
+      stickerPacks.values.expand((pack) => pack).toList();
 
   static Future<String?> show(BuildContext context) {
     return showModalBottomSheet<String>(
@@ -45,7 +79,7 @@ class _ScutStickerPickerSheet extends StatefulWidget {
 }
 
 class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
-  int _tab = 0;
+  int _tab = 0;\n  String _stickerCategory = 'Pop';
 
   @override
   Widget build(BuildContext context) {
