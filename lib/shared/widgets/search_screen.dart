@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../modules/module_principale/centre/models/community_post.dart';
 import '../../modules/module_principale/interne/controllers/home_feed_controller.dart';
+import '../../modules/module_principale/interne/pages/reels_screen.dart';
 import '../controllers/search_controller.dart';
 import '../widgets/app_cached_image.dart';
 import '../widgets/user_certified_badge.dart';
@@ -360,7 +361,19 @@ class _DiscoverPostTile extends StatelessWidget {
     final caption = post.content.trim();
 
     return GestureDetector(
-      onTap: () => Get.to(() => ProfilePostDetailScreen(post: post)),
+      onTap: () {
+        if (media.isVideo) {
+          Get.to(
+            () => ReelsScreen(
+              initialPostId: post.id,
+              initialMediaUrl: media.url,
+            ),
+            fullscreenDialog: true,
+          );
+        } else {
+          Get.to(() => ProfilePostDetailScreen(post: post));
+        }
+      },
       child: Container(
         height: tileHeight,
         width: double.infinity,
