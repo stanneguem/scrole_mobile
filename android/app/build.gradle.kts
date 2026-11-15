@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId = "com.scrole.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
