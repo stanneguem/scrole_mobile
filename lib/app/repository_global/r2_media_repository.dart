@@ -132,6 +132,7 @@ class R2MediaRepository {
     String? communityId,
     Duration? videoDuration,
     String? mediaRole,
+    void Function(int sentBytes, int totalBytes)? onProgress,
   }) async {
     final traceId = DateTime.now().millisecondsSinceEpoch.toString();
     debugPrint('[R2_UPLOAD][$traceId] START category=$category mediaType=$mediaType entityId=$entityId communityId=$communityId');
@@ -203,18 +204,34 @@ class R2MediaRepository {
     }
 
     // Ne jamais journaliser uploadUrl : cette URL contient une signature temporaire.
-    final request = http.Request('PUT', Uri.parse(uploadUrl))
+    final request = http.StreamedRequest('PUT', Uri.parse(uploadUrl))
       ..headers['Content-Type'] = contentType
-      ..bodyBytes = Uint8List.fromList(bytes);
+      ..contentLength = bytes.length;
+
+    Stream<List<int>> uploadChunks() async* {
+      const chunkSize = 64 * 1024;
+      var sentBytes = 0;
+      while (sentBytes < bytes.length) {
+        final end = (sentBytes + chunkSize).clamp(0, bytes.length);
+        final chunk = bytes.sublist(sentBytes, end);
+        sentBytes = end;
+        yield chunk;
+        onProgress?.call(sentBytes, bytes.length);
+      }
+    }
 
     final client = http.Client();
     try {
       debugPrint('[R2_UPLOAD][$traceId] STEP 2: PUT vers R2 objectKey=$objectKey bytes=${bytes.length} contentType=$contentType');
-      final streamed = await client
-          .send(request)
-          .timeout(const Duration(minutes: 3), onTimeout: () {
-        throw TimeoutException('Le transfert vers R2 a dépassé 3 minutes.');
-      });
+      final sendFuture = client.send(request).timeout(
+        const Duration(minutes: 3),
+        onTimeout: () {
+          throw TimeoutException('Le transfert vers R2 a dépassé 3 minutes.');
+        },
+      );
+      await request.sink.addStream(uploadChunks());
+      await request.sink.close();
+      final streamed = await sendFuture;
       final uploadResponse = await http.Response.fromStream(streamed)
           .timeout(const Duration(seconds: 30), onTimeout: () {
         throw TimeoutException('Délai dépassé pendant la confirmation de l’envoi R2.');
