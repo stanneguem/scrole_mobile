@@ -85,7 +85,7 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
   Widget build(BuildContext context) {
     final items = _tab == 0
         ? ScutStickerPicker.emojis
-        : ScutStickerPicker.stickers;
+        : (ScutStickerPicker.stickerPacks[_stickerCategory] ?? const <String>[]);
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * .58,
@@ -134,6 +134,34 @@ class _ScutStickerPickerSheetState extends State<_ScutStickerPickerSheet> {
                   ],
                 ),
               ),
+              if (_tab == 1) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: ScutStickerPicker.stickerPacks.keys.map((category) {
+                      final selected = _stickerCategory == category;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(category),
+                          selected: selected,
+                          onSelected: (_) => setState(() => _stickerCategory = category),
+                          backgroundColor: Colors.white.withValues(alpha: .06),
+                          selectedColor: Colors.white.withValues(alpha: .2),
+                          labelStyle: TextStyle(
+                            color: Colors.white,
+                            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                          ),
+                          side: BorderSide.none,
+                          showCheckmark: false,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               Expanded(
                 child: GridView.builder(
