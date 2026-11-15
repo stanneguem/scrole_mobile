@@ -511,7 +511,7 @@ class _PostPublishingProgressBar extends StatelessWidget {
         return const SizedBox.shrink();
       }
 
-      final progress = processor.postPublishingProgress.value.clamp(0.0, 1.0);
+      final progress = processor.postPublishingProgress.value.clamp(0.0, 1.0).toDouble();
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 5, 16, 8),
         child: ClipRRect(
