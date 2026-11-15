@@ -85,6 +85,9 @@ class ExternalProfileController extends GetxController {
       profileTabItems[entry.key] = raw.whereType<Map>()
           .map((row) => Map<String, dynamic>.from(row)).toList();
       loadedProfileTabs.add(entry.key);
+      if (entry.key == 0 || entry.key == 2) {
+        hasMoreProfileTabs[entry.key] = profileTabItems[entry.key]!.length >= 20;
+      }
     }
   }
 
@@ -103,8 +106,10 @@ class ExternalProfileController extends GetxController {
 
   Future<void> selectProfileTab(int index) async {
     selectedTab.value = index;
-    if (!loadedProfileTabs.contains(index)) {
-      await loadProfileTab(index);
+    final cachedItems = profileTabItems[index] ?? const <Map<String, dynamic>>[];
+    if (!loadedProfileTabs.contains(index) ||
+        ((index == 0 || index == 2) && cachedItems.isEmpty)) {
+      await loadProfileTab(index, forceRefresh: true);
     }
   }
 
