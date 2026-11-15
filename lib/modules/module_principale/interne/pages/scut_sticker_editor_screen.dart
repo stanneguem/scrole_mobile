@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:scrole/modules/module_principale/centre/services/scut_sticker_renderer.dart';
+import 'package:scrole/modules/module_principale/interne/widgets/scut_sticker_picker.dart';
 
 class ScutStickerEditorScreen extends StatefulWidget {
   const ScutStickerEditorScreen({
@@ -21,12 +22,6 @@ class ScutStickerEditorScreen extends StatefulWidget {
 }
 
 class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
-  static const _stickers = [
-    '😂','❤️','🔥','😍','🥰','😎','😭','✨','⭐','💯','🎉','👏',
-    '🤣','🤩','🥳','💖','💕','🌸','🦋','🌈','☀️','👑','💫','🤍',
-    '😜','😱','🥹','🙌','💥','🍀','🎵','🚀','💎','🌍','🐼','🐱',
-  ];
-
   late final VideoPlayerController _player;
   late List<ScutSticker> _items;
   bool _ready = false;
@@ -79,45 +74,7 @@ class _ScutStickerEditorScreenState extends State<ScutStickerEditorScreen> {
   }
 
   Future<void> _chooseSticker() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: const Color(0xFF171717),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 38, height: 4,
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4))),
-              const SizedBox(height: 18),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Stickers et emojis',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(height: 16),
-              GridView.builder(
-                shrinkWrap: true,
-                itemCount: _stickers.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 6, mainAxisSpacing: 8, crossAxisSpacing: 8,
-                ),
-                itemBuilder: (_, index) => InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => Navigator.pop(context, _stickers[index]),
-                  child: Center(child: Text(_stickers[index], style: const TextStyle(fontSize: 30))),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final selected = await ScutStickerPicker.show(context);
     if (selected == null || !mounted) return;
     setState(() {
       _items.add(ScutSticker(emoji: selected, x: .5, y: .5));
