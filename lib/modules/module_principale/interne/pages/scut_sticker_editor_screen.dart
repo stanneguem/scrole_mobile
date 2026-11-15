@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
-import '../centre/services/scut_sticker_renderer.dart';
+import 'package:scrole/modules/module_principale/centre/services/scut_sticker_renderer.dart';
 
 class ScutStickerEditorScreen extends StatefulWidget {
   const ScutStickerEditorScreen({
