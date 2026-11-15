@@ -8,8 +8,6 @@ import '../widgets/user_certified_badge.dart';
 import '../widgets/entity_certified_badge.dart';
 import '../../modules/module_decouverte/centre/models/discover_models.dart';
 import '../../app/theme/text_styles.dart';
-import '../../app/routes/app_pages.dart';
-import '../../modules/module_decouverte/interne/widgets/account_list_tile.dart';
 import 'relation_button_widget.dart';
 import 'profile_post_detail_screen.dart';
 
