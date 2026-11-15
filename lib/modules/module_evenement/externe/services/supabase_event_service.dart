@@ -1513,6 +1513,52 @@ class SupabaseEventService {
     }
   }
 
+  /// Complète les événements du calendrier avec les libellés de ville/pays
+  /// et l'adresse réellement enregistrés, car la RPC calendrier ne renvoie
+  /// pas toujours les relations géographiques.
+  Future<List<Map<String, dynamic>>> _hydrateEventLocations(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final ids = items
+        .map((row) => row['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (ids.isEmpty) return items;
+
+    try {
+      final rows = await _client
+          .from('events')
+          .select('id,address,city:cities!events_city_id_fkey(nom),country:countries!events_country_id_fkey(nom,code_iso)')
+          .inFilter('id', ids);
+      final byId = <String, Map<String, dynamic>>{};
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw);
+        final city = row['city'] is Map
+            ? Map<String, dynamic>.from(row['city'] as Map)
+            : null;
+        final country = row['country'] is Map
+            ? Map<String, dynamic>.from(row['country'] as Map)
+            : null;
+        byId[row['id'].toString()] = {
+          'address': row['address'],
+          if (city != null) 'city': {'nom': city['nom']},
+          if (country != null)
+            'country': {
+              'nom': country['nom'],
+              'code_iso': country['code_iso'],
+            },
+        };
+      }
+      for (final item in items) {
+        final location = byId[item['id']?.toString()];
+        if (location != null) item.addAll(location);
+      }
+    } catch (error) {
+      debugPrint('[SupabaseEventService] Could not hydrate calendar event locations: $error');
+    }
+    return items;
+  }
+
   Future<List<Map<String, dynamic>>> fetchHomeCalendarEvents({
     required String startDate,
     required String endDate,
@@ -1523,7 +1569,11 @@ class SupabaseEventService {
         'p_end_date': endDate,
       });
       if (response != null && response is List) {
-        return List<Map<String, dynamic>>.from(response);
+        final items = response
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList(growable: true);
+        return await _hydrateEventLocations(items);
       }
     } catch (e) {
       debugPrint('[SupabaseEventService] get_home_calendar_events RPC failed: $e');
