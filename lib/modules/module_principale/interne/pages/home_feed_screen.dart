@@ -195,6 +195,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [
+                    const _PostPublishingProgressBar(),
                     const _StoriesRow(),
                     const _TrendingHashtagsStrip(),
                     _SuggestedProfilesCarousel(controller: feedController),
