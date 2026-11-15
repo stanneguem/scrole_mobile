@@ -23,6 +23,8 @@ class CommunityOutboxProcessor extends GetxService {
   late final CommunityLocalDao _dao = CommunityLocalDao(Get.find<AppDatabase>());
 
   final RxBool isProcessing = false.obs;
+  final RxBool isPublishingPost = false.obs;
+  final RxDouble postPublishingProgress = 0.0.obs;
   bool _isProcessingPosts = false;
   static const int _maxPostAttempts = 5;
   Timer? _pollingTimer;
@@ -300,7 +302,12 @@ class CommunityOutboxProcessor extends GetxService {
       );
 
       debugPrint('[POST_CREATE] OUTBOX_SCAN userId=$currentUserId pendingCount=${pendingList.length} nowMs=$nowMs');
+      if (pendingList.isNotEmpty) {
+        isPublishingPost.value = true;
+        postPublishingProgress.value = 0.04;
+      }
       for (final item in pendingList) {
+        postPublishingProgress.value = 0.04;
         final id = (item['id'] as num).toInt();
         final operationId = item['operation_id'].toString();
         final communityId = item['community_id']?.toString();
@@ -365,6 +372,13 @@ class CommunityOutboxProcessor extends GetxService {
           debugPrint('[POST_CREATE][$postKind] MEDIA_PREPARE_START operationId=$operationId count=${localMediaItems.length} types=${localMediaItems.map((m) => m['type'] ?? 'photo').toList()}');
           for (int i = uploadedMedia.length; i < localMediaItems.length; i++) {
             final mediaStartedAt = DateTime.now();
+            final totalMediaCount = localMediaItems.isEmpty ? 1 : localMediaItems.length;
+            void reportUploadProgress(int sentBytes, int totalBytes) {
+              final fraction = totalBytes <= 0 ? 0.0 : sentBytes / totalBytes;
+              final overall = (i + fraction) / totalMediaCount;
+              postPublishingProgress.value = (0.06 + overall * 0.78).clamp(0.06, 0.84);
+            }
+            postPublishingProgress.value = (0.06 + (i / totalMediaCount) * 0.78).clamp(0.06, 0.84);
             var localPath = (localMediaItems[i]['upload_path'] ?? localMediaItems[i]['path']).toString();
             final originalPath = localMediaItems[i]['path'].toString();
             final mediaType = (localMediaItems[i]['type'] ?? 'photo').toString();
@@ -507,6 +521,7 @@ class CommunityOutboxProcessor extends GetxService {
                     file: file, category: 'post_media', mediaType: 'video',
                     communityId: communityId,
                     videoDuration: Duration(milliseconds: videoDurationMs.round()),
+                    onProgress: reportUploadProgress,
                   );
                   final videoMedia = <String, dynamic>{
                     'type': 'video', 'storage': 'r2',
@@ -554,6 +569,7 @@ class CommunityOutboxProcessor extends GetxService {
                     mediaType: 'image',
                     communityId: communityId,
                     mediaRole: 'video_thumbnail',
+                    onProgress: reportUploadProgress,
                   );
                   final thumbnailUrl = uploadedThumbnail.publicUrl ?? uploadedThumbnail.objectKey;
                   if (thumbnailUrl.trim().isEmpty) {
@@ -568,6 +584,7 @@ class CommunityOutboxProcessor extends GetxService {
                 } else {
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'photo', communityId: communityId,
+                    onProgress: reportUploadProgress,
                   );
                   uploadedMedia.add({
                     'type': 'photo', 'storage': 'r2',
@@ -645,6 +662,7 @@ class CommunityOutboxProcessor extends GetxService {
           debugPrint('[POST_CREATE][$postKind] MEDIA_CACHE_READY operationId=$operationId count=${uploadedMedia.length}');
           }
 
+          postPublishingProgress.value = 0.88;
           final pId = payload['p_id']?.toString() ?? operationId;
           final content = payload['p_content']?.toString() ?? '';
           final audience = payload['p_audience']?.toString() ?? 'public';
@@ -708,6 +726,7 @@ class CommunityOutboxProcessor extends GetxService {
           }
           final allowPromotion = payload['p_allow_promotion'] ?? true;
 
+          postPublishingProgress.value = 0.94;
           debugPrint('[POST_CREATE][$postKind] RPC_START operationId=$operationId postId=$pId communityId=$communityId audience=$audience contentLength=${content.length} mediaCount=${uploadedMedia.length} hashtagCount=${hashtags.length} mentionCount=${mentions.length} pollPresent=${poll != null}');
           final rpcStartedAt = DateTime.now();
 
@@ -735,6 +754,8 @@ class CommunityOutboxProcessor extends GetxService {
 
           debugPrint('[POST_CREATE][$postKind] RPC_SUCCESS operationId=$operationId postId=$pId elapsedMs=${DateTime.now().difference(rpcStartedAt).inMilliseconds}');
           debugPrint('[POST_CREATE][$postKind] OUTBOX_COMPLETE operationId=$operationId postId=$pId');
+          postPublishingProgress.value = 1.0;
+          await Future.delayed(const Duration(milliseconds: 220));
           await db.delete('post_outbox', where: 'id = ?', whereArgs: [id]);
           _refreshVisibleFeed(communityId ?? '');
         } catch (e, st) {
@@ -781,6 +802,8 @@ class CommunityOutboxProcessor extends GetxService {
       debugPrint('[POST_CREATE] PROCESS_FATAL error=$e\n$st');
     } finally {
       _isProcessingPosts = false;
+      isPublishingPost.value = false;
+      postPublishingProgress.value = 0.0;
       debugPrint('[POST_CREATE] PROCESS_FINISHED userId=$currentUserId');
     }
   }
