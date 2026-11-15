@@ -133,13 +133,18 @@ class ProfileController extends GetxController {
         savedPosts.assignAll(rows.map(CommunityPost.fromMap));
       }
       loadedProfileTabs.add(entry.key);
+      if (entry.key == 0 || entry.key == 2) {
+        hasMoreProfileTabs[entry.key] = rows.length >= 20;
+      }
     }
   }
 
   Future<void> selectProfileTab(int index) async {
     selectedTab.value = index;
-    if (!loadedProfileTabs.contains(index)) {
-      await _loadProfileTab(index);
+    final hasCachedPosts = index == 0 ? userPosts.isNotEmpty : savedPosts.isNotEmpty;
+    if (!loadedProfileTabs.contains(index) ||
+        ((index == 0 || index == 2) && !hasCachedPosts)) {
+      await _loadProfileTab(index, forceRefresh: true);
     }
   }
 
