@@ -12,6 +12,10 @@ import 'package:http/http.dart' as http;
 
 class ChatMediaCachePlatform {
   ChatMediaCachePlatform();
+
+  static bool isHttpUrl(String value) => value.startsWith('http://') || value.startsWith('https://');
+  static bool isFilesystemPath(String value) => value.startsWith('file://') || value.startsWith('/');
+  static bool isStorageKey(String value) => value.isNotEmpty && !isHttpUrl(value) && !isFilesystemPath(value);
   String? get _userId => Supabase.instance.client.auth.currentUser?.id;
 
   Future<Directory?> _directory() async {
