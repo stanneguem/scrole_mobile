@@ -11,7 +11,7 @@ Future<String?> cacheScutVideo(String url, {required bool downloadIfOnline}) asy
 Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {}
 
 VideoPlayerController createScutVideoController(String? localPath, String url) =>
-    VideoPlayerController.networkUrl(Uri.parse(url));
+    VideoPlayerController.networkUrl(Uri.parse(localPath ?? url));
 
 Future<void> clearScutVideoCache() async {}
 
