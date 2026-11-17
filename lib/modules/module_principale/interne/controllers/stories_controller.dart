@@ -12,6 +12,7 @@ import 'package:video_compress/video_compress.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/stories_repository.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import '../../../../app_controller.dart';
+import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/repository_global/storage_repository.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
 
@@ -217,17 +218,27 @@ class StoriesController extends GetxController {
     fetchStories();
   }
 
-  Future<File> _storyTrayCacheFile(String userId) async {
-    final directory = await getApplicationSupportDirectory();
-    return File(p.join(directory.path, 'stories_tray_cache_$userId.json'));
-  }
+  static String _storyTrayCacheKey(String userId) =>
+      'stories.tray.v1.user.$userId';
 
+  /// Supprime uniquement le cache régénérable du compte concerné.
+  /// Le nettoyage du fichier JSON historique reste nécessaire sur mobile
+  /// pendant la période de migration.
   static Future<void> clearLocalCacheForUser(String userId) async {
     if (userId.isEmpty) return;
-    final directory = await getApplicationSupportDirectory();
-    final file = File(p.join(directory.path, 'stories_tray_cache_$userId.json'));
-    if (await file.exists()) await file.delete();
-    debugPrint('[STORY_CACHE] Local cache purged for user $userId');
+    if (Get.isRegistered<FastCacheService>()) {
+      await Get.find<FastCacheService>().remove(_storyTrayCacheKey(userId));
+    }
+    if (!kIsWeb) {
+      try {
+        final directory = await getApplicationSupportDirectory();
+        final file = File(p.join(directory.path, 'stories_tray_cache_$userId.json'));
+        if (await file.exists()) await file.delete();
+      } catch (e) {
+        debugPrint('[STORY_CACHE] Legacy cache cleanup skipped: $e');
+      }
+    }
+    debugPrint('[STORY_CACHE] Cache purged for user $userId');
   }
 
   void clearInMemorySessionData() {
@@ -292,16 +303,32 @@ class StoriesController extends GetxController {
   Future<void> _restoreStoryTrayCache(String userId) async {
     if (_hasStoryGroups) return;
     try {
-      final file = await _storyTrayCacheFile(userId);
-      if (!await file.exists()) return;
-      final decoded = jsonDecode(await file.readAsString());
-      if (decoded is Map) {
-        _applyStoryTray(
-          Map<String, dynamic>.from(decoded),
-          includeNonOwnGroups: false,
+      final cache = Get.find<FastCacheService>();
+      Map<String, dynamic>? decoded = cache.get<Map<String, dynamic>>(
+        _storyTrayCacheKey(userId),
+        maxAge: const Duration(hours: 24),
+      );
+
+      // Migration douce : importer une seule fois l'ancien JSON mobile vers
+      // le CacheStore commun, puis supprimer le fichier historique.
+      if (decoded == null && !kIsWeb) {
+        final directory = await getApplicationSupportDirectory();
+        final legacyFile = File(
+          p.join(directory.path, 'stories_tray_cache_$userId.json'),
         );
-        debugPrint('[STORY_CACHE] Restored only own stories from local cache; other authors require fresh permission checks');
+        if (await legacyFile.exists()) {
+          final legacy = jsonDecode(await legacyFile.readAsString());
+          if (legacy is Map) {
+            decoded = Map<String, dynamic>.from(legacy);
+            await cache.set(_storyTrayCacheKey(userId), decoded);
+          }
+          await legacyFile.delete();
+        }
       }
+
+      if (decoded == null) return;
+      _applyStoryTray(decoded, includeNonOwnGroups: false);
+      debugPrint('[STORY_CACHE] Restored only own stories from account-scoped cache; other authors require fresh permission checks');
     } catch (e) {
       debugPrint('[STORY_CACHE] Unable to restore story tray: $e');
     }
@@ -309,9 +336,8 @@ class StoriesController extends GetxController {
 
   Future<void> _persistStoryTray(String userId, Map<String, dynamic> data) async {
     try {
-      final file = await _storyTrayCacheFile(userId);
-      await file.writeAsString(jsonEncode(data), flush: true);
-      debugPrint('[STORY_CACHE] Story tray metadata saved locally');
+      await Get.find<FastCacheService>().set(_storyTrayCacheKey(userId), data);
+      debugPrint('[STORY_CACHE] Story tray metadata saved through CacheStore');
     } catch (e) {
       debugPrint('[STORY_CACHE] Unable to persist story tray: $e');
     }
