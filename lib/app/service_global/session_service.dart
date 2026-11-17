@@ -74,7 +74,9 @@ class SessionService extends GetxService {
     // selected by the user or files saved to the public gallery.
     // path_provider and dart:io directories are native-only. Browser caches
     // are managed by the browser and must not be accessed through File APIs.
-    if (!kIsWeb) {
+    if (kIsWeb) {
+      await ChatMediaCache.instance.clearForUser(userId);
+    } else {
       final support = await getApplicationSupportDirectory();
       final temporary = await getTemporaryDirectory();
       final scopedDirectories = <Directory>[
