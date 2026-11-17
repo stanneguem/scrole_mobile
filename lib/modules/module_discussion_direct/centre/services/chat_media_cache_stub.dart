@@ -87,6 +87,7 @@ class ChatMediaCachePlatform {
       await box.put('$_prefix$key', bytes);
       await box.put('meta:$key', <String, dynamic>{
         'size': bytes.lengthInBytes,
+        'owner_id': Supabase.instance.client.auth.currentUser?.id ?? 'anonymous',
         'saved_at': DateTime.now().toIso8601String(),
         'last_access': DateTime.now().millisecondsSinceEpoch,
       });
@@ -186,6 +187,18 @@ class ChatMediaCachePlatform {
       if (total <= _maxBytes) break;
       total -= (entry.value['size'] as num?)?.toInt() ?? 0;
       await _deleteEntry(box, entry.key);
+    }
+  }
+
+  Future<void> clearForUser(String userId) async {
+    if (userId.isEmpty) return;
+    final box = await _openBox();
+    for (final key in box.keys.whereType<String>().toList()) {
+      if (!key.startsWith('meta:')) continue;
+      final raw = box.get(key);
+      if (raw is Map && raw['owner_id']?.toString() == userId) {
+        await _deleteEntry(box, key.substring(5));
+      }
     }
   }
 
