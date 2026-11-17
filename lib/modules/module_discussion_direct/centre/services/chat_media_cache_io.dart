@@ -185,6 +185,14 @@ class ChatMediaCachePlatform {
     throw const FormatException('Invalid chat media URL');
   }
 
+  Future<void> clearForUser(String userId) async {
+    final directory = await _directory();
+    if (directory == null || userId.isEmpty) return;
+    if (p.basename(directory.path) == userId && await directory.exists()) {
+      await directory.delete(recursive: true);
+    }
+  }
+
   Future<void> removeLocal(String remoteUrl) async {
     final path = await localPathFor(remoteUrl);
     if (path == null) return;
