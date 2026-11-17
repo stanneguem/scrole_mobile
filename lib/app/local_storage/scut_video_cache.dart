@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../modules/module_discussion_direct/centre/services/chat_media_cache.dart';
+
 import 'fast/fast_cache_service.dart';
 
 import 'scut_video_cache_stub.dart'
@@ -28,7 +30,7 @@ Future<void> writeScutFeedManifest(List<Map<String, dynamic>> items) async {
 
 Future<String?> findScutCachedVideo(String url) async {
   if (!kIsWeb) return platform.findScutCachedVideo(url);
-  return null; // Browser streams the source URL; no full-video memory download.
+  return ChatMediaCache.instance.localPathFor(url);
 }
 
 Future<String?> cacheScutVideo(String url, {required bool downloadIfOnline}) async {
@@ -40,7 +42,10 @@ Future<String?> cacheScutVideo(String url, {required bool downloadIfOnline}) asy
       (uri.scheme != 'https' && uri.scheme != 'http') ||
       uri.path.toLowerCase().endsWith('.m3u8') ||
       uri.path.toLowerCase().endsWith('.mpd')) return null;
-  return url;
+  if (!downloadIfOnline) return url;
+  // IndexedDB cache accepts bounded media files only; large videos fall back
+  // to network streaming without buffering the entire file in memory.
+  return await ChatMediaCache.instance.cacheRemote(url) ?? url;
 }
 
 Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {
