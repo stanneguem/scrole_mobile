@@ -28,6 +28,8 @@ class ChatMediaCache {
       _platform.resolveLocalPath(ref);
   Future<String?> cacheRemote(String remoteUrl) =>
       _platform.cacheRemote(remoteUrl);
+  Future<void> clearForUser(String userId) =>
+      _platform.clearForUser(userId);
   Future<void> removeLocal(String remoteUrl) =>
       _platform.removeLocal(remoteUrl);
   Future<void> purgeOldFiles({int days = 30}) =>
