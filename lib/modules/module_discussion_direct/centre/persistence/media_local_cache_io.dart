@@ -8,8 +8,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../../app/local_storage/structured/app_cache_database.dart';
 
-class MediaLocalCache {
-  MediaLocalCache(this._database);
+class MediaLocalCachePlatform {
+  MediaLocalCachePlatform(this._database);
 
   final AppDatabase _database;
 
