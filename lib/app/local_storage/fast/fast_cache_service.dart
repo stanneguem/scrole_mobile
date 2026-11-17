@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-class FastCacheService extends GetxService {
+import '../../storage/contracts/cache_store.dart';
+
+class FastCacheService extends GetxService implements CacheStore {
   Box? _box;
   bool _ready = false;
   bool get isReady => _ready;
