@@ -16,6 +16,8 @@ class ChatMediaCache {
   String? get _userId => Supabase.instance.client.auth.currentUser?.id;
 
   Future<Directory?> _directory() async {
+    // Web: no File/Directory cache yet; consumers use browser network URLs.
+    if (kIsWeb) return null;
     final uid = _userId;
     if (uid == null || uid.isEmpty) return null;
     final root = await getApplicationSupportDirectory();
@@ -82,6 +84,7 @@ class ChatMediaCache {
   }
 
   Future<bool> _requestGalleryPermission() async {
+    if (kIsWeb) return false;
     if (Platform.isAndroid) {
       final status = await Permission.photos.request();
       if (status.isGranted || status.isLimited) return true;
@@ -96,6 +99,7 @@ class ChatMediaCache {
   }
 
   Future<bool> saveToGallery({required String sourcePath, required String fileName}) async {
+    if (kIsWeb) return false;
     final source = File(sourcePath);
     if (!await source.exists()) return false;
     if (!await _requestGalleryPermission()) return false;
@@ -112,6 +116,9 @@ class ChatMediaCache {
   /// Returns a path that is safe to pass to [Image.file] / [AudioPlayer.setFilePath].
   Future<String?> resolveLocalPath(String ref) async {
     if (ref.isEmpty) return null;
+    // A browser URL is directly consumable by Image.network / just_audio.setUrl.
+    // Storage keys are resolved to short-lived URLs by cacheRemote below.
+    if (kIsWeb && isHttpUrl(ref)) return ref;
 
     if (isFilesystemPath(ref)) {
       final file = File(ref.startsWith('file://') ? Uri.parse(ref).toFilePath() : ref);
@@ -124,6 +131,7 @@ class ChatMediaCache {
 
   Future<String?> cacheRemote(String remoteUrl) async {
     if (remoteUrl.isEmpty || isFilesystemPath(remoteUrl)) return null;
+    if (kIsWeb && isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) return remoteUrl;
     final existing = await localPathFor(remoteUrl);
     if (existing != null) return existing;
 
@@ -148,6 +156,7 @@ class ChatMediaCache {
         // Legacy Supabase Storage key support for old messages only.
         downloadUrl = await client.storage.from('chat-media').createSignedUrl(remoteUrl, 120);
       }
+      if (kIsWeb) return downloadUrl;
       final response = await http.get(Uri.parse(downloadUrl));
       if (response.statusCode < 200 || response.statusCode >= 300) return null;
       return cacheBytes(remoteUrl, response.bodyBytes);
@@ -181,6 +190,7 @@ class ChatMediaCache {
 
   /// Nettoie les fichiers médias vieux de plus de [days] jours.
   Future<void> purgeOldFiles({int days = 30}) async {
+    if (kIsWeb) return;
     final dir = await _directory();
     if (dir == null || !await dir.exists()) return;
 
