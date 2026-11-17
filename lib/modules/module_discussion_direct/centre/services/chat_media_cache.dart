@@ -73,7 +73,7 @@ class ChatMediaCache {
   }
 
   Future<String?> saveLocalToSandbox(String storagePath, String localSourcePath) async {
-    if (storagePath.isEmpty || localSourcePath.isEmpty) return null;
+    if (kIsWeb || storagePath.isEmpty || localSourcePath.isEmpty) return null;
     final sourceFile = File(localSourcePath);
     if (!await sourceFile.exists()) return null;
     final directory = await _directory();
@@ -116,6 +116,7 @@ class ChatMediaCache {
   /// Returns a path that is safe to pass to [Image.file] / [AudioPlayer.setFilePath].
   Future<String?> resolveLocalPath(String ref) async {
     if (ref.isEmpty) return null;
+    if (kIsWeb && isFilesystemPath(ref)) return null;
     // A browser URL is directly consumable by Image.network / just_audio.setUrl.
     // Storage keys are resolved to short-lived URLs by cacheRemote below.
     if (kIsWeb && isHttpUrl(ref)) return ref;
