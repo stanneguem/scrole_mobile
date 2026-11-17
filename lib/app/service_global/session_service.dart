@@ -72,18 +72,22 @@ class SessionService extends GetxService {
   Future<void> _purgeAccountMediaCaches(String userId) async {
     // These directories contain only regenerable app caches, never originals
     // selected by the user or files saved to the public gallery.
-    final support = await getApplicationSupportDirectory();
-    final temporary = await getTemporaryDirectory();
-    final scopedDirectories = <Directory>[
-      Directory(p.join(support.path, 'chat_media', userId)),
-      Directory(p.join(support.path, 'scrole_media', userId)),
-      Directory(p.join(support.path, 'r2_media_cache')),
-      Directory(p.join(temporary.path, 'r2_private_temp')),
-    ];
-    for (final directory in scopedDirectories) {
-      if (await directory.exists()) {
-        await directory.delete(recursive: true);
-        debugPrint('[Session] Media cache purged: ${directory.path}');
+    // path_provider and dart:io directories are native-only. Browser caches
+    // are managed by the browser and must not be accessed through File APIs.
+    if (!kIsWeb) {
+      final support = await getApplicationSupportDirectory();
+      final temporary = await getTemporaryDirectory();
+      final scopedDirectories = <Directory>[
+        Directory(p.join(support.path, 'chat_media', userId)),
+        Directory(p.join(support.path, 'scrole_media', userId)),
+        Directory(p.join(support.path, 'r2_media_cache')),
+        Directory(p.join(temporary.path, 'r2_private_temp')),
+      ];
+      for (final directory in scopedDirectories) {
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+          debugPrint('[Session] Media cache purged: ${directory.path}');
+        }
       }
     }
     // Drop decoded images still held in Flutter's process-wide image cache.
