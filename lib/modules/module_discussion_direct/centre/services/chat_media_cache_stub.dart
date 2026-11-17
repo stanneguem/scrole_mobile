@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
@@ -19,6 +20,7 @@ class ChatMediaCachePlatform {
   static const String _prefix = 'blob:';
   static final Map<String, String> _objectUrls = <String, String>{};
   static Box? _box;
+  static bool _hiveInitialized = false;
 
   static bool _isHttpUrl(String value) =>
       value.startsWith('http://') || value.startsWith('https://');
@@ -28,6 +30,10 @@ class ChatMediaCachePlatform {
       value.startsWith('salon-messages/');
 
   Future<Box> _openBox() async {
+    if (!_hiveInitialized) {
+      await Hive.initFlutter();
+      _hiveInitialized = true;
+    }
     final existing = _box;
     if (existing != null && existing.isOpen) return existing;
     _box = await Hive.openBox(_boxName);
@@ -112,9 +118,23 @@ class ChatMediaCachePlatform {
     try {
       final downloadUrl = await _resolveDownloadUrl(remoteUrl);
       if (downloadUrl == null) return null;
-      final response = await http.get(Uri.parse(downloadUrl));
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
-      return cacheBytes(remoteUrl, response.bodyBytes);
+      final client = http.Client();
+      try {
+        final request = await client.send(http.Request('GET', Uri.parse(downloadUrl)));
+        if (request.statusCode < 200 || request.statusCode >= 300) return null;
+        final declaredLength = request.contentLength;
+        if (declaredLength != null && declaredLength > _maxEntryBytes) return null;
+        final builder = BytesBuilder(copy: false);
+        var received = 0;
+        await for (final chunk in request.stream) {
+          received += chunk.length;
+          if (received > _maxEntryBytes) return null;
+          builder.add(chunk);
+        }
+        return cacheBytes(remoteUrl, builder.takeBytes());
+      } finally {
+        client.close();
+      }
     } catch (error) {
       debugPrint('[WebMediaCache] Download failed: $error');
       return null;
