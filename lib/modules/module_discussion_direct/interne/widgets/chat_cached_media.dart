@@ -1,6 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../centre/services/chat_media_cache.dart';
+import 'chat_cached_media_image_stub.dart'
+    if (dart.library.io) 'chat_cached_media_image_io.dart' as media_image;
 
 class ChatCachedMedia extends StatefulWidget {
   const ChatCachedMedia({
@@ -50,36 +51,13 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
         final path = snapshot.data;
         if (path == null || path.isEmpty) return _unavailable();
 
-        // In the browser, ChatMediaCache returns a direct or signed HTTPS URL.
-        // On mobile, only a verified filesystem path may reach Image.file.
-        if (path.startsWith('https://') || path.startsWith('http://')) {
-          return ClipRRect(
-            borderRadius: widget.borderRadius ?? BorderRadius.zero,
-            child: Image.network(
-              path,
-              width: widget.width,
-              height: widget.height,
-              fit: widget.fit,
-              errorBuilder: (_, __, ___) =>
-                  _frame(const Icon(Icons.broken_image_outlined)),
-            ),
-          );
-        }
-        if (!ChatMediaCache.isFilesystemPath(path)) return _unavailable();
-        final absolute =
-            path.startsWith('file://') ? Uri.parse(path).toFilePath() : path;
-        final file = File(absolute);
-        if (!file.existsSync()) return _unavailable();
-        return ClipRRect(
-          borderRadius: widget.borderRadius ?? BorderRadius.zero,
-          child: Image.file(
-            file,
-            width: widget.width,
-            height: widget.height,
-            fit: widget.fit,
-            errorBuilder: (_, __, ___) =>
-                _frame(const Icon(Icons.broken_image_outlined)),
-          ),
+        return media_image.buildChatCachedMediaImage(
+          path: path,
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          borderRadius: widget.borderRadius,
+          unavailable: _unavailable,
         );
       },
     );
