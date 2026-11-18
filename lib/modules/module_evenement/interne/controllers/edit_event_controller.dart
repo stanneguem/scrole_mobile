@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
@@ -25,7 +24,7 @@ class EditEventController extends GetxController {
   late final TextEditingController slugController;
   late final TextEditingController descriptionController;
   late final TextEditingController virtualLinkController;
-  final Rx<File?> coverFile = Rx<File?>(null);
+  final Rx<XFile?> coverFile = Rx<XFile?>(null);
   final RxString currentCoverUrl = ''.obs;
 
   final RxBool isVirtual = false.obs;
