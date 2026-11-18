@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../centre/repositories/messaging_repository.dart';
+import '../../centre/persistence/pending_chat_media_store.dart';
 import '../../centre/services/chat_media_cache.dart';
 import 'chat_cached_media_image_stub.dart'
     if (dart.library.io) 'chat_cached_media_image_io.dart' as media_image;
@@ -29,19 +32,24 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
   @override
   void initState() {
     super.initState();
-    _future = widget.remoteUrl.startsWith('data:')
-        ? Future<String?>.value(widget.remoteUrl)
-        : ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
+    _future = _resolvePath(widget.remoteUrl);
   }
 
   @override
   void didUpdateWidget(ChatCachedMedia oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.remoteUrl != widget.remoteUrl) {
-      _future = widget.remoteUrl.startsWith('data:')
-          ? Future<String?>.value(widget.remoteUrl)
-          : ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
+      _future = _resolvePath(widget.remoteUrl);
     }
+  }
+
+  Future<String?> _resolvePath(String value) async {
+    if (value.startsWith('data:')) return value;
+    if (PendingChatMediaStore.isReference(value)) {
+      if (!Get.isRegistered<MessagingRepository>()) return null;
+      return Get.find<MessagingRepository>().resolvePendingMediaDataUri(value);
+    }
+    return ChatMediaCache.instance.resolveLocalPath(value);
   }
 
   @override
