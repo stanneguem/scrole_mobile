@@ -17,3 +17,9 @@ Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(MediaAsset
 
 Future<void> disposeChatMediaVideoController(VideoPlayerController controller) =>
     platform.disposeChatMediaVideoController(controller);
+
+Future<bool> savePendingChatMediaAsset(MediaAsset asset, String fileName) =>
+    platform.savePendingChatMediaAsset(asset, fileName);
+
+Future<bool> sharePendingChatMediaAsset(MediaAsset asset, String fileName) =>
+    platform.sharePendingChatMediaAsset(asset, fileName);
