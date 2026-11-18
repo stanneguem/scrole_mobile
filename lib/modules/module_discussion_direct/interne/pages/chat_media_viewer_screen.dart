@@ -67,11 +67,15 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
     if (_saving || widget.mediaUrls.isEmpty) return;
     setState(() => _saving = true);
     try {
-      var url = widget.mediaUrls[_currentIndex];
-      if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
-        url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
-      }
-      final ok = await saveChatMediaToGallery(url, _fileName(url));
+      final url = widget.mediaUrls[_currentIndex];
+      final isPending = PendingChatMediaStore.isReference(url) &&
+          Get.isRegistered<MessagingRepository>();
+      final asset = isPending
+          ? await Get.find<MessagingRepository>().resolvePendingMediaAsset(url)
+          : null;
+      final ok = asset != null
+          ? await savePendingChatMediaAsset(asset, _fileName(url))
+          : await saveChatMediaToGallery(url, _fileName(url));
       if (!mounted) return;
       final kind = _isVideo(_currentIndex) ? 'vidéo' : 'image';
       Get.snackbar(
@@ -93,11 +97,15 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
 
   Future<void> _shareImage() async {
     if (widget.mediaUrls.isEmpty) return;
-    var url = widget.mediaUrls[_currentIndex];
-    if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
-      url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
-    }
-    final ok = await shareChatMedia(url);
+    final url = widget.mediaUrls[_currentIndex];
+    final isPending = PendingChatMediaStore.isReference(url) &&
+        Get.isRegistered<MessagingRepository>();
+    final asset = isPending
+        ? await Get.find<MessagingRepository>().resolvePendingMediaAsset(url)
+        : null;
+    final ok = asset != null
+        ? await sharePendingChatMediaAsset(asset, _fileName(url))
+        : await shareChatMedia(url);
     if (!ok) {
       Get.snackbar('Partage impossible', 'Ce média est momentanément indisponible.',
           snackPosition: SnackPosition.BOTTOM);
