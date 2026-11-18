@@ -5,6 +5,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:scrole/shared/models/chat_message.dart'
     as legacy;
 import '../../centre/repositories/messaging_repository.dart';
+import '../../centre/persistence/pending_chat_media_store.dart';
 import '../../centre/services/chat_media_cache.dart';
 
 class DirectVoiceMessagePlayer extends StatefulWidget {
@@ -37,6 +38,10 @@ class _DirectVoiceMessagePlayerState extends State<DirectVoiceMessagePlayer> {
     _error = null;
     try {
       String? playable = path.startsWith('data:') ? path : null;
+      if (playable == null && PendingChatMediaStore.isReference(path) &&
+          Get.isRegistered<MessagingRepository>()) {
+        playable = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(path);
+      }
       if (playable == null && Get.isRegistered<MessagingRepository>()) {
         final result = await Get.find<MessagingRepository>().cacheMedia(widget.messageId ?? '', path);
         if (result.success && result.data != null && result.data!.isNotEmpty) {
