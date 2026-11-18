@@ -71,7 +71,6 @@ class ChatController extends GetxController {
   final Set<String> _pendingReadIds = {};
   StreamSubscription<Uint8List>? _recordingStreamSub;
   final List<int> _recordingChunks = <int>[];
-  String? _recordingMimeType;
   String? get currentUserId => _repository.currentUserId;
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
@@ -519,7 +518,6 @@ class ChatController extends GetxController {
       }
       await audioPlayer.stop();
       _recordingChunks.clear();
-      _recordingMimeType = kIsWeb ? 'audio/webm' : 'audio/mp4';
       final stream = await audioRecorder.startStream(const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 44100,
@@ -582,7 +580,6 @@ class ChatController extends GetxController {
     await _recordingStreamSub?.cancel();
     _recordingStreamSub = null;
     _recordingChunks.clear();
-    _recordingMimeType = null;
     recordingState.value = RecordingState.idle;
     swipeOffset.value = 0;
     await audioPlayer.stop();
