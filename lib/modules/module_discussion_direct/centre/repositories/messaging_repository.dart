@@ -329,6 +329,8 @@ class MessagingRepository {
       if (prepared == null) {
         return const MessagingResult.failure('media_upload_failed', 'Le média est conservé dans la file d’envoi et sera réessayé.');
       }
+      await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
+      await _replaceOutboxPayload(uid, prepared);
       final remote = await _remote.insertMessage(prepared);
       if (remote == null) {
         throw StateError('Le serveur n’a pas confirmé le message.');
@@ -630,6 +632,8 @@ class MessagingRepository {
             final m = Message.fromJson(Map<String, dynamic>.from(payload as Map));
             final prepared = await _prepareMedia(m);
             if (prepared == null) throw StateError('Pièce jointe locale indisponible pour l’envoi.');
+            await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
+            await _replaceOutboxPayload(uid, prepared);
             final remote = await _remote.insertMessage(prepared);
             if (remote == null) throw Exception('send_failed');
             await _messages.upsert(uid, remote.copyWith(localId: m.localId, status: MessageStatus.sent));
@@ -932,6 +936,19 @@ class MessagingRepository {
       'created_at': now,
       'updated_at': now
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> _replaceOutboxPayload(String uid, Message message) async {
+    final db = await _db.database;
+    await db.update(
+      'direct_chat_outbox',
+      {
+        'payload': jsonEncode(message.toJson()),
+        'updated_at': DateTime.now().toUtc().millisecondsSinceEpoch,
+      },
+      where: 'user_id=? AND id=?',
+      whereArgs: [uid, message.localId],
+    );
   }
 
   Future<void> _removeOutbox(String uid, String localId) async {
