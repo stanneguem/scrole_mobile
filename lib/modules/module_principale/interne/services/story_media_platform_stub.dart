@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
+import '../../../../app/media/media_asset.dart';
 
 VideoPlayerController createStoryVideoController(XFile file) =>
     VideoPlayerController.networkUrl(Uri.parse(file.path));
@@ -16,7 +17,9 @@ Future<XFile?> trimStoryVideo(
   try {
     await controller.initialize().timeout(const Duration(seconds: 30));
     final duration = controller.value.duration;
-    if (duration <= Duration.zero || duration > maxDuration) return null;
+    final extension = MediaAsset.fromXFile(file).extension;
+    if (duration <= Duration.zero || duration > maxDuration ||
+        !const {'mp4', 'mov'}.contains(extension)) return null;
     return file;
   } finally {
     await controller.dispose();
