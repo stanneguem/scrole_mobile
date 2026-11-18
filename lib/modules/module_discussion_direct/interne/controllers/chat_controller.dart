@@ -521,7 +521,24 @@ class ChatController extends GetxController {
     if (uid == null || path == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     final localId = _repository.generateLocalId();
-    final message = MessageModel(id: localId, localId: localId, conversationId: conversationId, senderId: uid, type: MessageType.audio, audioUrl: path, audioDuration: Duration(seconds: recordingDuration.value), createdAt: DateTime.now().toUtc(), status: MessageStatus.sending, repliedToId: repliedMessage.value?.id);
+    final audioBytes = await XFile(path, mimeType: 'audio/mp4').readAsBytes();
+    if (audioBytes.isEmpty) {
+      _showError('L’enregistrement audio est vide ou inaccessible.');
+      return;
+    }
+    final audioPayload = 'data:audio/mp4;name=scrole_voice.m4a;base64,${base64Encode(audioBytes)}';
+    final message = MessageModel(
+      id: localId,
+      localId: localId,
+      conversationId: conversationId,
+      senderId: uid,
+      type: MessageType.audio,
+      audioUrl: audioPayload,
+      audioDuration: Duration(seconds: recordingDuration.value),
+      createdAt: DateTime.now().toUtc(),
+      status: MessageStatus.sending,
+      repliedToId: repliedMessage.value?.id,
+    );
     recordingState.value = RecordingState.idle;
     _recordingPath = null;
     clearReply();
