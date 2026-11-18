@@ -12,6 +12,7 @@ import 'package:scrole/modules/module_discussion_direct/centre/services/chat_med
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/routes/app_pages.dart';
 import '../../../../app/service_global/notification_service.dart';
+import '../../../../app/service_global/media_image_processor.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message_model.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/repositories/messaging_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message.dart';
@@ -454,8 +455,15 @@ class ChatController extends GetxController {
       final localId = _repository.generateLocalId();
       final persistedMedia = <String>[];
       var hasVideo = false;
-      for (final file in files) {
-        final name = file.name.isNotEmpty ? file.name : 'attachment';
+      for (final picked in files) {
+        final pickedName = picked.name.isNotEmpty ? picked.name : 'attachment';
+        final pickedExtension = pickedName.contains('.') ? pickedName.split('.').last.toLowerCase() : '';
+        final pickedIsVideo = picked.mimeType?.startsWith('video/') == true ||
+            const {'mp4', 'mov', 'webm'}.contains(pickedExtension);
+        final file = pickedIsVideo || pickedExtension == 'gif'
+            ? picked
+            : await compressSelectedImage(picked, quality: 82);
+        final name = file.name.isNotEmpty ? file.name : pickedName;
         final extension = name.contains('.') ? name.split('.').last.toLowerCase() : '';
         final mime = file.mimeType ??
             (const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm'}
