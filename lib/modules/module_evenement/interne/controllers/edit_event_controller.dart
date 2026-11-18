@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../centre/models/event_model.dart';
 import '../../centre/repositories/event_repository.dart';
@@ -181,7 +182,7 @@ class EditEventController extends GetxController {
       // 1. Upload new photo if selected
       if (coverFile.value != null) {
         try {
-          newUploadedPhotoUrl = await _repository.uploadCover(event.id, coverFile.value!);
+          newUploadedPhotoUrl = await _repository.uploadCover(event.id, MediaAsset.fromXFile(coverFile.value!));
           isNewPhotoUploaded = true;
         } catch (uploadError) {
           Get.snackbar('Erreur d\'upload', 'Impossible de téléverser la nouvelle photo: $uploadError');
