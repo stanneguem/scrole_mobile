@@ -617,9 +617,22 @@ class MessagingRepository {
     }
   }
 
+  Future<bool> _hasNetworkConnection() async {
+    try {
+      return Get.isRegistered<ConnectivityService>()
+          ? await Get.find<ConnectivityService>().checkConnection()
+          : await InternetConnection().hasInternetAccess;
+    } catch (_) {
+      // En cas d’incertitude réseau, conserver les éléments en attente sans
+      // consommer leurs tentatives de réémission.
+      return false;
+    }
+  }
+
   Future<void> processOutbox() async {
     final uid = currentUserId;
     if (uid == null || _outboxRunning) return;
+    if (!await _hasNetworkConnection()) return;
     _outboxRunning = true;
     try {
       final db = await _db.database;
@@ -654,6 +667,7 @@ class MessagingRepository {
           }
         } catch (e) {
           debugPrint('[Messaging] Outbox item $id failed: $e');
+          if (!await _hasNetworkConnection()) break;
           await _markOutboxFailure(uid, id, e.toString());
         }
       }
