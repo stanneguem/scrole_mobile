@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import 'chat_media_cache.dart';
 
 Future<String?> _localFile(String url) async {
+  if (url.startsWith('data:')) return null;
   if (ChatMediaCache.isFilesystemPath(url)) {
     final path = url.startsWith('file://') ? Uri.parse(url).toFilePath() : url;
     if (await File(path).exists()) return path;
