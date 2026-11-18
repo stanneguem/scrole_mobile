@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/services/chat_media_cache.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app/routes/app_pages.dart';
@@ -68,7 +69,9 @@ class ChatController extends GetxController {
   Timer? _recordingTimer;
   Timer? _otherUserTypingTimer;
   final Set<String> _pendingReadIds = {};
-  String? _recordingPath;
+  StreamSubscription<Uint8List>? _recordingStreamSub;
+  final List<int> _recordingChunks = <int>[];
+  String? _recordingMimeType;
   String? get currentUserId => _repository.currentUserId;
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
@@ -504,37 +507,107 @@ class ChatController extends GetxController {
   }
 
   Future<void> startRecording() async {
-    final permission = await Permission.microphone.request();
-    if (!permission.isGranted) { _showError('L’accès au micro est nécessaire pour enregistrer.'); return; }
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/scrole_voice_${DateTime.now().microsecondsSinceEpoch}.m4a';
     try {
-      await audioRecorder.start(const RecordConfig(), path: path);
-      _recordingPath = path;
+      // Sur le Web, le navigateur demande lui-même l’autorisation microphone
+      // via getUserMedia. permission_handler n’est utilisé que sur mobile.
+      if (!kIsWeb) {
+        final permission = await Permission.microphone.request();
+        if (!permission.isGranted) {
+          _showError('L’accès au micro est nécessaire pour enregistrer.');
+          return;
+        }
+      }
+      await audioPlayer.stop();
+      _recordingChunks.clear();
+      _recordingMimeType = kIsWeb ? 'audio/webm' : 'audio/mp4';
+      final stream = await audioRecorder.startStream(const RecordConfig());
+      _recordingStreamSub?.cancel();
+      _recordingStreamSub = stream.listen(
+        _recordingChunks.addAll,
+        onError: (Object error) {
+          debugPrint('[ChatVoice] recording stream failed: $error');
+          _showError('Une erreur est survenue pendant l’enregistrement.');
+        },
+      );
       recordingState.value = RecordingState.recording;
       recordingDuration.value = 0;
+      swipeOffset.value = 0;
       _recordingTimer?.cancel();
-      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) => recordingDuration.value++);
-    } catch (_) { _showError('Impossible de démarrer l’enregistrement.'); }
+      _recordingTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => recordingDuration.value++,
+      );
+    } catch (e) {
+      debugPrint('[ChatVoice] unable to start recording: $e');
+      _showError('Impossible de démarrer l’enregistrement. Vérifie l’autorisation du micro.');
+    }
   }
 
-  void onRecordingDragUpdate(DragUpdateDetails details) { if (recordingState.value == RecordingState.recording) { swipeOffset.value += details.primaryDelta ?? 0; if (swipeOffset.value < -120) unawaited(cancelRecording()); } }
-  Future<void> stopRecording() async { if (recordingState.value != RecordingState.recording) return; _recordingTimer?.cancel(); final path = await audioRecorder.stop(); if (path == null) { recordingState.value = RecordingState.idle; return; } _recordingPath = path; recordingState.value = RecordingState.reviewing; }
-  Future<void> cancelRecording() async { _recordingTimer?.cancel(); await audioRecorder.stop(); recordingState.value = RecordingState.idle; swipeOffset.value = 0; _recordingPath = null; }
-  Future<void> playReview() async { final path = _recordingPath; if (path == null) return; if (isPlayingReview.value) { await audioPlayer.pause(); return; } await audioPlayer.setFilePath(path); await audioPlayer.play(); }
+  void onRecordingDragUpdate(DragUpdateDetails details) {
+    if (recordingState.value == RecordingState.recording) {
+      swipeOffset.value += details.primaryDelta ?? 0;
+      if (swipeOffset.value < -120) unawaited(cancelRecording());
+    }
+  }
+
+  Future<void> stopRecording() async {
+    if (recordingState.value != RecordingState.recording) return;
+    _recordingTimer?.cancel();
+    try {
+      await audioRecorder.stop();
+      await _recordingStreamSub?.cancel();
+      _recordingStreamSub = null;
+      if (_recordingChunks.isEmpty) {
+        recordingState.value = RecordingState.idle;
+        _showError('Aucun son n’a été capturé. Vérifie le micro du navigateur.');
+        return;
+      }
+      recordingState.value = RecordingState.reviewing;
+    } catch (e) {
+      debugPrint('[ChatVoice] unable to stop recording: $e');
+      recordingState.value = RecordingState.idle;
+      _showError('Impossible de finaliser l’enregistrement.');
+    }
+  }
+
+  Future<void> cancelRecording() async {
+    _recordingTimer?.cancel();
+    try {
+      await audioRecorder.stop();
+    } catch (_) {}
+    await _recordingStreamSub?.cancel();
+    _recordingStreamSub = null;
+    _recordingChunks.clear();
+    _recordingMimeType = null;
+    recordingState.value = RecordingState.idle;
+    swipeOffset.value = 0;
+    await audioPlayer.stop();
+  }
+
+  String? get _recordingDataUri {
+    if (_recordingChunks.isEmpty) return null;
+    final mime = _recordingMimeType ?? (kIsWeb ? 'audio/webm' : 'audio/mp4');
+    final extension = mime == 'audio/webm' ? 'webm' : 'm4a';
+    return 'data:$mime;name=scrole_voice.$extension;base64,${base64Encode(_recordingChunks)}';
+  }
+
+  Future<void> playReview() async {
+    final dataUri = _recordingDataUri;
+    if (dataUri == null) return;
+    if (isPlayingReview.value) {
+      await audioPlayer.pause();
+      return;
+    }
+    await audioPlayer.setUrl(dataUri);
+    await audioPlayer.play();
+  }
 
   Future<void> sendVoiceMessage() async {
     final uid = currentUserId;
-    final path = _recordingPath;
-    if (uid == null || path == null || conversationId.isEmpty) return;
+    final audioPayload = _recordingDataUri;
+    if (uid == null || audioPayload == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     final localId = _repository.generateLocalId();
-    final audioBytes = await XFile(path, mimeType: 'audio/mp4').readAsBytes();
-    if (audioBytes.isEmpty) {
-      _showError('L’enregistrement audio est vide ou inaccessible.');
-      return;
-    }
-    final audioPayload = 'data:audio/mp4;name=scrole_voice.m4a;base64,${base64Encode(audioBytes)}';
     final message = MessageModel(
       id: localId,
       localId: localId,
@@ -548,7 +621,8 @@ class ChatController extends GetxController {
       repliedToId: repliedMessage.value?.id,
     );
     recordingState.value = RecordingState.idle;
-    _recordingPath = null;
+    _recordingChunks.clear();
+    _recordingMimeType = null;
     clearReply();
     final result = await _repository.sendMediaMessage(message);
     if (!result.success) _showError(result.message);
@@ -556,7 +630,7 @@ class ChatController extends GetxController {
 
   void toggleEmojiPicker() { showEmojiPicker.value = !showEmojiPicker.value; if (showEmojiPicker.value) FocusManager.instance.primaryFocus?.unfocus(); }
   void toggleReactionPanel() {}
-  void disposeAudio() { _recordingTimer?.cancel(); _typingTimer?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
+  void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _typingTimer?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
   void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, false)); }
   void _showError(String? message) { if (message != null && message.isNotEmpty) Get.snackbar('Message', message); }
 
