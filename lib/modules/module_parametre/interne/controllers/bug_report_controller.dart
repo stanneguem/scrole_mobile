@@ -14,7 +14,7 @@ class BugReportController extends GetxController {
   final titleController = TextEditingController();
   final descController = TextEditingController();
   
-  final Rxn<File> screenshot = Rxn<XFile>();
+  final Rxn<XFile> screenshot = Rxn<XFile>();
   final RxBool isSending = false.obs;
   final RxBool isPickingImage = false.obs;
 
