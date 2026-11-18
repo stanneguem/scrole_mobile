@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:image_picker/image_picker.dart';
 import 'package:scrole/app/media/media_asset.dart';
-import 'package:scrole/app/service_global/media_gallery_picker.dart';
+import '../services/story_media_picker.dart';
 import 'package:scrole/modules/module_principale/interne/services/story_media_platform.dart';
 import 'package:scrole/shared/widgets/xfile_image.dart';
 import 'package:uuid/uuid.dart';
@@ -42,7 +42,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   final TextEditingController _textController = TextEditingController();
   final List<XFile> _selectedFiles = [];
   bool _isPublishing = false;
-  static const Duration _maxVideoDuration = Duration(seconds: 30);
+  static const Duration _maxVideoDuration = Duration(seconds: 29);
 
   bool _commentsEnabled = true;
   bool _sharingEnabled = true;
@@ -85,7 +85,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   }
 
   Future<void> _openMediaPicker() async {
-    final file = await ScroleBottomSheetGallery.pick(context);
+    final file = await StoryMediaPicker.pick(context);
     if (file == null || !mounted) return;
 
     final isVideo = _isVideoFile(file);
