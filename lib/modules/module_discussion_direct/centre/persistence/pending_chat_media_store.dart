@@ -20,6 +20,23 @@ class PendingChatMediaStore {
 
   static const int chunkSize = 256 * 1024;
 
+  Future<PendingChatMediaWriter> beginWavRecording({
+    required String userId,
+    required String messageId,
+    required int index,
+  }) async {
+    final box = await _box;
+    final key = _key(userId, messageId, index);
+    final old = await box.get(key);
+    if (old is Map && old['chunks'] is int) {
+      for (var i = 0; i < (old['chunks'] as int); i++) {
+        await box.delete('$key:chunk:$i');
+      }
+    }
+    await box.delete(key);
+    return PendingChatMediaWriter._(box, key);
+  }
+
   Future<String> put({
     required String userId,
     required String messageId,
@@ -147,8 +164,31 @@ class PendingChatMediaStore {
       name: name,
       mimeType: mime,
       length: length,
-      openRead: () => _readChunks(box, key, count),
+      openRead: () async* {\n        if (record['format'] == 'wav') yield _wavHeader(length - 44);\n        yield* _readChunks(box, key, count);\n      },
     );
+  }
+
+  Uint8List _wavHeader(int dataLength) {
+    final header = ByteData(44);
+    void ascii(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        header.setUint8(offset + i, value.codeUnitAt(i));
+      }
+    }
+    ascii(0, 'RIFF');
+    header.setUint32(4, 36 + dataLength, Endian.little);
+    ascii(8, 'WAVE');
+    ascii(12, 'fmt ');
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little);
+    header.setUint16(22, 1, Endian.little);
+    header.setUint32(24, 44100, Endian.little);
+    header.setUint32(28, 88200, Endian.little);
+    header.setUint16(32, 2, Endian.little);
+    header.setUint16(34, 16, Endian.little);
+    ascii(36, 'data');
+    header.setUint32(40, dataLength, Endian.little);
+    return header.buffer.asUint8List();
   }
 
   Stream<List<int>> _readChunks(LazyBox box, String key, int count) async* {
@@ -190,4 +230,66 @@ class PendingChatMediaStore {
     ...?mediaUrls,
     if (audioUrl != null) audioUrl,
   ].where((value) => Uri.tryParse(value)?.scheme == _scheme).toList();
+}
+
+
+/// Incremental PCM writer: chunks are persisted immediately and never held as
+/// one growing in-memory recording buffer.
+class PendingChatMediaWriter {
+  PendingChatMediaWriter._(this._box, this._key);
+  final LazyBox _box;
+  final String _key;
+  int _chunkCount = 0;
+  int _bytesWritten = 0;
+  bool _closed = false;
+
+  int get bytesWritten => _bytesWritten;
+
+  Future<void> add(List<int> bytes) async {
+    if (_closed) throw StateError('Enregistrement déjà clôturé.');
+    var offset = 0;
+    while (offset < bytes.length) {
+      final end = (offset + PendingChatMediaStore.chunkSize)
+          .clamp(0, bytes.length).toInt();
+      final chunk = Uint8List.fromList(bytes.sublist(offset, end));
+      await _box.put('$_key:chunk:$_chunkCount', chunk);
+      _bytesWritten += chunk.length;
+      _chunkCount++;
+      offset = end;
+    }
+  }
+
+  Future<String> finish({
+    required String userId,
+    required String messageId,
+    required int index,
+  }) async {
+    if (_closed) throw StateError('Enregistrement déjà clôturé.');
+    _closed = true;
+    if (_bytesWritten <= 0 || _chunkCount == 0) {
+      await discard();
+      throw StateError('Aucun son n’a été capturé.');
+    }
+    await _box.put(_key, <String, dynamic>{
+      'chunks': _chunkCount,
+      'length': _bytesWritten + 44,
+      'name': 'scrole_voice.wav',
+      'mime': 'audio/wav',
+      'format': 'wav',
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+    return Uri(
+      scheme: 'pending-media',
+      host: userId,
+      pathSegments: <String>[messageId, index.toString()],
+    ).toString();
+  }
+
+  Future<void> discard() async {
+    _closed = true;
+    for (var i = 0; i < _chunkCount; i++) {
+      await _box.delete('$_key:chunk:$i');
+    }
+    await _box.delete(_key);
+  }
 }
