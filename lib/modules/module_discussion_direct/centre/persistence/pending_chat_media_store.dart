@@ -164,7 +164,10 @@ class PendingChatMediaStore {
       name: name,
       mimeType: mime,
       length: length,
-      openRead: () async* {\n        if (record['format'] == 'wav') yield _wavHeader(length - 44);\n        yield* _readChunks(box, key, count);\n      },
+      openRead: () async* {
+        if (record['format'] == 'wav') yield _wavHeader(length - 44);
+        yield* _readChunks(box, key, count);
+      },
     );
   }
 
