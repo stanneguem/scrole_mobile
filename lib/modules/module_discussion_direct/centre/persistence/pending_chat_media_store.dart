@@ -18,6 +18,8 @@ class PendingChatMediaStore {
   String _key(String userId, String messageId, int index) =>
       '$_prefix$userId:$messageId:$index';
 
+  static const int chunkSize = 256 * 1024;
+
   Future<String> put({
     required String userId,
     required String messageId,
@@ -25,19 +27,86 @@ class PendingChatMediaStore {
     required Uint8List bytes,
     required String name,
     required String mimeType,
+  }) => putStream(
+    userId: userId,
+    messageId: messageId,
+    index: index,
+    stream: Stream<List<int>>.value(bytes),
+    length: bytes.length,
+    name: name,
+    mimeType: mimeType,
+  );
+
+  Future<String> putXFile({
+    required String userId,
+    required String messageId,
+    required int index,
+    required XFile file,
+    required String mimeType,
+    int maxBytes = 30 * 1024 * 1024,
   }) async {
-    if (bytes.isEmpty) throw StateError('Le fichier sélectionné est vide.');
+    final length = await file.length();
+    if (length <= 0) throw StateError('Le fichier sélectionné est vide.');
+    if (length > maxBytes) throw StateError('Chaque pièce jointe doit faire au maximum 30 Mo.');
+    return putStream(
+      userId: userId,
+      messageId: messageId,
+      index: index,
+      stream: file.openRead(),
+      length: length,
+      name: file.name.isNotEmpty ? file.name : 'attachment.bin',
+      mimeType: mimeType,
+    );
+  }
+
+  Future<String> putStream({
+    required String userId,
+    required String messageId,
+    required int index,
+    required Stream<List<int>> stream,
+    required int length,
+    required String name,
+    required String mimeType,
+  }) async {
+    if (length <= 0) throw StateError('Le fichier sélectionné est vide.');
     final key = _key(userId, messageId, index);
     final box = await _box;
-    await box.put(key, <String, dynamic>{
-      'bytes': bytes,
-      'name': name,
-      'mime': mimeType,
-      'created_at': DateTime.now().millisecondsSinceEpoch,
-    });
-    final saved = box.get(key);
-    if (saved == null || saved['bytes'] is! Uint8List) {
-      throw StateError('Impossible de conserver la pièce jointe localement.');
+    final old = box.get(key);
+    if (old is Map && old['chunks'] is int) {
+      final count = old['chunks'] as int;
+      for (var i = 0; i < count; i++) {
+        await box.delete('$key:chunk:$i');
+      }
+    }
+    var chunkCount = 0;
+    var totalBytes = 0;
+    try {
+      await for (final incoming in stream) {
+        var offset = 0;
+        while (offset < incoming.length) {
+          final end = (offset + chunkSize).clamp(0, incoming.length).toInt();
+          final chunk = Uint8List.fromList(incoming.sublist(offset, end));
+          await box.put('$key:chunk:$chunkCount', chunk);
+          totalBytes += chunk.length;
+          chunkCount++;
+          offset = end;
+        }
+      }
+      if (totalBytes != length || chunkCount == 0) {
+        throw StateError('Le fichier local est incomplet ($totalBytes/$length octets).');
+      }
+      await box.put(key, <String, dynamic>{
+        'chunks': chunkCount,
+        'length': length,
+        'name': name,
+        'mime': mimeType,
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (_) {
+      for (var i = 0; i < chunkCount; i++) {
+        await box.delete('$key:chunk:$i');
+      }
+      rethrow;
     }
     return Uri(
       scheme: _scheme,
@@ -57,13 +126,37 @@ class PendingChatMediaStore {
     final index = int.tryParse(uri.pathSegments[1]);
     if (index == null) return null;
     final box = await _box;
-    final record = box.get(_key(uri.host, uri.pathSegments[0], index));
-    if (record == null || record['bytes'] is! Uint8List) return null;
-    return MediaAsset.fromXFile(XFile.fromData(
-      record['bytes'] as Uint8List,
-      name: record['name']?.toString() ?? 'attachment.bin',
-      mimeType: record['mime']?.toString() ?? 'application/octet-stream',
-    ));
+    final key = _key(uri.host, uri.pathSegments[0], index);
+    final record = box.get(key);
+    if (record is! Map || record['chunks'] is! int || record['length'] is! int) {
+      // Backward compatibility with an early single-blob representation.
+      if (record is Map && record['bytes'] is Uint8List) {
+        return MediaAsset.fromXFile(XFile.fromData(
+          record['bytes'] as Uint8List,
+          name: record['name']?.toString() ?? 'attachment.bin',
+          mimeType: record['mime']?.toString() ?? 'application/octet-stream',
+        ));
+      }
+      return null;
+    }
+    final count = record['chunks'] as int;
+    final length = record['length'] as int;
+    final name = record['name']?.toString() ?? 'attachment.bin';
+    final mime = record['mime']?.toString() ?? 'application/octet-stream';
+    return MediaAsset.fromStream(
+      name: name,
+      mimeType: mime,
+      length: length,
+      openRead: () => _readChunks(box, key, count),
+    );
+  }
+
+  Stream<List<int>> _readChunks(Box box, String key, int count) async* {
+    for (var i = 0; i < count; i++) {
+      final chunk = box.get('$key:chunk:$i');
+      if (chunk is! Uint8List) throw StateError('Pièce jointe locale incomplète.');
+      yield chunk;
+    }
   }
 
   Future<void> remove(String value) async {
@@ -73,7 +166,15 @@ class PendingChatMediaStore {
     final index = int.tryParse(uri.pathSegments[1]);
     if (index == null) return;
     final box = await _box;
-    await box.delete(_key(uri.host, uri.pathSegments[0], index));
+    final key = _key(uri.host, uri.pathSegments[0], index);
+    final record = box.get(key);
+    if (record is Map && record['chunks'] is int) {
+      final count = record['chunks'] as int;
+      for (var i = 0; i < count; i++) {
+        await box.delete('$key:chunk:$i');
+      }
+    }
+    await box.delete(key);
   }
 
   Future<void> removeAll(Iterable<String> values) async {
