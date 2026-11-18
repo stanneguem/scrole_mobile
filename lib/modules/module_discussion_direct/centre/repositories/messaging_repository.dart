@@ -74,6 +74,9 @@ class MessagingRepository {
   Future<void> discardPendingWavRecording(PendingChatMediaWriter writer) =>
       writer.discard();
 
+  Future<void> removePendingMediaReference(String reference) =>
+      _pendingMedia.remove(reference);
+
   Future<String> persistPendingMedia({
     required String messageId,
     required int index,
