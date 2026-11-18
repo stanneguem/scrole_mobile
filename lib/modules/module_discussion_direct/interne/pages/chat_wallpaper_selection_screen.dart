@@ -1,12 +1,14 @@
-import 'dart:io';
+import 'dart:convert';
+
+import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_cached_image.dart';
 import '../../../../shared/widgets/media_gallery_sheet.dart';
+import '../widgets/chat_wallpaper_image.dart';
 
 class ChatWallpaperSelectionScreen extends StatefulWidget {
   const ChatWallpaperSelectionScreen({
@@ -47,42 +49,16 @@ class _ChatWallpaperSelectionScreenState
     _selectedKey = widget.initialWallpaper;
     if (_selectedKey.startsWith('custom:')) {
       _customPath = _selectedKey.substring(7);
-      if (!File(_customPath!).existsSync()) {
-        _customPath = null;
-        _selectedKey = 'none';
-      }
+      // Les chemins locaux historiques restent pris en charge par l’adaptateur IO.
     }
   }
 
-  /// Sauvegarde sécurisée dans le bac à sable (Sandbox) de l'application.
-  /// Supprime le ou les anciens fichiers pour forcer un chemin unique réactif.
-  Future<String> _saveCustomWallpaperToSandbox(String sourcePath) async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    final targetDir = Directory('${docsDir.path}/chat_wallpapers');
-    if (!await targetDir.exists()) {
-      await targetDir.create(recursive: true);
-    }
-
-    final id = widget.userName.hashCode.abs().toString();
-
-    // 1. Nettoyer les anciens fonds d'écran personnalisés pour cette conversation
-    try {
-      final list = targetDir.listSync();
-      for (final entity in list) {
-        if (entity is File && entity.path.contains('wallpaper_$id')) {
-          await entity.delete();
-        }
-      }
-    } catch (_) {}
-
-    // 2. Générer un nom de fichier unique avec timestamp pour garantir que le chemin change
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final targetPath = '${targetDir.path}/wallpaper_${id}_$timestamp.jpg';
-
-    // 3. Copier la nouvelle image sélectionnée dans le bac à sable
-    final newFile = File(sourcePath);
-    final savedFile = await newFile.copy(targetPath);
-    return savedFile.path;
+  /// Stocke le fond sous forme portable (Data URI), sans File/path_provider.
+  Future<String> _saveCustomWallpaper(XFile image) async {
+    final bytes = await image.readAsBytes();
+    if (bytes.isEmpty) throw StateError('Image de fond vide.');
+    final mime = image.mimeType ?? 'image/jpeg';
+    return 'data:' + mime + ';base64,' + base64Encode(bytes);
   }
 
   void _openInternalGallery() {
@@ -95,7 +71,7 @@ class _ChatWallpaperSelectionScreenState
         onSelected: (files) async {
           if (files.isNotEmpty) {
             final xfile = files.first;
-            final savedPath = await _saveCustomWallpaperToSandbox(xfile.path);
+            final savedPath = await _saveCustomWallpaper(xfile);
             if (mounted) {
               setState(() {
                 _customPath = savedPath;
@@ -115,15 +91,7 @@ class _ChatWallpaperSelectionScreenState
 
     if (_selectedKey.startsWith('custom:')) {
       final path = _selectedKey.substring(7);
-      final file = File(path);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          key: ValueKey(path),
-          fit: BoxFit.cover,
-        );
-      }
-      return Container(color: Theme.of(context).colorScheme.surface);
+      return buildChatWallpaperImage(path, key: ValueKey('wallpaper-preview-' + path));
     }
 
     final preset = _presetWallpapers.firstWhereOrNull((w) => w['id'] == _selectedKey);
@@ -429,12 +397,8 @@ class _ChatWallpaperSelectionScreenState
                         _buildWallpaperCard(
                           id: 'gallery',
                           label: _customPath != null ? 'wallpaper_custom'.tr : 'wallpaper_gallery'.tr,
-                          content: _customPath != null && File(_customPath!).existsSync()
-                              ? Image.file(
-                                  File(_customPath!),
-                                  key: ValueKey(_customPath!),
-                                  fit: BoxFit.cover,
-                                )
+                          content: _customPath != null
+                              ? buildChatWallpaperImage(_customPath!, key: ValueKey('wallpaper-card-' + _customPath!))
                               : Container(
                                   color: colors.surfaceContainerHighest,
                                   child: Column(
@@ -448,7 +412,7 @@ class _ChatWallpaperSelectionScreenState
                                 ),
                           isSelected: _selectedKey.startsWith('custom:'),
                           onTap: () {
-                            if (_customPath != null && File(_customPath!).existsSync()) {
+                            if (_customPath != null) {
                               setState(() => _selectedKey = 'custom:$_customPath');
                             }
                             _openInternalGallery();
