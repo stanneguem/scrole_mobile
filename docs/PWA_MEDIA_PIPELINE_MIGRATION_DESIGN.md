@@ -1,0 +1,56 @@
+# PWA media pipeline migration — implementation design
+
+## Current branch snapshot
+
+Branch: `feature/story-video-post-reshare`
+
+The previous PWA audit identified direct `dart:io` use. This pass inspected the concrete media pipeline and its consumers before changing public signatures.
+
+## Confirmed current contracts
+
+- `MediaService` returns `File?` from image selection, crop and compression. It directly imports `dart:io`, `path_provider`, `flutter_image_compress` and `image_cropper`.
+- `StorageRepository` accepts `File` for Supabase uploads and all R2 convenience methods.
+- `R2MediaRepository.uploadFile` accepts `File`, derives extension from `file.path`, reads the entire file into memory with `readAsBytes()`, then streams slices of that already-buffered byte array to R2. Chunked HTTP writes therefore do not currently make file reading memory-streamed.
+- `image_picker` is already a dependency and returns `XFile`; no additional dependency is needed merely to represent a picked file.
+
+## Verified consumer impact
+
+| Consumer | Current coupling |
+|---|---|
+| `CreateAccountController` | `Rxn<File>`, MediaService pick methods, profile avatar/cover uploads |
+| `CreateEventController` | `Rx<File?>` cover and MediaService |
+| `EditEventController` | MediaService and file-based cover state |
+| `CreateCommunityScreen` | creates `File(files.first.path)`, uses `Image.file` |
+| `BugReportController` | `Rxn<File>`, converts picker `XFile` to `File`, uploads screenshot |
+| `StoriesController` | direct File/path operations, image compression and several R2 uploads |
+| `CreateStoryScreen` | stores selected media as `File`, checks file extension and renders local files |
+| `ChatController` | already receives `XFile` for picker media in at least one path; message media upload flow needs separate review |
+
+The event creation/edit and community flows have additional screen-level `FileImage` / `Image.file` usage. They must be converted to a cross-platform preview strategy (for example `Image.memory` with cached bytes, or a dedicated XFile preview widget), not just have their imports removed.
+
+## Recommended target contract
+
+Use `XFile` as the boundary type for selected media, because it is already provided by `image_picker` and supports `readAsBytes()`, `length()`, `name`, and `openRead()` across supported platforms.
+
+1. `MediaService` should return `XFile?` for selection/crop/compression. Platform-specific crop/compression must live behind conditional imports. Native implementations may continue using `File`; Web must use browser-compatible bytes/blob handling and must never import `dart:io`.
+2. `StorageRepository` and `R2MediaRepository` should accept `XFile` (or a small project-owned media payload carrying XFile, filename and MIME type). Keep a temporary native compatibility wrapper only if needed during staged consumer migration.
+3. R2 upload should use the media name/MIME supplied by the payload, validate size before transfer, and avoid reading large videos fully into memory where the HTTP and signing APIs permit a stream. If the Edge Function requires exact `size_bytes`, obtain it via `XFile.length()` before requesting the signed URL.
+4. Use `Image.memory` for previews after reading selected image bytes once, or a reusable conditional preview widget. Do not construct `File(path)` on Web.
+5. Keep native crop/compress behavior unchanged while providing a Web-compatible fallback. Do not silently report successful crop/compression if the browser implementation did not perform it.
+6. Migrate all consumers in one coordinated series of commits, then remove the legacy `File` public APIs once all call sites are converted.
+
+## Why the public API was not changed in this pass
+
+Changing `MediaService` return types or the repository upload parameter from `File` to `XFile` without converting every state holder, preview widget and upload caller would leave the mobile app uncompilable. Conversely, adding a Web-only implementation while common controllers still import `dart:io` would not make the Web target compile. This design pass intentionally avoids landing a partial API break.
+
+## Next implementation sequence
+
+1. Introduce the shared media payload/preview abstraction and conditional native/Web media processing.
+2. Convert account creation, event create/edit, community creation and bug-report screenshot selection/upload.
+3. Convert Stories/Scut media handling and upload paths; retain their existing cache/outbox semantics.
+4. Convert remaining media viewers, editors and gallery screens that use `File`, `Image.file`, `FileImage`, or `VideoPlayerController.file`.
+5. Run `flutter analyze`, native build and `flutter build web`; then browser-test picking, preview, upload, cancellation, logout and quota behavior.
+
+## Validation status
+
+This is a source-level design and call-site inspection only. No Flutter analyze, Android build, Web build or browser test was run as part of this pass.
