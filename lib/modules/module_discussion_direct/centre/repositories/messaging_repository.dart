@@ -48,6 +48,32 @@ class MessagingRepository {
   bool _outboxRunning = false;
   final PendingChatMediaStore _pendingMedia = PendingChatMediaStore();
 
+  Future<PendingChatMediaWriter> beginPendingWavRecording({
+    required String messageId,
+    int index = 0,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non authentifié.');
+    return _pendingMedia.beginWavRecording(
+      userId: uid,
+      messageId: messageId,
+      index: index,
+    );
+  }
+
+  Future<String> finishPendingWavRecording({
+    required PendingChatMediaWriter writer,
+    required String messageId,
+    int index = 0,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non authentifié.');
+    return writer.finish(userId: uid, messageId: messageId, index: index);
+  }
+
+  Future<void> discardPendingWavRecording(PendingChatMediaWriter writer) =>
+      writer.discard();
+
   Future<String> persistPendingMedia({
     required String messageId,
     required int index,
