@@ -238,17 +238,10 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         }
         // Video playback cache is keyed by story id. Remove it if the server
         // confirms deletion or if the underlying video object has changed.
-        try {
-          final directory = await getApplicationSupportDirectory();
-          final cacheDirectory = Directory(p.join(directory.path, 'stories_cache'));
-          final safeId = previous.id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-          for (final suffix in ['.mp4', '.mov', '.expiry']) {
-            final cached = File(p.join(cacheDirectory.path, '$safeId$suffix'));
-            if (await cached.exists()) await cached.delete();
-          }
-        } catch (cacheError) {
-          debugPrint('[STORY_CACHE] Story media cleanup failed: $cacheError');
-        }
+        await deleteCachedStoryVideo(
+          storyId: previous.id,
+          objectKey: previous.imageUrl ?? '',
+        );
         if (wasRemoved) {
           debugPrint('[STORY] Removed locally cached story no longer visible: ${previous.id}');
         } else {
