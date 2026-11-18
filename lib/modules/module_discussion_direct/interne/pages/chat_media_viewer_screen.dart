@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
@@ -251,11 +253,16 @@ class _ChatMediaVideoState extends State<_ChatMediaVideo> {
 
   Future<void> _initialize() async {
     try {
-      var url = widget.url;
+      final url = widget.url;
+      VideoPlayerController controller;
       if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
-        url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
+        final asset = await Get.find<MessagingRepository>().resolvePendingMediaAsset(url);
+        controller = asset == null
+            ? await createChatMediaVideoController(url)
+            : await createChatMediaVideoControllerFromAsset(asset);
+      } else {
+        controller = await createChatMediaVideoController(url);
       }
-      final controller = await createChatMediaVideoController(url);
       _controller = controller;
       await controller.initialize();
       if (mounted) setState(() => _ready = true);
@@ -266,7 +273,8 @@ class _ChatMediaVideoState extends State<_ChatMediaVideo> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final controller = _controller;
+    if (controller != null) unawaited(disposeChatMediaVideoController(controller));
     super.dispose();
   }
 
