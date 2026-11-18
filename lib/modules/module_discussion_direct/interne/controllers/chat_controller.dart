@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:record/record.dart';
+import 'package:record/record.dart';\nimport '../../centre/persistence/pending_chat_media_store.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/services/chat_media_cache.dart';
@@ -70,7 +70,7 @@ class ChatController extends GetxController {
   Timer? _otherUserTypingTimer;
   final Set<String> _pendingReadIds = {};
   StreamSubscription<Uint8List>? _recordingStreamSub;
-  final List<int> _recordingChunks = <int>[];
+  PendingChatMediaWriter? _recordingWriter;\n  String? _recordingMessageId;\n  String? _recordingMediaRef;
   String? get currentUserId => _repository.currentUserId;
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
@@ -516,7 +516,7 @@ class ChatController extends GetxController {
         }
       }
       await audioPlayer.stop();
-      _recordingChunks.clear();
+      _recordingMessageId = null;\n    _recordingMediaRef = null;
       final stream = await audioRecorder.startStream(const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 44100,
@@ -524,7 +524,7 @@ class ChatController extends GetxController {
       ));
       await _recordingStreamSub?.cancel();
       _recordingStreamSub = stream.listen(
-        _recordingChunks.addAll,
+        (chunk) {\n          final writer = _recordingWriter;\n          if (writer != null) unawaited(writer.add(chunk));\n        },
         onError: (Object error) {
           debugPrint('[ChatVoice] recording stream failed: $error');
           _showError('Une erreur est survenue pendant l’enregistrement.');
@@ -558,12 +558,12 @@ class ChatController extends GetxController {
       await audioRecorder.stop();
       await _recordingStreamSub?.cancel();
       _recordingStreamSub = null;
-      if (_recordingChunks.isEmpty) {
+      final writer = _recordingWriter;\n      if (writer == null || writer.bytesWritten == 0) {
         recordingState.value = RecordingState.idle;
         _showError('Aucun son n’a été capturé. Vérifie le micro du navigateur.');
         return;
       }
-      recordingState.value = RecordingState.reviewing;
+      _recordingMediaRef = await _repository.finishPendingWavRecording(\n        writer: writer,\n        messageId: _recordingMessageId!,\n      );\n      _recordingWriter = null;\n      recordingState.value = RecordingState.reviewing;
     } catch (e) {
       debugPrint('[ChatVoice] unable to stop recording: $e');
       recordingState.value = RecordingState.idle;
@@ -584,44 +584,20 @@ class ChatController extends GetxController {
     await audioPlayer.stop();
   }
 
-  Uint8List _buildWavBytes(List<int> pcmBytes) {
-    const sampleRate = 44100;
-    const channels = 1;
-    const bitsPerSample = 16;
-    final dataLength = pcmBytes.length;
-    final header = ByteData(44);
-    void writeAscii(int offset, String value) {
-      for (var i = 0; i < value.length; i++) {
-        header.setUint8(offset + i, value.codeUnitAt(i));
-      }
+  Future<void> playReview() async {
+    final reference = _recordingMediaRef;
+    if (reference == null) return;
+    if (isPlayingReview.value) {
+      await audioPlayer.pause();
+      return;
     }
-
-    writeAscii(0, 'RIFF');
-    header.setUint32(4, 36 + dataLength, Endian.little);
-    writeAscii(8, 'WAVE');
-    writeAscii(12, 'fmt ');
-    header.setUint32(16, 16, Endian.little);
-    header.setUint16(20, 1, Endian.little); // PCM
-    header.setUint16(22, channels, Endian.little);
-    header.setUint32(24, sampleRate, Endian.little);
-    header.setUint32(28, sampleRate * channels * bitsPerSample ~/ 8, Endian.little);
-    header.setUint16(32, channels * bitsPerSample ~/ 8, Endian.little);
-    header.setUint16(34, bitsPerSample, Endian.little);
-    writeAscii(36, 'data');
-    header.setUint32(40, dataLength, Endian.little);
-
-    return Uint8List.fromList(<int>[...header.buffer.asUint8List(), ...pcmBytes]);
-  }
-
-  Uint8List? get _recordingWavBytes {
-    if (_recordingChunks.isEmpty) return null;
-    return Uint8List.fromList(_buildWavBytes(_recordingChunks));
-  }
-
-  String? get _recordingDataUri {
-    final bytes = _recordingWavBytes;
-    if (bytes == null) return null;
-    return 'data:audio/wav;name=scrole_voice.wav;base64,${base64Encode(bytes)}';
+    final dataUri = await _repository.resolvePendingMediaDataUri(reference);
+    if (dataUri == null) {
+      _showError('Impossible de lire cet enregistrement.');
+      return;
+    }
+    await audioPlayer.setUrl(dataUri);
+    await audioPlayer.play();
   }
 
   Future<void> playReview() async {
