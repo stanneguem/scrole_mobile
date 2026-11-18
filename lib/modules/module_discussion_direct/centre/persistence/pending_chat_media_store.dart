@@ -247,9 +247,13 @@ class PendingChatMediaWriter {
   bool _closed = false;
 
   int get bytesWritten => _bytesWritten;
+  static const int maxRecordingBytes = 30 * 1024 * 1024;
 
   Future<void> add(List<int> bytes) async {
     if (_closed) throw StateError('Enregistrement déjà clôturé.');
+    if (_bytesWritten + bytes.length > maxRecordingBytes) {
+      throw StateError('L’enregistrement vocal dépasse la limite de 30 Mo.');
+    }
     var offset = 0;
     while (offset < bytes.length) {
       final end = (offset + PendingChatMediaStore.chunkSize)
