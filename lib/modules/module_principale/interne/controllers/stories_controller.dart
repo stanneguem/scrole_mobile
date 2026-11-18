@@ -5,10 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:uuid/uuid.dart';
-import 'package:video_player/video_player.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../app/media/media_asset.dart';
+import '../../../../app/service_global/media_image_processor.dart';
+import '../services/story_media_platform.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/stories_repository.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import '../../../../app_controller.dart';
@@ -436,8 +437,8 @@ class StoriesController extends GetxController {
   Future<void> createStory({
     required String kind,
     String? content,
-    File? imageFile,
-    List<File>? imageFiles,
+    XFile? imageFile,
+    List<XFile>? imageFiles,
     List<String>? mentions,
     String? background,
     String audience = 'public',
@@ -454,7 +455,7 @@ class StoriesController extends GetxController {
     if ((kind == 'image' || kind == 'video') && fileToUpload != null) {
       try {
         if (kind == 'video') {
-          final videoController = VideoPlayerController.file(fileToUpload);
+          final videoController = createStoryVideoController(fileToUpload);
           try {
             await videoController.initialize().timeout(const Duration(seconds: 30));
             final duration = videoController.value.duration;
@@ -473,14 +474,10 @@ class StoriesController extends GetxController {
             }
             debugPrint('[STORY] [Controller] Generating story video thumbnail...');
             try {
-              final generatedThumbnail = await VideoCompress.getFileThumbnail(
-                fileToUpload.path,
-                quality: 82,
-                position: 1000,
-              );
-              if (await generatedThumbnail.exists()) {
-                final thumbUpload = await _r2MediaRepo.uploadFile(
-                  file: generatedThumbnail,
+              final generatedThumbnail = await createStoryVideoThumbnail(fileToUpload);
+              if (generatedThumbnail != null) {
+                final thumbUpload = await _r2MediaRepo.uploadMediaAsset(
+                  media: MediaAsset.fromXFile(generatedThumbnail),
                   category: 'story_media',
                   mediaType: 'image',
                   mediaRole: 'thumbnail',
@@ -492,8 +489,8 @@ class StoriesController extends GetxController {
               debugPrint('[STORY] [Controller] Thumbnail generation/upload failed: $thumbnailError\\n$thumbnailStack');
             }
             debugPrint('[STORY] [Controller] Uploading story video to private Cloudflare R2 duration=${duration.inMilliseconds}ms');
-            final uploaded = await _r2MediaRepo.uploadFile(
-              file: fileToUpload,
+            final uploaded = await _r2MediaRepo.uploadMediaAsset(
+              media: MediaAsset.fromXFile(fileToUpload),
               category: 'story_media',
               mediaType: 'video',
               videoDuration: duration,
@@ -504,21 +501,10 @@ class StoriesController extends GetxController {
           }
         } else {
         debugPrint('[STORY] [Controller] Compressing story image...');
-        final appDir = await getApplicationDocumentsDirectory();
-        final targetPath = p.join(appDir.path, 'stories', pId, 'story.jpg');
-        await Directory(p.dirname(targetPath)).create(recursive: true);
-
-        final compressedBytes = await FlutterImageCompress.compressAndGetFile(
-          fileToUpload.absolute.path,
-          targetPath,
-          minWidth: 1080,
-          quality: 80,
-        );
-
-        final finalFile = compressedBytes != null ? File(compressedBytes.path) : fileToUpload;
+        final finalFile = await compressSelectedImage(fileToUpload, quality: 80);
         debugPrint('[STORY] [Controller] Uploading story image to private Cloudflare R2');
-        final uploaded = await _r2MediaRepo.uploadFile(
-          file: finalFile,
+        final uploaded = await _r2MediaRepo.uploadMediaAsset(
+          media: MediaAsset.fromXFile(finalFile),
           category: 'story_media',
           mediaType: 'image',
         );
