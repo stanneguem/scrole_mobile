@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../centre/services/chat_media_viewer_platform.dart';
+import '../../centre/repositories/messaging_repository.dart';
+import '../../centre/persistence/pending_chat_media_store.dart';
 import '../widgets/chat_cached_media.dart';
 
 /// Visualiseur dédié aux médias échangés en messagerie directe.
@@ -63,7 +65,10 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
     if (_saving || widget.mediaUrls.isEmpty) return;
     setState(() => _saving = true);
     try {
-      final url = widget.mediaUrls[_currentIndex];
+      var url = widget.mediaUrls[_currentIndex];
+      if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
+        url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
+      }
       final ok = await saveChatMediaToGallery(url, _fileName(url));
       if (!mounted) return;
       final kind = _isVideo(_currentIndex) ? 'vidéo' : 'image';
@@ -242,7 +247,11 @@ class _ChatMediaVideoState extends State<_ChatMediaVideo> {
 
   Future<void> _initialize() async {
     try {
-      final controller = await createChatMediaVideoController(widget.url);
+      var url = widget.url;
+      if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
+        url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
+      }
+      final controller = await createChatMediaVideoController(url);
       _controller = controller;
       await controller.initialize();
       if (mounted) setState(() => _ready = true);
