@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/widgets/xfile_image.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/text_input_field.dart';
@@ -234,9 +235,13 @@ class _CoverPicker extends GetView<CreateEventController> {
           color: AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
-          image: file != null ? DecorationImage(image: FileImage(file), fit: BoxFit.cover) : null,
+          image: null,
         ),
-        child: InkWell(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (file != null) XFileImage(file: file),
+            InkWell(
           onTap: () => showImageSourceSheet(
             context,
             onCamera: () => controller.pickImage(ImageSource.camera),
@@ -254,6 +259,8 @@ class _CoverPicker extends GetView<CreateEventController> {
                   ],
                 )
               : const SizedBox.shrink(),
+            ),
+          ],
         ),
       );
     });
