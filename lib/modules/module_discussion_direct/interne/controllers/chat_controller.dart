@@ -523,7 +523,7 @@ class ChatController extends GetxController {
         sampleRate: 44100,
         numChannels: 1,
       ));
-      _recordingStreamSub?.cancel();
+      await _recordingStreamSub?.cancel();
       _recordingStreamSub = stream.listen(
         _recordingChunks.addAll,
         onError: (Object error) {
