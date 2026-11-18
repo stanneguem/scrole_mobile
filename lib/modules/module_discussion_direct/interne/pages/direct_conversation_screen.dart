@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +21,7 @@ import '../../centre/models/message_model.dart';
 import '../widgets/chat_cached_media.dart';
 import '../controllers/direct_conversation_controller.dart';
 import '../widgets/direct_voice_recorder_panel.dart';
+import '../widgets/chat_wallpaper_image.dart';
 import 'direct_conversation_details_screen.dart';
 
 class DirectConversationScreen extends GetView<DirectConversationController> {
@@ -33,19 +33,10 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
 
     if (wp.startsWith('custom:')) {
       final path = wp.substring(7);
-      final file = File(path);
-      if (file.existsSync()) {
-        return Image.file(
-          file,
-          key: ValueKey('${file.path}_${file.lastModifiedSync().millisecondsSinceEpoch}'),
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Image.asset(
-            'assets/message_fond/messsage_fond1.png',
-            fit: BoxFit.cover,
-          ),
-        );
-      }
-      return Image.asset('assets/message_fond/messsage_fond1.png', fit: BoxFit.cover);
+      return buildChatWallpaperImage(
+        path,
+        key: ValueKey('chat-wallpaper-$path'),
+      );
     }
 
     if (wp == 'fond2') return Image.asset('assets/message_fond/messsage_fond2.png', fit: BoxFit.cover);
