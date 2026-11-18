@@ -91,7 +91,11 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
 
   Future<void> _shareImage() async {
     if (widget.mediaUrls.isEmpty) return;
-    final ok = await shareChatMedia(widget.mediaUrls[_currentIndex]);
+    var url = widget.mediaUrls[_currentIndex];
+    if (PendingChatMediaStore.isReference(url) && Get.isRegistered<MessagingRepository>()) {
+      url = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(url) ?? url;
+    }
+    final ok = await shareChatMedia(url);
     if (!ok) {
       Get.snackbar('Partage impossible', 'Ce média est momentanément indisponible.',
           snackPosition: SnackPosition.BOTTOM);
