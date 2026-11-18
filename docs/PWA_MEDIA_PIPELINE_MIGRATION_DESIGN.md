@@ -87,7 +87,7 @@ executed in this change.
 ## Streaming pending chat attachments — follow-up implementation
 
 The pending chat media store now persists selected files as independent binary
-chunks (256 KiB target size) in the dedicated `pending_chat_media` Hive box.
+chunks (256 KiB target size) in the dedicated `pending_chat_media` Hive LazyBox. The LazyBox reads chunks on demand instead of eagerly loading the entire attachment collection into memory.
 The controller passes the picked `XFile` stream to the store instead of calling
 `readAsBytes()` for images/videos before persistence. The store checks the
 source length against the existing 30 MiB per-attachment limit and verifies
