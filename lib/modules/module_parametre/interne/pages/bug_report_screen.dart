@@ -1,3 +1,4 @@
+import '../../../../shared/widgets/xfile_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -319,8 +320,8 @@ class BugReportScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
-            Image.file(
-              file,
+            XFileImage(
+              file: file,
               width: double.infinity,
               height: 210,
               fit: BoxFit.cover,
