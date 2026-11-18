@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../centre/repositories/messaging_repository.dart';
@@ -26,45 +27,65 @@ class ChatCachedMedia extends StatefulWidget {
   State<ChatCachedMedia> createState() => _ChatCachedMediaState();
 }
 
+class _ResolvedChatImage {
+  const _ResolvedChatImage({this.path, this.bytes});
+  final String? path;
+  final Uint8List? bytes;
+}
+
 class _ChatCachedMediaState extends State<ChatCachedMedia> {
-  Future<String?>? _future;
+  Future<_ResolvedChatImage>? _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _resolvePath(widget.remoteUrl);
+    _future = _resolve(widget.remoteUrl);
   }
 
   @override
   void didUpdateWidget(ChatCachedMedia oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.remoteUrl != widget.remoteUrl) {
-      _future = _resolvePath(widget.remoteUrl);
+      _future = _resolve(widget.remoteUrl);
     }
   }
 
-  Future<String?> _resolvePath(String value) async {
-    if (value.startsWith('data:')) return value;
+  Future<_ResolvedChatImage> _resolve(String value) async {
     if (PendingChatMediaStore.isReference(value)) {
-      if (!Get.isRegistered<MessagingRepository>()) return null;
-      return Get.find<MessagingRepository>().resolvePendingMediaDataUri(value);
+      if (!Get.isRegistered<MessagingRepository>()) {
+        return const _ResolvedChatImage();
+      }
+      final asset = await Get.find<MessagingRepository>()
+          .resolvePendingMediaAsset(value);
+      if (asset == null) return const _ResolvedChatImage();
+      // Read the binary image directly. Avoid the Base64/Data-URI expansion.
+      return _ResolvedChatImage(bytes: await asset.readAsBytes());
     }
-    return ChatMediaCache.instance.resolveLocalPath(value);
+    if (value.startsWith('data:')) {
+      return _ResolvedChatImage(path: value);
+    }
+    return _ResolvedChatImage(
+      path: await ChatMediaCache.instance.resolveLocalPath(value),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
+    return FutureBuilder<_ResolvedChatImage>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _frame(const CircularProgressIndicator(strokeWidth: 2));
         }
-        final path = snapshot.data;
-        if (path == null || path.isEmpty) return _unavailable();
-
+        final resolved = snapshot.data;
+        if (resolved == null ||
+            (resolved.bytes == null &&
+                (resolved.path == null || resolved.path!.isEmpty))) {
+          return _unavailable();
+        }
         return media_image.buildChatCachedMediaImage(
-          path: path,
+          path: resolved.path ?? '',
+          bytes: resolved.bytes,
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
