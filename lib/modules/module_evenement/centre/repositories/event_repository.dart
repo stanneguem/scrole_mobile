@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -25,6 +24,7 @@ import '../models/event_guest_invitation_model.dart';
 import '../models/event_statistics_model.dart';
 import '../models/event_sponsor_invitation_model.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../modules/module_discussion_direct/interne/controllers/contacts_controller.dart';
 import '../../../../shared/models/interest_model.dart';
 
@@ -1782,8 +1782,18 @@ class EventRepository {
     }
   }
 
-  Future<String> uploadCover(String eventId, File file) async {
-    return _remote.uploadEventCover(eventId, file);
+  Future<String> uploadCover(String eventId, MediaAsset media) async {
+    final uploaded = await R2MediaRepository(client: _remote.client).uploadMediaAsset(
+      media: media,
+      category: 'event_media',
+      mediaType: 'image',
+      entityId: eventId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty) {
+      throw StateError('Cloudflare R2 n’a pas retourné d’URL publique pour la couverture de l’événement.');
+    }
+    return url;
   }
 
   Future<void> deleteEventCover(String publicUrl) async {
