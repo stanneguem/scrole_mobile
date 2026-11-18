@@ -1,13 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:path/path.dart' as p;
-import 'package:share_plus/share_plus.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../centre/services/chat_media_cache.dart';
+import '../../centre/services/chat_media_viewer_platform.dart';
+import '../widgets/chat_cached_media.dart';
 
 /// Visualiseur dédié aux médias échangés en messagerie directe.
 /// Aucun compteur ni action sociale du fil d'actualité n'est affiché.
@@ -54,30 +51,13 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
 
   String _fileName(String url) {
     final uri = Uri.tryParse(url);
-    var ext = p.extension(uri?.path ?? url);
-    if (ext.isEmpty) ext = _isVideo(_currentIndex) ? '.mp4' : '.jpg';
-    return 'scrole_${_isVideo(_currentIndex) ? 'video' : 'image'}_${DateTime.now().millisecondsSinceEpoch}$ext';
-  }
-
-  Future<String?> _localFile(String url) async {
-    if (ChatMediaCache.isFilesystemPath(url)) {
-      final path = url.startsWith('file://') ? Uri.parse(url).toFilePath() : url;
-      if (await File(path).exists()) return path;
+    var ext = uri?.pathSegments.isNotEmpty == true
+        ? uri!.pathSegments.last.split('.').last
+        : '';
+    if (ext.isEmpty || ext == uri?.pathSegments.last) {
+      ext = _isVideo(_currentIndex) ? 'mp4' : 'jpg';
     }
-
-    final cached = await ChatMediaCache.instance.resolveLocalPath(url);
-    if (cached != null && await File(cached).exists()) return cached;
-
-    // Fallback for public/accessible URLs if the chat cache could not resolve it.
-    if (ChatMediaCache.isHttpUrl(url)) {
-      try {
-        final file = await DefaultCacheManager().getSingleFile(url);
-        return file.path;
-      } catch (_) {
-        return null;
-      }
-    }
-    return null;
+    return 'scrole_${_isVideo(_currentIndex) ? 'video' : 'image'}_${DateTime.now().millisecondsSinceEpoch}.$ext';
   }
 
   Future<void> _saveToGallery() async {
@@ -85,28 +65,19 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
     setState(() => _saving = true);
     try {
       final url = widget.mediaUrls[_currentIndex];
-      final localPath = await _localFile(url);
-      if (localPath == null) {
-        Get.snackbar('Téléchargement impossible', 'Cette image ne peut pas être récupérée pour le moment.',
-            snackPosition: SnackPosition.BOTTOM);
-        return;
-      }
-
-      final ok = await ChatMediaCache.instance.saveToGallery(
-        sourcePath: localPath,
-        fileName: _fileName(url),
-      );
+      final ok = await saveChatMediaToGallery(url, _fileName(url));
       if (!mounted) return;
       final kind = _isVideo(_currentIndex) ? 'vidéo' : 'image';
       Get.snackbar(
         ok ? '${kind[0].toUpperCase()}${kind.substring(1)} enregistrée' : 'Enregistrement impossible',
-        ok ? 'Le média a été enregistré dans la galerie de votre appareil.'
-            : 'Vérifiez les autorisations d’accès aux photos puis réessayez.',
+        ok
+            ? 'Le média a été enregistré dans la galerie de votre appareil.'
+            : 'Cette action n’est pas disponible dans le navigateur ou le média est inaccessible.',
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (_) {
       if (mounted) {
-        Get.snackbar('Erreur', 'Impossible d’enregistrer cette image.',
+        Get.snackbar('Erreur', 'Impossible d’enregistrer ce média.',
             snackPosition: SnackPosition.BOTTOM);
       }
     } finally {
@@ -116,13 +87,11 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
 
   Future<void> _shareImage() async {
     if (widget.mediaUrls.isEmpty) return;
-    final path = await _localFile(widget.mediaUrls[_currentIndex]);
-    if (path == null) {
-      Get.snackbar('Partage impossible', 'Cette image est momentanément indisponible.',
+    final ok = await shareChatMedia(widget.mediaUrls[_currentIndex]);
+    if (!ok) {
+      Get.snackbar('Partage impossible', 'Ce média est momentanément indisponible.',
           snackPosition: SnackPosition.BOTTOM);
-      return;
     }
-    await Share.shareXFiles([XFile(path)], text: 'Média partagé depuis Scrole');
   }
 
   @override
@@ -144,7 +113,7 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
                         minScale: 0.7,
                         maxScale: 4,
                         child: SizedBox.expand(
-                          child: _ChatMediaImage(url: urls[index]),
+                          child: ChatCachedMedia(remoteUrl: urls[index], fit: BoxFit.contain),
                         ),
                       ),
               ),
@@ -252,55 +221,6 @@ class _CircleAction extends StatelessWidget {
       );
 }
 
-class _ChatMediaImage extends StatelessWidget {
-  const _ChatMediaImage({required this.url});
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: ChatMediaCache.instance.resolveLocalPath(url),
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        }
-        if (path != null && File(path).existsSync()) {
-          return Image.file(
-            File(path),
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const _UnavailableImage(),
-          );
-        }
-        if (ChatMediaCache.isHttpUrl(url)) {
-          return Image.network(
-            url,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const _UnavailableImage(),
-          );
-        }
-        return const _UnavailableImage();
-      },
-    );
-  }
-}
-
-class _UnavailableImage extends StatelessWidget {
-  const _UnavailableImage();
-
-  @override
-  Widget build(BuildContext context) => const Center(
-        child: Icon(
-          Icons.broken_image_outlined,
-          color: Colors.white70,
-          size: 56,
-        ),
-      );
-}
-
-
 /// Lecteur plein écran utilisé par le visualiseur des médias de discussion.
 class _ChatMediaVideo extends StatefulWidget {
   const _ChatMediaVideo({required this.url});
@@ -323,10 +243,7 @@ class _ChatMediaVideoState extends State<_ChatMediaVideo> {
 
   Future<void> _initialize() async {
     try {
-      final localPath = await ChatMediaCache.instance.resolveLocalPath(widget.url);
-      final controller = localPath != null && await File(localPath).exists()
-          ? VideoPlayerController.file(File(localPath))
-          : VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      final controller = await createChatMediaVideoController(widget.url);
       _controller = controller;
       await controller.initialize();
       if (mounted) setState(() => _ready = true);
