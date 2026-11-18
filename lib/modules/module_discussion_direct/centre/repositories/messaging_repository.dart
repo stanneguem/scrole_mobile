@@ -357,13 +357,19 @@ class MessagingRepository {
           continue;
         }
         final asset = _assetFromPersistedValue(path);
-        if (asset == null) return null;
-        final url = await _remote.uploadMediaAsset(
-          asset,
-          'media',
-          contentType: asset.mimeType ?? _mime(asset.name),
-          conversationId: m.conversationId,
-        );
+        final url = asset != null
+            ? await _remote.uploadMediaAsset(
+                asset,
+                'media',
+                contentType: asset.mimeType ?? _mime(asset.name),
+                conversationId: m.conversationId,
+              )
+            : await _remote.uploadFile(
+                path,
+                'media',
+                contentType: _mime(path),
+                conversationId: m.conversationId,
+              );
         if (url == null) return null;
         out.add(url);
       }
@@ -372,13 +378,19 @@ class MessagingRepository {
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
       final asset = _assetFromPersistedValue(audio);
-      if (asset == null) return null;
-      audio = await _remote.uploadMediaAsset(
-        asset,
-        'audio',
-        contentType: asset.mimeType ?? _mime(asset.name),
-        conversationId: m.conversationId,
-      );
+      audio = asset != null
+          ? await _remote.uploadMediaAsset(
+              asset,
+              'audio',
+              contentType: asset.mimeType ?? _mime(asset.name),
+              conversationId: m.conversationId,
+            )
+          : await _remote.uploadFile(
+              audio,
+              'audio',
+              contentType: _mime(audio),
+              conversationId: m.conversationId,
+            );
     }
     if (m.audioUrl != null && audio == null) return null;
     return m.copyWith(mediaUrls: media, audioUrl: audio);
