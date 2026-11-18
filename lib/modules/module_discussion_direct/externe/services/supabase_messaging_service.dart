@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../centre/models/message.dart';
 import '../../centre/models/conversation.dart';
@@ -315,75 +311,67 @@ class SupabaseMessagingService {
         String? conversationId,
         double? durationSeconds,
       }) async {
-    final uid = currentUserId;
-    if (uid == null) throw StateError('Authentication required to upload media');
-    if (conversationId == null || conversationId.isEmpty) {
-      throw ArgumentError('conversationId is required for private chat media');
-    }
-    final source = File(localPath);
-    if (!await source.exists()) throw FileSystemException('Media file not found', localPath);
-
-    Uint8List bytes = await source.readAsBytes();
-    var resolvedType = (contentType ?? '').toLowerCase().split(';').first.trim();
-    final lowerPath = localPath.toLowerCase();
-    final isImage = resolvedType.startsWith('image/') ||
-        (resolvedType.isEmpty && RegExp(r'\.(jpe?g|png|webp|heic|heif)$').hasMatch(lowerPath));
-    String extension = source.uri.pathSegments.last.split('.').last.toLowerCase();
-    if (isImage) {
-      final compressed = await FlutterImageCompress.compressWithList(
-        bytes,
-        minWidth: 1920,
-        minHeight: 1920,
-        quality: 82,
-        format: CompressFormat.jpeg,
+    if (localPath.startsWith('data:')) {
+      final comma = localPath.indexOf(',');
+      if (comma < 0) throw ArgumentError('Invalid media data URL');
+      final header = localPath.substring(5, comma).split(';');
+      final mime = header.first;
+      final namePart = header.where((part) => part.startsWith('name=')).firstOrNull;
+      final name = namePart == null ? 'voice_message.${_extensionForMime(mime)}' :
+          Uri.decodeComponent(namePart.substring(5));
+      final bytes = base64Decode(localPath.substring(comma + 1));
+      return uploadMediaAsset(
+        MediaAsset.fromXFile(XFile.fromData(bytes, name: name, mimeType: mime)),
+        folder,
+        contentType: mime,
+        conversationId: conversationId,
+        durationSeconds: durationSeconds,
       );
-      if (compressed.isNotEmpty) bytes = compressed;
-      resolvedType = 'image/jpeg';
-      extension = 'jpg';
-    } else if (resolvedType.isEmpty) {
-      if (lowerPath.endsWith('.m4a')) {
-        resolvedType = 'audio/mp4';
-      } else if (lowerPath.endsWith('.aac')) {
-        resolvedType = 'audio/aac';
-      } else if (lowerPath.endsWith('.mp4')) {
-        resolvedType = 'video/mp4';
-      } else if (lowerPath.endsWith('.mov')) {
-        resolvedType = 'video/quicktime';
-      } else {
-        resolvedType = 'application/octet-stream';
-      }
     }
-    final isVideo = resolvedType.startsWith('video/');
-    final isAudio = resolvedType.startsWith('audio/');
-    const category = 'message_media';
-    final request = <String, dynamic>{
-      'action': 'create-upload-url',
-      'category': category,
-      'media_type': isVideo ? 'video' : isAudio ? 'audio' : 'image',
-      'content_type': resolvedType,
-      'extension': extension,
-      'size_bytes': bytes.length,
-      if (durationSeconds != null) 'duration_seconds': durationSeconds,
-      'entity_id': conversationId,
-    };
-    final response = await _client.functions.invoke('r2-media-upload', body: request);
-    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
-      throw StateError('R2 upload authorization failed (${response.status}): ${response.data}');
-    }
-    final data = Map<String, dynamic>.from(response.data as Map);
-    final uploadUrl = data['upload_url'] as String?;
-    final objectKey = data['object_key'] as String?;
-    if (uploadUrl == null || objectKey == null) throw StateError('Invalid R2 upload authorization response');
-    final put = await http.put(
-      Uri.parse(uploadUrl),
-      headers: {'Content-Type': resolvedType},
-      body: bytes,
+
+    final uri = Uri.tryParse(localPath);
+    final name = uri?.pathSegments.isNotEmpty == true
+        ? uri!.pathSegments.last
+        : 'chat_attachment.bin';
+    final bytes = await XFile(localPath).readAsBytes();
+    final mime = (contentType ?? _mimeFromName(name)).toLowerCase();
+    return uploadMediaAsset(
+      MediaAsset.fromXFile(XFile.fromData(bytes, name: name, mimeType: mime)),
+      folder,
+      contentType: mime,
+      conversationId: conversationId,
+      durationSeconds: durationSeconds,
     );
-    if (put.statusCode < 200 || put.statusCode >= 300) {
-      throw HttpException('Cloudflare R2 upload failed (${put.statusCode})');
-    }
-    // Public assets can be stored as public URLs; private chat assets store only
-    // the object key and are resolved through an authenticated, short-lived URL.
-    return data['is_public'] == true ? (data['public_url'] as String? ?? objectKey) : objectKey;
   }
+
+  String _mimeFromName(String name) {
+    final extension = name.split('.').last.toLowerCase();
+    return const {
+      'm4a': 'audio/mp4',
+      'aac': 'audio/aac',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'mp4': 'video/mp4',
+      'mov': 'video/quicktime',
+      'webm': 'video/webm',
+      'png': 'image/png',
+      'webp': 'image/webp',
+      'gif': 'image/gif',
+    }[extension] ?? 'image/jpeg';
+  }
+
+  String _extensionForMime(String mime) => const {
+    'audio/mp4': 'm4a',
+    'audio/aac': 'aac',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'image/jpeg': 'jpg',
+  }[mime.toLowerCase()] ?? 'bin';
+}
 }
