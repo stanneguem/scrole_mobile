@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -134,8 +134,8 @@ class CommunityController extends GetxController {
     required String slug,
     required String description,
     required String visibility,
-    File? avatarFile,
-    File? bannerFile,
+    XFile? avatarFile,
+    XFile? bannerFile,
   }) async {
     try {
       debugPrint('[CREATE_COMMUNITY] [Controller] createCommunity called for name=$name, slug=$slug, visibility=$visibility');
