@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../centre/services/chat_media_cache.dart';
 import '../../centre/services/chat_media_viewer_platform.dart';
 import '../widgets/chat_cached_media.dart';
 
