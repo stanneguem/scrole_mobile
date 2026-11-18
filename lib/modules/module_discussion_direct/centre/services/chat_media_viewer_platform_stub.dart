@@ -6,9 +6,7 @@ import 'chat_media_cache.dart';
 
 Future<VideoPlayerController> createChatMediaVideoController(String url) async {
   final resolved = await ChatMediaCache.instance.resolveLocalPath(url);
-  final source = resolved != null && ChatMediaCache.isHttpUrl(resolved)
-      ? resolved
-      : url;
+  final source = resolved != null && resolved.isNotEmpty ? resolved : url;
   return VideoPlayerController.networkUrl(Uri.parse(source));
 }
 
