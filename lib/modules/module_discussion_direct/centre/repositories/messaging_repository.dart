@@ -744,6 +744,16 @@ class MessagingRepository {
           }
         } catch (e) {
           debugPrint('[Messaging] Outbox item $id failed: $e');
+          // Restore the original local references if media upload succeeded
+          // but the message insert did not. The outbox remains authoritative.
+          if (payload is Map && payload['type'] != 'read_cursor') {
+            try {
+              final original = Message.fromJson(Map<String, dynamic>.from(payload));
+              await _messages.upsert(uid, original.copyWith(status: MessageStatus.pending));
+            } catch (restoreError) {
+              debugPrint('[Messaging] Could not restore pending message $id: $restoreError');
+            }
+          }
           if (!await _hasNetworkConnection()) break;
           await _markOutboxFailure(uid, id, e.toString());
         }
