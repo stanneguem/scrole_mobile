@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../app/media/media_asset.dart';
 import 'package:get/get.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:sqflite/sqflite.dart';
@@ -320,30 +321,26 @@ class MessagingRepository {
     if (uid == null) return const MessagingResult.failure('not_authenticated', 'Utilisateur non authentifié.');
     final pending = message.copyWith(status: MessageStatus.pending);
     try {
+      // Persist the complete attachment payload before any network operation.
+      // Data URLs survive app/browser restarts and are replayed by the outbox.
       await _messages.upsert(uid, pending);
-      final originalMediaUrls = message.mediaUrls;
-      final originalAudioUrl = message.audioUrl;
-
+      await _enqueueOutbox(uid, pending);
       final prepared = await _prepareMedia(pending);
       if (prepared == null) {
-        await _messages.upsert(uid, pending.copyWith(status: MessageStatus.failed));
-        return const MessagingResult.failure('media_upload_failed', 'Impossible de téléverser le média.');
+        return const MessagingResult.failure('media_upload_failed', 'Le média est conservé dans la file d’envoi et sera réessayé.');
       }
-
-      if (originalMediaUrls != null && prepared.mediaUrls != null) {
-        for (var i = 0; i < originalMediaUrls.length; i++) {
-          if (i < prepared.mediaUrls!.length) {
-            await ChatMediaCache.instance.saveLocalToSandbox(prepared.mediaUrls![i], originalMediaUrls[i]);
-          }
-        }
+      final remote = await _remote.insertMessage(prepared);
+      if (remote == null) {
+        throw StateError('Le serveur n’a pas confirmé le message.');
       }
-      if (originalAudioUrl != null && prepared.audioUrl != null) {
-        await ChatMediaCache.instance.saveLocalToSandbox(prepared.audioUrl!, originalAudioUrl);
-      }
-
-      return sendMessage(prepared);
+      final result = remote.copyWith(localId: pending.localId, status: MessageStatus.sent);
+      await _messages.upsert(uid, result);
+      await _removeOutbox(uid, pending.localId);
+      await _refreshConversationList(uid, result.conversationId);
+      return MessagingResult.success(result);
     } catch (e) {
-      await _messages.upsert(uid, pending.copyWith(status: MessageStatus.failed));
+      await _markOutboxFailure(uid, pending.localId, e.toString());
+      await _messages.upsert(uid, pending.copyWith(status: MessageStatus.pending));
       return MessagingResult.failure('media_upload_failed', e.toString());
     }
   }
@@ -355,21 +352,70 @@ class MessagingRepository {
       for (final path in media) {
         if (_isRemote(path)) {
           out.add(path);
-        } else {
-          final url = await _remote.uploadFile(path, 'media', contentType: _mime(path), conversationId: m.conversationId);
-          if (url == null) return null;
-          out.add(url);
+          continue;
         }
+        final asset = _assetFromPersistedValue(path);
+        if (asset == null) return null;
+        final url = await _remote.uploadMediaAsset(
+          asset,
+          'media',
+          contentType: asset.mimeType ?? _mime(asset.name),
+          conversationId: m.conversationId,
+        );
+        if (url == null) return null;
+        out.add(url);
       }
       media = out;
     }
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
-      audio = await _remote.uploadFile(audio, 'audio', contentType: _mime(audio), conversationId: m.conversationId);
+      final asset = _assetFromPersistedValue(audio);
+      if (asset == null) return null;
+      audio = await _remote.uploadMediaAsset(
+        asset,
+        'audio',
+        contentType: asset.mimeType ?? _mime(asset.name),
+        conversationId: m.conversationId,
+      );
     }
     if (m.audioUrl != null && audio == null) return null;
     return m.copyWith(mediaUrls: media, audioUrl: audio);
   }
+
+  MediaAsset? _assetFromPersistedValue(String value) {
+    if (!value.startsWith('data:')) return null;
+    final comma = value.indexOf(',');
+    if (comma < 0) return null;
+    final header = value.substring(5, comma);
+    final parts = header.split(';');
+    final mime = parts.first;
+    final namePart = parts.where((part) => part.startsWith('name=')).firstOrNull;
+    final name = namePart == null
+        ? 'chat_attachment.${_extensionForMime(mime)}'
+        : Uri.decodeComponent(namePart.substring(5));
+    final encoded = value.substring(comma + 1);
+    try {
+      final bytes = base64Decode(encoded);
+      return MediaAsset.fromXFile(XFile.fromData(bytes, name: name, mimeType: mime));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _extensionForMime(String mime) => switch (mime.toLowerCase()) {
+    'image/jpeg' => 'jpg',
+    'image/png' => 'png',
+    'image/webp' => 'webp',
+    'image/gif' => 'gif',
+    'video/mp4' => 'mp4',
+    'video/quicktime' => 'mov',
+    'video/webm' => 'webm',
+    'audio/mp4' => 'm4a',
+    'audio/aac' => 'aac',
+    'audio/mpeg' => 'mp3',
+    'audio/wav' => 'wav',
+    _ => 'bin',
+  };
 
   bool _isRemote(String v) =>
       ChatMediaCache.isHttpUrl(v) || ChatMediaCache.isStorageKey(v);
@@ -582,7 +628,9 @@ class MessagingRepository {
           } else {
             // Traitement d'un message classique
             final m = Message.fromJson(Map<String, dynamic>.from(payload as Map));
-            final remote = await _remote.insertMessage(m);
+            final prepared = await _prepareMedia(m);
+            if (prepared == null) throw StateError('Pièce jointe locale indisponible pour l’envoi.');
+            final remote = await _remote.insertMessage(prepared);
             if (remote == null) throw Exception('send_failed');
             await _messages.upsert(uid, remote.copyWith(localId: m.localId, status: MessageStatus.sent));
             await _removeOutbox(uid, m.localId);
