@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
-import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../persistence/pending_chat_media_store.dart';
 import 'package:get/get.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
@@ -47,10 +46,7 @@ class MessagingRepository {
   bool _inboxSubscribedOnce = false;
   StreamSubscription? _connectivitySubscription;
   bool _outboxRunning = false;
-  PendingChatMediaStore? _pendingMediaStore;
-
-  PendingChatMediaStore get _pendingMedia =>
-      _pendingMediaStore ??= PendingChatMediaStore(Get.find<FastCacheService>());
+  final PendingChatMediaStore _pendingMedia = PendingChatMediaStore();
 
   Future<String> persistPendingMedia({
     required String messageId,
@@ -384,6 +380,7 @@ class MessagingRepository {
           continue;
         }
         final asset = await _assetForPersistedValue(path);
+        if (PendingChatMediaStore.isReference(path) && asset == null) return null;
         final url = asset != null
             ? await _remote.uploadMediaAsset(
                 asset,
@@ -405,6 +402,7 @@ class MessagingRepository {
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
       final asset = await _assetForPersistedValue(audio);
+      if (PendingChatMediaStore.isReference(audio) && asset == null) return null;
       audio = asset != null
           ? await _remote.uploadMediaAsset(
               asset,
@@ -424,17 +422,18 @@ class MessagingRepository {
   }
 
   Future<MediaAsset?> _assetForPersistedValue(String value) async {
-    if (_pendingMedia.owns(value)) return _pendingMedia.resolve(value);
+    if (PendingChatMediaStore.isReference(value)) {
+      return _pendingMedia.resolve(value);
+    }
     return _assetFromPersistedValue(value);
   }
 
   Future<void> _cleanupPendingMedia(Message original) async {
-    await _pendingMedia.removeAll(
-      PendingChatMediaStore.referencesForMessage(
-        mediaUrls: original.mediaUrls,
-        audioUrl: original.audioUrl,
-      ),
+    final references = PendingChatMediaStore.referencesForMessage(
+      mediaUrls: original.mediaUrls,
+      audioUrl: original.audioUrl,
     );
+    if (references.isNotEmpty) await _pendingMedia.removeAll(references);
   }
 
   MediaAsset? _assetFromPersistedValue(String value) {
