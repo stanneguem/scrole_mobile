@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
+import '../../../../app/media/media_asset.dart';
+import '../../../../app/repository_global/r2_media_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
@@ -271,6 +274,35 @@ class SupabaseMessagingService {
   Future<void> unsubscribe(RealtimeChannel channel) async {
     _typingReady.remove(channel);
     await _client.removeChannel(channel);
+  }
+
+  /// Uploads a cross-platform media asset to private chat storage in R2.
+  Future<String?> uploadMediaAsset(
+    MediaAsset media,
+    String folder, {
+    String? contentType,
+    String? conversationId,
+    double? durationSeconds,
+  }) async {
+    if (conversationId == null || conversationId.isEmpty) {
+      throw ArgumentError('conversationId is required for private chat media');
+    }
+    final type = (contentType ?? media.mimeType ?? '').toLowerCase();
+    final mediaType = type.startsWith('video/')
+        ? 'video'
+        : type.startsWith('audio/')
+            ? 'audio'
+            : 'image';
+    final uploaded = await R2MediaRepository().uploadMediaAsset(
+      media: media,
+      category: 'message_media',
+      mediaType: mediaType,
+      entityId: conversationId,
+      videoDuration: durationSeconds == null
+          ? null
+          : Duration(milliseconds: (durationSeconds * 1000).round()),
+    );
+    return uploaded.isPublic ? uploaded.publicUrl : uploaded.objectKey;
   }
 
   /// Uploads chat media to Cloudflare R2. Images are compressed on-device first.
