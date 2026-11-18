@@ -67,6 +67,24 @@ class MessagingRepository {
     );
   }
 
+
+  Future<String> persistPendingMediaFile({
+    required String messageId,
+    required int index,
+    required XFile file,
+    required String mimeType,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non authentifié.');
+    return _pendingMedia.putXFile(
+      userId: uid,
+      messageId: messageId,
+      index: index,
+      file: file,
+      mimeType: mimeType,
+    );
+  }
+
   String? get currentUserId => _remote.currentUserId;
 
   Future<String?> resolveLocalMedia(String messageId, String remoteUrl) async {
