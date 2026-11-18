@@ -10,8 +10,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 class PendingChatMediaStore {
   PendingChatMediaStore();
 
-  Future<Box>? _boxFuture;
-  Future<Box> get _box => _boxFuture ??= Hive.openBox('pending_chat_media');
+  Future<LazyBox>? _boxFuture;
+  Future<LazyBox> get _box => _boxFuture ??= Hive.openLazyBox('pending_chat_media');
   static const _prefix = 'pending_chat_media:';
   static const _scheme = 'pending-media';
 
@@ -71,7 +71,7 @@ class PendingChatMediaStore {
     if (length <= 0) throw StateError('Le fichier sélectionné est vide.');
     final key = _key(userId, messageId, index);
     final box = await _box;
-    final old = box.get(key);
+    final old = await box.get(key);
     if (old is Map && old['chunks'] is int) {
       final count = old['chunks'] as int;
       for (var i = 0; i < count; i++) {
@@ -127,7 +127,7 @@ class PendingChatMediaStore {
     if (index == null) return null;
     final box = await _box;
     final key = _key(uri.host, uri.pathSegments[0], index);
-    final record = box.get(key);
+    final record = await box.get(key);
     if (record is! Map || record['chunks'] is! int || record['length'] is! int) {
       // Backward compatibility with an early single-blob representation.
       if (record is Map && record['bytes'] is Uint8List) {
@@ -151,9 +151,9 @@ class PendingChatMediaStore {
     );
   }
 
-  Stream<List<int>> _readChunks(Box box, String key, int count) async* {
+  Stream<List<int>> _readChunks(LazyBox box, String key, int count) async* {
     for (var i = 0; i < count; i++) {
-      final chunk = box.get('$key:chunk:$i');
+      final chunk = await box.get('$key:chunk:$i');
       if (chunk is! Uint8List) throw StateError('Pièce jointe locale incomplète.');
       yield chunk;
     }
@@ -167,7 +167,7 @@ class PendingChatMediaStore {
     if (index == null) return;
     final box = await _box;
     final key = _key(uri.host, uri.pathSegments[0], index);
-    final record = box.get(key);
+    final record = await box.get(key);
     if (record is Map && record['chunks'] is int) {
       final count = record['chunks'] as int;
       for (var i = 0; i < count; i++) {
