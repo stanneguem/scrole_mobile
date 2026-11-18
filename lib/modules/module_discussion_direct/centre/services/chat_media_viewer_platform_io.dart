@@ -106,6 +106,67 @@ Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(
   return controller;
 }
 
+Future<File> _materializePendingAsset(MediaAsset asset) async {
+  final directory = await getTemporaryDirectory();
+  final extension = p.extension(asset.name).isNotEmpty
+      ? p.extension(asset.name)
+      : (asset.mimeType == 'video/webm' ? '.webm' : '.bin');
+  final file = File(p.join(
+    directory.path,
+    'scrole_pending_share_${DateTime.now().microsecondsSinceEpoch}$extension',
+  ));
+  final sink = file.openWrite();
+  try {
+    await sink.addStream(asset.openRead());
+    await sink.flush();
+    await sink.close();
+    return file;
+  } catch (_) {
+    await sink.close();
+    if (await file.exists()) await file.delete();
+    rethrow;
+  }
+}
+
+Future<bool> savePendingChatMediaAsset(MediaAsset asset, String fileName) async {
+  File? file;
+  try {
+    file = await _materializePendingAsset(asset);
+    return await ChatMediaCache.instance.saveToGallery(
+      sourcePath: file.path,
+      fileName: fileName,
+    );
+  } catch (_) {
+    return false;
+  } finally {
+    if (file != null) {
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
+    }
+  }
+}
+
+Future<bool> sharePendingChatMediaAsset(MediaAsset asset, String fileName) async {
+  File? file;
+  try {
+    file = await _materializePendingAsset(asset);
+    await Share.shareXFiles(
+      [XFile(file.path, name: fileName)],
+      text: 'Média partagé depuis Scrole',
+    );
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    if (file != null) {
+      try {
+        if (await file.exists()) await file.delete();
+      } catch (_) {}
+    }
+  }
+}
+
 Future<void> disposeChatMediaVideoController(
   VideoPlayerController controller,
 ) async {
