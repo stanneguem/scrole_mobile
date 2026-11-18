@@ -19,18 +19,31 @@ Future<bool> saveChatMediaToGallery(String url, String fileName) async => false;
 /// Uses the browser share sheet when supported by share_plus.
 Future<bool> shareChatMedia(String url) async {
   try {
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode < 200 || response.statusCode >= 300) return false;
     final uri = Uri.parse(url);
-    final segment = uri.pathSegments.isEmpty ? 'scrole-media' : uri.pathSegments.last;
-    final extension = segment.contains('.') ? segment.split('.').last : 'bin';
-    final mimeType = extension.toLowerCase() == 'mp4'
-        ? 'video/mp4'
-        : extension.toLowerCase() == 'webm'
-            ? 'video/webm'
-            : 'image/jpeg';
+    late final List<int> bytes;
+    late final String segment;
+    late final String mimeType;
+    if (url.startsWith('data:')) {
+      final data = uri.data;
+      if (data == null) return false;
+      bytes = data.contentAsBytes();
+      mimeType = data.mimeType;
+      final extension = mimeType.split('/').last.split('+').first;
+      segment = 'scrole-media.${extension == 'quicktime' ? 'mov' : extension}';
+    } else {
+      final response = await http.get(uri);
+      if (response.statusCode < 200 || response.statusCode >= 300) return false;
+      bytes = response.bodyBytes;
+      segment = uri.pathSegments.isEmpty ? 'scrole-media' : uri.pathSegments.last;
+      final extension = segment.contains('.') ? segment.split('.').last : 'bin';
+      mimeType = extension.toLowerCase() == 'mp4'
+          ? 'video/mp4'
+          : extension.toLowerCase() == 'webm'
+              ? 'video/webm'
+              : 'image/jpeg';
+    }
     await Share.shareXFiles(
-      [XFile.fromData(response.bodyBytes, name: segment, mimeType: mimeType)],
+      [XFile.fromData(bytes, name: segment, mimeType: mimeType)],
       text: 'Média partagé depuis Scrole',
     );
     return true;
