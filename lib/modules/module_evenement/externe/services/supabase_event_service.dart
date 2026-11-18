@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../../app/media/media_asset.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
@@ -1108,9 +1108,9 @@ class SupabaseEventService {
     return Map<String, dynamic>.from(response as Map);
   }
 
-  Future<String> uploadEventCover(String eventId, File file) async {
+  Future<String> uploadEventCover(String eventId, MediaAsset media) async {
     final uploaded = await R2MediaRepository(client: _client).uploadFile(
-      file: file,
+      media: media,
       category: 'event_media',
       mediaType: 'image',
       entityId: eventId,
