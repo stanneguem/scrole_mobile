@@ -138,10 +138,12 @@ stream. Cancellation removes the staged chunks, and failed writes prevent the
 manifest from being published.
 
 Voice review currently resolves the pending WAV to a Data URI on demand for
-the audio player. Pending image/video preview, share and save flows also still
-materialize data in memory. A future platform-specific preview adapter should
-stream pending videos to a temporary file on native platforms and use a
-browser Blob/object URL on Web, with explicit lifetime cleanup.
+the audio player. Pending image previews and share/save flows can still
+materialize data in memory. Pending video playback now resolves the stored
+MediaAsset directly: native platforms stream it into a temporary file and
+delete that file when the video controller is disposed. The current Web
+fallback still materializes a Data URI; a browser Blob/object-URL adapter with
+explicit lifetime cleanup remains follow-up work.
 
 Validation remains source-only: no Flutter analyzer, Android/Web build,
 microphone capture, browser IndexedDB, device playback, offline replay or R2
