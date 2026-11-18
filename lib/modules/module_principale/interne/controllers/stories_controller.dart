@@ -8,9 +8,7 @@ import '../services/story_media_platform.dart';
 import '../services/story_tray_legacy_cache.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/stories_repository.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
-import '../../../../app_controller.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
-import '../../../../app/repository_global/storage_repository.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
 
 class StoryItem {
@@ -194,7 +192,6 @@ class EventStoryGroup {
 
 class StoriesController extends GetxController {
   final StoriesRepository _repo = StoriesRepository();
-  final StorageRepository _storageRepo = StorageRepository();
   final R2MediaRepository _r2MediaRepo = R2MediaRepository();
 
   final Rxn<EventStoryGroup> ownGroup = Rxn<EventStoryGroup>();
