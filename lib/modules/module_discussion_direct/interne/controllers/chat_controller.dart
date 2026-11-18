@@ -617,6 +617,8 @@ class ChatController extends GetxController {
     final writer = _recordingWriter;
     _recordingWriter = null;
     if (writer != null) await _repository.discardPendingWavRecording(writer);
+    final mediaRef = _recordingMediaRef;
+    if (mediaRef != null) await _repository.removePendingMediaReference(mediaRef);
     _recordingMediaRef = null;
     _recordingMessageId = null;
     recordingState.value = RecordingState.idle;
