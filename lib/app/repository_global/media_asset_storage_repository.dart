@@ -22,6 +22,14 @@ class MediaAssetStorageRepository {
     return currentUser.id;
   }
 
+  Future<void> deletePublicFile({
+    required String bucket,
+    required String publicUrl,
+  }) async {
+    // Les médias R2 sont supprimés via leur clé détenue, pas via Supabase Storage.
+    await _r2.deleteReplacedPublicMedia(publicUrl);
+  }
+
   Future<String> uploadProfilePicture(String userId, MediaAsset media) async {
     _requireCurrentUser(userId, 'Vous ne pouvez téléverser que votre propre photo de profil.');
     final uploaded = await _r2.uploadMediaAsset(
