@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:async';
-import 'dart:io';
-import 'package:path/path.dart' as p;
+import 'package:image_picker/image_picker.dart';
+import 'package:scrole/app/media/media_asset.dart';
+import 'package:scrole/app/service_global/media_gallery_picker.dart';
+import 'package:scrole/modules/module_principale/interne/services/story_media_platform.dart';
+import 'package:scrole/shared/widgets/xfile_image.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/app/routes/scrole_route_observer.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +15,6 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
-import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_mentions_screen.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_settings_screen.dart';
 import 'package:scrole/modules/module_principale/interne/controllers/stories_controller.dart';
@@ -41,7 +41,7 @@ class CreateStoryScreen extends StatefulWidget {
 
 class _CreateStoryScreenState extends State<CreateStoryScreen> {
   final TextEditingController _textController = TextEditingController();
-  final List<File> _selectedFiles = [];
+  final List<XFile> _selectedFiles = [];
   bool _isPublishing = false;
   static const Duration _maxVideoDuration = Duration(seconds: 30);
 
@@ -59,10 +59,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     }
     if (widget.prefilledMediaUrl != null && widget.prefilledMediaUrl!.isNotEmpty) {
       if (!widget.prefilledMediaUrl!.startsWith('http')) {
-        final file = File(widget.prefilledMediaUrl!);
-        if (file.existsSync()) {
-          _selectedFiles.add(file);
-        }
+        _selectedFiles.add(XFile(widget.prefilledMediaUrl!));
       }
     }
   }
@@ -78,80 +75,67 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       _textController.text.trim().isNotEmpty ||
       _selectedFiles.isNotEmpty;
 
-  bool _isVideoFile(File file) => const {
-    '.mp4', '.m4v', '.mov', '.mkv', '.webm', '.avi', '.3gp', '.3g2',
-    '.ts', '.mts', '.m2ts', '.mpg', '.mpeg', '.m2v', '.wmv', '.flv',
-    '.f4v', '.ogv', '.ogg', '.vob', '.asf', '.divx', '.mxf', '.hevc',
-  }.contains(p.extension(file.path).toLowerCase());
+  bool _isVideoFile(XFile file) {
+    final mimeType = (file.mimeType ?? '').toLowerCase();
+    final extension = MediaAsset.fromXFile(file).extension;
+    return mimeType.startsWith('video/') ||
+        const {'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi', '3gp', '3g2',
+          'ts', 'mts', 'm2ts', 'mpg', 'mpeg', 'm2v', 'wmv', 'flv',
+          'f4v', 'ogv', 'ogg', 'vob', 'asf', 'divx', 'mxf', 'hevc'}
+            .contains(extension);
+  }
 
   Future<void> _openMediaPicker() async {
-    final maxAllowed = 1;
-    if (maxAllowed <= 0) return;
+    final file = await ScroleBottomSheetGallery.pick(context);
+    if (file == null || !mounted) return;
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MediaGallerySheet(
-        maxSelection: maxAllowed,
-        onSelected: (files) async {
-          if (files.isEmpty) return;
+    final isVideo = _isVideoFile(file);
+    XFile selectedFile = file;
+    if (isVideo) {
+      try {
+        final trimmed = await trimStoryVideo(
+          context,
+          selectedFile,
+          maxDuration: _maxVideoDuration,
+        );
+        if (trimmed == null || !mounted) {
+          Get.snackbar(
+            'post_composer_video_invalid_title'.tr,
+            'post_composer_video_invalid_message'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.black87,
+            colorText: Colors.white,
+          );
+          return;
+        }
+        selectedFile = trimmed;
+      } catch (e, stack) {
+        debugPrint('[STORY] video trim/normalization failed: $e\\n$stack');
+        Get.snackbar(
+          'post_composer_video_invalid_title'.tr,
+          'post_composer_video_invalid_message'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.black87,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    } else {
+      final edited = await editStoryImage(context, file);
+      if (edited == null || !mounted) return;
+      selectedFile = edited;
+    }
 
-          final file = File(files.first.path);
-          final mimeType = files.first.mimeType?.toLowerCase() ?? '';
-          final isVideo = mimeType.startsWith('video/') || _isVideoFile(file);
-          var selectedFile = file;
-
-          if (!isVideo) {
-            final edited = await _openImageEditor(file);
-            if (edited == null || !mounted) return;
-            selectedFile = edited;
-          }
-
-          if (isVideo) {
-            try {
-              // Le trimmer gère aussi les vidéos courtes : il applique la
-              // normalisation H.264/AAC si le codec source n'est pas lisible.
-              // Il impose également la limite story de 29 secondes.
-              final trimmed = await Get.to<File>(
-                () => VideoTrimScreen(
-                  videoFile: selectedFile,
-                  maxDuration: _maxVideoDuration,
-                ),
-              );
-              if (trimmed == null || !mounted) return;
-              selectedFile = trimmed;
-            } catch (e, stack) {
-              debugPrint('[STORY] video trim/normalization failed: $e\\n$stack');
-              Get.snackbar(
-                'post_composer_video_invalid_title'.tr,
-                'post_composer_video_invalid_message'.tr,
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.black87,
-                colorText: Colors.white,
-              );
-              return;
-            }
-          }
-
-          if (!mounted) return;
-          setState(() {
-            _selectedFiles
-              ..clear()
-              ..add(selectedFile);
-          });
-        },
-      ),
-    );
+    if (!mounted) return;
+    setState(() {
+      _selectedFiles
+        ..clear()
+        ..add(selectedFile);
+    });
   }
 
-  Future<File?> _openImageEditor(File imageFile) async {
-    return Get.to<File>(
-      () => StoryImageEditorScreen(imageFile: imageFile),
-      fullscreenDialog: true,
-    );
-  }
+  Future<XFile?> _openImageEditor(XFile imageFile) =>
+      editStoryImage(context, imageFile);
 
   Future<void> _editSelectedImage() async {
     if (_selectedFiles.isEmpty || _isVideoFile(_selectedFiles.first)) return;
@@ -217,7 +201,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     required StoriesController storiesController,
     required CommunityPost? sharedPost,
     required String caption,
-    required File? selectedFile,
+    required XFile? selectedFile,
     required List<String> mentions,
     required bool allowReshare,
     required String background,
@@ -240,12 +224,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         return;
       }
 
-      final extension = selectedFile == null
-          ? ''
-          : p.extension(selectedFile.path).toLowerCase();
       final kind = selectedFile == null
           ? 'text'
-          : ({'.mp4', '.mov'}.contains(extension) ? 'video' : 'image');
+          : (_isVideoFile(selectedFile) ? 'video' : 'image');
 
       await storiesController.createStory(
         kind: kind,
@@ -506,7 +487,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
 
 class _StoryVideoPreview extends StatefulWidget {
-  final File file;
+  final XFile file;
 
   const _StoryVideoPreview({required this.file});
 
@@ -562,7 +543,7 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
   Future<void> _initializePlayer() async {
     if (!mounted || _controller != null) return;
     final generation = ++_generation;
-    final controller = VideoPlayerController.file(widget.file);
+    final controller = createStoryVideoController(widget.file);
     _controller = controller;
     final initialized = _initializeController(controller, generation);
     _initialized = initialized;
