@@ -1109,7 +1109,7 @@ class SupabaseEventService {
   }
 
   Future<String> uploadEventCover(String eventId, MediaAsset media) async {
-    final uploaded = await R2MediaRepository(client: _client).uploadFile(
+    final uploaded = await R2MediaRepository(client: _client).uploadMediaAsset(
       media: media,
       category: 'event_media',
       mediaType: 'image',
