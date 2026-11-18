@@ -1,14 +1,23 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 Widget buildChatCachedMediaImage({
   required String path,
+  required Uint8List? bytes,
   required double? width,
   required double? height,
   required BoxFit fit,
   required BorderRadius? borderRadius,
   required Widget Function() unavailable,
 }) {
+  if (bytes != null) {
+    return ClipRRect(
+      borderRadius: borderRadius ?? BorderRadius.zero,
+      child: Image.memory(bytes, width: width, height: height, fit: fit,
+          errorBuilder: (_, __, ___) => unavailable()),
+    );
+  }
   if (path.startsWith('data:')) {
     final comma = path.indexOf(',');
     if (comma < 0) return unavailable();
@@ -24,18 +33,14 @@ Widget buildChatCachedMediaImage({
     }
   }
   if (!path.startsWith('https://') && !path.startsWith('http://') &&
-      !path.startsWith('blob:') && !path.startsWith('data:')) {
+      !path.startsWith('blob:')) {
     return unavailable();
   }
   return ClipRRect(
     borderRadius: borderRadius ?? BorderRadius.zero,
-    child: Image.network(
-      path,
-      width: width,
-      height: height,
-      fit: fit,
-      errorBuilder: (_, __, ___) =>
-          Container(alignment: Alignment.center, child: const Icon(Icons.broken_image_outlined)),
-    ),
+    child: Image.network(path, width: width, height: height, fit: fit,
+        errorBuilder: (_, __, ___) => Container(
+            alignment: Alignment.center,
+            child: const Icon(Icons.broken_image_outlined))),
   );
 }
