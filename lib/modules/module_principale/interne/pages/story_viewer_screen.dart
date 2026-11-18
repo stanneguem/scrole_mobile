@@ -2978,6 +2978,12 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       if (!widget.isPaused) await controller.play();
     } catch (e) {
       debugPrint('[STORY] Standalone video initialization failed: $e');
+      final failedController = _controller;
+      _controller = null;
+      if (failedController != null) {
+        failedController.removeListener(_onVideoChanged);
+        await failedController.dispose();
+      }
       await deleteCachedStoryVideo(storyId: widget.storyId, objectKey: widget.objectKey);
       if (mounted) setState(() {
         _isDownloading = false;
