@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:html' as html;
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import '../../../../app/media/media_asset.dart';
@@ -55,19 +57,72 @@ Future<bool> shareChatMedia(String url) async {
   }
 }
 
+final Map<VideoPlayerController, String> _pendingVideoObjectUrls = {};
+
+Future<List<Uint8List>> _readPendingAssetChunks(MediaAsset asset) async {
+  final chunks = <Uint8List>[];
+  await for (final chunk in asset.openRead()) {
+    chunks.add(Uint8List.fromList(chunk));
+  }
+  return chunks;
+}
+
+Future<html.Blob> _pendingAssetBlob(MediaAsset asset) async {
+  final chunks = await _readPendingAssetChunks(asset);
+  return html.Blob(chunks, asset.mimeType ?? 'application/octet-stream');
+}
+
 Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(
   MediaAsset asset,
 ) async {
-  // Browser fallback: Blob/object-URL playback will replace this data-URI
-  // bridge once its lifetime can be managed by the video controller.
-  final bytes = await asset.readAsBytes();
-  final dataUri = Uri.dataFromBytes(
-    bytes,
-    mimeType: asset.mimeType ?? 'video/mp4',
-  ).toString();
-  return VideoPlayerController.networkUrl(Uri.parse(dataUri));
+  final blob = await _pendingAssetBlob(asset);
+  final objectUrl = html.Url.createObjectUrlFromBlob(blob);
+  final controller = VideoPlayerController.networkUrl(Uri.parse(objectUrl));
+  _pendingVideoObjectUrls[controller] = objectUrl;
+  return controller;
 }
 
 Future<void> disposeChatMediaVideoController(
   VideoPlayerController controller,
-) => controller.dispose();
+) async {
+  await controller.dispose();
+  final objectUrl = _pendingVideoObjectUrls.remove(controller);
+  if (objectUrl != null) html.Url.revokeObjectUrl(objectUrl);
+}
+
+Future<bool> savePendingChatMediaAsset(MediaAsset asset, String fileName) async {
+  String? objectUrl;
+  try {
+    final blob = await _pendingAssetBlob(asset);
+    objectUrl = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: objectUrl)
+      ..download = fileName
+      ..style.display = 'none';
+    html.document.body?.children.add(anchor);
+    anchor.click();
+    anchor.remove();
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    if (objectUrl != null) {
+      Future<void>.delayed(const Duration(seconds: 1), () {
+        html.Url.revokeObjectUrl(objectUrl!);
+      });
+    }
+  }
+}
+
+Future<bool> sharePendingChatMediaAsset(MediaAsset asset, String fileName) async {
+  try {
+    final chunks = await _readPendingAssetChunks(asset);
+    final bytes = Uint8List.fromList(chunks.expand((chunk) => chunk).toList());
+    await Share.shareXFiles(
+      [XFile.fromData(bytes, name: fileName, mimeType: asset.mimeType)],
+      text: 'Média partagé depuis Scrole',
+    );
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
