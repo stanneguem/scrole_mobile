@@ -18,7 +18,6 @@ import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_mentions_screen.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_settings_screen.dart';
 import 'package:scrole/modules/module_principale/interne/controllers/stories_controller.dart';
-import 'package:scrole/modules/module_principale/interne/pages/story_image_editor_screen.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
@@ -425,8 +424,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                                   ? _StoryVideoPreview(file: _selectedFiles.first)
                                   : GestureDetector(
                                       onTap: _editSelectedImage,
-                                      child: Image.file(
-                                        _selectedFiles.first,
+                                      child: XFileImage(
+                                        file: _selectedFiles.first,
                                         width: double.infinity,
                                         height: 300,
                                         fit: BoxFit.contain,
