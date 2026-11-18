@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
+import '../../../../app/media/media_asset.dart';
 import 'package:scrole/shared/models/chat_message.dart'
     as legacy;
 import '../../centre/repositories/messaging_repository.dart';
@@ -37,12 +38,18 @@ class _DirectVoiceMessagePlayerState extends State<DirectVoiceMessagePlayer> {
     setState(() => _loading = true);
     _error = null;
     try {
+      MediaAsset? pendingAsset;
       String? playable = path.startsWith('data:') ? path : null;
-      if (playable == null && PendingChatMediaStore.isReference(path) &&
+      if (PendingChatMediaStore.isReference(path) &&
           Get.isRegistered<MessagingRepository>()) {
-        playable = await Get.find<MessagingRepository>().resolvePendingMediaDataUri(path);
+        pendingAsset = await Get.find<MessagingRepository>()
+            .resolvePendingMediaAsset(path);
+        if (pendingAsset == null) {
+          throw StateError('Enregistrement vocal local introuvable.');
+        }
       }
-      if (playable == null && Get.isRegistered<MessagingRepository>()) {
+      if (pendingAsset == null && playable == null &&
+          Get.isRegistered<MessagingRepository>()) {
         final result = await Get.find<MessagingRepository>().cacheMedia(widget.messageId ?? '', path);
         if (result.success && result.data != null && result.data!.isNotEmpty) {
           playable = result.data;
@@ -53,7 +60,10 @@ class _DirectVoiceMessagePlayerState extends State<DirectVoiceMessagePlayer> {
         throw Exception('Impossible de télécharger cet audio');
       }
       final player = _player ??= AudioPlayer();
-      if (playable.startsWith('http://') || playable.startsWith('https://') || playable.startsWith('data:')) {
+      if (pendingAsset != null) {
+        await player.setAudioSource(_PendingMediaAudioSource(pendingAsset));
+      } else if (playable!.startsWith('http://') ||
+          playable.startsWith('https://') || playable.startsWith('data:')) {
         await player.setUrl(playable);
       } else {
         await player.setFilePath(playable);
@@ -396,4 +406,27 @@ class _WavePainter extends CustomPainter {
       old.progress != progress ||
       old.active != active ||
       old.inactive != inactive;
+}
+
+
+/// Serves a Hive-backed recording to just_audio by byte range. Each request
+/// reads only the requested segment from the pending-media chunk store.
+class _PendingMediaAudioSource extends StreamAudioSource {
+  _PendingMediaAudioSource(this.asset) : super(tag: asset.name);
+
+  final MediaAsset asset;
+
+  @override
+  Future<StreamAudioResponse> request([int? start, int? end]) async {
+    final totalLength = await asset.length();
+    final from = (start ?? 0).clamp(0, totalLength);
+    final to = (end ?? totalLength).clamp(from, totalLength);
+    return StreamAudioResponse(
+      sourceLength: totalLength,
+      contentLength: to - from,
+      offset: from,
+      stream: asset.openRead(from, to),
+      contentType: asset.mimeType ?? 'audio/wav',
+    );
+  }
 }
