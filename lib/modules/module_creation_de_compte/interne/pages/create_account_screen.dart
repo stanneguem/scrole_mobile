@@ -294,8 +294,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                             ),
                           ],
                         ),
-                      )
-                    : const SizedBox.shrink(),
+                      ),
               )),
         ),
 
@@ -327,13 +326,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           ),
                         ],
                       ),
-                      child: CircleAvatar(
-                        radius: 45,
-                        backgroundColor: color.surfaceContainerHighest,
-                        backgroundImage: controller.avatarFile.value != null ? FileImage(controller.avatarFile.value!) : null,
-                        child: controller.avatarFile.value == null
-                            ? Icon(Icons.person_outline_rounded, size: 40, color: color.onSurfaceVariant.withValues(alpha: 0.5))
-                            : null,
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 90,
+                          height: 90,
+                          child: controller.avatarFile.value != null
+                              ? XFileImage(file: controller.avatarFile.value!)
+                              : Container(
+                                  color: color.surfaceContainerHighest,
+                                  child: Icon(Icons.person_outline_rounded, size: 40, color: color.onSurfaceVariant.withValues(alpha: 0.5)),
+                                ),
+                        ),
                       ),
                     )),
                 Positioned(
