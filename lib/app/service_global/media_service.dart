@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:get/get.dart';
 
-import '../../shared/widgets/media_gallery_sheet.dart';
+import 'media_gallery_picker.dart';
 
 /// Sélection et préparation de médias sans exposer dart:io aux contrôleurs.
 /// Sur le Web, l'image originale est conservée lorsque les traitements natifs
@@ -101,18 +101,3 @@ class MediaService extends GetxService {
   }
 }
 
-/// Adaptateur de la galerie interne.
-class ScroleBottomSheetGallery {
-  static Future<XFile?> pick(BuildContext context) async {
-    final result = await showModalBottomSheet<List<XFile>>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => MediaGallerySheet(
-        maxSelection: 1,
-        onSelected: (_) {},
-      ),
-    );
-    return result != null && result.isNotEmpty ? result.first : null;
-  }
-}
