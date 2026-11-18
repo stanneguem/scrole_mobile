@@ -651,7 +651,6 @@ class ChatController extends GetxController {
     );
     recordingState.value = RecordingState.idle;
     _recordingChunks.clear();
-    _recordingMimeType = null;
     clearReply();
     final result = await _repository.sendMediaMessage(message);
     if (!result.success) _showError(result.message);
