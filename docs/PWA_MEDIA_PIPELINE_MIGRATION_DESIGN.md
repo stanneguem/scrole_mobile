@@ -54,3 +54,31 @@ Changing `MediaService` return types or the repository upload parameter from `Fi
 ## Validation status
 
 This is a source-level design and call-site inspection only. No Flutter analyze, Android build, Web build or browser test was run as part of this pass.
+
+
+## Outgoing chat attachment blobs
+
+Outgoing chat attachments no longer need to be serialized as Base64 Data URIs in
+SQLite. The chat controller writes each selected attachment to the dedicated
+Hive box `pending_chat_media` and stores a compact `pending-media://` reference
+in the message and outbox payload. Hive uses browser storage on Flutter Web
+(IndexedDB-backed) and its native storage backend on mobile. The regular
+`app_cache` box is deliberately not used, so ordinary cache clearing does not
+erase pending attachments.
+
+The messaging repository resolves these references to `MediaAsset` instances
+when processing the outbox and uploads them through the existing R2 media
+pipeline. Legacy Data URI payloads remain readable for messages already queued
+before this change. The local blob is removed only after the server confirms
+message insertion and the outbox row is removed.
+
+A failed upload or message insertion keeps the original reference and blob so
+the outbox can retry after reconnection. If the process crashes after R2 upload
+but before message insertion, a retry may upload the object again; this favors
+recoverability over a broken local attachment. Orphan cleanup, quota management,
+streaming large files without buffering, and browser restart/quota tests remain
+follow-up work. The current 30 MiB per-attachment limit remains in place.
+
+Validation status: source changes only. Flutter analyze, Android/Web builds,
+browser IndexedDB persistence, offline/restart replay, and R2 upload were not
+executed in this change.
