@@ -1,4 +1,5 @@
 import 'package:video_player/video_player.dart';
+import '../../../../app/media/media_asset.dart';
 import 'chat_media_viewer_platform_stub.dart'
     if (dart.library.io) 'chat_media_viewer_platform_io.dart' as platform;
 
@@ -10,3 +11,9 @@ Future<bool> saveChatMediaToGallery(String url, String fileName) =>
     platform.saveChatMediaToGallery(url, fileName);
 
 Future<bool> shareChatMedia(String url) => platform.shareChatMedia(url);
+
+Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(MediaAsset asset) =>
+    platform.createChatMediaVideoControllerFromAsset(asset);
+
+Future<void> disposeChatMediaVideoController(VideoPlayerController controller) =>
+    platform.disposeChatMediaVideoController(controller);
