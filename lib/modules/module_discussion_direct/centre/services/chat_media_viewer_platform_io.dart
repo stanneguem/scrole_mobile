@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
+import '../../../../app/media/media_asset.dart';
 
 import 'chat_media_cache.dart';
 
@@ -75,4 +76,44 @@ Future<bool> shareChatMedia(String url) async {
   if (path == null) return false;
   await Share.shareXFiles([XFile(path)], text: 'Média partagé depuis Scrole');
   return true;
+}
+
+final Map<VideoPlayerController, File> _pendingVideoFiles = {};
+
+Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(
+  MediaAsset asset,
+) async {
+  final directory = await getTemporaryDirectory();
+  final extension = p.extension(asset.name).isNotEmpty
+      ? p.extension(asset.name)
+      : (asset.mimeType == 'video/webm' ? '.webm' : '.mp4');
+  final file = File(p.join(
+    directory.path,
+    'scrole_pending_video_${DateTime.now().microsecondsSinceEpoch}$extension',
+  ));
+  final sink = file.openWrite();
+  try {
+    await sink.addStream(asset.openRead());
+    await sink.flush();
+  } catch (_) {
+    await sink.close();
+    if (await file.exists()) await file.delete();
+    rethrow;
+  }
+  await sink.close();
+  final controller = VideoPlayerController.file(file);
+  _pendingVideoFiles[controller] = file;
+  return controller;
+}
+
+Future<void> disposeChatMediaVideoController(
+  VideoPlayerController controller,
+) async {
+  await controller.dispose();
+  final file = _pendingVideoFiles.remove(controller);
+  if (file != null) {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
 }
