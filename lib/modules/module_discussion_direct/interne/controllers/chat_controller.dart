@@ -510,8 +510,6 @@ class ChatController extends GetxController {
 
   Future<void> startRecording() async {
     try {
-      // Sur le Web, le navigateur demande lui-même l’autorisation microphone
-      // via getUserMedia. permission_handler n’est utilisé que sur mobile.
       if (!kIsWeb) {
         final permission = await Permission.microphone.request();
         if (!permission.isGranted) {
@@ -519,9 +517,15 @@ class ChatController extends GetxController {
           return;
         }
       }
+      final uid = currentUserId;
+      if (uid == null) throw StateError('Utilisateur non authentifié.');
       await audioPlayer.stop();
-      _recordingMessageId = null;
-    _recordingMediaRef = null;
+      _recordingMessageId = _repository.generateLocalId();
+      _recordingWriter = await _repository.beginPendingWavRecording(
+        messageId: _recordingMessageId!,
+      );
+      _recordingMediaRef = null;
+      _recordingWriteQueue = Future<void>.value();
       final stream = await audioRecorder.startStream(const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 44100,
@@ -531,7 +535,9 @@ class ChatController extends GetxController {
       _recordingStreamSub = stream.listen(
         (chunk) {
           final writer = _recordingWriter;
-          if (writer != null) unawaited(writer.add(chunk));
+          if (writer != null) {
+            _recordingWriteQueue = _recordingWriteQueue.then((_) => writer.add(chunk));
+          }
         },
         onError: (Object error) {
           debugPrint('[ChatVoice] recording stream failed: $error');
@@ -547,6 +553,10 @@ class ChatController extends GetxController {
         (_) => recordingDuration.value++,
       );
     } catch (e) {
+      final writer = _recordingWriter;
+      _recordingWriter = null;
+      if (writer != null) await _repository.discardPendingWavRecording(writer);
+      _recordingMessageId = null;
       debugPrint('[ChatVoice] unable to start recording: $e');
       _showError('Impossible de démarrer l’enregistrement. Vérifie l’autorisation du micro.');
     }
@@ -568,19 +578,27 @@ class ChatController extends GetxController {
       _recordingStreamSub = null;
       await _recordingWriteQueue;
       final writer = _recordingWriter;
-      if (writer == null || writer.bytesWritten == 0) {
+      final messageId = _recordingMessageId;
+      if (writer == null || messageId == null || writer.bytesWritten == 0) {
+        if (writer != null) await _repository.discardPendingWavRecording(writer);
+        _recordingWriter = null;
+        _recordingMessageId = null;
         recordingState.value = RecordingState.idle;
         _showError('Aucun son n’a été capturé. Vérifie le micro du navigateur.');
         return;
       }
       _recordingMediaRef = await _repository.finishPendingWavRecording(
         writer: writer,
-        messageId: _recordingMessageId!,
+        messageId: messageId,
       );
       _recordingWriter = null;
       recordingState.value = RecordingState.reviewing;
     } catch (e) {
       debugPrint('[ChatVoice] unable to stop recording: $e');
+      final writer = _recordingWriter;
+      _recordingWriter = null;
+      if (writer != null) await _repository.discardPendingWavRecording(writer);
+      _recordingMessageId = null;
       recordingState.value = RecordingState.idle;
       _showError('Impossible de finaliser l’enregistrement.');
     }
@@ -593,6 +611,9 @@ class ChatController extends GetxController {
     } catch (_) {}
     await _recordingStreamSub?.cancel();
     _recordingStreamSub = null;
+    try {
+      await _recordingWriteQueue;
+    } catch (_) {}
     final writer = _recordingWriter;
     _recordingWriter = null;
     if (writer != null) await _repository.discardPendingWavRecording(writer);
@@ -619,23 +640,12 @@ class ChatController extends GetxController {
     await audioPlayer.play();
   }
 
-  Future<void> playReview() async {
-    final dataUri = _recordingDataUri;
-    if (dataUri == null) return;
-    if (isPlayingReview.value) {
-      await audioPlayer.pause();
-      return;
-    }
-    await audioPlayer.setUrl(dataUri);
-    await audioPlayer.play();
-  }
-
   Future<void> sendVoiceMessage() async {
     final uid = currentUserId;
     final mediaRef = _recordingMediaRef;
-    if (uid == null || mediaRef == null || conversationId.isEmpty) return;
+    final localId = _recordingMessageId;
+    if (uid == null || mediaRef == null || localId == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
-    final localId = _repository.generateLocalId();
     final message = MessageModel(
       id: localId,
       localId: localId,
