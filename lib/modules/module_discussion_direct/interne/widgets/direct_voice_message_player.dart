@@ -36,19 +36,19 @@ class _DirectVoiceMessagePlayerState extends State<DirectVoiceMessagePlayer> {
     setState(() => _loading = true);
     _error = null;
     try {
-      String? playable;
-      if (Get.isRegistered<MessagingRepository>()) {
+      String? playable = path.startsWith('data:') ? path : null;
+      if (playable == null && Get.isRegistered<MessagingRepository>()) {
         final result = await Get.find<MessagingRepository>().cacheMedia(widget.messageId ?? '', path);
         if (result.success && result.data != null && result.data!.isNotEmpty) {
           playable = result.data;
         }
       }
-      playable ??= await ChatMediaCache.instance.resolveLocalPath(path);
+      if (playable == null) playable = await ChatMediaCache.instance.resolveLocalPath(path);
       if (playable == null || playable.isEmpty) {
         throw Exception('Impossible de télécharger cet audio');
       }
       final player = _player ??= AudioPlayer();
-      if (playable.startsWith('http://') || playable.startsWith('https://')) {
+      if (playable.startsWith('http://') || playable.startsWith('https://') || playable.startsWith('data:')) {
         await player.setUrl(playable);
       } else {
         await player.setFilePath(playable);
