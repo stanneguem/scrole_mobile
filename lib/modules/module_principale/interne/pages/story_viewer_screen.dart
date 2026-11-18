@@ -1,9 +1,5 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -18,6 +14,7 @@ import '../../../../shared/widgets/user_certified_badge.dart';
 import '../../../../shared/widgets/user_identity_row.dart';
 import '../../../../shared/utils/number_formatter.dart';
 import '../controllers/stories_controller.dart';
+import '../services/story_video_playback.dart';
 import '../widgets/feed_post_card.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/stories_repository.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/home_feed_repository.dart';
@@ -2932,29 +2929,11 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
     WidgetsBinding.instance.addObserver(this);
     final untilExpiry = widget.expiresAt.difference(DateTime.now());
     if (untilExpiry > Duration.zero) {
-      _expiryCleanupTimer = Timer(untilExpiry, _deleteExpiredLocalVideo);
+      _expiryCleanupTimer = Timer(untilExpiry, () {
+        deleteCachedStoryVideo(storyId: widget.storyId, objectKey: widget.objectKey);
+      });
     }
     _initialize();
-  }
-
-  String _storyVideoExtension() {
-    final path = Uri.tryParse(widget.objectKey)?.path ?? widget.objectKey;
-    final extension = p.extension(path).toLowerCase();
-    return extension == '.mov' ? '.mov' : '.mp4';
-  }
-
-  Future<void> _deleteExpiredLocalVideo() async {
-    try {
-      final directory = await getApplicationSupportDirectory();
-      final safeId = widget.storyId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-      final media = File(p.join(directory.path, 'stories_cache', safeId + _storyVideoExtension()));
-      final expiry = File(p.join(directory.path, 'stories_cache', '$safeId.expiry'));
-      if (await media.exists()) await media.delete();
-      if (await expiry.exists()) await expiry.delete();
-      debugPrint('[STORY_CACHE] EXPIRED story=${widget.storyId} removed');
-    } catch (e) {
-      debugPrint('[STORY_CACHE] Expiry cleanup failed: $e');
-    }
   }
 
   @override
@@ -2986,108 +2965,33 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
 
   Future<void> _initialize() async {
     try {
-      final localVideo = await _getOrDownloadStoryVideo();
-      if (!mounted) return;
-      final controller = VideoPlayerController.file(localVideo);
+      if (mounted) setState(() => _isDownloading = true);
+      final controller = await createStoryPlaybackController(
+        objectKey: widget.objectKey,
+        storyId: widget.storyId,
+        expiresAt: widget.expiresAt,
+      );
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
       _controller = controller;
       controller.addListener(_onVideoChanged);
       await controller.initialize();
       if (!mounted) return;
       await controller.setLooping(false);
       await controller.setVolume(1);
-      setState(() {});
+      setState(() => _isDownloading = false);
       if (!widget.isPaused) await controller.play();
     } catch (e) {
       debugPrint('[STORY] Standalone video initialization failed: $e');
-      await _deleteExpiredLocalVideo();
-      if (mounted) setState(() => _failed = true);
+      await deleteCachedStoryVideo(storyId: widget.storyId, objectKey: widget.objectKey);
+      if (mounted) setState(() {
+        _isDownloading = false;
+        _failed = true;
+      });
     }
   }
-
-  Future<File> _getOrDownloadStoryVideo() async {
-    final directory = await getApplicationSupportDirectory();
-    final cacheDirectory = Directory(p.join(directory.path, 'stories_cache'));
-    if (!await cacheDirectory.exists()) {
-      await cacheDirectory.create(recursive: true);
-    }
-    // Remove media belonging to stories that have already expired.
-    final now = DateTime.now().toUtc();
-    await for (final entity in cacheDirectory.list()) {
-      if (entity is! File || !entity.path.endsWith('.expiry')) continue;
-      try {
-        final cachedExpiry = DateTime.tryParse(await entity.readAsString());
-        if (cachedExpiry == null || !cachedExpiry.isAfter(now)) {
-          final basePath = entity.path.substring(0, entity.path.length - '.expiry'.length);
-          for (final extension in ['.mp4', '.mov']) {
-            final cachedMedia = File('$basePath$extension');
-            if (await cachedMedia.exists()) await cachedMedia.delete();
-          }
-          await entity.delete();
-        }
-      } catch (cleanupError) {
-        debugPrint('[STORY_CACHE] Expired cache cleanup failed: $cleanupError');
-      }
-    }
-    final safeId = widget.storyId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
-    final videoFile = File(p.join(cacheDirectory.path, safeId + _storyVideoExtension()));
-    final expiryFile = File(p.join(cacheDirectory.path, '$safeId.expiry'));
-    final expiry = widget.expiresAt.toUtc();
-    if (await videoFile.exists() && await expiryFile.exists()) {
-      final cachedExpiry = DateTime.tryParse(await expiryFile.readAsString());
-      if (cachedExpiry != null && cachedExpiry.isAfter(DateTime.now().toUtc()) &&
-          cachedExpiry.isAtSameMomentAs(expiry) && await videoFile.length() > 0) {
-        debugPrint('[STORY_CACHE] HIT story=${widget.storyId}');
-        return videoFile;
-      }
-    }
-    if (await videoFile.exists()) await videoFile.delete();
-    if (await expiryFile.exists()) await expiryFile.delete();
-
-    var url = widget.objectKey;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      final response = await Supabase.instance.client.functions.invoke(
-        'r2-media-upload',
-        body: {'action': 'create-download-url', 'object_key': widget.objectKey},
-      );
-      if (response.status < 200 || response.status >= 300 || response.data is! Map) {
-        throw StateError('Impossible de résoudre la vidéo privée de la story.');
-      }
-      url = (response.data as Map)['url']?.toString() ?? '';
-      if (url.isEmpty) throw StateError('URL de lecture de la vidéo absente.');
-    }
-    if (widget.expiresAt.isBefore(DateTime.now())) {
-      throw StateError('Cette story a expiré.');
-    }
-    if (mounted) setState(() => _isDownloading = true);
-    final client = http.Client();
-    try {
-      final request = http.Request('GET', Uri.parse(url));
-      final streamed = await client.send(request).timeout(const Duration(minutes: 3));
-      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-        throw HttpException('Téléchargement de la story impossible (HTTP ${streamed.statusCode}).');
-      }
-      final sink = videoFile.openWrite();
-      try {
-        await streamed.stream.pipe(sink);
-      } catch (_) {
-        await sink.close();
-        if (await videoFile.exists()) await videoFile.delete();
-        rethrow;
-      }
-      final size = await videoFile.length();
-      if (size == 0) {
-        await videoFile.delete();
-        throw StateError('Le fichier vidéo téléchargé est vide.');
-      }
-      await expiryFile.writeAsString(expiry.toIso8601String(), flush: true);
-      debugPrint('[STORY_CACHE] SAVED story=${widget.storyId} bytes=$size expires=$expiry');
-      return videoFile;
-    } finally {
-      client.close();
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
 
   void _onVideoChanged() {
     final controller = _controller;
