@@ -101,11 +101,15 @@ whole video byte array during the offline-to-R2 upload path. Older single-blob
 pending records and legacy Data URI messages remain readable.
 
 Important remaining constraints:
-- The voice recorder currently accumulates PCM chunks and builds a WAV byte
-  array before persistence; this path is not yet chunk-streamed end-to-end.
-- The pending-media preview helper currently materializes a Data URI for
-  preview/share flows. Large pending video previews can therefore still use
-  substantial memory even though upload is streamed.
+- Voice recording now writes incoming PCM chunks directly to the dedicated
+  LazyBox through a serialized writer. On stop, the WAV header is generated
+  from the final PCM length and streamed ahead of the stored chunks when the
+  attachment is read. The send/outbox upload path no longer builds a complete
+  WAV byte array. Voice review still materializes a Data URI when playback is
+  requested, so review playback is not yet fully streaming.
+- The pending-media preview helper still materializes a Data URI for
+  image/video preview and share flows. Large pending video previews can
+  therefore still use substantial memory even though upload is streamed.
 - Hive writes one record per chunk; actual browser storage quota, transaction
   performance, and crash recovery during a partially written attachment must
   be measured in a real browser.
@@ -120,3 +124,25 @@ streamed request. No Flutter SDK/build runner or repository CI workflow is
 available through the current GitHub branch snapshot, and no local build,
 analyzer, Android device test, browser IndexedDB test, or live R2 transfer was
 run. These changes must be validated locally before release.
+
+
+## Streamed voice recording follow-up
+
+Direct-message voice capture no longer retains the full PCM recording in a
+controller-side `List<int>`. Each recorder chunk is appended sequentially to
+the pending-media LazyBox in 256 KiB records. Once recording stops, the store
+publishes a WAV manifest with the final size; the WAV header is generated
+lazily when `MediaAsset.openRead()` is consumed, followed by the persisted PCM
+chunks. The existing outbox/R2 upload path therefore reads the recording as a
+stream. Cancellation removes the staged chunks, and failed writes prevent the
+manifest from being published.
+
+Voice review currently resolves the pending WAV to a Data URI on demand for
+the audio player. Pending image/video preview, share and save flows also still
+materialize data in memory. A future platform-specific preview adapter should
+stream pending videos to a temporary file on native platforms and use a
+browser Blob/object URL on Web, with explicit lifetime cleanup.
+
+Validation remains source-only: no Flutter analyzer, Android/Web build,
+microphone capture, browser IndexedDB, device playback, offline replay or R2
+transfer was executed.
