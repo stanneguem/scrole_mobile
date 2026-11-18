@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
+import '../../../../app/local_storage/fast/fast_cache_service.dart';
+import '../persistence/pending_chat_media_store.dart';
 import 'package:get/get.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:sqflite/sqflite.dart';
@@ -44,6 +47,29 @@ class MessagingRepository {
   bool _inboxSubscribedOnce = false;
   StreamSubscription? _connectivitySubscription;
   bool _outboxRunning = false;
+  PendingChatMediaStore? _pendingMediaStore;
+
+  PendingChatMediaStore get _pendingMedia =>
+      _pendingMediaStore ??= PendingChatMediaStore(Get.find<FastCacheService>());
+
+  Future<String> persistPendingMedia({
+    required String messageId,
+    required int index,
+    required Uint8List bytes,
+    required String name,
+    required String mimeType,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) throw StateError('Utilisateur non authentifié.');
+    return _pendingMedia.put(
+      userId: uid,
+      messageId: messageId,
+      index: index,
+      bytes: bytes,
+      name: name,
+      mimeType: mimeType,
+    );
+  }
 
   String? get currentUserId => _remote.currentUserId;
 
@@ -331,6 +357,7 @@ class MessagingRepository {
       }
       await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
       await _replaceOutboxPayload(uid, prepared);
+      await _cleanupPendingMedia(pending);
       final remote = await _remote.insertMessage(prepared);
       if (remote == null) {
         throw StateError('Le serveur n’a pas confirmé le message.');
@@ -356,7 +383,7 @@ class MessagingRepository {
           out.add(path);
           continue;
         }
-        final asset = _assetFromPersistedValue(path);
+        final asset = await _assetForPersistedValue(path);
         final url = asset != null
             ? await _remote.uploadMediaAsset(
                 asset,
@@ -377,7 +404,7 @@ class MessagingRepository {
     }
     var audio = m.audioUrl;
     if (audio != null && audio.isNotEmpty && !_isRemote(audio)) {
-      final asset = _assetFromPersistedValue(audio);
+      final asset = await _assetForPersistedValue(audio);
       audio = asset != null
           ? await _remote.uploadMediaAsset(
               asset,
@@ -394,6 +421,20 @@ class MessagingRepository {
     }
     if (m.audioUrl != null && audio == null) return null;
     return m.copyWith(mediaUrls: media, audioUrl: audio);
+  }
+
+  Future<MediaAsset?> _assetForPersistedValue(String value) async {
+    if (_pendingMedia.owns(value)) return _pendingMedia.resolve(value);
+    return _assetFromPersistedValue(value);
+  }
+
+  Future<void> _cleanupPendingMedia(Message original) async {
+    await _pendingMedia.removeAll(
+      PendingChatMediaStore.referencesForMessage(
+        mediaUrls: original.mediaUrls,
+        audioUrl: original.audioUrl,
+      ),
+    );
   }
 
   MediaAsset? _assetFromPersistedValue(String value) {
@@ -659,6 +700,7 @@ class MessagingRepository {
             if (prepared == null) throw StateError('Pièce jointe locale indisponible pour l’envoi.');
             await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
             await _replaceOutboxPayload(uid, prepared);
+            await _cleanupPendingMedia(m);
             final remote = await _remote.insertMessage(prepared);
             if (remote == null) throw Exception('send_failed');
             await _messages.upsert(uid, remote.copyWith(localId: m.localId, status: MessageStatus.sent));
