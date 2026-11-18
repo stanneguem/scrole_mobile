@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/widgets/xfile_image.dart';
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/birth_date_picker_field.dart';
@@ -259,15 +260,25 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: color.surfaceContainerHighest.withValues(alpha: 0.5),
-                  image: controller.coverFile.value != null
-                      ? DecorationImage(
-                          image: FileImage(controller.coverFile.value!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                  image: null,
                 ),
-                child: controller.coverFile.value == null
-                    ? Center(
+                child: controller.coverFile.value != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          XFileImage(file: controller.coverFile.value!),
+                          Positioned(
+                            bottom: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), shape: BoxShape.circle),
+                              child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -284,22 +295,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           ],
                         ),
                       )
-                    : Stack(
-                        children: [
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.white),
-                            ),
-                          ),
-                        ],
-                      ),
+                    : const SizedBox.shrink(),
               )),
         ),
 
