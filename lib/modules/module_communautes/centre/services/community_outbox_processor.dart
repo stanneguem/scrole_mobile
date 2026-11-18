@@ -183,6 +183,16 @@ class CommunityOutboxProcessor extends GetxService {
                 p_photo_cover: photoCover,
               );
             }
+
+            // Mettre à jour immédiatement la copie locale après le téléversement.
+            final localCommunity = await _dao.getCommunity(communityId);
+            if (localCommunity != null && (photoProfile != null || photoCover != null)) {
+              await _dao.saveCommunity(localCommunity.copyWith(
+                avatarUrl: photoProfile ?? localCommunity.avatarUrl,
+                bannerUrl: photoCover ?? localCommunity.bannerUrl,
+                cachedAt: DateTime.now().millisecondsSinceEpoch,
+              ));
+            }
           }
 
           debugPrint('[CREATE_COMMUNITY] [Outbox] Operation $operationId completed successfully. Marking confirmed.');
