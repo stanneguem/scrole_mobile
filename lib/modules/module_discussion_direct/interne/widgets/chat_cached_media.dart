@@ -29,14 +29,18 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
   @override
   void initState() {
     super.initState();
-    _future = ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
+    _future = widget.remoteUrl.startsWith('data:')
+        ? Future<String?>.value(widget.remoteUrl)
+        : ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
   }
 
   @override
   void didUpdateWidget(ChatCachedMedia oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.remoteUrl != widget.remoteUrl) {
-      _future = ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
+      _future = widget.remoteUrl.startsWith('data:')
+          ? Future<String?>.value(widget.remoteUrl)
+          : ChatMediaCache.instance.resolveLocalPath(widget.remoteUrl);
     }
   }
 
