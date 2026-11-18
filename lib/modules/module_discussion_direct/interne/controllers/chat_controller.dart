@@ -520,7 +520,11 @@ class ChatController extends GetxController {
       await audioPlayer.stop();
       _recordingChunks.clear();
       _recordingMimeType = kIsWeb ? 'audio/webm' : 'audio/mp4';
-      final stream = await audioRecorder.startStream(const RecordConfig());
+      final stream = await audioRecorder.startStream(const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 44100,
+        numChannels: 1,
+      ));
       _recordingStreamSub?.cancel();
       _recordingStreamSub = stream.listen(
         _recordingChunks.addAll,
@@ -584,11 +588,39 @@ class ChatController extends GetxController {
     await audioPlayer.stop();
   }
 
+  Uint8List _buildWavBytes(List<int> pcmBytes) {
+    const sampleRate = 44100;
+    const channels = 1;
+    const bitsPerSample = 16;
+    final dataLength = pcmBytes.length;
+    final header = ByteData(44);
+    void writeAscii(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        header.setUint8(offset + i, value.codeUnitAt(i));
+      }
+    }
+
+    writeAscii(0, 'RIFF');
+    header.setUint32(4, 36 + dataLength, Endian.little);
+    writeAscii(8, 'WAVE');
+    writeAscii(12, 'fmt ');
+    header.setUint32(16, 16, Endian.little);
+    header.setUint16(20, 1, Endian.little); // PCM
+    header.setUint16(22, channels, Endian.little);
+    header.setUint32(24, sampleRate, Endian.little);
+    header.setUint32(28, sampleRate * channels * bitsPerSample ~/ 8, Endian.little);
+    header.setUint16(32, channels * bitsPerSample ~/ 8, Endian.little);
+    header.setUint16(34, bitsPerSample, Endian.little);
+    writeAscii(36, 'data');
+    header.setUint32(40, dataLength, Endian.little);
+
+    return Uint8List.fromList(<int>[...header.buffer.asUint8List(), ...pcmBytes]);
+  }
+
   String? get _recordingDataUri {
     if (_recordingChunks.isEmpty) return null;
-    final mime = _recordingMimeType ?? (kIsWeb ? 'audio/webm' : 'audio/mp4');
-    final extension = mime == 'audio/webm' ? 'webm' : 'm4a';
-    return 'data:$mime;name=scrole_voice.$extension;base64,${base64Encode(_recordingChunks)}';
+    final wavBytes = _buildWavBytes(_recordingChunks);
+    return 'data:audio/wav;name=scrole_voice.wav;base64,${base64Encode(wavBytes)}';
   }
 
   Future<void> playReview() async {
