@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+import '../../../../app/media/media_asset.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
@@ -51,3 +54,20 @@ Future<bool> shareChatMedia(String url) async {
     return false;
   }
 }
+
+Future<VideoPlayerController> createChatMediaVideoControllerFromAsset(
+  MediaAsset asset,
+) async {
+  // Browser fallback: Blob/object-URL playback will replace this data-URI
+  // bridge once its lifetime can be managed by the video controller.
+  final bytes = await asset.readAsBytes();
+  final dataUri = Uri.dataFromBytes(
+    bytes,
+    mimeType: asset.mimeType ?? 'video/mp4',
+  ).toString();
+  return VideoPlayerController.networkUrl(Uri.parse(dataUri));
+}
+
+Future<void> disposeChatMediaVideoController(
+  VideoPlayerController controller,
+) => controller.dispose();
