@@ -1,13 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:get/get.dart';
 
 import 'media_gallery_picker.dart';
+import 'media_image_processor.dart';
 
 /// Sélection et préparation de médias sans exposer dart:io aux contrôleurs.
 /// Sur le Web, l'image originale est conservée lorsque les traitements natifs
@@ -55,18 +53,7 @@ class MediaService extends GetxService {
   }
 
   Future<XFile?> compressImage(XFile file, {int quality = 80}) async {
-    if (kIsWeb) return file;
-    final tempDir = await getTemporaryDirectory();
-    final targetPath = p.join(
-      tempDir.path,
-      "${DateTime.now().millisecondsSinceEpoch}.jpg",
-    );
-    final result = await FlutterImageCompress.compressAndGetFile(
-      file.path,
-      targetPath,
-      quality: quality,
-    );
-    return result == null ? null : XFile(result.path);
+    return compressSelectedImage(file, quality: quality);
   }
 
   Future<XFile?> pickProfileImage({ImageSource source = ImageSource.gallery}) async {
