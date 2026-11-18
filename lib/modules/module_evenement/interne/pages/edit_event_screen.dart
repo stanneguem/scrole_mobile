@@ -9,6 +9,7 @@ import '../../../../shared/widgets/location_picker_section.dart';
 import '../../../../shared/widgets/city_selected_screen.dart';
 import '../../../../shared/widgets/image_source_sheet.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/widgets/xfile_image.dart';
 import '../controllers/edit_event_controller.dart';
 
 class EditEventScreen extends GetView<EditEventController> {
@@ -118,10 +119,14 @@ class _CoverSection extends GetView<EditEventController> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
           image: file != null 
-            ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
+            ? null
             : (url.isNotEmpty ? DecorationImage(image: NetworkImage(url), fit: BoxFit.cover) : null),
         ),
-        child: InkWell(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (file != null) XFileImage(file: file),
+            InkWell(
           onTap: () => showImageSourceSheet(
             context,
             onCamera: () => controller.pickImage(ImageSource.camera),
@@ -131,6 +136,8 @@ class _CoverSection extends GetView<EditEventController> {
           child: (file == null && url.isEmpty)
               ? const Center(child: Icon(Icons.add_a_photo_outlined, size: 32, color: AppColors.textSecondary))
               : const SizedBox.shrink(),
+            ),
+          ],
         ),
       );
     });
