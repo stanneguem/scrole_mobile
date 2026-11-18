@@ -352,8 +352,8 @@ class MessagingRepository {
         return const MessagingResult.failure('media_upload_failed', 'Le média est conservé dans la file d’envoi et sera réessayé.');
       }
       await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
-      await _replaceOutboxPayload(uid, prepared);
-      await _cleanupPendingMedia(pending);
+      // Keep the original local references in the outbox until the server
+      // confirms insertion. A retry can safely resolve the same binary blobs.
       final remote = await _remote.insertMessage(prepared);
       if (remote == null) {
         throw StateError('Le serveur n’a pas confirmé le message.');
@@ -361,6 +361,7 @@ class MessagingRepository {
       final result = remote.copyWith(localId: pending.localId, status: MessageStatus.sent);
       await _messages.upsert(uid, result);
       await _removeOutbox(uid, pending.localId);
+      await _cleanupPendingMedia(pending);
       await _refreshConversationList(uid, result.conversationId);
       return MessagingResult.success(result);
     } catch (e) {
@@ -698,12 +699,13 @@ class MessagingRepository {
             final prepared = await _prepareMedia(m);
             if (prepared == null) throw StateError('Pièce jointe locale indisponible pour l’envoi.');
             await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
-            await _replaceOutboxPayload(uid, prepared);
-            await _cleanupPendingMedia(m);
+            // Do not checkpoint remote URLs over the local references before
+            // insert confirmation; the blob remains available for retries.
             final remote = await _remote.insertMessage(prepared);
             if (remote == null) throw Exception('send_failed');
             await _messages.upsert(uid, remote.copyWith(localId: m.localId, status: MessageStatus.sent));
             await _removeOutbox(uid, m.localId);
+            await _cleanupPendingMedia(m);
             await _refreshConversationList(uid, m.conversationId);
           }
         } catch (e) {
