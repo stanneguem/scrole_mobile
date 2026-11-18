@@ -2,13 +2,38 @@ import 'dart:io';
 
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import 'chat_media_cache.dart';
 
 Future<String?> _localFile(String url) async {
-  if (url.startsWith('data:')) return null;
+  if (url.startsWith('data:')) {
+    try {
+      final data = Uri.parse(url).data;
+      if (data == null) return null;
+      final mime = data.mimeType.toLowerCase();
+      final extension = mime == 'video/webm'
+          ? 'webm'
+          : mime == 'video/quicktime'
+              ? 'mov'
+              : mime == 'video/3gpp'
+                  ? '3gp'
+                  : 'mp4';
+      final directory = await getTemporaryDirectory();
+      final file = File(p.join(
+        directory.path,
+        'scrole_chat_preview_' + url.hashCode.abs().toString() + '.$extension',
+      ));
+      if (!await file.exists() || await file.length() == 0) {
+        await file.writeAsBytes(data.contentAsBytes(), flush: true);
+      }
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
   if (ChatMediaCache.isFilesystemPath(url)) {
     final path = url.startsWith('file://') ? Uri.parse(url).toFilePath() : url;
     if (await File(path).exists()) return path;
