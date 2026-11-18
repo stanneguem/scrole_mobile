@@ -1,20 +1,20 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/media_asset_storage_repository.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../app/repository_global/support_repository.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 
 class BugReportController extends GetxController {
   final SupportRepository _supportRepository = SupportRepository();
-  final StorageRepository _storageRepository = StorageRepository();
+  final MediaAssetStorageRepository _storageRepository = MediaAssetStorageRepository();
   final AuthService _authService = Get.find<AuthService>();
 
   final titleController = TextEditingController();
   final descController = TextEditingController();
   
-  final Rxn<File> screenshot = Rxn<File>();
+  final Rxn<File> screenshot = Rxn<XFile>();
   final RxBool isSending = false.obs;
   final RxBool isPickingImage = false.obs;
 
@@ -31,7 +31,7 @@ class BugReportController extends GetxController {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        screenshot.value = File(image.path);
+        screenshot.value = image;
       }
     } catch (e) {
       Get.snackbar('error'.tr, 'bug_report_error_image'.tr);
@@ -60,8 +60,8 @@ class BugReportController extends GetxController {
 
       if (screenshot.value != null && userId != null) {
         screenshotObjectKey = await _storageRepository.uploadBugReportScreenshot(
-          userId, 
-          screenshot.value!,
+          userId,
+          MediaAsset.fromXFile(screenshot.value!),
         );
       }
 
