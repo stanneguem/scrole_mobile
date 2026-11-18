@@ -169,3 +169,20 @@ Native save/share streams the asset to a temporary file and cleans it up after
 the platform action. Web save triggers a download from a Blob URL. Web share
 currently uses share_plus and therefore materializes the bytes for XFile; a
 native Web Share API implementation remains a possible optimization.
+
+## Pending chat image and voice preview follow-up
+
+Pending chat image previews now resolve the `MediaAsset` directly and pass
+binary bytes to the image widget. This removes the intermediate Base64/Data-URI
+string and its memory expansion. Flutter's image decoder still receives the
+complete image byte array, so this is not a disk-backed or incremental image
+decoder; the existing attachment size limit bounds the worst case.
+
+Pending voice playback now resolves the chunk-backed `MediaAsset` and supplies
+it to `just_audio` through a range-aware `StreamAudioSource`. Each player
+request reads the requested byte range from the Hive LazyBox rather than
+materializing a Base64 Data URI. Existing remote URLs, cached local files and
+legacy Data URI messages keep their previous playback paths.
+
+Validation remains source-only. The Flutter analyzer, native/Web builds,
+browser playback and real-device audio playback have not been run.
