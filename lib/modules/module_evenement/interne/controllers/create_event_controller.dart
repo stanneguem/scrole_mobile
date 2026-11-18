@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -27,7 +26,7 @@ class CreateEventController extends GetxController {
   final RxString name = ''.obs;
   final RxString slug = ''.obs;
   final descriptionController = TextEditingController();
-  final Rx<File?> coverFile = Rx<File?>(null);
+  final Rx<XFile?> coverFile = Rx<XFile?>(null);
 
   final RxBool isVirtual = false.obs;
   final Rx<LocationOption?> selectedCountry = Rx<LocationOption?>(null);
