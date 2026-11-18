@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import '../media/media_asset.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -121,6 +123,111 @@ class R2MediaRepository {
       throw StateError('Failed to clean up post media: ${response.data}');
     }
     debugPrint('[R2_UPLOAD] FAILED_POST_MEDIA_CLEANUP deleted=${(response.data as Map)['deleted_count']}');
+  }
+
+  /// Upload multiplateforme depuis un MediaAsset sans conversion en dart:io File.
+  /// Le flux XFile est envoyé directement à R2, avec une taille connue à l'avance.
+  Future<R2UploadedMedia> uploadMediaAsset({
+    required MediaAsset media,
+    required String category,
+    required String mediaType,
+    String? entityId,
+    String? communityId,
+    Duration? videoDuration,
+    String? mediaRole,
+    void Function(int sentBytes, int totalBytes)? onProgress,
+  }) async {
+    final traceId = DateTime.now().millisecondsSinceEpoch.toString();
+    final authUser = _client.auth.currentUser;
+    if (authUser == null) {
+      throw const AuthException('Vous devez être connecté pour envoyer un média.');
+    }
+
+    final extension = media.extension;
+    final isVideo = mediaType == 'video';
+    final isAudio = mediaType == 'audio';
+    final contentType = (isVideo ? _videoTypes : isAudio ? _audioTypes : _imageTypes)[extension]
+        ?? media.mimeType;
+    if (contentType == null || !(isVideo ? _videoTypes.containsKey(extension) :
+        isAudio ? _audioTypes.containsKey(extension) : _imageTypes.containsKey(extension))) {
+      throw ArgumentError('Format de média non pris en charge : .${extension.isEmpty ? 'inconnu' : extension}');
+    }
+
+    final sizeBytes = await media.length();
+    if (sizeBytes <= 0) throw StateError('Le fichier sélectionné est vide.');
+
+    final response = await _client.functions.invoke(
+      'r2-media-upload',
+      body: <String, dynamic>{
+        'action': 'create-upload-url',
+        'category': category,
+        'media_type': mediaType,
+        if (mediaRole != null) 'media_role': mediaRole,
+        'content_type': contentType,
+        'extension': extension,
+        'size_bytes': sizeBytes,
+        if (entityId != null) 'entity_id': entityId,
+        if (communityId != null) 'community_id': communityId,
+        if (videoDuration != null) 'duration_seconds': videoDuration.inMilliseconds / 1000,
+      },
+    ).timeout(const Duration(seconds: 30));
+
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      final details = response.data is Map ? (response.data as Map)['error']?.toString() : null;
+      throw StateError('Autorisation R2 refusée${details == null ? '' : ' : $details'}');
+    }
+
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final uploadUrl = data['upload_url'] as String?;
+    final objectKey = data['object_key'] as String?;
+    final publicUrl = data['public_url'] as String?;
+    final isPublic = data['is_public'] == true;
+    const privatePrefixes = ['private/', 'stories/', 'messages/', 'salon-messages/', 'bug-reports/', 'comments/'];
+    if (uploadUrl == null || objectKey == null || (isPublic && publicUrl == null) ||
+        (!isPublic && !privatePrefixes.any(objectKey.startsWith))) {
+      throw StateError('Réponse R2 incomplète ou incohérente : URL ou clé manquante.');
+    }
+
+    final request = http.StreamedRequest('PUT', Uri.parse(uploadUrl))
+      ..headers['Content-Type'] = contentType
+      ..contentLength = sizeBytes;
+    var sentBytes = 0;
+    final trackedStream = media.openRead().map((chunk) {
+      sentBytes += chunk.length;
+      onProgress?.call(sentBytes.clamp(0, sizeBytes), sizeBytes);
+      return chunk;
+    });
+
+    final client = http.Client();
+    try {
+      final sendFuture = client.send(request).timeout(const Duration(minutes: 3));
+      await request.sink.addStream(trackedStream);
+      await request.sink.close();
+      final streamed = await sendFuture;
+      final result = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
+      if (result.statusCode < 200 || result.statusCode >= 300) {
+        throw HttpException('Échec du téléversement R2 (HTTP ${result.statusCode}).');
+      }
+    } catch (error) {
+      if (category == 'post_media') {
+        try {
+          await deleteFailedPostMedia(objectKeys: [objectKey], communityId: communityId);
+        } catch (cleanupError) {
+          debugPrint('[R2_UPLOAD][$traceId] cleanup failed: $cleanupError');
+        }
+      }
+      rethrow;
+    } finally {
+      client.close();
+    }
+
+    return R2UploadedMedia(
+      objectKey: objectKey,
+      publicUrl: publicUrl,
+      isPublic: isPublic,
+      contentType: contentType,
+      sizeBytes: sizeBytes,
+    );
   }
 
   Future<R2UploadedMedia> uploadFile({
