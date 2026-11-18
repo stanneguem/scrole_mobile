@@ -2,23 +2,48 @@ import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
 
-/// Platform-independent reference to a user-selected media file.
-///
-/// [XFile] is the boundary type shared by image_picker on mobile and Web.
-/// Keep [XFile] here instead of converting it to dart:io File in shared code.
-/// Platform-specific crop/compression adapters can be applied before upload.
+/// Platform-independent reference to a selected or locally persisted media file.
+/// Stream-backed assets avoid loading large videos into a single byte array.
 class MediaAsset {
-  const MediaAsset(this.file);
+  const MediaAsset(this.file)
+      : _streamReader = null,
+        _knownLength = null,
+        _name = null,
+        _mimeType = null;
+
+  MediaAsset._stream({
+    required this.file,
+    required String name,
+    required String? mimeType,
+    required int length,
+    required Stream<List<int>> Function() openRead,
+  }) : _streamReader = openRead,
+       _knownLength = length,
+       _name = name,
+       _mimeType = mimeType;
 
   final XFile file;
+  final Stream<List<int>> Function()? _streamReader;
+  final int? _knownLength;
+  final String? _name;
+  final String? _mimeType;
 
-  /// Original filename supplied by the picker.
-  String get name => file.name;
+  factory MediaAsset.fromStream({
+    required String name,
+    required String? mimeType,
+    required int length,
+    required Stream<List<int>> Function() openRead,
+  }) => MediaAsset._stream(
+    file: XFile.fromData(Uint8List(0), name: name, mimeType: mimeType),
+    name: name,
+    mimeType: mimeType,
+    length: length,
+    openRead: openRead,
+  );
 
-  /// MIME type when the platform/picker can provide it.
-  String? get mimeType => file.mimeType;
+  String get name => _name ?? file.name;
+  String? get mimeType => _mimeType ?? file.mimeType;
 
-  /// File extension without the leading dot, normalized to lowercase.
   String get extension {
     final filename = name;
     final dot = filename.lastIndexOf('.');
@@ -26,16 +51,39 @@ class MediaAsset {
     return filename.substring(dot + 1).toLowerCase();
   }
 
-  /// Reads the asset into memory. Prefer [openRead] for large uploads.
-  Future<Uint8List> readAsBytes() => file.readAsBytes();
+  Future<Uint8List> readAsBytes() async {
+    if (_streamReader == null) return file.readAsBytes();
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in _streamReader()) {
+      builder.add(chunk);
+    }
+    return builder.takeBytes();
+  }
 
-  /// Streams the asset without requiring a dart:io File.
-  Stream<List<int>> openRead([int? start, int? end]) =>
-      file.openRead(start, end);
+  Stream<List<int>> openRead([int? start, int? end]) {
+    final reader = _streamReader;
+    if (reader == null) return file.openRead(start, end);
+    if (start == null && end == null) return reader();
+    return _sliceStream(reader(), start ?? 0, end);
+  }
 
-  /// Returns the asset size in bytes.
-  Future<int> length() => file.length();
+  Stream<List<int>> _sliceStream(
+    Stream<List<int>> source,
+    int start,
+    int? end,
+  ) async* {
+    var offset = 0;
+    await for (final chunk in source) {
+      final chunkEnd = offset + chunk.length;
+      final from = start > offset ? start - offset : 0;
+      final to = end != null && end < chunkEnd ? end - offset : chunk.length;
+      if (to > from) yield chunk.sublist(from, to);
+      offset = chunkEnd;
+      if (end != null && offset >= end) break;
+    }
+  }
 
-  /// Creates an asset from the cross-platform picker representation.
+  Future<int> length() async => _knownLength ?? file.length();
+
   factory MediaAsset.fromXFile(XFile file) => MediaAsset(file);
 }
