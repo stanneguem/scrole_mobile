@@ -466,6 +466,11 @@ class MessagingRepository {
     return m.copyWith(mediaUrls: media, audioUrl: audio);
   }
 
+  Future<MediaAsset?> resolvePendingMediaAsset(String reference) async {
+    if (!PendingChatMediaStore.isReference(reference)) return null;
+    return _pendingMedia.resolve(reference);
+  }
+
   Future<String?> resolvePendingMediaDataUri(String reference) async {
     if (!PendingChatMediaStore.isReference(reference)) return null;
     final asset = await _pendingMedia.resolve(reference);
