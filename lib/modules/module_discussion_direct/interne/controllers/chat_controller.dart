@@ -476,16 +476,10 @@ class ChatController extends GetxController {
                     ? const {'png': 'image/png', 'webp': 'image/webp', 'gif': 'image/gif'}[extension]!
                     : 'image/jpeg');
         hasVideo = hasVideo || mime.startsWith('video/');
-        final bytes = await file.readAsBytes();
-        if (bytes.isEmpty) throw StateError('Le fichier sélectionné est vide.');
-        if (bytes.lengthInBytes > 30 * 1024 * 1024) {
-          throw StateError('Chaque pièce jointe doit faire au maximum 30 Mo.');
-        }
-        persistedMedia.add(await _repository.persistPendingMedia(
+        persistedMedia.add(await _repository.persistPendingMediaFile(
           messageId: localId,
           index: persistedMedia.length,
-          bytes: bytes,
-          name: name,
+          file: file,
           mimeType: mime,
         ));
       }
