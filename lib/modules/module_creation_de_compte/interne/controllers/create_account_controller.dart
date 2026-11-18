@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -9,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
 import '../../../../app_controller.dart';
 import '../../../../app/repository_global/location_repository.dart';
-import '../../../../app/repository_global/storage_repository.dart';
+import '../../../../app/repository_global/media_asset_storage_repository.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../centre/services/account_initialization_service.dart';
 import '../../centre/services/user_service.dart';
@@ -22,7 +21,7 @@ class CreateAccountController extends GetxController {
     LocationRepository? locationRepository,
     SupabaseClient? supabaseClient,
     MediaService? mediaService,
-    StorageRepository? storageRepository,
+    MediaAssetStorageRepository? storageRepository,
   })  : _service = service ?? UserService(),
         _initService = initService ?? AccountInitializationService(),
         _locationRepository = locationRepository ??
@@ -32,14 +31,14 @@ class CreateAccountController extends GetxController {
             ),
         _supabase = supabaseClient ?? Supabase.instance.client,
         _mediaService = mediaService ?? Get.find<MediaService>(),
-        _storageRepository = storageRepository ?? StorageRepository();
+        _storageRepository = storageRepository ?? MediaAssetStorageRepository();
 
   final UserService _service;
   final AccountInitializationService _initService;
   final LocationRepository _locationRepository;
   final SupabaseClient _supabase;
   final MediaService _mediaService;
-  final StorageRepository _storageRepository;
+  final MediaAssetStorageRepository _storageRepository;
 
   final formKey = GlobalKey<FormState>();
   final surnameController = TextEditingController();
@@ -56,7 +55,7 @@ class CreateAccountController extends GetxController {
   final selectedBirthDate = Rxn<DateTime>();
   final selectedGender = Rxn<String>();
 
-  final avatarFile = Rxn<File>();
+  final avatarFile = Rxn<XFile>();
   final coverFile = Rxn<File>();
   final isUploadingImage = false.obs;
   final isUploadingCover = false.obs;
