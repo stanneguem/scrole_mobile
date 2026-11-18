@@ -81,25 +81,9 @@ class CommunityOutboxProcessor extends GetxService {
           continue;
         }
 
-        // 2-Minute Pending Creation Expiration check in Outbox handler
-        if (operationType == 'create_community' && createdAtStr != null) {
-          final createdAtTime = DateTime.tryParse(createdAtStr) ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final age = DateTime.now().difference(createdAtTime);
-          debugPrint('[CREATE_COMMUNITY] [Outbox] Item $operationId age: ${age.inSeconds}s');
-          if (age.inMinutes >= 2) {
-            debugPrint('[CREATE_COMMUNITY] [Outbox] Outbox operation $operationId refused: pending creation expired (>2m)');
-            await _dao.markOutboxOperationFailed(id: id, lastError: 'Pending creation expired (>2m)');
-            if (communityId.isNotEmpty) {
-              await _dao.deleteCommunity(communityId);
-            }
-            Get.snackbar(
-              'error'.tr,
-              'community_creation_expired_msg'.tr,
-              snackPosition: SnackPosition.BOTTOM,
-            );
-            continue;
-          }
-        }
+        // Une création locale reste en attente aussi longtemps que nécessaire.
+        // Le mode hors ligne/PWA ne doit pas supprimer une communauté simplement
+        // parce que l'appareil est resté déconnecté plus de deux minutes.
 
         try {
           debugPrint('[CREATE_COMMUNITY] [Outbox] Executing operationId=$operationId type=$operationType communityId=$communityId');
