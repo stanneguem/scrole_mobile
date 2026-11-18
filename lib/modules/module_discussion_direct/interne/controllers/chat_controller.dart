@@ -337,7 +337,7 @@ class ChatController extends GetxController {
     if (text.isEmpty || uid == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     _stopTyping();
-    final localId = _recordingMessageId ?? _repository.generateLocalId();
+    final localId = _repository.generateLocalId();
     final message = MessageModel(id: localId, localId: localId, conversationId: conversationId, senderId: uid, text: text, type: MessageType.text, createdAt: DateTime.now().toUtc(), status: MessageStatus.sending, repliedToId: repliedMessage.value?.id);
     messageController.clear();
     clearReply();
