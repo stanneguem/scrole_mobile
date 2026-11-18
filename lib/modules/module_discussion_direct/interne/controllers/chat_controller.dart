@@ -70,7 +70,8 @@ class ChatController extends GetxController {
   Timer? _otherUserTypingTimer;
   final Set<String> _pendingReadIds = {};
   StreamSubscription<Uint8List>? _recordingStreamSub;
-  PendingChatMediaWriter? _recordingWriter;\n  String? _recordingMessageId;\n  String? _recordingMediaRef;
+  PendingChatMediaWriter? _recordingWriter;
+  Future<void> _recordingWriteQueue = Future<void>.value();\n  String? _recordingMessageId;\n  String? _recordingMediaRef;
   String? get currentUserId => _repository.currentUserId;
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
@@ -558,6 +559,7 @@ class ChatController extends GetxController {
       await audioRecorder.stop();
       await _recordingStreamSub?.cancel();
       _recordingStreamSub = null;
+      await _recordingWriteQueue;
       final writer = _recordingWriter;\n      if (writer == null || writer.bytesWritten == 0) {
         recordingState.value = RecordingState.idle;
         _showError('Aucun son n’a été capturé. Vérifie le micro du navigateur.');
