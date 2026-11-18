@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../../../app/repository_global/location_repository.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../app/service_global/media_service.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../../../app/routes/app_pages.dart';
@@ -261,7 +262,7 @@ class CreateEventController extends GetxController {
       if (selectedCover != null) {
         try {
           // The event must exist in Supabase before R2 authorizes an event_media upload.
-          final coverUrl = await _repository.uploadCover(newEvent.id, selectedCover);
+          final coverUrl = await _repository.uploadCover(newEvent.id, MediaAsset.fromXFile(selectedCover));
           await _repository.updateEventOptimistic(newEvent.id, userId, {'photo': coverUrl});
         } catch (coverError) {
           debugPrint('[CreateEventController] Event created without cover; R2 upload/sync failed: $coverError');
