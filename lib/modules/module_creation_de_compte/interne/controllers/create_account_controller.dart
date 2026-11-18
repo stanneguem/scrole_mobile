@@ -57,7 +57,7 @@ class CreateAccountController extends GetxController {
   final selectedGender = Rxn<String>();
 
   final avatarFile = Rxn<XFile>();
-  final coverFile = Rxn<File>();
+  final coverFile = Rxn<XFile>();
   final isUploadingImage = false.obs;
   final isUploadingCover = false.obs;
 
