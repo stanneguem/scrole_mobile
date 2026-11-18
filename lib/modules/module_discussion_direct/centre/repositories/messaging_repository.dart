@@ -343,8 +343,8 @@ class MessagingRepository {
     if (uid == null) return const MessagingResult.failure('not_authenticated', 'Utilisateur non authentifié.');
     final pending = message.copyWith(status: MessageStatus.pending);
     try {
-      // Persist the complete attachment payload before any network operation.
-      // Data URLs survive app/browser restarts and are replayed by the outbox.
+      // Persist the attachment reference before any network operation.
+      // The referenced binary blob lives in the dedicated persistent Hive box.
       await _messages.upsert(uid, pending);
       await _enqueueOutbox(uid, pending);
       final prepared = await _prepareMedia(pending);
@@ -434,7 +434,14 @@ class MessagingRepository {
       mediaUrls: original.mediaUrls,
       audioUrl: original.audioUrl,
     );
-    if (references.isNotEmpty) await _pendingMedia.removeAll(references);
+    if (references.isEmpty) return;
+    try {
+      await _pendingMedia.removeAll(references);
+    } catch (e) {
+      // Delivery has already been confirmed; a failed cleanup must not
+      // downgrade a sent message or remove its outbox state retroactively.
+      debugPrint('[Messaging] Pending media cleanup failed: $e');
+    }
   }
 
   MediaAsset? _assetFromPersistedValue(String value) {
@@ -1005,19 +1012,6 @@ class MessagingRepository {
       'created_at': now,
       'updated_at': now
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
-
-  Future<void> _replaceOutboxPayload(String uid, Message message) async {
-    final db = await _db.database;
-    await db.update(
-      'direct_chat_outbox',
-      {
-        'payload': jsonEncode(message.toJson()),
-        'updated_at': DateTime.now().toUtc().millisecondsSinceEpoch,
-      },
-      where: 'user_id=? AND id=?',
-      whereArgs: [uid, message.localId],
-    );
   }
 
   Future<void> _removeOutbox(String uid, String localId) async {
