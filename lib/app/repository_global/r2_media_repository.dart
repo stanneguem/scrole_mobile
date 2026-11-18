@@ -194,7 +194,7 @@ class R2MediaRepository {
     var sentBytes = 0;
     final trackedStream = media.openRead().map((chunk) {
       sentBytes += chunk.length;
-      onProgress?.call(sentBytes.clamp(0, sizeBytes), sizeBytes);
+      onProgress?.call(sentBytes.clamp(0, sizeBytes).toInt(), sizeBytes);
       return chunk;
     });
 
