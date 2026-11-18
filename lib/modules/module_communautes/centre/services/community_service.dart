@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
@@ -10,7 +9,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:image_picker/image_picker.dart';
-import '../../../../app/media/media_asset.dart';
 import '../../../../app/local_storage/structured/app_cache_database.dart';
 import '../../../../app/repository_global/storage_repository.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
