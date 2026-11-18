@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -451,9 +452,39 @@ class ChatController extends GetxController {
     isUploading.value = true;
     try {
       final localId = _repository.generateLocalId();
-      final paths = files.map((e) => e.path).toList();
-      final hasVideo = files.any((e) => e.mimeType?.startsWith('video/') == true || e.path.toLowerCase().endsWith('.mp4'));
-      final message = MessageModel(id: localId, localId: localId, conversationId: conversationId, senderId: uid, type: hasVideo ? MessageType.video : MessageType.image, mediaUrls: paths, createdAt: DateTime.now().toUtc(), status: MessageStatus.sending, repliedToId: repliedMessage.value?.id);
+      final persistedMedia = <String>[];
+      var hasVideo = false;
+      for (final file in files) {
+        final name = file.name.isNotEmpty ? file.name : 'attachment';
+        final extension = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+        final mime = file.mimeType ??
+            (const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm'}
+                    .containsKey(extension)
+                ? const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm'}[extension]!
+                : const {'png': 'image/png', 'webp': 'image/webp', 'gif': 'image/gif'}
+                        .containsKey(extension)
+                    ? const {'png': 'image/png', 'webp': 'image/webp', 'gif': 'image/gif'}[extension]!
+                    : 'image/jpeg');
+        hasVideo = hasVideo || mime.startsWith('video/');
+        final bytes = await file.readAsBytes();
+        if (bytes.isEmpty) throw StateError('Le fichier sélectionné est vide.');
+        if (bytes.lengthInBytes > 30 * 1024 * 1024) {
+          throw StateError('Chaque pièce jointe doit faire au maximum 30 Mo.');
+        }
+        final encodedName = Uri.encodeComponent(name);
+        persistedMedia.add('data:$mime;name=$encodedName;base64,${base64Encode(bytes)}');
+      }
+      final message = MessageModel(
+        id: localId,
+        localId: localId,
+        conversationId: conversationId,
+        senderId: uid,
+        type: hasVideo ? MessageType.video : MessageType.image,
+        mediaUrls: persistedMedia,
+        createdAt: DateTime.now().toUtc(),
+        status: MessageStatus.sending,
+        repliedToId: repliedMessage.value?.id,
+      );
       clearReply();
       final result = await _repository.sendMediaMessage(message);
       if (!result.success) {
