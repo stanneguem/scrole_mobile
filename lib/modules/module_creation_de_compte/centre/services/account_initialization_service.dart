@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'dart:io';
 import '../../../../app/service_global/notification_service.dart';
 import '../../../../app/service_global/session_service.dart';
 import '../../externe/repositories/account_repository.dart';
@@ -44,7 +44,13 @@ class AccountInitializationService extends GetxService {
       if (bio != null) 'p_bio': bio,
       if (avatarUrl != null) 'p_avatar_url': avatarUrl,
       if (coverUrl != null) 'p_cover_url': coverUrl,
-      'p_platform': Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'web'),
+      'p_platform': kIsWeb
+          ? 'web'
+          : (defaultTargetPlatform == TargetPlatform.android
+              ? 'android'
+              : defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'ios'
+                  : defaultTargetPlatform.name),
       'p_app_version': packageInfo.version,
       'p_device_token': deviceToken,
     };
