@@ -481,8 +481,13 @@ class ChatController extends GetxController {
         if (bytes.lengthInBytes > 30 * 1024 * 1024) {
           throw StateError('Chaque pièce jointe doit faire au maximum 30 Mo.');
         }
-        final encodedName = Uri.encodeComponent(name);
-        persistedMedia.add('data:$mime;name=$encodedName;base64,${base64Encode(bytes)}');
+        persistedMedia.add(await _repository.persistPendingMedia(
+          messageId: localId,
+          index: persistedMedia.length,
+          bytes: bytes,
+          name: name,
+          mimeType: mime,
+        ));
       }
       final message = MessageModel(
         id: localId,
@@ -614,10 +619,15 @@ class ChatController extends GetxController {
     return Uint8List.fromList(<int>[...header.buffer.asUint8List(), ...pcmBytes]);
   }
 
-  String? get _recordingDataUri {
+  Uint8List? get _recordingWavBytes {
     if (_recordingChunks.isEmpty) return null;
-    final wavBytes = _buildWavBytes(_recordingChunks);
-    return 'data:audio/wav;name=scrole_voice.wav;base64,${base64Encode(wavBytes)}';
+    return Uint8List.fromList(_buildWavBytes(_recordingChunks));
+  }
+
+  String? get _recordingDataUri {
+    final bytes = _recordingWavBytes;
+    if (bytes == null) return null;
+    return 'data:audio/wav;name=scrole_voice.wav;base64,${base64Encode(bytes)}';
   }
 
   Future<void> playReview() async {
@@ -633,8 +643,8 @@ class ChatController extends GetxController {
 
   Future<void> sendVoiceMessage() async {
     final uid = currentUserId;
-    final audioPayload = _recordingDataUri;
-    if (uid == null || audioPayload == null || conversationId.isEmpty) return;
+    final audioBytes = _recordingWavBytes;
+    if (uid == null || audioBytes == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     final localId = _repository.generateLocalId();
     final message = MessageModel(
@@ -643,7 +653,13 @@ class ChatController extends GetxController {
       conversationId: conversationId,
       senderId: uid,
       type: MessageType.audio,
-      audioUrl: audioPayload,
+      audioUrl: await _repository.persistPendingMedia(
+        messageId: localId,
+        index: 0,
+        bytes: audioBytes,
+        name: 'scrole_voice.wav',
+        mimeType: 'audio/wav',
+      ),
       audioDuration: Duration(seconds: recordingDuration.value),
       createdAt: DateTime.now().toUtc(),
       status: MessageStatus.sending,
