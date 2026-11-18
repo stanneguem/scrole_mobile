@@ -8,7 +8,8 @@ Widget buildChatCachedMediaImage({
   required BorderRadius? borderRadius,
   required Widget Function() unavailable,
 }) {
-  if (!path.startsWith('https://') && !path.startsWith('http://')) {
+  if (!path.startsWith('https://') && !path.startsWith('http://') &&
+      !path.startsWith('blob:') && !path.startsWith('data:')) {
     return unavailable();
   }
   return ClipRRect(
