@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../centre/services/chat_media_cache.dart';
 
@@ -10,6 +11,20 @@ Widget buildChatCachedMediaImage({
   required BorderRadius? borderRadius,
   required Widget Function() unavailable,
 }) {
+  if (path.startsWith('data:')) {
+    final comma = path.indexOf(',');
+    if (comma < 0) return unavailable();
+    try {
+      final bytes = base64Decode(path.substring(comma + 1));
+      return ClipRRect(
+        borderRadius: borderRadius ?? BorderRadius.zero,
+        child: Image.memory(bytes, width: width, height: height, fit: fit,
+            errorBuilder: (_, __, ___) => unavailable()),
+      );
+    } catch (_) {
+      return unavailable();
+    }
+  }
   if (path.startsWith('https://') || path.startsWith('http://')) {
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
