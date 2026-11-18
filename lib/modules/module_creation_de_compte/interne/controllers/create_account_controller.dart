@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/local_storage/fast/fast_cache_service.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../app_controller.dart';
 import '../../../../app/repository_global/location_repository.dart';
 import '../../../../app/repository_global/media_asset_storage_repository.dart';
@@ -214,10 +215,10 @@ class CreateAccountController extends GetxController {
     String? coverUrl;
     try {
       if (avatarFile.value != null) {
-        avatarUrl = await _storageRepository.uploadProfilePicture(userId, avatarFile.value!);
+        avatarUrl = await _storageRepository.uploadProfilePicture(userId, MediaAsset.fromXFile(avatarFile.value!));
       }
       if (coverFile.value != null) {
-        coverUrl = await _storageRepository.uploadProfileCover(userId, coverFile.value!);
+        coverUrl = await _storageRepository.uploadProfileCover(userId, MediaAsset.fromXFile(coverFile.value!));
       }
       await _initService.initializeAccount(
         userId: userId,
