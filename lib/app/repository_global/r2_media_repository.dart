@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import '../media/media_asset.dart';
 
@@ -206,7 +205,7 @@ class R2MediaRepository {
       final streamed = await sendFuture;
       final result = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
       if (result.statusCode < 200 || result.statusCode >= 300) {
-        throw HttpException('Échec du téléversement R2 (HTTP ${result.statusCode}).');
+        throw StateError('Échec du téléversement R2 (HTTP ${result.statusCode}).');
       }
     } catch (error) {
       if (category == 'post_media') {
@@ -231,7 +230,7 @@ class R2MediaRepository {
   }
 
   Future<R2UploadedMedia> uploadFile({
-    required File file,
+    required dynamic file,
     required String category,
     required String mediaType,
     String? entityId,
@@ -352,7 +351,7 @@ class R2MediaRepository {
         final codeMatch = RegExp(r'<Code>([^<]+)</Code>').firstMatch(bodyPreview);
         final providerCode = codeMatch?.group(1);
         debugPrint('[R2_UPLOAD][$traceId] R2_PUT_FAILURE status=${uploadResponse.statusCode} providerCode=${providerCode ?? 'unknown'} body=$bodyPreview');
-        throw HttpException(
+        throw StateError(
           'Échec du téléversement R2 (HTTP ${uploadResponse.statusCode}'
           '${providerCode == null ? '' : ', $providerCode'}).',
         );
