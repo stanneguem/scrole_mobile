@@ -138,13 +138,34 @@ stream. Cancellation removes the staged chunks, and failed writes prevent the
 manifest from being published.
 
 Voice review currently resolves the pending WAV to a Data URI on demand for
-the audio player. Pending image previews and share/save flows can still
-materialize data in memory. Pending video playback now resolves the stored
-MediaAsset directly: native platforms stream it into a temporary file and
-delete that file when the video controller is disposed. The current Web
-fallback still materializes a Data URI; a browser Blob/object-URL adapter with
-explicit lifetime cleanup remains follow-up work.
+the audio player. Pending image previews can still materialize data in memory.
+Pending video playback resolves the stored MediaAsset directly: native
+platforms stream it into a temporary file and delete that file when the video
+controller is disposed; Web builds a Blob from the stored chunks and plays it
+through an object URL, revoked when the controller is disposed. This removes
+the Base64/Data-URI expansion, but Blob creation still holds the complete
+video in browser memory. Pending-media save uses a streamed temporary file on
+native and a Blob download on Web. Sharing uses a temporary file on native;
+the current share_plus Web path materializes bytes because its XFile interface
+requires byte content. A future Web Share API adapter could avoid that extra
+flattened byte buffer where supported.
 
 Validation remains source-only: no Flutter analyzer, Android/Web build,
 microphone capture, browser IndexedDB, device playback, offline replay or R2
 transfer was executed.
+
+
+## Pending media preview and export follow-up
+
+Pending video playback now uses a platform-specific source. Native builds
+stream the Hive-backed MediaAsset into a temporary file and remove it when the
+video controller is disposed. Web builds a browser Blob from the stored chunks,
+uses an object URL as the video source, and revokes that URL on disposal. This
+avoids Base64 expansion, but the browser Blob still retains the complete video
+in memory; it is not network-style incremental playback.
+
+Pending attachment export no longer converts references into Data URIs first.
+Native save/share streams the asset to a temporary file and cleans it up after
+the platform action. Web save triggers a download from a Blob URL. Web share
+currently uses share_plus and therefore materializes the bytes for XFile; a
+native Web Share API implementation remains a possible optimization.
