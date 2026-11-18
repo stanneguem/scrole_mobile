@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:scrole/app/theme/text_styles.dart';
-import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:scrole/app/service_global/media_gallery_picker.dart';
+import 'package:scrole/shared/widgets/xfile_image.dart';
 import '../controllers/community/community_controller.dart';
 
 class CreateCommunityScreen extends StatefulWidget {
@@ -19,8 +20,8 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
   final TextEditingController _slugController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  File? _avatarFile;
-  File? _bannerFile;
+  XFile? _avatarFile;
+  XFile? _bannerFile;
   String _visibility = 'public'; // 'public' or 'prive'
   bool _isCreating = false;
   String? _errorMessage;
@@ -58,41 +59,13 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MediaGallerySheet(
-        maxSelection: 1,
-        onSelected: (files) {
-          if (files.isNotEmpty) {
-            setState(() {
-              _avatarFile = File(files.first.path);
-            });
-          }
-        },
-      ),
-    );
+    final file = await ScroleBottomSheetGallery.pick(context);
+    if (file != null && mounted) setState(() => _avatarFile = file);
   }
 
   Future<void> _pickBanner() async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MediaGallerySheet(
-        maxSelection: 1,
-        onSelected: (files) {
-          if (files.isNotEmpty) {
-            setState(() {
-              _bannerFile = File(files.first.path);
-            });
-          }
-        },
-      ),
-    );
+    final file = await ScroleBottomSheetGallery.pick(context);
+    if (file != null && mounted) setState(() => _bannerFile = file);
   }
 
   bool get _isValid {
@@ -240,9 +213,7 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
                       decoration: BoxDecoration(
                         color: colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(16),
-                        image: _bannerFile != null
-                            ? DecorationImage(image: FileImage(_bannerFile!), fit: BoxFit.cover)
-                            : null,
+                        
                         border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
                       ),
                       child: _bannerFile == null
@@ -258,8 +229,8 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
                                   ),
                                 ],
                               ),
-                            )
-                          : null,
+                             )
+                          : ClipRRect(borderRadius: BorderRadius.circular(16), child: XFileImage(file: _bannerFile!, fit: BoxFit.cover)),
                     ),
                   ),
                   Positioned(
@@ -286,7 +257,7 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
                             ),
                             clipBehavior: Clip.antiAlias,
                             child: _avatarFile != null
-                                ? Image.file(_avatarFile!, fit: BoxFit.cover)
+                                ? XFileImage(file: _avatarFile!, fit: BoxFit.cover)
                                 : Icon(Icons.groups_rounded, color: colorScheme.primary, size: 36),
                           ),
                           Container(
