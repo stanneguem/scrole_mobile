@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:record/record.dart';\nimport '../../centre/persistence/pending_chat_media_store.dart';
+import 'package:record/record.dart';
+import '../../centre/persistence/pending_chat_media_store.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/services/chat_media_cache.dart';
@@ -71,7 +72,9 @@ class ChatController extends GetxController {
   final Set<String> _pendingReadIds = {};
   StreamSubscription<Uint8List>? _recordingStreamSub;
   PendingChatMediaWriter? _recordingWriter;
-  Future<void> _recordingWriteQueue = Future<void>.value();\n  String? _recordingMessageId;\n  String? _recordingMediaRef;
+  Future<void> _recordingWriteQueue = Future<void>.value();
+  String? _recordingMessageId;
+  String? _recordingMediaRef;
   String? get currentUserId => _repository.currentUserId;
   bool get isDraftConversation => conversationId.startsWith('draft_');
 
@@ -334,7 +337,7 @@ class ChatController extends GetxController {
     if (text.isEmpty || uid == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     _stopTyping();
-    final localId = _repository.generateLocalId();
+    final localId = _recordingMessageId ?? _repository.generateLocalId();
     final message = MessageModel(id: localId, localId: localId, conversationId: conversationId, senderId: uid, text: text, type: MessageType.text, createdAt: DateTime.now().toUtc(), status: MessageStatus.sending, repliedToId: repliedMessage.value?.id);
     messageController.clear();
     clearReply();
@@ -517,7 +520,8 @@ class ChatController extends GetxController {
         }
       }
       await audioPlayer.stop();
-      _recordingMessageId = null;\n    _recordingMediaRef = null;
+      _recordingMessageId = null;
+    _recordingMediaRef = null;
       final stream = await audioRecorder.startStream(const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 44100,
@@ -525,7 +529,10 @@ class ChatController extends GetxController {
       ));
       await _recordingStreamSub?.cancel();
       _recordingStreamSub = stream.listen(
-        (chunk) {\n          final writer = _recordingWriter;\n          if (writer != null) unawaited(writer.add(chunk));\n        },
+        (chunk) {
+          final writer = _recordingWriter;
+          if (writer != null) unawaited(writer.add(chunk));
+        },
         onError: (Object error) {
           debugPrint('[ChatVoice] recording stream failed: $error');
           _showError('Une erreur est survenue pendant l’enregistrement.');
@@ -560,12 +567,18 @@ class ChatController extends GetxController {
       await _recordingStreamSub?.cancel();
       _recordingStreamSub = null;
       await _recordingWriteQueue;
-      final writer = _recordingWriter;\n      if (writer == null || writer.bytesWritten == 0) {
+      final writer = _recordingWriter;
+      if (writer == null || writer.bytesWritten == 0) {
         recordingState.value = RecordingState.idle;
         _showError('Aucun son n’a été capturé. Vérifie le micro du navigateur.');
         return;
       }
-      _recordingMediaRef = await _repository.finishPendingWavRecording(\n        writer: writer,\n        messageId: _recordingMessageId!,\n      );\n      _recordingWriter = null;\n      recordingState.value = RecordingState.reviewing;
+      _recordingMediaRef = await _repository.finishPendingWavRecording(
+        writer: writer,
+        messageId: _recordingMessageId!,
+      );
+      _recordingWriter = null;
+      recordingState.value = RecordingState.reviewing;
     } catch (e) {
       debugPrint('[ChatVoice] unable to stop recording: $e');
       recordingState.value = RecordingState.idle;
@@ -580,7 +593,11 @@ class ChatController extends GetxController {
     } catch (_) {}
     await _recordingStreamSub?.cancel();
     _recordingStreamSub = null;
-    _recordingChunks.clear();
+    final writer = _recordingWriter;
+    _recordingWriter = null;
+    if (writer != null) await _repository.discardPendingWavRecording(writer);
+    _recordingMediaRef = null;
+    _recordingMessageId = null;
     recordingState.value = RecordingState.idle;
     swipeOffset.value = 0;
     await audioPlayer.stop();
@@ -615,8 +632,8 @@ class ChatController extends GetxController {
 
   Future<void> sendVoiceMessage() async {
     final uid = currentUserId;
-    final audioBytes = _recordingWavBytes;
-    if (uid == null || audioBytes == null || conversationId.isEmpty) return;
+    final mediaRef = _recordingMediaRef;
+    if (uid == null || mediaRef == null || conversationId.isEmpty) return;
     if (!await _ensureRealConversation()) return;
     final localId = _repository.generateLocalId();
     final message = MessageModel(
@@ -625,20 +642,15 @@ class ChatController extends GetxController {
       conversationId: conversationId,
       senderId: uid,
       type: MessageType.audio,
-      audioUrl: await _repository.persistPendingMedia(
-        messageId: localId,
-        index: 0,
-        bytes: audioBytes,
-        name: 'scrole_voice.wav',
-        mimeType: 'audio/wav',
-      ),
+      audioUrl: mediaRef,
       audioDuration: Duration(seconds: recordingDuration.value),
       createdAt: DateTime.now().toUtc(),
       status: MessageStatus.sending,
       repliedToId: repliedMessage.value?.id,
     );
     recordingState.value = RecordingState.idle;
-    _recordingChunks.clear();
+    _recordingMessageId = null;
+    _recordingMediaRef = null;
     clearReply();
     final result = await _repository.sendMediaMessage(message);
     if (!result.success) _showError(result.message);
