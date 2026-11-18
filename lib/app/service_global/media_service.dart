@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -9,25 +9,29 @@ import 'package:get/get.dart';
 
 import '../../shared/widgets/media_gallery_sheet.dart';
 
+/// Sélection et préparation de médias sans exposer dart:io aux contrôleurs.
+/// Sur le Web, l'image originale est conservée lorsque les traitements natifs
+/// (cropper/compression fichier) ne sont pas disponibles.
 class MediaService extends GetxService {
   final ImagePicker _picker = ImagePicker();
 
   Future<XFile?> _pickGalleryImage() async {
     final context = Get.context;
     if (context == null) return _picker.pickImage(source: ImageSource.gallery);
-
     return ScroleBottomSheetGallery.pick(context);
   }
 
-  Future<File?> pickImage({ImageSource source = ImageSource.gallery}) async {
-    final XFile? pickedFile = source == ImageSource.gallery
-        ? await _pickGalleryImage()
-        : await _picker.pickImage(source: source);
-    if (pickedFile == null) return null;
-    return File(pickedFile.path);
+  Future<XFile?> pickImage({ImageSource source = ImageSource.gallery}) async {
+    return source == ImageSource.gallery
+        ? _pickGalleryImage()
+        : _picker.pickImage(source: source);
   }
 
-  Future<File?> cropImage(File imageFile, {bool circle = false}) async {
+  Future<XFile?> cropImage(XFile imageFile, {bool circle = false}) async {
+    // Le plugin cropper Web nécessite une UI dédiée. On préserve le média
+    // plutôt que de convertir une URL Blob en chemin de fichier local.
+    if (kIsWeb) return imageFile;
+
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
       uiSettings: [
@@ -47,29 +51,37 @@ class MediaService extends GetxService {
         ),
       ],
     );
-    if (croppedFile == null) return null;
-    return File(croppedFile.path);
+    return croppedFile == null ? null : XFile(croppedFile.path);
   }
 
-  Future<File?> compressImage(File file, {int quality = 80}) async {
+  Future<XFile?> compressImage(XFile file, {int quality = 80}) async {
+    if (kIsWeb) return file;
     final tempDir = await getTemporaryDirectory();
-    final targetPath = p.join(tempDir.path, "${DateTime.now().millisecondsSinceEpoch}.jpg");
-    final result = await FlutterImageCompress.compressAndGetFile(file.absolute.path, targetPath, quality: quality);
-    if (result == null) return null;
-    return File(result.path);
+    final targetPath = p.join(
+      tempDir.path,
+      "${DateTime.now().millisecondsSinceEpoch}.jpg",
+    );
+    final result = await FlutterImageCompress.compressAndGetFile(
+      file.path,
+      targetPath,
+      quality: quality,
+    );
+    return result == null ? null : XFile(result.path);
   }
 
-  Future<File?> pickProfileImage({ImageSource source = ImageSource.gallery}) async {
+  Future<XFile?> pickProfileImage({ImageSource source = ImageSource.gallery}) async {
     final picked = await pickImage(source: source);
     if (picked == null) return null;
     final cropped = await cropImage(picked, circle: true);
     if (cropped == null) return null;
-    return await compressImage(cropped);
+    return compressImage(cropped);
   }
 
-  Future<File?> pickCoverImage({ImageSource source = ImageSource.gallery}) async {
+  Future<XFile?> pickCoverImage({ImageSource source = ImageSource.gallery}) async {
     final picked = await pickImage(source: source);
     if (picked == null) return null;
+    if (kIsWeb) return picked;
+
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
       uiSettings: [
@@ -85,12 +97,11 @@ class MediaService extends GetxService {
       ],
     );
     if (cropped == null) return null;
-    return await compressImage(File(cropped.path));
+    return compressImage(XFile(cropped.path));
   }
 }
 
-/// Adapter permettant au MediaService d'utiliser la galerie interne sans
-/// exposer sa mécanique aux contrôleurs.
+/// Adaptateur de la galerie interne.
 class ScroleBottomSheetGallery {
   static Future<XFile?> pick(BuildContext context) async {
     final result = await showModalBottomSheet<List<XFile>>(
@@ -99,15 +110,9 @@ class ScroleBottomSheetGallery {
       isScrollControlled: true,
       builder: (_) => MediaGallerySheet(
         maxSelection: 1,
-        // MediaGallerySheet returns the selected files when it closes.
-        // Do not pop here: that would pop the registration screen as well.
         onSelected: (_) {},
       ),
     );
-
-    if (result != null && result.isNotEmpty) {
-      return result.first;
-    }
-    return null;
+    return result != null && result.isNotEmpty ? result.first : null;
   }
 }
