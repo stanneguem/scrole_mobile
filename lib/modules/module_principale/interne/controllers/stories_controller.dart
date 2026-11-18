@@ -1,15 +1,11 @@
-import 'dart:io';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
 import '../../../../app/service_global/media_image_processor.dart';
 import '../services/story_media_platform.dart';
+import '../services/story_tray_legacy_cache.dart';
 import 'package:scrole/modules/module_principale/externe/repositories/stories_repository.dart';
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import '../../../../app_controller.dart';
@@ -230,14 +226,10 @@ class StoriesController extends GetxController {
     if (Get.isRegistered<FastCacheService>()) {
       await Get.find<FastCacheService>().remove(_storyTrayCacheKey(userId));
     }
-    if (!kIsWeb) {
-      try {
-        final directory = await getApplicationSupportDirectory();
-        final file = File(p.join(directory.path, 'stories_tray_cache_$userId.json'));
-        if (await file.exists()) await file.delete();
-      } catch (e) {
-        debugPrint('[STORY_CACHE] Legacy cache cleanup skipped: $e');
-      }
+    try {
+      await clearLegacyStoryTray(userId);
+    } catch (e) {
+      debugPrint('[STORY_CACHE] Legacy cache cleanup skipped: $e');
     }
     debugPrint('[STORY_CACHE] Cache purged for user $userId');
   }
@@ -312,18 +304,11 @@ class StoriesController extends GetxController {
 
       // Migration douce : importer une seule fois l'ancien JSON mobile vers
       // le CacheStore commun, puis supprimer le fichier historique.
-      if (decoded == null && !kIsWeb) {
-        final directory = await getApplicationSupportDirectory();
-        final legacyFile = File(
-          p.join(directory.path, 'stories_tray_cache_$userId.json'),
-        );
-        if (await legacyFile.exists()) {
-          final legacy = jsonDecode(await legacyFile.readAsString());
-          if (legacy is Map) {
-            decoded = Map<String, dynamic>.from(legacy);
-            await cache.set(_storyTrayCacheKey(userId), decoded);
-          }
-          await legacyFile.delete();
+      if (decoded == null) {
+        final legacy = await readLegacyStoryTray(userId);
+        if (legacy != null) {
+          decoded = legacy;
+          await cache.set(_storyTrayCacheKey(userId), decoded);
         }
       }
 
