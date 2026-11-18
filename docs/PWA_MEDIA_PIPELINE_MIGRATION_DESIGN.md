@@ -82,3 +82,41 @@ follow-up work. The current 30 MiB per-attachment limit remains in place.
 Validation status: source changes only. Flutter analyze, Android/Web builds,
 browser IndexedDB persistence, offline/restart replay, and R2 upload were not
 executed in this change.
+
+
+## Streaming pending chat attachments — follow-up implementation
+
+The pending chat media store now persists selected files as independent binary
+chunks (256 KiB target size) in the dedicated `pending_chat_media` Hive box.
+The controller passes the picked `XFile` stream to the store instead of calling
+`readAsBytes()` for images/videos before persistence. The store checks the
+source length against the existing 30 MiB per-attachment limit and verifies
+the exact number of bytes written before publishing the manifest/reference.
+
+`MediaAsset` now also supports a stream-backed source. When the outbox retries
+a pending attachment, the store returns a stream-backed asset; the existing
+R2 upload implementation reads `MediaAsset.openRead()` and sends it through
+`http.StreamedRequest` with the known content length. This avoids rebuilding a
+whole video byte array during the offline-to-R2 upload path. Older single-blob
+pending records and legacy Data URI messages remain readable.
+
+Important remaining constraints:
+- The voice recorder currently accumulates PCM chunks and builds a WAV byte
+  array before persistence; this path is not yet chunk-streamed end-to-end.
+- The pending-media preview helper currently materializes a Data URI for
+  preview/share flows. Large pending video previews can therefore still use
+  substantial memory even though upload is streamed.
+- Hive writes one record per chunk; actual browser storage quota, transaction
+  performance, and crash recovery during a partially written attachment must
+  be measured in a real browser.
+- Expired/orphan chunk collection is not yet automated.
+- The 30 MiB attachment limit is unchanged.
+
+## Validation status after streaming change
+
+Source inspection confirms the upload path consumes the stream-backed
+`MediaAsset.openRead()` API and supplies the known byte length to the R2
+streamed request. No Flutter SDK/build runner or repository CI workflow is
+available through the current GitHub branch snapshot, and no local build,
+analyzer, Android device test, browser IndexedDB test, or live R2 transfer was
+run. These changes must be validated locally before release.
