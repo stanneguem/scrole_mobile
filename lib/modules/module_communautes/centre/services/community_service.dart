@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:math';
 import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
@@ -8,7 +9,8 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../app/local_storage/structured/app_cache_database.dart';
 import '../../../../app/repository_global/storage_repository.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
@@ -450,53 +452,50 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     required String slug,
     required String description,
     required String visibility,
-    File? avatarFile,
-    File? bannerFile,
+    XFile? avatarFile,
+    XFile? bannerFile,
   }) async {
     final userId = _authService.userId ?? 'local_user';
     final communityId = _generateUuidV4();
     final operationId = _generateUuidV4();
     final nowMs = DateTime.now().millisecondsSinceEpoch;
 
-    String? avatarLocalPath;
-    String? bannerLocalPath;
+    String? avatarBase64;
+    String? bannerBase64;
+    String? avatarName;
+    String? bannerName;
+    String? avatarMimeType;
+    String? bannerMimeType;
 
-    try {
-      final appDir = await getApplicationDocumentsDirectory();
-      if (avatarFile != null && avatarFile.existsSync()) {
-        final targetPath = p.join(appDir.path, 'communities', communityId, 'profile.jpg');
-        await Directory(p.dirname(targetPath)).create(recursive: true);
-        final compressed = await FlutterImageCompress.compressAndGetFile(
-          avatarFile.absolute.path,
-          targetPath,
-          minWidth: 1280,
-          minHeight: 1280,
-          quality: 80,
-        );
-        avatarLocalPath = compressed?.path ?? avatarFile.path;
+    // Les médias sont stockés dans le payload SQLite de l'outbox.
+    // Contrairement à un chemin de fichier ou une URL blob du navigateur,
+    // les octets restent disponibles après fermeture/rechargement de la PWA.
+    if (avatarFile != null) {
+      final bytes = await avatarFile.readAsBytes();
+      if (bytes.isEmpty || bytes.length > 8 * 1024 * 1024) {
+        throw StateError('L’avatar doit peser moins de 8 Mo.');
       }
-
-      if (bannerFile != null && bannerFile.existsSync()) {
-        final targetPath = p.join(appDir.path, 'communities', communityId, 'cover.jpg');
-        await Directory(p.dirname(targetPath)).create(recursive: true);
-        final compressed = await FlutterImageCompress.compressAndGetFile(
-          bannerFile.absolute.path,
-          targetPath,
-          minWidth: 1280,
-          minHeight: 1280,
-          quality: 80,
-        );
-        bannerLocalPath = compressed?.path ?? bannerFile.path;
+      avatarBase64 = base64Encode(bytes);
+      avatarName = avatarFile.name;
+      avatarMimeType = avatarFile.mimeType;
+    }
+    if (bannerFile != null) {
+      final bytes = await bannerFile.readAsBytes();
+      if (bytes.isEmpty || bytes.length > 12 * 1024 * 1024) {
+        throw StateError('La couverture doit peser moins de 12 Mo.');
       }
-    } catch (_) {}
+      bannerBase64 = base64Encode(bytes);
+      bannerName = bannerFile.name;
+      bannerMimeType = bannerFile.mimeType;
+    }
 
     final community = CommunityModel(
       id: communityId,
       name: name,
       slug: slug,
       description: description,
-      avatarUrl: avatarLocalPath,
-      bannerUrl: bannerLocalPath,
+      avatarUrl: null,
+      bannerUrl: null,
       visibility: visibility,
       status: 'pending',
       memberCount: 1,
@@ -511,8 +510,12 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       'slug': slug,
       'description': description,
       'visibility': visibility,
-      'avatar_local_path': avatarLocalPath,
-      'banner_local_path': bannerLocalPath,
+      if (avatarBase64 != null) 'avatar_bytes_base64': avatarBase64,
+      if (avatarName != null) 'avatar_name': avatarName,
+      if (avatarMimeType != null) 'avatar_mime_type': avatarMimeType,
+      if (bannerBase64 != null) 'banner_bytes_base64': bannerBase64,
+      if (bannerName != null) 'banner_name': bannerName,
+      if (bannerMimeType != null) 'banner_mime_type': bannerMimeType,
       'require_manual_approval': visibility == 'prive',
     };
 
