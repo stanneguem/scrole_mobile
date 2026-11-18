@@ -632,7 +632,7 @@ class MessagingRepository {
   Future<void> processOutbox() async {
     final uid = currentUserId;
     if (uid == null || _outboxRunning) return;
-    if (!await _hasNetworkConnection()) return;
+    if (!await _hasNetworkConnection() || _outboxRunning) return;
     _outboxRunning = true;
     try {
       final db = await _db.database;
