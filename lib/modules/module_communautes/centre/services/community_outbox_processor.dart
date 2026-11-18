@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:video_compress/video_compress.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
@@ -14,6 +16,7 @@ import '../../externe/repositories/community_repository.dart';
 import '../../interne/controllers/community/community_feed_controller.dart';
 import '../../../module_principale/interne/controllers/home_feed_controller.dart';
 import '../../../../app/repository_global/r2_media_repository.dart';
+import '../../../../app/media/media_asset.dart';
 import '../../../../shared/constants/post_media_limits.dart';
 import '../persistence/community_local_dao.dart';
 
@@ -120,56 +123,56 @@ class CommunityOutboxProcessor extends GetxService {
             );
 
             final r2 = R2MediaRepository();
-            final avatarLocalPath = payload['avatar_local_path']?.toString() ??
-                payload['avatar_url']?.toString() ?? payload['photo_profile']?.toString();
-            final bannerLocalPath = payload['banner_local_path']?.toString() ??
-                payload['banner_url']?.toString() ?? payload['photo_cover']?.toString();
             String? photoProfile;
             String? photoCover;
 
-            if (avatarLocalPath != null && avatarLocalPath.isNotEmpty) {
-              if (avatarLocalPath.startsWith('http://') || avatarLocalPath.startsWith('https://')) {
-                photoProfile = avatarLocalPath;
-              } else {
-                final file = File(avatarLocalPath);
-                if (!await file.exists()) {
-                  throw FileSystemException('Le fichier de photo de profil de la communauté est introuvable.', avatarLocalPath);
-                }
-                final uploaded = await r2.uploadFile(
-                  file: file,
-                  category: 'community_avatar',
-                  mediaType: 'image',
-                  entityId: communityId,
-                );
-                photoProfile = uploaded.publicUrl;
-                if (photoProfile == null || photoProfile.isEmpty || !uploaded.isPublic) {
-                  throw StateError('R2 n’a pas retourné d’URL publique pour la photo de la communauté.');
-                }
-                debugPrint('[CREATE_COMMUNITY] R2 avatar uploaded key=${uploaded.objectKey}');
+            Future<String?> uploadCommunityImage({
+              required String bytesKey,
+              required String nameKey,
+              required String mimeKey,
+              required String fallbackName,
+              required String category,
+            }) async {
+              final encoded = payload[bytesKey]?.toString();
+              if (encoded == null || encoded.isEmpty) return null;
+              final bytes = base64Decode(encoded);
+              if (bytes.isEmpty) throw StateError('Un média de communauté est vide.');
+              final name = payload[nameKey]?.toString().trim();
+              final mimeType = payload[mimeKey]?.toString().trim();
+              final fileName = (name == null || name.isEmpty) ? fallbackName : name;
+              final extension = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+              final media = XFile.fromData(
+                Uint8List.fromList(bytes),
+                name: fileName,
+                mimeType: mimeType,
+              );
+              final uploaded = await r2.uploadMediaAsset(
+                media: MediaAsset.fromXFile(media),
+                category: category,
+                mediaType: 'image',
+                entityId: communityId,
+              );
+              if (uploaded.publicUrl == null || uploaded.publicUrl!.isEmpty || !uploaded.isPublic) {
+                throw StateError('R2 n’a pas retourné d’URL publique pour le média de communauté.');
               }
+              debugPrint('[CREATE_COMMUNITY] R2 upload category=$category key=${uploaded.objectKey} bytes=${uploaded.sizeBytes} extension=$extension');
+              return uploaded.publicUrl;
             }
 
-            if (bannerLocalPath != null && bannerLocalPath.isNotEmpty) {
-              if (bannerLocalPath.startsWith('http://') || bannerLocalPath.startsWith('https://')) {
-                photoCover = bannerLocalPath;
-              } else {
-                final file = File(bannerLocalPath);
-                if (!await file.exists()) {
-                  throw FileSystemException('Le fichier de couverture de la communauté est introuvable.', bannerLocalPath);
-                }
-                final uploaded = await r2.uploadFile(
-                  file: file,
-                  category: 'community_cover',
-                  mediaType: 'image',
-                  entityId: communityId,
-                );
-                photoCover = uploaded.publicUrl;
-                if (photoCover == null || photoCover.isEmpty || !uploaded.isPublic) {
-                  throw StateError('R2 n’a pas retourné d’URL publique pour la couverture de la communauté.');
-                }
-                debugPrint('[CREATE_COMMUNITY] R2 cover uploaded key=${uploaded.objectKey}');
-              }
-            }
+            photoProfile = await uploadCommunityImage(
+              bytesKey: 'avatar_bytes_base64',
+              nameKey: 'avatar_name',
+              mimeKey: 'avatar_mime_type',
+              fallbackName: 'community-avatar.jpg',
+              category: 'community_avatar',
+            );
+            photoCover = await uploadCommunityImage(
+              bytesKey: 'banner_bytes_base64',
+              nameKey: 'banner_name',
+              mimeKey: 'banner_mime_type',
+              fallbackName: 'community-cover.jpg',
+              category: 'community_cover',
+            );
 
             if (photoProfile != null || photoCover != null) {
               await _repository.updateCommunityInfo(
