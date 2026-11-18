@@ -84,12 +84,23 @@ Future<VideoPlayerController> createStoryPlaybackController({
 
   final client = http.Client();
   try {
-    final streamed = await client.get(Uri.parse(url)).timeout(const Duration(minutes: 3));
+    final request = http.Request('GET', Uri.parse(url));
+    final streamed = await client.send(request).timeout(const Duration(minutes: 3));
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       throw HttpException('Téléchargement de la story impossible (HTTP ${streamed.statusCode}).');
     }
-    if (streamed.bodyBytes.isEmpty) throw StateError('Le fichier vidéo téléchargé est vide.');
-    await videoFile.writeAsBytes(streamed.bodyBytes, flush: true);
+    final sink = videoFile.openWrite();
+    try {
+      await streamed.stream.pipe(sink);
+    } catch (_) {
+      await sink.close();
+      if (await videoFile.exists()) await videoFile.delete();
+      rethrow;
+    }
+    if (await videoFile.length() == 0) {
+      await videoFile.delete();
+      throw StateError('Le fichier vidéo téléchargé est vide.');
+    }
     await expiryFile.writeAsString(expiry.toIso8601String(), flush: true);
     return VideoPlayerController.file(videoFile);
   } finally {
