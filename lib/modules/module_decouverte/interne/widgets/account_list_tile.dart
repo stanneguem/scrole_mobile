@@ -55,6 +55,7 @@ class AccountListTile extends StatelessWidget {
               child: account.avatarUrl != null && account.avatarUrl!.isNotEmpty
                   ? AppCachedImage(
                       imageUrl: account.avatarUrl!,
+                      cacheInPersistentStore: true,
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
