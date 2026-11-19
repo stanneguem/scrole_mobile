@@ -54,7 +54,10 @@ class AppCachedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl.isEmpty) return _error();
-    if (cacheInPersistentStore) {
+    // Match the native CachedNetworkImage contract on Web: every remote
+    // image (feed media, thumbnails, avatars, suggestions and logos) is
+    // persisted independently from the lifetime of its widget/card.
+    if (_isRemote(imageUrl) || _isR2Key(imageUrl) || cacheInPersistentStore) {
       return _PersistentCachedImage(
         imageUrl: imageUrl,
         width: width,
@@ -64,18 +67,6 @@ class AppCachedImage extends StatelessWidget {
         placeholder: placeholder,
         errorWidget: errorWidget,
         onImageLoaded: onImageLoaded,
-      );
-    }
-    if (_isRemote(imageUrl)) return _networkImage(imageUrl);
-
-    if (_isR2Key(imageUrl)) {
-      return FutureBuilder<String?>(
-        future: _resolveR2Url(imageUrl),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return _error();
-          if (!snapshot.hasData) return _placeholder();
-          return _networkImage(snapshot.data!);
-        },
       );
     }
 
@@ -175,6 +166,9 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   static final Map<String, Uint8List> _memory = <String, Uint8List>{};
   static final Map<String, Future<Uint8List?>> _inFlight = {};
   static const Duration _refreshAfter = Duration(days: 30);
+  static const int _maxPersistentEntries = 160;
+  static const int _maxPersistentBytes = 48 * 1024 * 1024;
+  static const int _maxSingleImageBytes = 8 * 1024 * 1024;
 
   Uint8List? _bytes;
   bool _failed = false;
@@ -236,7 +230,9 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
         await cache.set(key, {
           'bytes': bytes,
           'saved_at': DateTime.now().toIso8601String(),
+          'last_accessed': DateTime.now().millisecondsSinceEpoch,
         });
+        await _trimPersistentCache(cache);
       }
       if (mounted) setState(() {
         _bytes = bytes;
@@ -244,6 +240,34 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
       });
     } else if (_bytes == null && mounted) {
       setState(() => _failed = true);
+    }
+  }
+
+  Future<void> _trimPersistentCache(FastCacheService cache) async {
+    try {
+      final entries = <({String key, int bytes, int accessed})>[];
+      var totalBytes = 0;
+      for (final rawKey in cache.box.keys) {
+        if (rawKey is! String || !rawKey.startsWith('profile_avatar_bytes_')) continue;
+        final value = cache.get<dynamic>(rawKey);
+        if (value is! Map || value['bytes'] is! Uint8List) continue;
+        final data = value['bytes'] as Uint8List;
+        final accessed = (value['last_accessed'] as num?)?.toInt() ??
+            DateTime.tryParse(value['saved_at']?.toString() ?? '')
+                ?.millisecondsSinceEpoch ?? 0;
+        entries.add((key: rawKey, bytes: data.lengthInBytes, accessed: accessed));
+        totalBytes += data.lengthInBytes;
+      }
+      entries.sort((a, b) => a.accessed.compareTo(b.accessed));
+      while (entries.length > _maxPersistentEntries || totalBytes > _maxPersistentBytes) {
+        if (entries.isEmpty) break;
+        final oldest = entries.removeAt(0);
+        await cache.remove(oldest.key);
+        totalBytes -= oldest.bytes;
+        _memory.remove(oldest.key);
+      }
+    } catch (e) {
+      debugPrint('[IMAGE_CACHE] eviction failed: $e');
     }
   }
 
@@ -266,7 +290,7 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
         if (!_isHttpUrl(url)) return null;
         final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 25));
         if (response.statusCode < 200 || response.statusCode >= 300 ||
-            response.bodyBytes.isEmpty) return null;
+            response.bodyBytes.isEmpty || response.bodyBytes.length > _maxSingleImageBytes) return null;
         return Uint8List.fromList(response.bodyBytes);
       } catch (e) {
         debugPrint('[AVATAR_CACHE] download failed: $e');
