@@ -178,9 +178,17 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
     // Signed CDN URLs rotate their query token. Cache the stable object path,
     // not the expiring authorization query string.
     final identity = uri != null && (uri.scheme == 'https' || uri.scheme == 'http')
-        ? uri.replace(query: '', fragment: '').toString()
+        ? uri.replace(
+            queryParameters: Map<String, String>.from(uri.queryParameters)
+              ..removeWhere((key, _) => const {
+                'token', 'signature', 'sig', 'expires', 'expiration',
+                'x-amz-signature', 'x-amz-credential', 'x-amz-date',
+                'x-amz-security-token',
+              }.contains(key.toLowerCase())),
+            fragment: '',
+          ).toString()
         : widget.imageUrl;
-    return 'profile_avatar_bytes_${sha256.convert(utf8.encode(identity))}';
+    return 'web_image_bytes_${sha256.convert(utf8.encode(identity))}';
   }
 
   @override
@@ -219,6 +227,11 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
       if (mounted) setState(() => _bytes = bytes);
       final savedAt = DateTime.tryParse(stored['saved_at']?.toString() ?? '');
       if (savedAt != null && DateTime.now().difference(savedAt) < _refreshAfter) {
+        await cache?.set(key, {
+          'bytes': bytes,
+          'saved_at': savedAt.toIso8601String(),
+          'last_accessed': DateTime.now().millisecondsSinceEpoch,
+        });
         return;
       }
     }
@@ -248,7 +261,7 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
       final entries = <({String key, int bytes, int accessed})>[];
       var totalBytes = 0;
       for (final rawKey in cache.box.keys) {
-        if (rawKey is! String || !rawKey.startsWith('profile_avatar_bytes_')) continue;
+        if (rawKey is! String || !rawKey.startsWith('web_image_bytes_')) continue;
         final value = cache.get<dynamic>(rawKey);
         if (value is! Map || value['bytes'] is! Uint8List) continue;
         final data = value['bytes'] as Uint8List;
