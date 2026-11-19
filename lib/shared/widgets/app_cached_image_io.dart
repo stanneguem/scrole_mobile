@@ -22,6 +22,7 @@ class AppCachedImage extends StatelessWidget {
   final int imageQuality;
   final VoidCallback? onImageLoaded;
   final DateTime? cacheUntil;
+  final bool cacheInPersistentStore;
 
   const AppCachedImage({
     super.key,
@@ -38,6 +39,7 @@ class AppCachedImage extends StatelessWidget {
     this.imageQuality = 80,
     this.onImageLoaded,
     this.cacheUntil,
+    this.cacheInPersistentStore = false,
   });
 
   static Future<void> clearPrivateMediaCache(String objectKey) async {
