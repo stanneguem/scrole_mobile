@@ -596,6 +596,7 @@ class _StoriesRow extends GetView<StoriesController> {
           itemBuilder: (context, index) {
             if (index == 0) {
               return Padding(
+                key: const ValueKey('story-group-own'),
                 padding: const EdgeInsets.only(right: 12),
                 child: GestureDetector(
                   onTap: () {
@@ -717,6 +718,7 @@ class _StoriesRow extends GetView<StoriesController> {
                 : (latestStory?.imageUrl?.isNotEmpty == true ? latestStory!.imageUrl : group.author.photoUrl);
 
             return Padding(
+              key: ValueKey('story-group-${group.author.userId}'),
               padding: const EdgeInsets.only(right: 12),
               child: GestureDetector(
                 onTap: () {
