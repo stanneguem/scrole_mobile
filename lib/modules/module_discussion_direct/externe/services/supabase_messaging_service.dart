@@ -375,4 +375,3 @@ class SupabaseMessagingService {
     'image/jpeg': 'jpg',
   }[mime.toLowerCase()] ?? 'bin';
 }
-}
