@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:scrole/app/utils/boot_timing.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
+import 'package:scrole/shared/widgets/app_cached_image.dart';
+import '../../../../app_controller.dart';
 import '../../../module_communautes/interne/pages/create_community_post_screen.dart';
 import '../pages/create_scut_camera_screen.dart';
 
@@ -15,10 +17,12 @@ class _WideTopNavigation extends StatelessWidget {
   const _WideTopNavigation({
     required this.controller,
     required this.onSelected,
+    required this.compact,
   });
 
   final MainLayoutController controller;
   final ValueChanged<int>? onSelected;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +57,7 @@ class _WideTopNavigation extends StatelessWidget {
             );
           }
           if (index == 5) {
-            icon = const _TopNavProfilePlaceholder();
+            icon = const _TopNavProfileAvatar();
           }
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
@@ -84,13 +88,39 @@ class _WideTopNavigation extends StatelessWidget {
   }
 }
 
-class _TopNavProfilePlaceholder extends StatelessWidget {
-  const _TopNavProfilePlaceholder();
+class _TopNavProfileAvatar extends StatelessWidget {
+  const _TopNavProfileAvatar();
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Icon(Icons.account_circle_outlined, color: colorScheme.onSurfaceVariant, size: 25);
+    final appController = Get.find<AppController>();
+    return Obx(() {
+      final profile = appController.profile.value;
+      final avatarUrl = profile?['photo_url']?.toString() ?? '';
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: colorScheme.primary, width: 1.5),
+        ),
+        child: ClipOval(
+          child: avatarUrl.isNotEmpty
+              ? AppCachedImage(
+                  imageUrl: avatarUrl,
+                  cacheInPersistentStore: true,
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.cover,
+                )
+              : Container(
+                  color: colorScheme.surfaceContainerHigh,
+                  child: Icon(Icons.person_rounded, size: 17, color: colorScheme.onSurfaceVariant),
+                ),
+        ),
+      );
+    });
   }
 }
 
@@ -217,12 +247,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             if (MediaQuery.sizeOf(context).width >= 760) ...[
-              const Spacer(flex: 1),
               _WideTopNavigation(
                 controller: controller,
                 onSelected: onDestinationSelected,
+                compact: MediaQuery.sizeOf(context).width < 1100,
               ),
-              const Spacer(flex: 1),
             ] else
               const Spacer(),
             Row(
