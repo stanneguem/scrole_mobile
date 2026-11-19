@@ -301,6 +301,8 @@ class HomeFeedController extends GetxController {
       profile.isAdded = state == 'friends' || state == 'following' || relation['is_following'] == true;
       profile.isRequestSent = state == 'requested' || relation['request_sent'] == true;
       suggestedProfiles.refresh();
+      final userId = _authService.userId;
+      if (userId != null) await _cacheSuggestedProfiles(userId, suggestedProfiles);
       if (!profile.isAdded && !profile.isRequestSent) {
         throw StateError('Le suivi n’a pas été confirmé');
       }
@@ -314,6 +316,8 @@ class HomeFeedController extends GetxController {
     try {
       await _feedRepo.dismissSuggestedProfile(profile.id);
       suggestedProfiles.removeWhere((item) => item.id == profile.id);
+      final userId = _authService.userId;
+      if (userId != null) await _cacheSuggestedProfiles(userId, suggestedProfiles);
     } finally {
       _profileSuggestionActionsInFlight.remove(profile.id);
     }
@@ -321,6 +325,8 @@ class HomeFeedController extends GetxController {
 
   void removeSuggestedEvent(String eventId) {
     suggestedEvents.removeWhere((event) => event.id == eventId);
+    final userId = _authService.userId;
+    if (userId != null) unawaited(_cacheSuggestedEvents(userId, suggestedEvents));
   }
 
   Future<void> dismissSuggestedEvent(String eventId) async {
@@ -347,6 +353,8 @@ class HomeFeedController extends GetxController {
       // the publishing progress bar above Stories, never by incomplete feed cards.
       if (!refresh) {
         await _loadCachedFeedAndOutbox(userId);
+      } else if (suggestedProfiles.isEmpty || suggestedEvents.isEmpty) {
+        await _restoreCachedSuggestions(userId);
       }
 
       debugPrint('[HOME_FEED] fetchFeed started with refresh=$refresh');
@@ -364,12 +372,21 @@ class HomeFeedController extends GetxController {
       int communityPostCount = remoteItems.where((p) => p.communityId != null).length;
       debugPrint('[HOME_FEED] Item counts per type -> Standard Posts: $postTypeCount, Community Posts: $communityPostCount');
 
-      // Only fully-created posts are displayed in the feed.
+      // Refresh the first page without throwing away pages already loaded
+      // while the user was scrolling. This keeps existing cards mounted in
+      // the controller and prevents a refresh from shortening the feed.
       final Map<String, CommunityPost> uniqueMap = {};
       for (final post in remoteItems) {
-        uniqueMap[post.id] = post;
+        if (post.id.isNotEmpty && !post.isPublishing) uniqueMap[post.id] = post;
       }
-      posts.value = uniqueMap.values.toList();
+      if (posts.isNotEmpty) {
+        for (final post in posts) {
+          if (post.id.isNotEmpty && !post.isPublishing) {
+            uniqueMap.putIfAbsent(post.id, () => post);
+          }
+        }
+      }
+      posts.assignAll(uniqueMap.values);
 
       // Keep the first 15 complete cards available for the next cold start.
       // Cache only after the new feed has been installed in memory.
@@ -379,6 +396,7 @@ class HomeFeedController extends GetxController {
       try {
         final profiles = await _feedRepo.getSuggestedProfiles(limit: 10);
         suggestedProfiles.assignAll(profiles);
+        await _cacheSuggestedProfiles(userId, profiles);
         debugPrint('[HOME_FEED] Suggested profiles count: ${profiles.length}');
       } catch (e) {
         debugPrint('[HOME_FEED] Error fetching suggested profiles: $e');
@@ -387,6 +405,7 @@ class HomeFeedController extends GetxController {
       try {
         final events = await _eventRepo.getSuggestedEvents(forceRefresh: refresh);
         suggestedEvents.assignAll(events);
+        await _cacheSuggestedEvents(userId, events);
         debugPrint('[HOME_FEED] Suggested events count: ${events.length}');
       } catch (e) {
         debugPrint('[HOME_FEED] Error fetching suggested events: $e');
@@ -489,12 +508,115 @@ class HomeFeedController extends GetxController {
         posts.assignAll(cachedPosts);
         state.value = HomeFeedState.loaded;
       }
+      await _restoreCachedSuggestions(userId);
       debugPrint(
         '[HOME_FEED] Restored ${cachedPosts.length}/$_homeFeedCacheLimit complete cached cards.',
       );
     } catch (e, st) {
       debugPrint('[HOME_FEED] Error loading complete cached feed: $e\\n$st');
     }
+  }
+
+  Future<void> _restoreCachedSuggestions(String userId) async {
+    final cache = _fastCache;
+    if (cache == null || !cache.isReady) return;
+    try {
+      if (suggestedProfiles.isEmpty) {
+        final rows = cache.get<List<dynamic>>(
+          FastCacheKey.homeFeedSuggestedProfiles(userId),
+          maxAge: const Duration(hours: 12),
+        );
+        if (rows != null) {
+          final restored = <SuggestedProfileModel>[];
+          for (final row in rows) {
+            if (row is! Map) continue;
+            try {
+              final map = Map<String, dynamic>.from(row);
+              restored.add(SuggestedProfileModel(
+                id: (map['id'] ?? '').toString(),
+                name: (map['name'] ?? '').toString(),
+                username: (map['username'] ?? '').toString(),
+                photoUrl: map['photo_url']?.toString(),
+                reasonSubtitle: (map['reason_subtitle'] ?? '').toString(),
+                isCertified: map['is_certified'] == true,
+                isAdded: map['is_added'] == true,
+                isRequestSent: map['is_request_sent'] == true,
+              ));
+            } catch (_) {}
+          }
+          suggestedProfiles.assignAll(restored.where((item) => item.id.isNotEmpty));
+        }
+      }
+      if (suggestedEvents.isEmpty) {
+        final rows = cache.get<List<dynamic>>(
+          FastCacheKey.homeFeedSuggestedEvents(userId),
+          maxAge: const Duration(hours: 12),
+        );
+        if (rows != null) {
+          final restored = <EventModel>[];
+          for (final row in rows) {
+            if (row is! Map) continue;
+            try {
+              restored.add(EventModel.fromJson(Map<String, dynamic>.from(row)));
+            } catch (e) {
+              debugPrint('[HOME_FEED_CACHE] Ignoring invalid cached suggested event: $e');
+            }
+          }
+          suggestedEvents.assignAll(restored.where((event) => event.id.isNotEmpty));
+        }
+      }
+      debugPrint('[HOME_FEED_CACHE] Restored suggestions profiles=${suggestedProfiles.length}, events=${suggestedEvents.length}');
+    } catch (e) {
+      debugPrint('[HOME_FEED_CACHE] Suggestion restore failed: $e');
+    }
+  }
+
+  Future<void> _cacheSuggestedProfiles(
+    String userId,
+    Iterable<SuggestedProfileModel> profiles,
+  ) async {
+    final snapshot = profiles.map((profile) => <String, dynamic>{
+      'id': profile.id,
+      'name': profile.name,
+      'username': profile.username,
+      'photo_url': profile.photoUrl,
+      'reason_subtitle': profile.reasonSubtitle,
+      'is_certified': profile.isCertified,
+      'is_added': profile.isAdded,
+      'is_request_sent': profile.isRequestSent,
+    }).toList(growable: false);
+    await _fastCache?.set(FastCacheKey.homeFeedSuggestedProfiles(userId), snapshot);
+  }
+
+  Future<void> _cacheSuggestedEvents(
+    String userId,
+    Iterable<EventModel> events,
+  ) async {
+    final snapshot = events.map((event) {
+      final data = event.toJson();
+      data.addAll({
+        'gallery_urls': event.galleryUrls,
+        'country': event.country?.toJson(),
+        'city': event.city?.toJson(),
+        'latitude': event.latitude,
+        'longitude': event.longitude,
+        'is_online': event.isOnline,
+        'max_participants': event.maxParticipants,
+        'requires_approval': event.requiresApproval,
+        'is_free': event.isFree,
+        'price': event.price,
+        'currency': event.currency,
+        'interested_count': event.interestedCount,
+        'going_count': event.goingCount,
+        'checked_in_count': event.checkedInCount,
+        'total_added_count': event.totalAddedCount,
+        'share_count': event.shareCount,
+        'is_recurring': event.isRecurring,
+        'category': event.category,
+      });
+      return data;
+    }).toList(growable: false);
+    await _fastCache?.set(FastCacheKey.homeFeedSuggestedEvents(userId), snapshot);
   }
 
   Future<void> _cacheFeedItems(String userId, List<CommunityPost> items) async {
