@@ -561,6 +561,7 @@ class FeedPostCard extends StatelessWidget {
             : (photoUrl != null && photoUrl.isNotEmpty)
                 ? AppCachedImage(
                     imageUrl: photoUrl,
+                    cacheInPersistentStore: true,
                     width: size,
                     height: size,
                     fit: BoxFit.cover,
