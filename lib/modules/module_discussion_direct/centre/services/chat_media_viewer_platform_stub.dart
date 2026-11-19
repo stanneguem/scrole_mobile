@@ -25,7 +25,7 @@ Future<bool> saveChatMediaToGallery(String url, String fileName) async => false;
 Future<bool> shareChatMedia(String url) async {
   try {
     final uri = Uri.parse(url);
-    late final List<int> bytes;
+    late final Uint8List bytes;
     late final String segment;
     late final String mimeType;
     if (url.startsWith('data:')) {
