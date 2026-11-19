@@ -1,8 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
+import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../modules/module_discussion_direct/centre/services/chat_media_cache.dart';
+import '../../app/local_storage/fast/fast_cache_service.dart';
 import 'shimmer.dart';
 
 class AppCachedImage extends StatelessWidget {
@@ -19,6 +25,8 @@ class AppCachedImage extends StatelessWidget {
   final int imageQuality;
   final VoidCallback? onImageLoaded;
   final DateTime? cacheUntil;
+  /// Persist this image across widget disposal and app navigation (avatars).
+  final bool cacheInPersistentStore;
 
   const AppCachedImage({
     super.key,
@@ -35,6 +43,7 @@ class AppCachedImage extends StatelessWidget {
     this.imageQuality = 80,
     this.onImageLoaded,
     this.cacheUntil,
+    this.cacheInPersistentStore = false,
   });
 
   static Future<void> clearPrivateMediaCache(String objectKey) async {
@@ -44,6 +53,18 @@ class AppCachedImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl.isEmpty) return _error();
+    if (cacheInPersistentStore) {
+      return _PersistentCachedImage(
+        imageUrl: imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        borderRadius: borderRadius,
+        placeholder: placeholder,
+        errorWidget: errorWidget,
+        onImageLoaded: onImageLoaded,
+      );
+    }
     if (_isRemote(imageUrl)) return _networkImage(imageUrl);
 
     if (_isR2Key(imageUrl)) {
@@ -117,6 +138,171 @@ class AppCachedImage extends StatelessWidget {
     height: height,
     color: Colors.grey[200],
     child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+  );
+}
+
+
+/// Session-wide memory + Hive cache for profile avatars. The cache key is
+/// derived from the stable source reference, so signed URL rotation does not
+/// force another download for private R2 object keys.
+class _PersistentCachedImage extends StatefulWidget {
+  const _PersistentCachedImage({
+    required this.imageUrl,
+    this.width,
+    this.height,
+    required this.fit,
+    this.borderRadius,
+    this.placeholder,
+    this.errorWidget,
+    this.onImageLoaded,
+  });
+
+  final String imageUrl;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  final BorderRadius? borderRadius;
+  final Widget? placeholder;
+  final Widget? errorWidget;
+  final VoidCallback? onImageLoaded;
+
+  @override
+  State<_PersistentCachedImage> createState() => _PersistentCachedImageState();
+}
+
+class _PersistentCachedImageState extends State<_PersistentCachedImage> {
+  static final Map<String, Uint8List> _memory = <String, Uint8List>{};
+  static final Map<String, Future<Uint8List?>> _inFlight = {};
+  static const Duration _refreshAfter = Duration(days: 30);
+
+  Uint8List? _bytes;
+  bool _failed = false;
+
+  String get _cacheKey => 'profile_avatar_bytes_${sha256.convert(utf8.encode(widget.imageUrl))}';
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreAndLoad();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PersistentCachedImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageUrl != widget.imageUrl) {
+      _bytes = null;
+      _failed = false;
+      _restoreAndLoad();
+    }
+  }
+
+  Future<void> _restoreAndLoad() async {
+    final key = _cacheKey;
+    final inMemory = _memory[key];
+    if (inMemory != null && mounted) {
+      setState(() => _bytes = inMemory);
+      return;
+    }
+
+    final cache = Get.isRegistered<FastCacheService>()
+        ? Get.find<FastCacheService>()
+        : null;
+    final stored = cache != null && cache.isReady
+        ? cache.get<dynamic>(key)
+        : null;
+    if (stored is Map && stored['bytes'] is Uint8List) {
+      final bytes = stored['bytes'] as Uint8List;
+      _memory[key] = bytes;
+      if (mounted) setState(() => _bytes = bytes);
+      final savedAt = DateTime.tryParse(stored['saved_at']?.toString() ?? '');
+      if (savedAt != null && DateTime.now().difference(savedAt) < _refreshAfter) {
+        return;
+      }
+    }
+
+    final bytes = await _download();
+    if (bytes != null && bytes.isNotEmpty) {
+      _memory[key] = bytes;
+      if (cache != null && cache.isReady) {
+        await cache.set(key, {
+          'bytes': bytes,
+          'saved_at': DateTime.now().toIso8601String(),
+        });
+      }
+      if (mounted) setState(() {
+        _bytes = bytes;
+        _failed = false;
+      });
+    } else if (_bytes == null && mounted) {
+      setState(() => _failed = true);
+    }
+  }
+
+  Future<Uint8List?> _download() {
+    final key = _cacheKey;
+    return _inFlight.putIfAbsent(key, () async {
+      try {
+        String url = widget.imageUrl;
+        if (!_isHttpUrl(url)) {
+          if (!const ['private/', 'messages/', 'stories/', 'bug-reports/',
+              'comments/', 'communities/', 'posts/', 'profiles/', 'events/']
+              .any(url.startsWith)) return null;
+          final response = await Supabase.instance.client.functions.invoke(
+            'r2-media-upload',
+            body: {'action': 'create-download-url', 'object_key': url},
+          );
+          if (response.status < 200 || response.status >= 300 || response.data is! Map) return null;
+          url = Map<String, dynamic>.from(response.data as Map)['url']?.toString() ?? '';
+        }
+        if (!_isHttpUrl(url)) return null;
+        final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 25));
+        if (response.statusCode < 200 || response.statusCode >= 300 ||
+            response.bodyBytes.isEmpty) return null;
+        return Uint8List.fromList(response.bodyBytes);
+      } catch (e) {
+        debugPrint('[AVATAR_CACHE] download failed: $e');
+        return null;
+      } finally {
+        _inFlight.remove(key);
+      }
+    });
+  }
+
+  bool _isHttpUrl(String value) => value.startsWith('https://') || value.startsWith('http://');
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget child;
+    if (_bytes != null) {
+      child = Image.memory(
+        _bytes!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        gaplessPlayback: true,
+        errorBuilder: (_, __, ___) => widget.errorWidget ?? _fallback(),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onImageLoaded?.call());
+    } else if (_failed) {
+      child = widget.errorWidget ?? _fallback();
+    } else {
+      child = widget.placeholder ?? SkeletonShimmer(
+        width: widget.width ?? double.infinity,
+        height: widget.height ?? double.infinity,
+        borderRadius: widget.borderRadius?.topLeft.x ?? 0,
+      );
+    }
+    return ClipRRect(
+      borderRadius: widget.borderRadius ?? BorderRadius.zero,
+      child: child,
+    );
+  }
+
+  Widget _fallback() => Container(
+    width: widget.width,
+    height: widget.height,
+    color: Colors.grey[200],
+    child: const Icon(Icons.person_rounded, color: Colors.grey),
   );
 }
 
