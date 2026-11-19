@@ -390,7 +390,7 @@ class HomeFeedController extends GetxController {
 
       // Keep the first 15 complete cards available for the next cold start.
       // Cache only after the new feed has been installed in memory.
-      await _cacheFeedItems(userId, remoteItems);
+      await _cacheCurrentFeed();
 
       // Fetch suggested profiles and suggested events
       try {
@@ -504,7 +504,7 @@ class HomeFeedController extends GetxController {
       }
 
       // Render cached cards immediately; do not wait for the outbox DB read.
-      if (cachedPosts.isNotEmpty) {
+      if (cachedPosts.isNotEmpty && posts.isEmpty) {
         posts.assignAll(cachedPosts);
         state.value = HomeFeedState.loaded;
       }
