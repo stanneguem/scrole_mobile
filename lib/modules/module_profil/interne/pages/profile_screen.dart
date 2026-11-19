@@ -216,6 +216,7 @@ class ProfileScreen extends GetView<ProfileController> {
                           : ClipOval(
                               child: AppCachedImage(
                                 imageUrl: avatarUrl,
+                                cacheInPersistentStore: true,
                                 width: 90,
                                 height: 90,
                                 fit: BoxFit.cover,
