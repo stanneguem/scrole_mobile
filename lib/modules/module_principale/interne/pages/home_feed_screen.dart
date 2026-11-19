@@ -306,6 +306,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                             ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 760),
                               child: FeedPostCard(
+                                key: ValueKey('sponsored-${sponsored.id}'),
                                 post: sponsored,
                                 onVideoQualifiedView: (_) => feedController.recordSponsoredImpression(sponsored),
                                 onSponsoredInteraction: () => feedController.recordSponsoredInteraction(sponsored),
@@ -350,6 +351,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 760),
                         child: FeedPostCard(
+                          key: ValueKey('post-${post.id}'),
                           post: post,
                           onVideoQualifiedView: (postId) => feedController.queueQualifiedVideoPostView(postId, post),
                           onRetryPublishing: () => feedController.retryQueuedPost(post.id),
@@ -838,6 +840,7 @@ class _SuggestedProfilesCarousel extends StatelessWidget {
               itemCount: profiles.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) => _SuggestedProfileActionCard(
+                key: ValueKey('suggested-profile-${profiles[index].id}'),
                 profile: profiles[index],
                 controller: controller,
               ),
@@ -852,6 +855,7 @@ class _SuggestedProfilesCarousel extends StatelessWidget {
 
 class _SuggestedProfileActionCard extends StatefulWidget {
   const _SuggestedProfileActionCard({
+    super.key,
     required this.profile,
     required this.controller,
   });
@@ -1123,6 +1127,7 @@ class _SuggestedEventsCarousel extends StatelessWidget {
               itemCount: events.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) => _SuggestedEventActionCard(
+                key: ValueKey('suggested-event-${events[index].id}'),
                 event: events[index],
                 controller: controller,
               ),
@@ -1136,7 +1141,7 @@ class _SuggestedEventsCarousel extends StatelessWidget {
 }
 
 class _SuggestedEventActionCard extends StatefulWidget {
-  const _SuggestedEventActionCard({required this.event, required this.controller});
+  const _SuggestedEventActionCard({super.key, required this.event, required this.controller});
 
   final EventModel event;
   final HomeFeedController controller;
