@@ -219,6 +219,14 @@ class ProfileScreen extends GetView<ProfileController> {
                                 width: 90,
                                 height: 90,
                                 fit: BoxFit.cover,
+                                errorWidget: Container(
+                                  color: colorScheme.primary,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    controller.initials,
+                                    style: AppTextStyles.h3.copyWith(color: Colors.white),
+                                  ),
+                                ),
                               ),
                             ),
                     ),
