@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../media/media_asset.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -87,6 +89,67 @@ class StorageRepository {
       debugPrint('[Warning] Erreur nettoyage storage: $e');
     }
   }
+
+  /// Cross-platform uploads for media selected as XFile (including Web Blob files).
+  Future<String> _uploadPublicImageAsset(
+    XFile file, {
+    required String category,
+    required String entityId,
+  }) async {
+    final uploaded = await _r2MediaRepository.uploadMediaAsset(
+      media: MediaAsset.fromXFile(file),
+      category: category,
+      mediaType: 'image',
+      entityId: entityId,
+    );
+    final url = uploaded.publicUrl;
+    if (url == null || url.isEmpty || !uploaded.isPublic) {
+      throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour $category.');
+    }
+    return url;
+  }
+
+  Future<String> uploadProfilePictureAsset(String userId, XFile file) async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null || currentUser.id != userId) {
+      throw Exception('Vous ne pouvez téléverser que votre propre photo de profil.');
+    }
+    return _uploadPublicImageAsset(
+      file,
+      category: 'profile_avatar',
+      entityId: userId,
+    );
+  }
+
+  Future<String> uploadProfileCoverAsset(String userId, XFile file) async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null || currentUser.id != userId) {
+      throw Exception('Vous ne pouvez téléverser que votre propre couverture de profil.');
+    }
+    return _uploadPublicImageAsset(
+      file,
+      category: 'profile_cover',
+      entityId: userId,
+    );
+  }
+
+  Future<String> uploadCommunityAvatarAsset(
+    XFile file, {
+    required String communityId,
+  }) => _uploadPublicImageAsset(
+    file,
+    category: 'community_avatar',
+    entityId: communityId,
+  );
+
+  Future<String> uploadCommunityBannerAsset(
+    XFile file, {
+    required String communityId,
+  }) => _uploadPublicImageAsset(
+    file,
+    category: 'community_cover',
+    entityId: communityId,
+  );
 
   /// Upload une photo de profil utilisateur
   /// Structure : profiles/{userId}/avatar_{timestamp}.jpg
