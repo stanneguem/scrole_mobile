@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../app/local_storage/feed_video_cache_io.dart';
+import '../../app/local_storage/feed_video_cache.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -527,6 +526,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       // and adaptive streams fall back to native streaming without a copy.
       final localPath = await findOrCacheFeedVideo(widget.url);
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) return;
+      // Web never receives a filesystem path: it streams the remote URL.
+      // Native platforms may use the bounded disk cache when available.
       controller = localPath != null
           ? VideoPlayerController.file(File(localPath))
           : VideoPlayerController.networkUrl(Uri.parse(widget.url));
