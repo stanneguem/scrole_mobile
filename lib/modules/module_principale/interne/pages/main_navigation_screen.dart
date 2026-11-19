@@ -121,6 +121,72 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     return false;
   }
 
+  Widget _buildTabletNavigation(
+    MainLayoutController controller,
+    ColorScheme colorScheme,
+  ) {
+    Widget destination(int index, Widget icon, String tooltip) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Obx(() {
+          final selected = controller.currentTab.value == index;
+          return Tooltip(
+            message: tooltip,
+            child: Material(
+              color: selected
+                  ? colorScheme.primary.withValues(alpha: 0.13)
+                  : Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _onTabChanged(index),
+                child: SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: Center(
+                    child: IconTheme(
+                      data: IconThemeData(
+                        color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                        size: 25,
+                      ),
+                      child: icon,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      );
+    }
+
+    return Container(
+      width: 76,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45))),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 14),
+            destination(0, SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn)), 'nav_home'.tr),
+            destination(1, SvgPicture.asset('assets/svg_icons/discussion.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)), 'Communautés'),
+            destination(2, const Icon(Icons.video_library_rounded), 'Réels'),
+            destination(3, SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)), 'nav_events'.tr),
+            destination(4, Obx(() => Badge(
+              isLabelVisible: controller.hasNotifications,
+              label: Text(controller.notificationBadge),
+              child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)),
+            )), 'Notifications'),
+            destination(5, const _BottomNavProfileIcon(isSelected: false), 'nav_profile'.tr),
+            const Spacer(),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDesktopSidebar(
     MainLayoutController controller,
     ColorScheme colorScheme,
@@ -245,9 +311,11 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isDesktop = constraints.maxWidth >= 1100;
+          final isTablet = constraints.maxWidth >= 760 && !isDesktop;
           return Row(
             children: [
               if (isDesktop) _buildDesktopSidebar(controller, colorScheme),
+              if (isTablet) _buildTabletNavigation(controller, colorScheme),
               Expanded(
                 child: Stack(
                   children: [
@@ -270,7 +338,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               ),
             ),
           ),
-                    if (!isDesktop)
+                    if (!isDesktop && !isTablet)
                     Positioned(
                     left: 0,
                     right: 0,
