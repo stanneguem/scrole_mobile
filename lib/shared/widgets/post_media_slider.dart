@@ -228,7 +228,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
                         setState(() => _videoOverlayOpacity = opacity);
                       },
                       url: item.url,
-                      thumbnailUrl: item.thumbnailUrl,
+                      thumbnailUrl: item.safeThumbnailUrl,
                       onOpenFullScreen: () => _openFullScreen(context, index),
                        onOpenVideoReel: widget.onOpenVideoReel == null
                            ? null
