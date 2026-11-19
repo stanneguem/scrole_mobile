@@ -536,15 +536,25 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       }
       // Handle repetitions ourselves: native infinite looping would never stop.
       await controller.setLooping(false);
-      // Feed autoplay starts with sound enabled. The in-card control lets
-      // the viewer mute/unmute without opening the fullscreen player.
-      // Browsers block autoplay with audio. Start muted on Web, then let the viewer enable sound.
-      if (kIsWeb) _isMuted = true;
-      await controller.setVolume(_isMuted ? 0 : 1);
+      // Prefer sound by default on every platform. Some browsers reject
+      // autoplay with audio until the viewer has interacted with the page.
+      // In that case only, retry muted so the video still starts; the
+      // in-card volume control lets the viewer enable audio immediately.
+      _isMuted = false;
+      await controller.setVolume(1);
       _controller = controller;
       controller.addListener(_onVideoValueChanged);
       setState(() {});
-      await controller.play();
+      try {
+        await controller.play();
+      } catch (playError) {
+        if (!kIsWeb) rethrow;
+        debugPrint('[POST_MEDIA] Browser blocked audible autoplay; retrying muted: $playError');
+        await controller.setVolume(0);
+        _isMuted = true;
+        if (mounted) setState(() {});
+        await controller.play();
+      }
     } catch (error) {
       debugPrint('[POST_MEDIA] inline video initialization failed: $error');
       await controller?.dispose();
