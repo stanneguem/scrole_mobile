@@ -241,6 +241,11 @@ class _Header extends StatelessWidget {
                       : AppCachedImage(
                           imageUrl: profile.photoUrl!,
                           fit: BoxFit.cover,
+                          errorWidget: Container(
+                            color: colors.primary,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.person_rounded, size: 48, color: Colors.white),
+                          ),
                         ),
                 ),
               ),
