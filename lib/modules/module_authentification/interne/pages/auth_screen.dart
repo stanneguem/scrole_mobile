@@ -1,12 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+
 import '../../../../app/theme/text_styles.dart';
 import '../../../../shared/constantes/image_path.dart';
 import '../../../../shared/widgets/auth_button.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../shared/widgets/external_web_view_screen.dart';
-
 import '../../interne/controllers/auth_controller.dart';
 
 class AuthScreen extends GetView<AuthController> {
@@ -20,7 +20,6 @@ class AuthScreen extends GetView<AuthController> {
       backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
-          // Blobs
           Positioned(
             top: -80,
             left: -60,
@@ -31,7 +30,6 @@ class AuthScreen extends GetView<AuthController> {
             right: -80,
             child: _AmbientBlob(color: colorScheme.secondary, size: 300),
           ),
-
           SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -39,91 +37,89 @@ class AuthScreen extends GetView<AuthController> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
-                children: [
-                  const Spacer(flex: 3),
-
-                  // Logo
-                  Container(
-                    width: 156,
-                    height: 156,
-                    alignment: Alignment.center,
-                    child: Image.asset(ImagePath.logoApp),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  Text(
-                    'welcome_back'.tr,
-                    style: AppTextStyles.appName.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  Text(
-                    'description'.tr,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-
-                  const Spacer(flex: 4),
-
-                  // Bouton Google
-                  Obx(() => AppAuthButton(
-                    onPressed: controller.authentification,
-                    isLoading: controller.isLoading.value,
-                    icon: SvgPicture.asset(
-                      ImagePath.googleImage,
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.g_mobiledata_rounded,
-                        color: colorScheme.onSurface,
-                        size: 24,
+                    children: [
+                      const Spacer(flex: 3),
+                      Container(
+                        width: 156,
+                        height: 156,
+                        alignment: Alignment.center,
+                        child: Image.asset(ImagePath.logoApp),
                       ),
-                    ),
-                    text: 'continue_with_google'.tr,
-                  )),
-
-                  const SizedBox(height: 20),
-
-                  Text.rich(
-                    TextSpan(
-                      style: AppTextStyles.link.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      const SizedBox(height: 28),
+                      Text(
+                        'welcome_back'.tr,
+                        style: AppTextStyles.appName.copyWith(
+                          color: colorScheme.onSurface,
+                        ),
                       ),
-                      children: [
-                        TextSpan(text: '${'agree_continue'.tr} '),
-                        TextSpan(
-                          text: 'terms'.tr,
-                          style: AppTextStyles.link.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => _openLegalUrl('https://legal.scrole.fun', 'terms'.tr),
+                      const SizedBox(height: 12),
+                      Text(
+                        'description'.tr,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
-                        TextSpan(text: ' ${'and'.tr} '),
-                        TextSpan(
-                          text: 'privacy_policy'.tr,
-                          style: AppTextStyles.link.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                            decoration: TextDecoration.underline,
+                      ),
+                      const Spacer(flex: 4),
+                      Obx(
+                        () => AppAuthButton(
+                          onPressed: controller.authentification,
+                          isLoading: controller.isLoading.value,
+                          icon: SvgPicture.asset(
+                            ImagePath.googleImage,
+                            width: 20,
+                            height: 20,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.g_mobiledata_rounded,
+                              color: colorScheme.onSurface,
+                              size: 24,
+                            ),
                           ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () => _openLegalUrl('https://police.scrole.fun', 'privacy_policy'.tr),
+                          text: 'continue_with_google'.tr,
                         ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      Text.rich(
+                        TextSpan(
+                          style: AppTextStyles.link.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          children: [
+                            TextSpan(text: '${'agree_continue'.tr} '),
+                            TextSpan(
+                              text: 'terms'.tr,
+                              style: AppTextStyles.link.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openLegalUrl(
+                                      'https://legal.scrole.fun',
+                                      'terms'.tr,
+                                    ),
+                            ),
+                            TextSpan(text: ' ${'and'.tr} '),
+                            TextSpan(
+                              text: 'privacy_policy'.tr,
+                              style: AppTextStyles.link.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openLegalUrl(
+                                      'https://police.scrole.fun',
+                                      'privacy_policy'.tr,
+                                    ),
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
-                    const SizedBox(height: 24),
-                  ],
                 ),
               ),
             ),
@@ -140,6 +136,7 @@ Future<void> _openLegalUrl(String url, String title) async {
 
 class _AmbientBlob extends StatelessWidget {
   const _AmbientBlob({required this.color, required this.size});
+
   final Color color;
   final double size;
 
