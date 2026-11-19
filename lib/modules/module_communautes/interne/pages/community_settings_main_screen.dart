@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -2432,14 +2432,14 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         maxSelection: 1,
         onSelected: (files) {
           if (files.isNotEmpty) {
-            _processImageFile(isProfile: isProfile, pickedFile: File(files.first.path));
+            _processImageFile(isProfile: isProfile, pickedFile: files.first);
           }
         },
       ),
     );
   }
 
-  Future<void> _processImageFile({required bool isProfile, required File pickedFile}) async {
+  Future<void> _processImageFile({required bool isProfile, required XFile pickedFile}) async {
     setState(() => _isLoading = true);
     String? uploadedUrl;
     final previousUrl = ((isProfile ? _currentAvatarUrl : _currentCoverUrl) ?? '').trim();
@@ -2453,8 +2453,8 @@ class _CommunityImagesScreenState extends State<CommunityImagesScreen> {
         throw Exception('community_settings_image_too_large');
       }
       uploadedUrl = isProfile
-          ? await _storage.uploadCommunityAvatar(file, communityId: widget.communityId)
-          : await _storage.uploadCommunityBanner(file, communityId: widget.communityId);
+          ? await _storage.uploadCommunityAvatarAsset(file, communityId: widget.communityId)
+          : await _storage.uploadCommunityBannerAsset(file, communityId: widget.communityId);
 
       final snapshot = await _service.getCommunityManagementSettings(widget.communityId);
       final community = snapshot['community'] is Map
