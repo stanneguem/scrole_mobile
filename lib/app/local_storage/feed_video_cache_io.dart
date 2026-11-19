@@ -122,3 +122,12 @@ Future<void> clearFeedVideoCache() async {
     if (await directory.exists()) await directory.delete(recursive: true);
   } catch (_) {}
 }
+
+
+VideoPlayerController createFeedVideoController(String? localPath, String url) {
+  if (localPath != null) {
+    final file = File(localPath);
+    if (file.existsSync()) return VideoPlayerController.file(file);
+  }
+  return VideoPlayerController.networkUrl(Uri.parse(url));
+}
