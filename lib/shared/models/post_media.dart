@@ -17,6 +17,38 @@ class PostMedia {
 
   bool get isVideo => type.toLowerCase().contains('video');
 
+  /// A video URL must never be handed to Flutter's image decoder as a poster.
+  /// Some legacy/API payloads accidentally duplicate the video URL into
+  /// thumbnail_url; signed URLs can also differ only by their query string.
+  String? get safeThumbnailUrl {
+    final candidate = thumbnailUrl?.trim();
+    if (candidate == null || candidate.isEmpty) return null;
+    if (candidate == url.trim()) return null;
+
+    final candidateUri = Uri.tryParse(candidate);
+    final mediaUri = Uri.tryParse(url.trim());
+    if (candidateUri != null) {
+      if (candidateUri.scheme.toLowerCase() == 'data' &&
+          candidateUri.data?.mimeType.toLowerCase().startsWith('video/') == true) {
+        return null;
+      }
+      const videoExtensions = {
+        '.mp4', '.m4v', '.mov', '.webm', '.mkv', '.3gp', '.avi', '.m3u8', '.mpd',
+      };
+      final path = candidateUri.path.toLowerCase();
+      if (videoExtensions.any(path.endsWith)) return null;
+
+      // Ignore query parameters (tokens/signatures) when comparing media URLs.
+      if (mediaUri != null &&
+          candidateUri.host.isNotEmpty &&
+          candidateUri.host == mediaUri.host &&
+          candidateUri.path == mediaUri.path) {
+        return null;
+      }
+    }
+    return candidate;
+  }
+
   factory PostMedia.fromJson(Map<String, dynamic> json) {
     final rawType = (json['type'] ?? json['media_type'] ?? json['mime_type'] ?? 'photo').toString().toLowerCase();
     final type = (rawType.contains('video') || rawType == 'reel')
