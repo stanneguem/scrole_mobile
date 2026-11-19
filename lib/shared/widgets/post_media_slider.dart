@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -529,9 +528,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) return;
       // Web never receives a filesystem path: it streams the remote URL.
       // Native platforms may use the bounded disk cache when available.
-      controller = localPath != null
-          ? VideoPlayerController.file(File(localPath))
-          : VideoPlayerController.networkUrl(Uri.parse(widget.url));
+      controller = createFeedVideoController(localPath, widget.url);
       await controller.initialize();
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) {
         await controller.dispose();
