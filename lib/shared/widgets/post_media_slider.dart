@@ -70,7 +70,7 @@ class _PostMediaSliderState extends State<PostMediaSlider> {
     // The other carousel pages are not fetched just to calculate card height.
     final media = widget.media.first;
     final source = media.isVideo
-        ? (media.thumbnailUrl ?? '')
+        ? (media.safeThumbnailUrl ?? '')
         : media.url;
     if (source.trim().isEmpty) return;
 
