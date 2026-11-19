@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -634,14 +633,14 @@ class ProfileController extends GetxController {
     String? uploadedCoverUrl;
     bool profileCoverSaved = false;
     try {
-      final File? picked = await _mediaService.pickCoverImage(source: source);
+      final XFile? picked = await _mediaService.pickCoverImage(source: source);
       if (picked == null) return;
 
       isUploadingCover.value = true;
       final previousCoverUrl = coverUrl.value.trim().isNotEmpty
           ? coverUrl.value.trim()
           : coverImageUrl.value.trim();
-      final String uploadedUrl = await _storageRepository.uploadProfileCover(userId.value, picked);
+      final String uploadedUrl = await _storageRepository.uploadProfileCoverAsset(userId.value, picked);
       uploadedCoverUrl = uploadedUrl;
 
       final saved = await updateProfile(
@@ -687,7 +686,7 @@ class ProfileController extends GetxController {
     debugPrint('[PROFILE_AVATAR][$traceId] START source=$source userId=${userId.value}');
     try {
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 1: sélection, recadrage et compression');
-      final File? picked = await _mediaService.pickProfileImage(source: source);
+      final XFile? picked = await _mediaService.pickProfileImage(source: source);
       if (picked == null) {
         debugPrint('[PROFILE_AVATAR][$traceId] STOP: sélection annulée ou aucune image');
         return;
@@ -704,7 +703,7 @@ class ProfileController extends GetxController {
           ? avatarUrl.value.trim()
           : profileImageUrl.value.trim();
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 3: upload via StorageRepository');
-      final String uploadedUrl = await _storageRepository.uploadProfilePicture(userId.value, picked);
+      final String uploadedUrl = await _storageRepository.uploadProfilePictureAsset(userId.value, picked);
       uploadedAvatarUrl = uploadedUrl;
       debugPrint('[PROFILE_AVATAR][$traceId] STEP 4: upload terminé url=$uploadedUrl');
 
