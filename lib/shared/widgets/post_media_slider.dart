@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../app/local_storage/feed_video_cache_io.dart';
 import 'package:get/get.dart';
@@ -538,6 +539,8 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
       await controller.setLooping(false);
       // Feed autoplay starts with sound enabled. The in-card control lets
       // the viewer mute/unmute without opening the fullscreen player.
+      // Browsers block autoplay with audio. Start muted on Web, then let the viewer enable sound.
+      if (kIsWeb) _isMuted = true;
       await controller.setVolume(_isMuted ? 0 : 1);
       _controller = controller;
       controller.addListener(_onVideoValueChanged);
