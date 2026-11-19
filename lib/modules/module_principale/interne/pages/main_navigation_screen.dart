@@ -289,6 +289,7 @@ class _BottomNavProfileIcon extends StatelessWidget {
           child: avatar.isNotEmpty
               ? AppCachedImage(
                   imageUrl: avatar,
+                  cacheInPersistentStore: true,
                   width: 28,
                   height: 28,
                   fit: BoxFit.cover,
