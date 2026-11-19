@@ -1,3 +1,5 @@
+import 'package:video_player/video_player.dart';
+
 import 'feed_video_cache_stub.dart'
     if (dart.library.io) 'feed_video_cache_io.dart' as platform;
 
