@@ -772,6 +772,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
               progressive: true,
               lowResolutionWidth: 720,
               highResolutionWidth: 720,
+              errorWidget: const ColoredBox(color: Colors.black),
             )
           else
             const ColoredBox(color: Colors.black),
