@@ -115,8 +115,8 @@ class CommunityLocalDao {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     return await db.query(
       'community_outbox',
-      where: 'user_id = ? AND status = "pending" AND next_retry_at <= ?',
-      whereArgs: [userId, nowMs],
+      where: 'user_id = ? AND status = ? AND next_retry_at <= ?',
+      whereArgs: [userId, 'pending', nowMs],
       orderBy: 'created_at ASC',
     );
   }
