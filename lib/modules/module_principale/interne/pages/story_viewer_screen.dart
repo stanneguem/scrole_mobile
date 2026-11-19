@@ -929,13 +929,18 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                       CircleAvatar(
                                         radius: 18,
                                         backgroundColor: Colors.white24,
-                                        backgroundImage: _currentGroup.author.photoUrl != null &&
+                                        child: _currentGroup.author.photoUrl != null &&
                                                 _currentGroup.author.photoUrl!.isNotEmpty
-                                            ? NetworkImage(_currentGroup.author.photoUrl!)
-                                            : null,
-                                        child: _currentGroup.author.photoUrl == null ||
-                                                _currentGroup.author.photoUrl!.isEmpty
-                                            ? Text(
+                                            ? ClipOval(
+                                                child: AppCachedImage(
+                                                  imageUrl: _currentGroup.author.photoUrl!,
+                                                  width: 36,
+                                                  height: 36,
+                                                  fit: BoxFit.cover,
+                                                  errorWidget: const Icon(Icons.person, color: Colors.white, size: 20),
+                                                ),
+                                              )
+                                            : Text(
                                                 _currentGroup.author.displayName.isNotEmpty
                                                     ? _currentGroup.author.displayName[0].toUpperCase()
                                                     : 'U',
@@ -943,8 +948,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                                                   color: Colors.white,
                                                   fontWeight: FontWeight.bold,
                                                 ),
-                                              )
-                                            : null,
+                                              ),
                                       ),
                                       const SizedBox(width: 8),
                                       Flexible(
@@ -1625,12 +1629,17 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
                         leading: CircleAvatar(
                           radius: 22,
                           backgroundColor: colorScheme.surfaceContainerHighest,
-                          backgroundImage:
-                              photoUrl != null && photoUrl.isNotEmpty
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl == null || photoUrl.isEmpty
-                              ? Text(
+                          child: photoUrl != null && photoUrl.isNotEmpty
+                              ? ClipOval(
+                                  child: AppCachedImage(
+                                    imageUrl: photoUrl,
+                                    width: 44,
+                                    height: 44,
+                                    fit: BoxFit.cover,
+                                    errorWidget: Icon(Icons.person, color: colorScheme.onSurfaceVariant),
+                                  ),
+                                )
+                              : Text(
                                   displayName.isNotEmpty
                                       ? displayName[0].toUpperCase()
                                       : 'U',
@@ -1638,8 +1647,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
                                     color: colorScheme.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
-                                )
-                              : null,
+                                ),
                         ),
                         title: Row(
                           children: [
@@ -2428,12 +2436,18 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
         children: [
           CircleAvatar(
             radius: isReply ? 14 : 18,
-            backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                ? NetworkImage(avatarUrl)
-                : null,
-            child: avatarUrl == null || avatarUrl.isEmpty
-                ? const Icon(Icons.person, size: 16)
-                : null,
+            backgroundColor: colorScheme.surfaceContainerHighest,
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? ClipOval(
+                    child: AppCachedImage(
+                      imageUrl: avatarUrl,
+                      width: isReply ? 28 : 36,
+                      height: isReply ? 28 : 36,
+                      fit: BoxFit.cover,
+                      errorWidget: const Icon(Icons.person, size: 16),
+                    ),
+                  )
+                : const Icon(Icons.person, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -2792,16 +2806,20 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
               CircleAvatar(
                 radius: 18,
                 backgroundColor: colorScheme.surfaceContainerHighest,
-                backgroundImage: widget.post.authorObj?.photoUrl != null &&
+                child: widget.post.authorObj?.photoUrl != null &&
                         widget.post.authorObj!.photoUrl!.trim().isNotEmpty
-                    ? NetworkImage(widget.post.authorObj!.photoUrl!)
-                    : null,
-                child: widget.post.authorObj?.photoUrl == null ||
-                        widget.post.authorObj!.photoUrl!.trim().isEmpty
-                    ? Text(widget.post.authorName.trim().isNotEmpty
+                    ? ClipOval(
+                        child: AppCachedImage(
+                          imageUrl: widget.post.authorObj!.photoUrl!,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorWidget: const Icon(Icons.person, size: 18),
+                        ),
+                      )
+                    : Text(widget.post.authorName.trim().isNotEmpty
                         ? widget.post.authorName.trim()[0].toUpperCase()
-                        : 'U')
-                    : null,
+                        : 'U'),
               ),
               const SizedBox(width: 8),
               Expanded(
