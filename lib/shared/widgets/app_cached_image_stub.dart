@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -165,7 +166,9 @@ class _PersistentCachedImage extends StatefulWidget {
 class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   static final Map<String, Uint8List> _memory = <String, Uint8List>{};
   static final Map<String, Future<Uint8List?>> _inFlight = {};
+  static final Map<String, DateTime> _lastPersistentTouch = {};
   static const Duration _refreshAfter = Duration(days: 30);
+  static const Duration _touchInterval = Duration(seconds: 30);
   // A normal feed page can contain hundreds of distinct image variants.
   // Keep a larger persistent working set than the old avatar-only cache.
   static const int _maxPersistentEntries = 500;
@@ -219,13 +222,18 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
           ? Get.find<FastCacheService>()
           : null;
       if (cache != null && cache.isReady) {
-        final stored = cache.get<dynamic>(key);
-        if (stored is Map && stored['bytes'] is Uint8List) {
-          unawaited(cache.set(key, {
-            'bytes': stored['bytes'],
-            'saved_at': stored['saved_at'] ?? DateTime.now().toIso8601String(),
-            'last_accessed': DateTime.now().millisecondsSinceEpoch,
-          }));
+        final now = DateTime.now();
+        final lastTouch = _lastPersistentTouch[key];
+        if (lastTouch == null || now.difference(lastTouch) >= _touchInterval) {
+          _lastPersistentTouch[key] = now;
+          final stored = cache.get<dynamic>(key);
+          if (stored is Map && stored['bytes'] is Uint8List) {
+            unawaited(cache.set(key, {
+              'bytes': stored['bytes'],
+              'saved_at': stored['saved_at'] ?? now.toIso8601String(),
+              'last_accessed': now.millisecondsSinceEpoch,
+            }));
+          }
         }
       }
       setState(() => _bytes = inMemory);
