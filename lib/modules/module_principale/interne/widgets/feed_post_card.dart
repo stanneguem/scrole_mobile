@@ -564,6 +564,16 @@ class FeedPostCard extends StatelessWidget {
                     width: size,
                     height: size,
                     fit: BoxFit.cover,
+                    errorWidget: Container(
+                      width: size,
+                      height: size,
+                      color: background,
+                      alignment: Alignment.center,
+                      child: Text(
+                        post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : '?',
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: fontSize),
+                      ),
+                    ),
                   )
                 : Container(
           width: size,
