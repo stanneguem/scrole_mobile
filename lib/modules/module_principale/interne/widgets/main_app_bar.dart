@@ -67,7 +67,7 @@ class _WideTopNavigation extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => onSelected?.call(index),
                 child: Container(
-                  width: 58,
+                  width: compact ? 46 : 58,
                   height: 54,
                   decoration: BoxDecoration(
                     border: Border(
