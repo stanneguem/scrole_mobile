@@ -121,47 +121,19 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     return false;
   }
 
-  Widget _buildTabletNavigation(
-    MainLayoutController controller,
-    ColorScheme colorScheme,
-  ) {
-    Widget destination(int index, Widget icon, String tooltip) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 7),
-        child: Obx(() {
-          final selected = controller.currentTab.value == index;
-          return Tooltip(
-            message: tooltip,
-            child: Material(
-              color: selected
-                  ? colorScheme.primary.withValues(alpha: 0.13)
-                  : Colors.transparent,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () => _onTabChanged(index),
-                child: SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: Center(
-                    child: IconTheme(
-                      data: IconThemeData(
-                        color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                        size: 25,
-                      ),
-                      child: icon,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
+  Widget _buildWideDrawer(ColorScheme colorScheme) {
+    Widget item({required IconData icon, required String title, required VoidCallback onTap, Color? iconColor}) {
+      return ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+        leading: Icon(icon, color: iconColor ?? colorScheme.onSurfaceVariant),
+        title: Text(title, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14)),
+        onTap: onTap,
       );
     }
 
     return Container(
-      width: 76,
+      width: 260,
       decoration: BoxDecoration(
         color: colorScheme.surface,
         border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45))),
@@ -169,124 +141,27 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       child: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 14),
-            destination(0, SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn)), 'nav_home'.tr),
-            destination(1, SvgPicture.asset('assets/svg_icons/discussion.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)), 'Communautés'),
-            destination(2, const Icon(Icons.video_library_rounded), 'Réels'),
-            destination(3, SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)), 'nav_events'.tr),
-            destination(4, Obx(() => Badge(
-              isLabelVisible: controller.hasNotifications,
-              label: Text(controller.notificationBadge),
-              child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn)),
-            )), 'Notifications'),
-            destination(5, const _BottomNavProfileIcon(isSelected: false), 'nav_profile'.tr),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDesktopSidebar(
-    MainLayoutController controller,
-    ColorScheme colorScheme,
-  ) {
-    Widget item({
-      required int index,
-      required String label,
-      required Widget icon,
-    }) {
-      return Obx(() {
-        final selected = controller.currentTab.value == index;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-          child: Material(
-            color: selected
-                ? colorScheme.primary.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _onTabChanged(index),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                child: Row(
-                  children: [
-                    SizedBox(width: 28, height: 28, child: Center(child: icon)),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: selected ? colorScheme.primary : colorScheme.onSurface,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      });
-    }
-
-    Widget svg(String asset, {bool badge = false}) {
-      final image = SvgPicture.asset(
-        asset,
-        width: 24,
-        height: 24,
-        colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-      );
-      return badge
-          ? Obx(() => Badge(
-                isLabelVisible: controller.hasNotifications,
-                label: Text(controller.notificationBadge),
-                child: image,
-              ))
-          : image;
-    }
-
-    return Container(
-      width: 244,
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45))),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+            const SizedBox(height: 12),
             Padding(
-              padding: const EdgeInsets.fromLTRB(22, 20, 16, 18),
-              child: Text(
-                'Scrole',
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.8,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(
+                children: [
+                  Image.asset(ImagePath.logoApp, height: 34, fit: BoxFit.contain),
+                  const SizedBox(width: 12),
+                  Text('Scrole', style: TextStyle(color: colorScheme.onSurface, fontSize: 21, fontWeight: FontWeight.w800)),
+                ],
               ),
             ),
-            item(index: 0, label: 'nav_home'.tr, icon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn))),
-            item(index: 1, label: 'Communautés', icon: svg('assets/svg_icons/discussion.svg')),
-            item(index: 2, label: 'Réels', icon: Icon(Icons.video_library_rounded, color: colorScheme.onSurfaceVariant, size: 25)),
-            item(index: 3, label: 'nav_events'.tr, icon: svg('assets/svg_icons/event-promotion-sale-svgrepo-com.svg')),
-            item(index: 4, label: 'Notifications', icon: svg('assets/svg_icons/notification-svgrepo-com.svg', badge: true)),
-            item(index: 5, label: 'nav_profile'.tr, icon: const _BottomNavProfileIcon(isSelected: false)),
-            const Spacer(),
             const Divider(height: 1),
+            const SizedBox(height: 8),
+            item(icon: Icons.folder_copy_outlined, title: 'drawer_my_content'.tr, iconColor: colorScheme.tertiary, onTap: () => Get.toNamed(AppPages.myContent)),
+            item(icon: Icons.add_circle_outline_rounded, title: 'drawer_creation'.tr, iconColor: colorScheme.secondary, onTap: () => Get.toNamed(AppPages.creationSelection)),
+            item(icon: Icons.info_outline_rounded, title: 'drawer_about'.tr, iconColor: colorScheme.primary, onTap: () => Get.to(() => ExternalWebViewScreen(url: 'https://about.scrole.fun', title: 'webview_about_title'.tr))),
+            item(icon: Icons.settings_outlined, title: 'drawer_settings'.tr, onTap: () => Get.toNamed(AppPages.setting)),
+            const Spacer(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-              child: Text(
-                'Scrole',
-                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
-              ),
+              padding: const EdgeInsets.all(18),
+              child: Text('Scrole', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
             ),
           ],
         ),
@@ -306,16 +181,14 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: CustomAppBar(controller: controller),
+      appBar: CustomAppBar(controller: controller, onDestinationSelected: _onTabChanged),
       drawer: const AppDrawer(),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 1100;
-          final isTablet = constraints.maxWidth >= 760 && !isDesktop;
+          final isWideLayout = constraints.maxWidth >= 760;
           return Row(
             children: [
-              if (isDesktop) _buildDesktopSidebar(controller, colorScheme),
-              if (isTablet) _buildTabletNavigation(controller, colorScheme),
+              if (isWideLayout) _buildWideDrawer(colorScheme),
               Expanded(
                 child: Stack(
                   children: [
@@ -338,7 +211,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               ),
             ),
           ),
-                    if (!isDesktop && !isTablet)
+                    if (!isWideLayout)
                     Positioned(
                     left: 0,
                     right: 0,
