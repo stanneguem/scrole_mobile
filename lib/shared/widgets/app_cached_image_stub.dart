@@ -94,7 +94,13 @@ class AppCachedImage extends StatelessWidget {
       placeholder: (_, __) => _placeholder(),
       imageBuilder: (context, provider) {
         WidgetsBinding.instance.addPostFrameCallback((_) => onImageLoaded?.call());
-        return Image(image: provider, width: width, height: height, fit: fit);
+        return Image(
+          image: provider,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (_, __, ___) => errorWidget ?? _error(),
+        );
       },
       errorWidget: (_, __, ___) => errorWidget ?? _error(),
     ),
