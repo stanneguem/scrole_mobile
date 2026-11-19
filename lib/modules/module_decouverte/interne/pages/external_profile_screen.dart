@@ -241,6 +241,7 @@ class _Header extends StatelessWidget {
                       : AppCachedImage(
                           imageUrl: profile.photoUrl!,
                           fit: BoxFit.cover,
+                          cacheInPersistentStore: true,
                           errorWidget: Container(
                             color: colors.primary,
                             alignment: Alignment.center,
