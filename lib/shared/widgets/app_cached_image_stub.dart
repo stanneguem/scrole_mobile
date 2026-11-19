@@ -166,9 +166,11 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   static final Map<String, Uint8List> _memory = <String, Uint8List>{};
   static final Map<String, Future<Uint8List?>> _inFlight = {};
   static const Duration _refreshAfter = Duration(days: 30);
-  static const int _maxPersistentEntries = 160;
-  static const int _maxPersistentBytes = 48 * 1024 * 1024;
-  static const int _maxSingleImageBytes = 8 * 1024 * 1024;
+  // A normal feed page can contain hundreds of distinct image variants.
+  // Keep a larger persistent working set than the old avatar-only cache.
+  static const int _maxPersistentEntries = 500;
+  static const int _maxPersistentBytes = 128 * 1024 * 1024;
+  static const int _maxSingleImageBytes = 12 * 1024 * 1024;
 
   Uint8List? _bytes;
   bool _failed = false;
@@ -211,6 +213,21 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
     final key = _cacheKey;
     final inMemory = _memory[key];
     if (inMemory != null && mounted) {
+      // A memory hit is still a cache access: refresh its persistent LRU
+      // timestamp, otherwise frequently reused avatars can be evicted as old.
+      final cache = Get.isRegistered<FastCacheService>()
+          ? Get.find<FastCacheService>()
+          : null;
+      if (cache != null && cache.isReady) {
+        final stored = cache.get<dynamic>(key);
+        if (stored is Map && stored['bytes'] is Uint8List) {
+          unawaited(cache.set(key, {
+            'bytes': stored['bytes'],
+            'saved_at': stored['saved_at'] ?? DateTime.now().toIso8601String(),
+            'last_accessed': DateTime.now().millisecondsSinceEpoch,
+          }));
+        }
+      }
       setState(() => _bytes = inMemory);
       return;
     }
@@ -304,6 +321,15 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
         final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 25));
         if (response.statusCode < 200 || response.statusCode >= 300 ||
             response.bodyBytes.isEmpty || response.bodyBytes.length > _maxSingleImageBytes) return null;
+        final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+        if (contentType.startsWith('video/') || contentType.startsWith('audio/')) {
+          debugPrint('[IMAGE_CACHE] Refusing non-image response contentType=$contentType url=$url');
+          return null;
+        }
+        if (!_looksLikeImage(response.bodyBytes)) {
+          debugPrint('[IMAGE_CACHE] Refusing payload that is not a recognized image url=$url');
+          return null;
+        }
         return Uint8List.fromList(response.bodyBytes);
       } catch (e) {
         debugPrint('[AVATAR_CACHE] download failed: $e');
@@ -315,6 +341,22 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   }
 
   bool _isHttpUrl(String value) => value.startsWith('https://') || value.startsWith('http://');
+
+  bool _looksLikeImage(List<int> bytes) {
+    if (bytes.length < 12) return false;
+    final jpeg = bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[2] == 0xff;
+    final png = bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 &&
+        bytes[2] == 0x4e && bytes[3] == 0x47;
+    final gif = bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46;
+    final webp = bytes[0] == 0x52 && bytes[1] == 0x49 &&
+        bytes[2] == 0x46 && bytes[3] == 0x46 &&
+        bytes[8] == 0x57 && bytes[9] == 0x45 &&
+        bytes[10] == 0x42 && bytes[11] == 0x50;
+    final avif = bytes.length >= 12 && bytes[4] == 0x66 &&
+        bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70 &&
+        String.fromCharCodes(bytes.sublist(8, 12)).startsWith('avif');
+    return jpeg || png || gif || webp || avif;
+  }
 
   @override
   Widget build(BuildContext context) {
