@@ -11,10 +11,98 @@ import '../pages/create_scut_camera_screen.dart';
 import '../../../../../shared/widgets/glas_buton.dart';
 import '../controllers/main_layout_controller.dart';
 
+class _WideTopNavigation extends StatelessWidget {
+  const _WideTopNavigation({
+    required this.controller,
+    required this.onSelected,
+  });
+
+  final MainLayoutController controller;
+  final ValueChanged<int>? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final destinations = <(int, Widget, String)>[
+      (0, SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 23, height: 23), 'nav_home'.tr),
+      (1, SvgPicture.asset('assets/svg_icons/discussion.svg', width: 23, height: 23), 'Communautés'),
+      (2, const Icon(Icons.video_library_outlined, size: 24), 'Réels'),
+      (3, SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 23, height: 23), 'nav_events'.tr),
+      (4, SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 23, height: 23), 'Notifications'),
+      (5, const Icon(Icons.person_outline_rounded, size: 24), 'nav_profile'.tr),
+    ];
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: destinations.map((destination) {
+        final index = destination.$1;
+        return Obx(() {
+          final selected = controller.currentTab.value == index;
+          Widget icon = IconTheme(
+            data: IconThemeData(
+              color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+              size: 24,
+            ),
+            child: destination.$2,
+          );
+          if (index == 4) {
+            icon = Badge(
+              isLabelVisible: controller.hasNotifications,
+              label: Text(controller.notificationBadge),
+              child: icon,
+            );
+          }
+          if (index == 5) {
+            icon = const _TopNavProfilePlaceholder();
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Tooltip(
+              message: destination.$3,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => onSelected?.call(index),
+                child: Container(
+                  width: 58,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: selected ? colorScheme.primary : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  child: Center(child: icon),
+                ),
+              ),
+            ),
+          );
+        });
+      }).toList(),
+    );
+  }
+}
+
+class _TopNavProfilePlaceholder extends StatelessWidget {
+  const _TopNavProfilePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Icon(Icons.account_circle_outlined, color: colorScheme.onSurfaceVariant, size: 25);
+  }
+}
+
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final MainLayoutController controller;
+  final ValueChanged<int>? onDestinationSelected;
 
-  const CustomAppBar({super.key, required this.controller});
+  const CustomAppBar({
+    super.key,
+    required this.controller,
+    this.onDestinationSelected,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(72);
@@ -128,7 +216,15 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 }),
               ),
             ),
-            const Spacer(),
+            if (MediaQuery.sizeOf(context).width >= 760) ...[
+              const Spacer(flex: 1),
+              _WideTopNavigation(
+                controller: controller,
+                onSelected: onDestinationSelected,
+              ),
+              const Spacer(flex: 1),
+            ] else
+              const Spacer(),
             Row(
               key: _actionsKey,
               children: [
