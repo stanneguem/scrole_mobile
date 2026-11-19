@@ -7,3 +7,6 @@ Future<String?> findOrCacheFeedVideo(String url) =>
     platform.findOrCacheFeedVideo(url);
 
 Future<void> clearFeedVideoCache() => platform.clearFeedVideoCache();
+
+VideoPlayerController createFeedVideoController(String? localPath, String url) =>
+    platform.createFeedVideoController(localPath, url);
