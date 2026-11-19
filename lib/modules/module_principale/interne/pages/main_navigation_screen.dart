@@ -121,6 +121,113 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     return false;
   }
 
+  Widget _buildDesktopSidebar(
+    MainLayoutController controller,
+    ColorScheme colorScheme,
+  ) {
+    Widget item({
+      required int index,
+      required String label,
+      required Widget icon,
+    }) {
+      return Obx(() {
+        final selected = controller.currentTab.value == index;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+          child: Material(
+            color: selected
+                ? colorScheme.primary.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _onTabChanged(index),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                child: Row(
+                  children: [
+                    SizedBox(width: 28, height: 28, child: Center(child: icon)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: selected ? colorScheme.primary : colorScheme.onSurface,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+    }
+
+    Widget svg(String asset, {bool badge = false}) {
+      final image = SvgPicture.asset(
+        asset,
+        width: 24,
+        height: 24,
+        colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+      );
+      return badge
+          ? Obx(() => Badge(
+                isLabelVisible: controller.hasNotifications,
+                label: Text(controller.notificationBadge),
+                child: image,
+              ))
+          : image;
+    }
+
+    return Container(
+      width: 244,
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45))),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 20, 16, 18),
+              child: Text(
+                'Scrole',
+                style: TextStyle(
+                  color: colorScheme.primary,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.8,
+                ),
+              ),
+            ),
+            item(index: 0, label: 'nav_home'.tr, icon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 25, height: 25, colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn))),
+            item(index: 1, label: 'Communautés', icon: svg('assets/svg_icons/discussion.svg')),
+            item(index: 2, label: 'Réels', icon: Icon(Icons.video_library_rounded, color: colorScheme.onSurfaceVariant, size: 25)),
+            item(index: 3, label: 'nav_events'.tr, icon: svg('assets/svg_icons/event-promotion-sale-svgrepo-com.svg')),
+            item(index: 4, label: 'Notifications', icon: svg('assets/svg_icons/notification-svgrepo-com.svg', badge: true)),
+            item(index: 5, label: 'nav_profile'.tr, icon: const _BottomNavProfileIcon(isSelected: false)),
+            const Spacer(),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+              child: Text(
+                'Scrole',
+                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bootLog('MainNavigationScreen.build');
@@ -135,128 +242,146 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: CustomAppBar(controller: controller),
       drawer: const AppDrawer(),
-      body: Stack(
-        children: [
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 1100;
+          return Row(
+            children: [
+              if (isDesktop) _buildDesktopSidebar(controller, colorScheme),
+              Expanded(
+                child: Stack(
+                  children: [
           Positioned.fill(
             child: NotificationListener<ScrollNotification>(
               onNotification: _onScrollNotification,
-              child: IndexedStack(
-                index: _currentIndex,
-                children: List.generate(_pages.length, (index) {
-                  if (!_visited[index]) {
-                    return const SizedBox.shrink();
-                  }
-                  return _pages[index];
-                }),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width >= 1100 ? 1180 : 1040,
+                  ),
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: List.generate(_pages.length, (index) {
+                      if (!_visited[index]) return const SizedBox.shrink();
+                      return _pages[index];
+                    }),
+                  ),
+                ),
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 250),
-              offset: _isBottomNavVisible ? Offset.zero : const Offset(0, 1),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 250),
-                opacity: _isBottomNavVisible ? 1.0 : 0.0,
-                child: BottomNavigationBar(
-                type: BottomNavigationBarType.fixed,
-                currentIndex: _currentIndex == 2 ? 4 : _currentIndex,
-                onTap: _onTabChanged,
-                backgroundColor: colorScheme.surface,
-                selectedItemColor: colorScheme.primary,
-                unselectedItemColor: colorScheme.onSurfaceVariant,
-                showSelectedLabels: false,
-                showUnselectedLabels: false,
-                elevation: 8,
-                iconSize: 25,
-                items: [
-                  BottomNavigationBarItem(
+                    if (!isDesktop)
+                    Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 250),
+                    offset: _isBottomNavVisible ? Offset.zero : const Offset(0, 1),
+                    child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 250),
+                    opacity: _isBottomNavVisible ? 1.0 : 0.0,
+                    child: BottomNavigationBar(
+                    type: BottomNavigationBarType.fixed,
+                    currentIndex: _currentIndex == 2 ? 4 : _currentIndex,
+                    onTap: _onTabChanged,
+                    backgroundColor: colorScheme.surface,
+                    selectedItemColor: colorScheme.primary,
+                    unselectedItemColor: colorScheme.onSurfaceVariant,
+                    showSelectedLabels: false,
+                    showUnselectedLabels: false,
+                    elevation: 8,
+                    iconSize: 25,
+                    items: [
+                    BottomNavigationBarItem(
                     icon: SvgPicture.asset(
-                      'assets/svg_icons/japan-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    'assets/svg_icons/japan-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
                     ),
                     activeIcon: SvgPicture.asset(
-                      'assets/svg_icons/japan-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    'assets/svg_icons/japan-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
                     ),
                     label: 'nav_home'.tr,
-                  ),
-                  BottomNavigationBarItem(
+                    ),
+                    BottomNavigationBarItem(
                     icon: SvgPicture.asset(
-                      'assets/svg_icons/discussion.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    'assets/svg_icons/discussion.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
                     ),
                     activeIcon: SvgPicture.asset(
-                      'assets/svg_icons/discussion.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    'assets/svg_icons/discussion.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
                     ),
                     label: 'Communautés',
-                  ),
-                  const BottomNavigationBarItem(
+                    ),
+                    const BottomNavigationBarItem(
                     icon: Icon(Icons.video_library_outlined),
                     activeIcon: Icon(Icons.video_library_rounded),
                     label: 'Réels',
-                  ),
-                  BottomNavigationBarItem(
+                    ),
+                    BottomNavigationBarItem(
                     icon: SvgPicture.asset(
-                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
                     ),
                     activeIcon: SvgPicture.asset(
-                      'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
                     ),
                     label: 'nav_events'.tr,
-                  ),
-                  BottomNavigationBarItem(
+                    ),
+                    BottomNavigationBarItem(
                     icon: Obx(() => Badge(
-                      isLabelVisible: controller.hasNotifications,
-                      label: Text(controller.notificationBadge),
-                      child: SvgPicture.asset(
-                        'assets/svg_icons/notification-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                      ),
+                    isLabelVisible: controller.hasNotifications,
+                    label: Text(controller.notificationBadge),
+                    child: SvgPicture.asset(
+                    'assets/svg_icons/notification-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
+                    ),
                     )),
                     activeIcon: Obx(() => Badge(
-                      isLabelVisible: controller.hasNotifications,
-                      label: Text(controller.notificationBadge),
-                      child: SvgPicture.asset(
-                        'assets/svg_icons/notification-svgrepo-com.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                      ),
+                    isLabelVisible: controller.hasNotifications,
+                    label: Text(controller.notificationBadge),
+                    child: SvgPicture.asset(
+                    'assets/svg_icons/notification-svgrepo-com.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+                    ),
                     )),
                     label: 'Notifications',
-                  ),
-                  BottomNavigationBarItem(
+                    ),
+                    BottomNavigationBarItem(
                     icon: const _BottomNavProfileIcon(isSelected: false),
                     activeIcon: _BottomNavProfileIcon(isSelected: true),
                     label: 'nav_profile'.tr,
-                  ),
-                ],
+                    ),
+                    ],
+                    ),
+                    ),
+                    ),
+                    ),
+                  ],
+                ),
               ),
-              ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
