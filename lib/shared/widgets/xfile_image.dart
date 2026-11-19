@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -20,8 +21,8 @@ class XFileImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<int>>(
-      future: file.readAsBytes(),
+    return FutureBuilder<Uint8List>(
+      future: file.readAsBytes().then(Uint8List.fromList),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return errorBuilder?.call(context, snapshot.error!, snapshot.stackTrace) ??
