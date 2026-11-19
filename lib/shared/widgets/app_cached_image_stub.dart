@@ -179,7 +179,15 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   Uint8List? _bytes;
   bool _failed = false;
 
-  String get _cacheKey => 'profile_avatar_bytes_${sha256.convert(utf8.encode(widget.imageUrl))}';
+  String get _cacheKey {
+    final uri = Uri.tryParse(widget.imageUrl);
+    // Signed CDN URLs rotate their query token. Cache the stable object path,
+    // not the expiring authorization query string.
+    final identity = uri != null && (uri.scheme == 'https' || uri.scheme == 'http')
+        ? uri.replace(query: '', fragment: '').toString()
+        : widget.imageUrl;
+    return 'profile_avatar_bytes_${sha256.convert(utf8.encode(identity))}';
+  }
 
   @override
   void initState() {
