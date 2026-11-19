@@ -226,7 +226,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             Builder(
               builder: (drawerContext) => GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => Scaffold.of(drawerContext).openDrawer(),
+                onTap: MediaQuery.sizeOf(drawerContext).width < 760
+                    ? () => Scaffold.of(drawerContext).openDrawer()
+                    : null,
                 child: Obx(() {
                   final isOnline = Get.find<ConnectivityService>().isConnected.value;
                   return AnimatedDefaultTextStyle(
