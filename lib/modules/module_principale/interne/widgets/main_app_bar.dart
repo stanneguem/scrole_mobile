@@ -223,74 +223,91 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         color: Colors.transparent,
         child: Row(
           children: [
-            Builder(
-              builder: (drawerContext) => GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: MediaQuery.sizeOf(drawerContext).width < 760
-                    ? () => Scaffold.of(drawerContext).openDrawer()
-                    : null,
-                child: Obx(() {
-                  final isOnline = Get.find<ConnectivityService>().isConnected.value;
-                  return AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeInOut,
-                    style: GoogleFonts.grandHotel(
-                      fontSize: 39,
-                      fontWeight: FontWeight.w400,
-                      height: 1.05,
-                      letterSpacing: 0.15,
-                      color: isOnline
-                          ? colorScheme.onSurface
-                          : colorScheme.onSurfaceVariant.withValues(alpha: 0.58),
-                    ),
-                    child: const Text('Scrole'),
-                  );
-                }),
+            // Left block: Scrole identity.
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Builder(
+                  builder: (drawerContext) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: MediaQuery.sizeOf(drawerContext).width < 760
+                        ? () => Scaffold.of(drawerContext).openDrawer()
+                        : null,
+                    child: Obx(() {
+                      final isOnline = Get.find<ConnectivityService>().isConnected.value;
+                      return AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeInOut,
+                        style: GoogleFonts.grandHotel(
+                          fontSize: 39,
+                          fontWeight: FontWeight.w400,
+                          height: 1.05,
+                          letterSpacing: 0.15,
+                          color: isOnline
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.58),
+                        ),
+                        child: const Text('Scrole'),
+                      );
+                    }),
+                  ),
+                ),
               ),
             ),
-            if (MediaQuery.sizeOf(context).width >= 760) ...[
-              _WideTopNavigation(
-                controller: controller,
-                onSelected: onDestinationSelected,
-                compact: MediaQuery.sizeOf(context).width < 1100,
-              ),
-            ] else
-              const Spacer(),
-            Row(
-              key: _actionsKey,
-              children: [
-                GlassmorphismButton(
-                  icon: const Icon(Icons.add_rounded, size: 25),
-                  onTap: () => _showCreationMenu(context),
-                ),
-                const SizedBox(width: 8),
-                GlassmorphismButton(
-                  icon: SvgPicture.asset(
-                    'assets/svg_icons/search.svg',
-                    width: 22,
-                    height: 22,
-                    colorFilter: ColorFilter.mode(
-                      colorScheme.onSurface,
-                      BlendMode.srcIn,
+            // Center block: the six existing mobile navigation destinations.
+            if (MediaQuery.sizeOf(context).width >= 760)
+              Expanded(
+                flex: 2,
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: _WideTopNavigation(
+                      controller: controller,
+                      onSelected: onDestinationSelected,
+                      compact: MediaQuery.sizeOf(context).width < 1100,
                     ),
                   ),
-                  onTap: () => Get.to(() => const SearchScreen()),
                 ),
-                const SizedBox(width: 8),
-                Obx(() => GlassmorphismButton(
+              )
+            else
+              const Spacer(flex: 2),
+            // Right block: discovery/search, creation and messages.
+            Expanded(
+              flex: 1,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GlassmorphismButton(
+                      icon: SvgPicture.asset(
+                        'assets/svg_icons/search.svg',
+                        width: 22,
+                        height: 22,
+                        colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn),
+                      ),
+                      onTap: () => Get.to(() => const SearchScreen()),
+                    ),
+                    const SizedBox(width: 8),
+                    GlassmorphismButton(
+                      icon: const Icon(Icons.add_rounded, size: 25),
+                      onTap: () => _showCreationMenu(context),
+                    ),
+                    const SizedBox(width: 8),
+                    Obx(() => GlassmorphismButton(
                       icon: SvgPicture.asset(
                         'assets/svg_icons/chat-round-svgrepo-com.svg',
                         width: 22,
                         height: 22,
-                        colorFilter: ColorFilter.mode(
-                          colorScheme.onSurface,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn),
                       ),
                       badgeCount: double.tryParse(controller.messageBadge),
                       onTap: controller.openMessages,
                     )),
-              ],
+                  ],
+                ),
+              ),
             ),
           ],
         ),
