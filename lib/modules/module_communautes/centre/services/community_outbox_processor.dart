@@ -294,8 +294,8 @@ class CommunityOutboxProcessor extends GetxService {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final pendingList = await db.query(
         'post_outbox',
-        where: 'user_id = ? AND status = "pending" AND next_retry_at <= ?',
-        whereArgs: [currentUserId, nowMs],
+        where: 'user_id = ? AND status = ? AND next_retry_at <= ?',
+        whereArgs: [currentUserId, 'pending', nowMs],
         orderBy: 'created_at ASC',
       );
 
