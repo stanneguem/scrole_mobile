@@ -1880,12 +1880,17 @@ class _StoryLikersSheetState extends State<_StoryLikersSheet> {
                         leading: CircleAvatar(
                           radius: 22,
                           backgroundColor: colorScheme.surfaceContainerHighest,
-                          backgroundImage:
-                              photoUrl != null && photoUrl.isNotEmpty
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl == null || photoUrl.isEmpty
-                              ? Text(
+                          child: photoUrl != null && photoUrl.isNotEmpty
+                              ? ClipOval(
+                                  child: AppCachedImage(
+                                    imageUrl: photoUrl,
+                                    width: 44,
+                                    height: 44,
+                                    fit: BoxFit.cover,
+                                    errorWidget: Icon(Icons.person, color: colorScheme.onSurfaceVariant),
+                                  ),
+                                )
+                              : Text(
                                   displayName.isNotEmpty
                                       ? displayName[0].toUpperCase()
                                       : 'U',
@@ -1893,8 +1898,7 @@ class _StoryLikersSheetState extends State<_StoryLikersSheet> {
                                     color: colorScheme.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
-                                )
-                              : null,
+                                ),
                         ),
                         title: Row(
                           children: [
