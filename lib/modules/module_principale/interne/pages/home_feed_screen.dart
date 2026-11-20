@@ -272,11 +272,9 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                         const _PostPublishingProgressBar(),
                         const _StoriesRow(),
                         const _TrendingHashtagsStrip(),
-                        Container(
-                          height: 1,
-                          width: double.infinity,
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.01),
-                        ),
+                        // Petit espace visuel entre la zone Stories et le
+                        // début des publications, sans changer leur fond.
+                        const SizedBox(height: 10),
                       ],
                     );
                   }
