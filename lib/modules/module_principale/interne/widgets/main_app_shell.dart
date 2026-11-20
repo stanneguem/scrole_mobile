@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 import '../../../../app/utils/main_responsive_breakpoints.dart';
 import '../controllers/main_layout_controller.dart';
