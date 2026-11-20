@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../app/routes/app_pages.dart';
-import '../pages/../../../../shared/widgets/external_web_view_screen.dart';
+import '../../../../shared/widgets/external_web_view_screen.dart';
 
 class MainShellMenuItem {
   const MainShellMenuItem({
