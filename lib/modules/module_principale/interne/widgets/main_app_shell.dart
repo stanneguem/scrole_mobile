@@ -124,12 +124,9 @@ class _MainAppShellState extends State<MainAppShell> {
             left: 0,
             child: SizedBox(
               width: MainResponsiveBreakpoints.desktopSidebarWidth,
-              child: Listener(
-                onPointerDown: (_) => setState(() => _tabletMenuExpanded = false),
-                child: Material(
-                  elevation: 18,
-                  child: widget.desktopSidebar,
-                ),
+              child: Material(
+                elevation: 18,
+                child: widget.desktopSidebar,
               ),
             ),
           ),
