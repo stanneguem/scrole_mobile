@@ -18,7 +18,7 @@ class AuthScreen extends GetView<AuthController> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1B1D21),
+      backgroundColor: colorScheme.surface,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
@@ -227,6 +227,7 @@ class AuthScreen extends GetView<AuthController> {
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 650),
                             child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
@@ -246,11 +247,10 @@ class AuthScreen extends GetView<AuthController> {
                                     ),
                                   ],
                                 ),
-                                const Spacer(),
+                                SizedBox(height: isTabletLandscape ? 34 : 58),
                                 _HeroMessage(compact: isTabletLandscape),
                                 const SizedBox(height: 28),
                                 _VisualComposition(compact: isTabletLandscape),
-                                const Spacer(),
                               ],
                             ),
                           ),
