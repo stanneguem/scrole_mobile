@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:video_player/video_player.dart';
 
 const int _maxFeedVideoBytes = 24 * 1024 * 1024;
 const int _maxFeedVideoCacheBytes = 120 * 1024 * 1024;
