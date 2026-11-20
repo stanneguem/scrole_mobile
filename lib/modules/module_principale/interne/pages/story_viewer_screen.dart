@@ -590,8 +590,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isDesktop = screenWidth >= 1024;
     final storyCanvas = GestureDetector(
-        onVerticalDragStart: (_) => setState(() => _isDragging = true),
-        onVerticalDragUpdate: (details) {
+        onVerticalDragStart: isDesktop ? null : (_) => setState(() => _isDragging = true),
+        onVerticalDragUpdate: isDesktop ? null : (details) {
           setState(() {
             _dragOffsetY += details.delta.dy;
             if (_dragOffsetY < 0) _dragOffsetY = 0;
@@ -599,7 +599,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             _bgOpacity = (1.0 - progress * 0.7).clamp(0.3, 1.0);
           });
         },
-        onVerticalDragEnd: (details) {
+        onVerticalDragEnd: isDesktop ? null : (details) {
           if (_dragOffsetY > 120 || details.velocity.pixelsPerSecond.dy > 500) {
             Navigator.of(context).pop();
           } else {
