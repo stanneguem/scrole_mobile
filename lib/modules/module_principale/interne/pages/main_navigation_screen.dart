@@ -276,21 +276,27 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       rightSidebar: const SizedBox.shrink(),
       onScrollNotification: _onScrollNotification,
       bottomNavigationVisible: _isBottomNavVisible,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MainResponsiveBreakpoints.isDesktop(MediaQuery.sizeOf(context).width)
-                ? MainResponsiveBreakpoints.desktopFeedMaxWidth
-                : MainResponsiveBreakpoints.tabletFeedMaxWidth,
-          ),
-          child: IndexedStack(
-            index: _currentIndex,
-            children: List.generate(_pages.length, (index) {
-              if (!_visited[index]) return const SizedBox.shrink();
-              return _pages[index];
-            }),
-          ),
-        ),
+      child: IndexedStack(
+        index: _currentIndex,
+        children: List.generate(_pages.length, (index) {
+          if (!_visited[index]) return const SizedBox.shrink();
+          final page = _pages[index];
+          // À cette étape, seule la largeur du fil est adaptée par le shell.
+          // Les pages Communautés et Événements gardent leur propre espace.
+          if (index == 0) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MainResponsiveBreakpoints.isDesktop(MediaQuery.sizeOf(context).width)
+                      ? MainResponsiveBreakpoints.desktopFeedMaxWidth
+                      : MainResponsiveBreakpoints.tabletFeedMaxWidth,
+                ),
+                child: page,
+              ),
+            );
+          }
+          return page;
+        }),
       ),
     );
   }
