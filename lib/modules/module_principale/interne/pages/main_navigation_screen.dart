@@ -57,6 +57,32 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     EventScreen(),        // 2. Événements
   ];
 
+  Future<void> _onWideDestinationSelected(int index) async {
+    final controller = Get.find<MainLayoutController>();
+    if (index == 0) {
+      controller.currentTab.value = 0;
+      _homeFeedKey.currentState?.scrollToTopAndRefresh();
+      return;
+    }
+    if (index == 1) {
+      controller.currentTab.value = 1;
+      await Get.to(() => CommunityScreen());
+      if (Get.isRegistered<MainLayoutController>()) {
+        Get.find<MainLayoutController>().currentTab.value = 0;
+      }
+      return;
+    }
+    if (index == 3) {
+      controller.currentTab.value = 3;
+      await Get.to(() => EventScreen());
+      if (Get.isRegistered<MainLayoutController>()) {
+        Get.find<MainLayoutController>().currentTab.value = 0;
+      }
+      return;
+    }
+    _onTabChanged(index);
+  }
+
   void _onTabChanged(int index) {
     if (index == 2) {
       // Reels open as a separate full-screen route, like the profile.
@@ -227,7 +253,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     );
   }
 
-  Widget _buildTabletRail(ColorScheme colors, MainLayoutController controller) {
+  Widget _buildTabletRail(ColorScheme colors, MainLayoutController controller, ValueChanged<int> onSelected) {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -240,7 +266,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: IconButton(
               tooltip: _navigationLabel(item),
-              onPressed: () => _onTabChanged(item.index),
+              onPressed: () => onSelected(item.index),
               icon: _navigationIcon(
                 item,
                 controller.currentTab.value == item.index ? colors.primary : colors.onSurfaceVariant,
@@ -260,39 +286,45 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     if (!Get.isRegistered<MainLayoutController>()) Get.put(MainLayoutController());
     final controller = Get.find<MainLayoutController>();
     final colors = Theme.of(context).colorScheme;
+    final mobile = MainResponsiveBreakpoints.isMobile(MediaQuery.sizeOf(context).width);
+    final ValueChanged<int> destinationHandler =
+        mobile ? _onTabChanged : _onWideDestinationSelected;
+
+    final Widget shellChild;
+    if (mobile) {
+      // Le parcours mobile conserve son IndexedStack et son comportement actuel.
+      shellChild = IndexedStack(
+        index: _currentIndex,
+        children: List.generate(_pages.length, (index) {
+          if (!_visited[index]) return const SizedBox.shrink();
+          return _pages[index];
+        }),
+      );
+    } else {
+      // Première étape : seul le fil est intégré au shell grand écran.
+      shellChild = Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MainResponsiveBreakpoints.isDesktop(MediaQuery.sizeOf(context).width)
+                ? MainResponsiveBreakpoints.desktopFeedMaxWidth
+                : MainResponsiveBreakpoints.tabletFeedMaxWidth,
+          ),
+          child: _pages.first,
+        ),
+      );
+    }
 
     return MainAppShell(
       controller: controller,
-      onDestinationSelected: _onTabChanged,
+      onDestinationSelected: destinationHandler,
       mobileDrawer: const AppDrawer(),
       mobileBottomNavigation: _buildBottomNavigation(colors, controller),
-      tabletRail: _buildTabletRail(colors, controller),
+      tabletRail: _buildTabletRail(colors, controller, destinationHandler),
       desktopSidebar: _buildWideDrawer(colors),
       rightSidebar: const SizedBox.shrink(),
       onScrollNotification: _onScrollNotification,
       bottomNavigationVisible: _isBottomNavVisible,
-      child: IndexedStack(
-        index: _currentIndex,
-        children: List.generate(_pages.length, (index) {
-          if (!_visited[index]) return const SizedBox.shrink();
-          final page = _pages[index];
-          // À cette étape, seule la largeur du fil est adaptée par le shell.
-          // Les pages Communautés et Événements gardent leur propre espace.
-          if (index == 0) {
-            return Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MainResponsiveBreakpoints.isDesktop(MediaQuery.sizeOf(context).width)
-                      ? MainResponsiveBreakpoints.desktopFeedMaxWidth
-                      : MainResponsiveBreakpoints.tabletFeedMaxWidth,
-                ),
-                child: page,
-              ),
-            );
-          }
-          return page;
-        }),
-      ),
+      child: shellChild,
     );
   }
 }
