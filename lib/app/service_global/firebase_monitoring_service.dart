@@ -32,6 +32,8 @@ class FirebaseMonitoringService {
             .setAnalyticsCollectionEnabled(_collectionEnabled),
       ]);
 
+      _initialized = true;
+
       final packageInfo = await PackageInfo.fromPlatform();
       await Future.wait([
         FirebaseCrashlytics.instance.setCustomKey('app_version', packageInfo.version),
@@ -42,7 +44,6 @@ class FirebaseMonitoringService {
           kReleaseMode ? 'release' : kProfileMode ? 'profile' : 'debug',
         ),
       ]);
-      _initialized = true;
       debugPrint('[FirebaseMonitoring] Analytics et Crashlytics initialisés.');
     } catch (error, stackTrace) {
       // Les diagnostics ne doivent jamais empêcher le démarrage de Scrole.
@@ -88,6 +89,18 @@ class FirebaseMonitoringService {
       ]);
     } catch (error) {
       debugPrint('[FirebaseMonitoring] Échec mise à jour utilisateur: $error');
+    }
+  }
+
+  static Future<void> logEvent({
+    required String name,
+    Map<String, Object>? parameters,
+  }) async {
+    if (!_initialized) return;
+    try {
+      await analytics.logEvent(name: name, parameters: parameters);
+    } catch (error) {
+      debugPrint('[FirebaseMonitoring] Échec événement $name: $error');
     }
   }
 
