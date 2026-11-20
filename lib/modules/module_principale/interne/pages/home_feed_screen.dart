@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/app/theme/app_colors.dart';
@@ -543,9 +544,11 @@ class _StoriesRow extends GetView<StoriesController> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
+    final avatarSize = isDesktop ? 64.0 : 56.0;
 
     return SizedBox(
-      height: 116,
+      height: isDesktop ? 128 : 116,
       child: Obx(() {
         final own = controller.ownGroup.value;
         final hasOwnStory = own != null && own.stories.isNotEmpty;
@@ -587,15 +590,23 @@ class _StoriesRow extends GetView<StoriesController> {
           ...otherGroups,
         ];
 
-        return ListView.builder(
+        return ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+            },
+          ),
+          child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: isDesktop ? 24 : 16, vertical: 8),
           itemCount: otherGroups.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) {
               return Padding(
                 key: const ValueKey('story-group-own'),
-                padding: const EdgeInsets.only(right: 12),
+                padding: EdgeInsets.only(right: isDesktop ? 16 : 12),
                 child: GestureDetector(
                   onTap: () {
                     if (hasOwnStory) {
@@ -624,15 +635,15 @@ class _StoriesRow extends GetView<StoriesController> {
                             ),
                             child: ClipOval(
                               child: SizedBox(
-                                width: 56,
-                                height: 56,
+                                width: avatarSize,
+                                height: avatarSize,
                                 child: (hasOwnStory &&
                                         ownStoryPreviewUrl != null &&
                                         ownStoryPreviewUrl.isNotEmpty)
                                     ? AppCachedImage(
                                         imageUrl: ownStoryPreviewUrl,
-                                        width: 56,
-                                        height: 56,
+                                        width: avatarSize,
+                                        height: avatarSize,
                                         fit: BoxFit.cover,
                                         cacheUntil: ownLatestStory?.expiresAt,
                                         errorWidget: Container(
@@ -717,7 +728,7 @@ class _StoriesRow extends GetView<StoriesController> {
 
             return Padding(
               key: ValueKey('story-group-${group.author.userId}'),
-              padding: const EdgeInsets.only(right: 12),
+              padding: EdgeInsets.only(right: isDesktop ? 16 : 12),
               child: GestureDetector(
                 onTap: () {
                   final viewerIndex = hasOwnStory ? index : index - 1;
@@ -742,8 +753,8 @@ class _StoriesRow extends GetView<StoriesController> {
                           child: storyPreviewUrl != null && storyPreviewUrl.isNotEmpty
                               ? AppCachedImage(
                                   imageUrl: storyPreviewUrl,
-                                  width: 56,
-                                  height: 56,
+                                  width: avatarSize,
+                                  height: avatarSize,
                                   fit: BoxFit.cover,
                                   cacheUntil: latestStory?.expiresAt,
                                   errorWidget: Container(
@@ -762,7 +773,7 @@ class _StoriesRow extends GetView<StoriesController> {
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      width: 64,
+                      width: isDesktop ? 76 : 64,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
@@ -792,6 +803,7 @@ class _StoriesRow extends GetView<StoriesController> {
               ),
             );
           },
+          ),
         );
       }),
     );
