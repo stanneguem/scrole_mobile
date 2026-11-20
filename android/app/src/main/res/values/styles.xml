@@ -10,12 +10,6 @@
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
 
-    <!--
-        image_cropper 8.1.0 / uCrop:
-        keep the native cropper controls out of the Android 15 edge-to-edge
-        system-bar area so the validation control remains reachable.
-    -->
-    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
-    </style>
+    <!-- Theme used by the native image cropper activity. -->
+    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar" />
 </resources>
