@@ -29,19 +29,6 @@ class ChatMediaCachePlatform {
     return directory;
   }
 
-  static bool isHttpUrl(String value) =>
-      value.startsWith('http://') || value.startsWith('https://');
-
-  /// True for real device paths (`/data/...`, `file://...`), not Storage keys.
-  static bool isFilesystemPath(String value) {
-    if (value.startsWith('file://')) return true;
-    if (value.startsWith('/')) return true;
-    return false;
-  }
-
-  /// Supabase object key stored in `media_urls`, e.g. `{uid}/chat/media/file.jpg`.
-  static bool isStorageKey(String value) =>
-      value.isNotEmpty && !isHttpUrl(value) && !isFilesystemPath(value);
 
   static bool _isR2ObjectKey(String value) =>
       value.startsWith('messages/') || value.startsWith('stories/') ||
