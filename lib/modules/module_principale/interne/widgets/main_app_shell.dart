@@ -56,9 +56,9 @@ class _MainAppShellState extends State<MainAppShell> {
             child: CustomAppBar(
               controller: widget.controller,
               onDestinationSelected: widget.onDestinationSelected,
-              onLogoTap: tablet
-                  ? () => setState(() => _tabletMenuExpanded = !_tabletMenuExpanded)
-                  : null,
+              // Le rail et le panneau latéral sont déjà accessibles sur tablette.
+              // Le logo n'ouvre donc aucun drawer dans ce format.
+              onLogoTap: null,
             ),
           ),
           drawer: mobile ? widget.mobileDrawer : null,
