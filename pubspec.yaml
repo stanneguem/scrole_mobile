@@ -37,6 +37,8 @@ dependencies:
   hive_flutter: ^1.1.0
   intl: ^0.20.2
   firebase_core: ^3.10.0
+  firebase_analytics: ^11.6.0
+  firebase_crashlytics: ^4.3.10
   firebase_messaging: ^15.2.10
   google_sign_in: ^7.2.0
   flutter_local_notifications: ^22.3.0
