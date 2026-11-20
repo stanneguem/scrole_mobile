@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:scrole/app/utils/boot_timing.dart';
+import 'package:scrole/app/routes/app_pages.dart';
+import 'package:scrole/app/utils/main_responsive_breakpoints.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
@@ -33,7 +35,6 @@ class _WideTopNavigation extends StatelessWidget {
       (2, const Icon(Icons.video_library_outlined, size: 24), 'Réels'),
       (3, SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 23, height: 23), 'nav_events'.tr),
       (4, SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 23, height: 23), 'Notifications'),
-      (5, const Icon(Icons.person_outline_rounded, size: 24), 'nav_profile'.tr),
     ];
 
     return Row(
@@ -67,7 +68,7 @@ class _WideTopNavigation extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => onSelected?.call(index),
                 child: Container(
-                  width: compact ? 46 : 58,
+                  width: compact ? 54 : 110,
                   height: 54,
                   decoration: BoxDecoration(
                     border: Border(
@@ -127,13 +128,16 @@ class _TopNavProfileAvatar extends StatelessWidget {
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final MainLayoutController controller;
   final ValueChanged<int>? onDestinationSelected;
+  final VoidCallback? onLogoTap;
 
   const CustomAppBar({
     super.key,
     required this.controller,
     this.onDestinationSelected,
+    this.onLogoTap,
   });
 
+  @override
   @override
   Size get preferredSize => const Size.fromHeight(72);
 
@@ -214,16 +218,22 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     bootLog('CustomAppBar.build');
-    final colorScheme = Theme.of(context).colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+    if (MainResponsiveBreakpoints.isMobile(width)) {
+      return _buildMobileAppBar(context);
+    }
+    return _buildWideAppBar(context, width);
+  }
 
+  Widget _buildMobileAppBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SafeArea(
       child: Container(
-        height: preferredSize.height,
+        height: 72,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         color: Colors.transparent,
         child: Row(
           children: [
-            // Left block: Scrole identity.
             Expanded(
               flex: 1,
               child: Align(
@@ -231,9 +241,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Builder(
                   builder: (drawerContext) => GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: MediaQuery.sizeOf(drawerContext).width < 760
-                        ? () => Scaffold.of(drawerContext).openDrawer()
-                        : null,
+                    onTap: () => Scaffold.of(drawerContext).openDrawer(),
                     child: Obx(() {
                       final isOnline = Get.find<ConnectivityService>().isConnected.value;
                       return AnimatedDefaultTextStyle(
@@ -244,9 +252,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           fontWeight: FontWeight.w400,
                           height: 1.05,
                           letterSpacing: 0.15,
-                          color: isOnline
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.58),
+                          color: isOnline ? colorScheme.onSurface : colorScheme.onSurfaceVariant.withValues(alpha: 0.58),
                         ),
                         child: const Text('Scrole'),
                       );
@@ -255,24 +261,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
             ),
-            // Center block: the six existing mobile navigation destinations.
-            if (MediaQuery.sizeOf(context).width >= 760)
-              Expanded(
-                flex: 2,
-                child: Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: _WideTopNavigation(
-                      controller: controller,
-                      onSelected: onDestinationSelected,
-                      compact: MediaQuery.sizeOf(context).width < 1100,
-                    ),
-                  ),
-                ),
-              )
-            else
-              const Spacer(flex: 2),
-            // Right block: discovery/search, creation and messages.
+            const Spacer(flex: 2),
             Expanded(
               flex: 1,
               child: Align(
@@ -283,31 +272,23 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                    GlassmorphismButton(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/search.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn),
+                      GlassmorphismButton(
+                        icon: SvgPicture.asset('assets/svg_icons/search.svg', width: 22, height: 22,
+                          colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
+                        onTap: () => Get.to(() => const SearchScreen()),
                       ),
-                      onTap: () => Get.to(() => const SearchScreen()),
-                    ),
-                    const SizedBox(width: 8),
-                    GlassmorphismButton(
-                      icon: const Icon(Icons.add_rounded, size: 25),
-                      onTap: () => _showCreationMenu(context),
-                    ),
-                    const SizedBox(width: 8),
-                    Obx(() => GlassmorphismButton(
-                      icon: SvgPicture.asset(
-                        'assets/svg_icons/chat-round-svgrepo-com.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn),
+                      const SizedBox(width: 8),
+                      GlassmorphismButton(
+                        icon: const Icon(Icons.add_rounded, size: 25),
+                        onTap: () => _showCreationMenu(context),
                       ),
-                      badgeCount: double.tryParse(controller.messageBadge),
-                      onTap: controller.openMessages,
-                    )),
+                      const SizedBox(width: 8),
+                      Obx(() => GlassmorphismButton(
+                        icon: SvgPicture.asset('assets/svg_icons/chat-round-svgrepo-com.svg', width: 22, height: 22,
+                          colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
+                        badgeCount: double.tryParse(controller.messageBadge),
+                        onTap: controller.openMessages,
+                      )),
                     ],
                   ),
                 ),
@@ -318,4 +299,157 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
     );
   }
+
+  Widget _buildWideAppBar(BuildContext context, double width) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isTablet = MainResponsiveBreakpoints.isTablet(width);
+    return Container(
+      height: 56,
+      padding: EdgeInsets.symmetric(horizontal: isTablet ? 12 : 20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: .35))),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: isTablet ? 130 : 310,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: onLogoTap,
+                  child: Text(
+                    'Scrole',
+                    style: GoogleFonts.grandHotel(fontSize: 34, color: colorScheme.onSurface, height: 1.0),
+                  ),
+                ),
+                if (!isTablet) ...[
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(22),
+                      onTap: () => Get.to(() => const SearchScreen()),
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 13),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest.withValues(alpha: .7),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded, size: 19, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text('Rechercher sur Scrole', maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12.5)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else
+                  IconButton(
+                    tooltip: 'Rechercher',
+                    onPressed: () => Get.to(() => const SearchScreen()),
+                    icon: const Icon(Icons.search_rounded),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: _WideTopNavigation(
+                  controller: controller,
+                  onSelected: onDestinationSelected,
+                  compact: isTablet,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: isTablet ? 190 : 310,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _roundAction(
+                  context,
+                  icon: Icons.explore_outlined,
+                  tooltip: 'Explorer',
+                  onTap: () => Get.to(() => const SearchScreen()),
+                ),
+                _roundAction(
+                  context,
+                  icon: Icons.add_rounded,
+                  tooltip: 'Créer',
+                  onTap: () => _showCreationMenu(context),
+                ),
+                Obx(() => _roundAction(
+                  context,
+                  icon: Icons.chat_bubble_outline_rounded,
+                  tooltip: 'Messages',
+                  badge: double.tryParse(controller.messageBadge),
+                  onTap: controller.openMessages,
+                )),
+                if (!isTablet)
+                  Obx(() => _roundAction(
+                    context,
+                    icon: Icons.notifications_none_rounded,
+                    tooltip: 'Notifications',
+                    badge: controller.hasNotifications ? double.tryParse(controller.notificationBadge) ?? 1 : null,
+                    onTap: controller.openNotifications,
+                  )),
+                const SizedBox(width: 8),
+                InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => Get.toNamed(AppPages.myprofil),
+                  child: const Padding(
+                    padding: EdgeInsets.all(3),
+                    child: _TopNavProfileAvatar(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roundAction(
+    BuildContext context, {
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    double? badge,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: .8),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Center(
+                child: badge != null && badge > 0
+                    ? Badge(label: Text(badge.toInt().toString()), child: Icon(icon, size: 21))
+                    : Icon(icon, size: 21, color: colorScheme.onSurface),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 }
