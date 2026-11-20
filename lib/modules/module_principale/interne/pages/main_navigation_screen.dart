@@ -273,6 +273,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       mobileBottomNavigation: _buildBottomNavigation(colors, controller),
       tabletRail: _buildTabletRail(colors, controller),
       desktopSidebar: _buildWideDrawer(colors),
+      rightSidebar: const SizedBox.shrink(),
       onScrollNotification: _onScrollNotification,
       bottomNavigationVisible: _isBottomNavVisible,
       child: Center(
