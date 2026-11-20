@@ -38,6 +38,7 @@ import 'package:scrole/app/routes/scrole_route_observer.dart';
 import 'package:scrole/app/routes/app_routes.dart';
 import 'package:scrole/app/theme/app_theme.dart';
 import 'package:scrole/app/translation/scrole_translations.dart';
+import 'package:scrole/landing_page.dart';
 import 'modules/module_activite/centre/services/activity_service.dart';
 import 'package:scrole/shared/services/search_history_service.dart';
 import 'package:scrole/modules/module_appareils/interne/controllers/device_controller.dart';
@@ -351,20 +352,33 @@ class MyApp extends StatelessWidget {
         navigatorObservers: [scroleRouteObserver],
         builder: (context, child) {
           bootLog('GetMaterialApp.builder start');
-          final result = bootMeasure('ResponsiveBreakpoints.builder', () => ResponsiveBreakpoints.builder(
-              breakpoints: [
-                const Breakpoint(start: 0, end: 559, name: MOBILE),
-                const Breakpoint(start: 560, end: 1050, name: TABLET),
-                const Breakpoint(
-                  start: 1051,
-                  end: double.infinity,
-                  name: DESKTOP,
+
+          // Pour cette phase, Scrole est accessible uniquement sur les
+          // écrans de téléphone. La landing page reste affichée sur tablette
+          // et desktop, sans supprimer les layouts responsive déjà préparés.
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 560) {
+                return const LandingPage();
+              }
+
+              return bootMeasure(
+                'ResponsiveBreakpoints.builder',
+                () => ResponsiveBreakpoints.builder(
+                  breakpoints: [
+                    const Breakpoint(start: 0, end: 559, name: MOBILE),
+                    const Breakpoint(start: 560, end: 1050, name: TABLET),
+                    const Breakpoint(
+                      start: 1051,
+                      end: double.infinity,
+                      name: DESKTOP,
+                    ),
+                  ],
+                  child: child!,
                 ),
-              ],
-              child: child!,
-            ));
-          bootLog('GetMaterialApp.builder end');
-          return result;
+              );
+            },
+          );
         },
       ),
     );
