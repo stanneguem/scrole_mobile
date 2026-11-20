@@ -587,9 +587,9 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       return const Scaffold(backgroundColor: Colors.black);
     }
 
-    return Scaffold(
-      backgroundColor: Colors.black.withValues(alpha: _bgOpacity),
-      body: GestureDetector(
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = screenWidth >= 1024;
+    final storyCanvas = GestureDetector(
         onVerticalDragStart: (_) => setState(() => _isDragging = true),
         onVerticalDragUpdate: (details) {
           setState(() {
@@ -922,6 +922,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                             ),
                             child: Row(
                               children: [
+                                if (MediaQuery.sizeOf(context).width >= 1024)
+                                  IconButton(
+                                    tooltip: 'Fermer',
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                                  ),
                                 Expanded(
                                   child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -1119,7 +1125,50 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             ),
           ),
         ),
-      ),
+      );
+
+    return Scaffold(
+      backgroundColor: Colors.black.withValues(alpha: _bgOpacity),
+      body: isDesktop
+          ? LayoutBuilder(
+              builder: (context, constraints) {
+                final availableHeight = constraints.maxHeight > 48
+                    ? constraints.maxHeight - 48
+                    : constraints.maxHeight;
+                final canvasHeight = availableHeight < 820
+                    ? availableHeight
+                    : 820.0;
+                final proportionalWidth = canvasHeight * 9 / 16;
+                final canvasWidth = proportionalWidth < 460
+                    ? proportionalWidth
+                    : 460.0;
+                return Container(
+                  color: Colors.black.withValues(alpha: _bgOpacity),
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: canvasWidth,
+                    height: canvasHeight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black54,
+                              blurRadius: 32,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: storyCanvas,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            )
+          : storyCanvas,
     );
   }
 
