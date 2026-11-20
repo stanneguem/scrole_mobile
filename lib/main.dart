@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:device_preview/device_preview.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -90,7 +89,7 @@ Future<void> main() async {
     unawaited(
       FirebaseMonitoringService.recordError(error, stack, fatal: true),
     );
-    return false;
+    return true;
   };
   FlutterError.onError = (FlutterErrorDetails details) {
     if (!kIsWeb) {
