@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -12,6 +14,7 @@ class FirebaseMonitoringService {
   FirebaseMonitoringService._();
 
   static bool _initialized = false;
+  static RawReceivePort? _isolateErrorPort;
   static bool get isInitialized => _initialized;
 
   static bool get _collectionEnabled =>
@@ -33,6 +36,26 @@ class FirebaseMonitoringService {
       ]);
 
       _initialized = true;
+
+      // Capture également les erreurs non gérées hors du pipeline Flutter.
+      _isolateErrorPort ??= RawReceivePort((dynamic pair) {
+        if (pair is List && pair.length >= 2) {
+          final error = pair[0] as Object;
+          final rawStack = pair[1];
+          final stack = rawStack is StackTrace
+              ? rawStack
+              : StackTrace.fromString(rawStack.toString());
+          unawaited(
+            recordError(
+              error,
+              stack,
+              fatal: true,
+              reason: 'uncaught_isolate_error',
+            ),
+          );
+        }
+      });
+      Isolate.current.addErrorListener(_isolateErrorPort!.sendPort);
 
       final packageInfo = await PackageInfo.fromPlatform();
       await Future.wait([
