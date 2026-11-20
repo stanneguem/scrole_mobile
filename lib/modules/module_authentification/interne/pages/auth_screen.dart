@@ -640,7 +640,7 @@ class _LegalLinks extends StatelessWidget {
       TextSpan(
         style: baseStyle,
         children: [
-          TextSpan(text: '$'agree_continue'.tr} '),
+          TextSpan(text: '${'agree_continue'.tr} '),
           TextSpan(
             text: 'terms'.tr,
             style: baseStyle.copyWith(
@@ -654,7 +654,7 @@ class _LegalLinks extends StatelessWidget {
                     'terms'.tr,
                   ),
           ),
-          TextSpan(text: ' $'and'.tr} '),
+          TextSpan(text: ' ${'and'.tr} '),
           TextSpan(
             text: 'privacy_policy'.tr,
             style: baseStyle.copyWith(
