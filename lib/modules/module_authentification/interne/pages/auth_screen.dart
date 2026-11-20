@@ -206,8 +206,17 @@ class AuthScreen extends GetView<AuthController> {
 
     return Stack(
       children: [
-        Row(
-          children: [
+        Positioned.fill(
+          child: Container(color: const Color(0xFF1B1D21)),
+        ),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AuthResponsiveBreakpoints.contentMaxWidth,
+            ),
+            child: SizedBox.expand(
+              child: Row(
+                children: [
             Expanded(
               flex: leftFlex,
               child: Container(
@@ -321,7 +330,10 @@ class AuthScreen extends GetView<AuthController> {
                 ),
               ),
             ),
-          ],
+                ],
+              ),
+            ),
+          ),
         ),
         Positioned(
           left: 24,
