@@ -211,7 +211,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   Widget _buildBottomNavigation(ColorScheme colors, MainLayoutController controller) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      currentIndex: controller.currentTab.value.clamp(0, MainNavigationItems.all.length - 1),
+      currentIndex: controller.currentTab.value.clamp(0, MainNavigationItems.all.length - 1).toInt(),
       onTap: _onTabChanged,
       backgroundColor: colors.surface,
       selectedItemColor: colors.primary,
