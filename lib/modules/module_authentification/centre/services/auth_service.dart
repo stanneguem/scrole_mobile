@@ -76,7 +76,21 @@ class AuthService extends GetxService {
       isLoading.value = true;
       await Get.find<UserService>().clearCache();
       return await _authRepository.signInWithGoogle();
-    } catch (e) {
+    } catch (e, st) {
+      unawaited(
+        FirebaseMonitoringService.recordError(
+          e,
+          st,
+          fatal: false,
+          reason: 'auth_google_sign_in_failed',
+        ),
+      );
+      unawaited(
+        FirebaseMonitoringService.logEvent(
+          name: 'scrole_operation_error',
+          parameters: {'operation': 'google_sign_in'},
+        ),
+      );
       if (kDebugMode) print('Erreur de connexion: $e');
       return false;
     } finally {
@@ -111,7 +125,15 @@ class AuthService extends GetxService {
       }
 
       if (kDebugMode) print('Déconnexion réussie');
-    } catch (e) {
+    } catch (e, st) {
+      unawaited(
+        FirebaseMonitoringService.recordError(
+          e,
+          st,
+          fatal: false,
+          reason: 'auth_sign_out_failed',
+        ),
+      );
       if (kDebugMode) print('Erreur de déconnexion: $e');
       rethrow;
     } finally {
