@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +9,7 @@ import 'package:get/get.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:scrole/app/utils/boot_timing.dart';
+import 'package:scrole/app/service_global/firebase_monitoring_service.dart';
 import 'package:scrole/modules/module_authentification/centre/services/auth_service.dart';
 import 'package:scrole/app/service_global/theme_service.dart';
 import 'package:scrole/modules/module_creation_de_compte/centre/services/user_service.dart';
@@ -57,6 +59,10 @@ Future<void> main() async {
   }
 
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialiser Crashlytics avant le bootstrap pour capturer aussi les erreurs
+  // qui surviennent pendant le chargement des services et de Supabase.
+  await FirebaseMonitoringService.initialize();
+
   // Register Android App Links before the heavier bootstrap work. On a cold
   // start, delaying this until the first rendered frame can lose the incoming
   // URL on some devices. Navigation itself stays queued until GetMaterialApp
@@ -81,10 +87,17 @@ Future<void> main() async {
       }
       return true;
     }
+    unawaited(
+      FirebaseMonitoringService.recordError(error, stack, fatal: true),
+    );
     return false;
   };
-  if (kIsWeb) {
-    FlutterError.onError = (FlutterErrorDetails details) {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (!kIsWeb) {
+      FlutterError.presentError(details);
+      unawaited(FirebaseMonitoringService.recordFlutterError(details));
+      return;
+    }
       final error = details.exceptionAsString();
       final errorsToIgnore = [
         '_handledContextLostEvent',
@@ -150,6 +163,14 @@ Future<void> _bootstrap() async {
   } catch (e, st) {
     debugPrint('[Boot] Erreur phase critique : $e');
     debugPrint('$st');
+    unawaited(
+      FirebaseMonitoringService.recordError(
+        e,
+        st,
+        fatal: true,
+        reason: 'critical_bootstrap_failure',
+      ),
+    );
     runApp(const _BootErrorApp());
     return;
   }
@@ -265,7 +286,8 @@ Future<void> _initDeferred() async {
         permanent: true,
       );
     } else {
-      await Firebase.initializeApp();
+      // Firebase est déjà initialisé au tout début de main() pour que
+      // Crashlytics puisse aussi remonter les erreurs du bootstrap.
       unawaited(Get.find<FcmNotificationService>().initialize());
       await NotificationService.instance.initialize(
         onNotificationTap: (response) {
@@ -283,6 +305,14 @@ Future<void> _initDeferred() async {
       debugPrint('[Boot] Erreur phase différée : $e');
       debugPrint('$st');
     }
+    unawaited(
+      FirebaseMonitoringService.recordError(
+        e,
+        st,
+        fatal: false,
+        reason: 'deferred_bootstrap_failure',
+      ),
+    );
   }
 }
 
@@ -349,7 +379,13 @@ class MyApp extends StatelessWidget {
         ],
         initialRoute: AppPages.root,
         getPages: AppRoutes.routes,
-        navigatorObservers: [scroleRouteObserver],
+        navigatorObservers: [
+          scroleRouteObserver,
+          if (FirebaseMonitoringService.isInitialized)
+            FirebaseAnalyticsObserver(
+              analytics: FirebaseMonitoringService.analytics,
+            ),
+        ],
         builder: (context, child) {
           bootLog('GetMaterialApp.builder start');
 
