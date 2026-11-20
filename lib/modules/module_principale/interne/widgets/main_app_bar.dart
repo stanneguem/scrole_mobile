@@ -277,9 +277,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               flex: 1,
               child: Align(
                 alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     GlassmorphismButton(
                       icon: SvgPicture.asset(
                         'assets/svg_icons/search.svg',
@@ -305,7 +308,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       badgeCount: double.tryParse(controller.messageBadge),
                       onTap: controller.openMessages,
                     )),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
