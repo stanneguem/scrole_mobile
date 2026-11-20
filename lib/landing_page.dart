@@ -247,7 +247,7 @@ class _HeroSection extends StatelessWidget {
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Expanded(flex: 11, child: _HeroCopy()),
+                        Expanded(flex: 11, child: _HeroCopy(onExplore: onExplore)),
                         const SizedBox(width: 36),
                         Expanded(
                           flex: 9,
@@ -257,7 +257,7 @@ class _HeroSection extends StatelessWidget {
                     )
                   : Column(
                       children: [
-                        const _HeroCopy(centered: true),
+                        _HeroCopy(centered: true, onExplore: onExplore),
                         const SizedBox(height: 54),
                         _ProductPreview(compact: true),
                       ],
@@ -271,8 +271,9 @@ class _HeroSection extends StatelessWidget {
 }
 
 class _HeroCopy extends StatelessWidget {
-  const _HeroCopy({this.centered = false});
+  const _HeroCopy({this.centered = false, required this.onExplore});
   final bool centered;
+  final VoidCallback onExplore;
 
   @override
   Widget build(BuildContext context) {
@@ -348,10 +349,7 @@ class _HeroCopy extends StatelessWidget {
             _GradientButton(
               label: 'Explorer Scrole',
               icon: Icons.arrow_downward_rounded,
-              onTap: () => Scrollable.ensureVisible(
-                context,
-                duration: const Duration(milliseconds: 500),
-              ),
+              onTap: onExplore,
             ),
             const _OutlinePill(
               icon: Icons.phone_iphone_rounded,
