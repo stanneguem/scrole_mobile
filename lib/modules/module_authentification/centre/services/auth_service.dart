@@ -64,6 +64,14 @@ class AuthService extends GetxService {
         if (kDebugMode) print('Auth state changed [$event]: ${user?.email ?? 'No user'}');
       },
       onError: (error, stackTrace) {
+        unawaited(
+          FirebaseMonitoringService.recordError(
+            error,
+            stackTrace is StackTrace ? stackTrace : StackTrace.current,
+            fatal: false,
+            reason: 'auth_state_stream_error',
+          ),
+        );
         if (kDebugMode) {
           print('[Auth] Exception interceptée sur le flux auth (PKCE/deeplink) : $error');
         }
