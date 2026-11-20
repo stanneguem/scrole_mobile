@@ -275,7 +275,7 @@ Future<void> _initDeferred() async {
 
     await Get.find<MessagingRepository>().initialize();
 
-    // Retarder l'initialisation lourde de Firebase & FCM de 3 secondes après le premier rendu
+    // Retarder l'initialisation FCM et des notifications de 3 secondes après le premier rendu
     await Future.delayed(const Duration(seconds: 3));
 
     if (kIsWeb) {
