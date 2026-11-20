@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../module_creation_de_compte/centre/services/user_service.dart';
 import '../../../module_notification/externe/repositories/fcm_token_repository.dart';
 import '../../../../app/service_global/notification_service.dart';
+import '../../../../app/service_global/firebase_monitoring_service.dart';
 import '../../../../app/local_storage/scut_video_cache.dart';
 import '../../externe/repositories/auth_repository.dart';
 
@@ -31,6 +32,7 @@ class AuthService extends GetxService {
     _lastUserId = user?.id;
     currentUser.value = user;
     isAuthenticated.value = user != null;
+    unawaited(FirebaseMonitoringService.setUserIdentifier(user?.id));
   }
 
   void _listenAuthChanges() {
@@ -55,6 +57,10 @@ class AuthService extends GetxService {
           _lastUserId = null;
         }
 
+        unawaited(FirebaseMonitoringService.setUserIdentifier(user?.id));
+        if (event == AuthChangeEvent.signedIn) {
+          unawaited(FirebaseMonitoringService.logLogin());
+        }
         if (kDebugMode) print('Auth state changed [$event]: ${user?.email ?? 'No user'}');
       },
       onError: (error, stackTrace) {
@@ -91,6 +97,7 @@ class AuthService extends GetxService {
         }
       }
 
+      await FirebaseMonitoringService.logLogout();
       await _authRepository.signOut();
       await clearScutVideoCache();
       currentUser.value = null;
