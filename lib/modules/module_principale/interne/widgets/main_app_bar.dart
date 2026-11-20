@@ -345,12 +345,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     ),
                   ),
-                ] else
-                  IconButton(
-                    tooltip: 'Rechercher',
-                    onPressed: () => Get.to(() => const SearchScreen()),
-                    icon: const Icon(Icons.search_rounded),
-                  ),
+                ],
               ],
             ),
           ),
