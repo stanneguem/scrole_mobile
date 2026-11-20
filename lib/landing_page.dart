@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 const _ink = Color(0xFF090A0F);
 const _panel = Color(0xFF12141D);
-const _panelLight = Color(0xFF191C28);
 const _purple = Color(0xFF8B5CF6);
 const _pink = Color(0xFFEC4899);
 const _muted = Color(0xFFA4A7B5);
@@ -92,7 +91,7 @@ class _LandingPageState extends State<LandingPage>
                   _Section(
                     key: _featuresKey,
                     eyebrow: 'TON UNIVERS, TON FIL',
-                    title: 'Tout ce qui te passionne,\\nau même endroit.',
+                    title: 'Tout ce qui te passionne,\nau même endroit.',
                     subtitle:
                         'Partage tes moments, découvre de nouveaux contenus et garde le lien avec les personnes qui comptent.',
                     child: const _FeatureGrid(),
@@ -318,9 +317,9 @@ class _HeroCopy extends StatelessWidget {
               letterSpacing: -2.3,
             ),
             children: const [
-              TextSpan(text: 'Vis tes passions.\\n'),
+              TextSpan(text: 'Vis tes passions.\n'),
               TextSpan(
-                text: 'Partage tes\\n',
+                text: 'Partage tes\n',
                 style: TextStyle(color: Color(0xFFB99BFF)),
               ),
               TextSpan(text: 'moments.'),
@@ -1046,7 +1045,7 @@ class _CommunitySection extends StatelessWidget {
                   const _Eyebrow('ENSEMBLE, C’EST MIEUX'),
                   const SizedBox(height: 20),
                   Text(
-                    'Trouve ta\\ncommunauté.',
+                    'Trouve ta\ncommunauté.',
                     style: GoogleFonts.spaceGrotesk(
                       color: _white,
                       fontSize: 44,
@@ -1195,7 +1194,7 @@ class _EventSection extends StatelessWidget {
                   const _Eyebrow('SORS, DÉCOUVRE, PARTICIPE'),
                   const SizedBox(height: 20),
                   Text(
-                    'La prochaine\\nexpérience commence ici.',
+                    'La prochaine\nexpérience commence ici.',
                     style: GoogleFonts.spaceGrotesk(
                       color: _white,
                       fontSize: 42,
@@ -1282,7 +1281,7 @@ class _EventVisual extends StatelessWidget {
                   left: 18,
                   right: 18,
                   child: Text(
-                    'Tes passions\\nprennent vie.',
+                    'Tes passions\nprennent vie.',
                     style: GoogleFonts.spaceGrotesk(
                       color: Colors.white,
                       fontSize: 27,
