@@ -98,21 +98,20 @@ Future<void> main() async {
       unawaited(FirebaseMonitoringService.recordFlutterError(details));
       return;
     }
-      final error = details.exceptionAsString();
-      final errorsToIgnore = [
-        '_handledContextLostEvent',
-        'Noto fonts',
-        'widget has been unmounted',
-        'setBreakpoints',
-        'getWindowWidth',
-        'CanvasKit',
-        'context lost',
-        'FrameService',
-      ];
-      if (errorsToIgnore.any((e) => error.contains(e))) return;
-      FlutterError.dumpErrorToConsole(details);
-    };
-  }
+    final error = details.exceptionAsString();
+    final errorsToIgnore = [
+      '_handledContextLostEvent',
+      'Noto fonts',
+      'widget has been unmounted',
+      'setBreakpoints',
+      'getWindowWidth',
+      'CanvasKit',
+      'context lost',
+      'FrameService',
+    ];
+    if (errorsToIgnore.any((e) => error.contains(e))) return;
+    FlutterError.dumpErrorToConsole(details);
+  };
   await configureDatabaseFactory();
   _bootstrap();
 }
