@@ -14,6 +14,7 @@ import '../pages/create_scut_camera_screen.dart';
 
 import '../../../../../shared/widgets/glas_buton.dart';
 import '../controllers/main_layout_controller.dart';
+import 'main_navigation_items.dart';
 
 class _WideTopNavigation extends StatelessWidget {
   const _WideTopNavigation({
@@ -29,18 +30,12 @@ class _WideTopNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final destinations = <(int, Widget, String)>[
-      (0, SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 23, height: 23), 'nav_home'.tr),
-      (1, SvgPicture.asset('assets/svg_icons/discussion.svg', width: 23, height: 23), 'Communautés'),
-      (2, const Icon(Icons.video_library_outlined, size: 24), 'Réels'),
-      (3, SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 23, height: 23), 'nav_events'.tr),
-      (4, SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 23, height: 23), 'Notifications'),
-    ];
+    final destinations = MainNavigationItems.topBar;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: destinations.map((destination) {
-        final index = destination.$1;
+        final index = destination.index;
         return Obx(() {
           final selected = controller.currentTab.value == index;
           Widget icon = IconTheme(
@@ -48,7 +43,9 @@ class _WideTopNavigation extends StatelessWidget {
               color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
               size: 24,
             ),
-            child: destination.$2,
+            child: destination.svgAsset != null
+                ? SvgPicture.asset(destination.svgAsset!, width: 23, height: 23)
+                : Icon(destination.icon ?? Icons.circle_outlined, size: 24),
           );
           if (index == 4) {
             icon = Badge(
@@ -63,7 +60,7 @@ class _WideTopNavigation extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
             child: Tooltip(
-              message: destination.$3,
+              message: destination.label == 'nav_home' || destination.label == 'nav_events' ? destination.label.tr : destination.label,
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => onSelected?.call(index),
