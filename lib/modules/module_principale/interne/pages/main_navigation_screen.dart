@@ -8,7 +8,6 @@ import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
 import 'package:scrole/shared/widgets/search_screen.dart';
 import 'package:scrole/shared/constantes/image_path.dart';
-import 'package:scrole/shared/widgets/external_web_view_screen.dart';
 import '../../../module_evenement/interne/pages/event_screen.dart';
 import '../../../module_communautes/interne/pages/community_screen.dart';
 import '../../../module_communautes/interne/controllers/community/community_controller.dart';
@@ -20,6 +19,7 @@ import '../controllers/main_layout_controller.dart';
 import '../widgets/main_app_bar.dart';
 import '../widgets/main_app_shell.dart';
 import '../widgets/main_navigation_items.dart';
+import '../widgets/main_shell_menu_items.dart';
 import '../../../../app/utils/main_responsive_breakpoints.dart';
 
 class MainLayoutPage extends StatefulWidget {
@@ -125,21 +125,12 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   }
 
   Widget _buildWideDrawer(ColorScheme colorScheme) {
-    Widget item({required IconData icon, required String title, required VoidCallback onTap, Color? iconColor}) {
-      return ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18),
-        leading: Icon(icon, color: iconColor ?? colorScheme.onSurfaceVariant),
-        title: Text(title, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14)),
-        onTap: onTap,
-      );
-    }
-
+    final entries = MainShellMenuItems.build(colorScheme);
     return Container(
-      width: 260,
+      width: MainResponsiveBreakpoints.desktopSidebarWidth,
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.45))),
+        border: Border(right: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: .45))),
       ),
       child: SafeArea(
         child: Column(
@@ -156,12 +147,22 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               ),
             ),
             const Divider(height: 1),
-            const SizedBox(height: 8),
-            item(icon: Icons.folder_copy_outlined, title: 'drawer_my_content'.tr, iconColor: colorScheme.tertiary, onTap: () => Get.toNamed(AppPages.myContent)),
-            item(icon: Icons.add_circle_outline_rounded, title: 'drawer_creation'.tr, iconColor: colorScheme.secondary, onTap: () => Get.toNamed(AppPages.creationSelection)),
-            item(icon: Icons.info_outline_rounded, title: 'drawer_about'.tr, iconColor: colorScheme.primary, onTap: () => Get.to(() => ExternalWebViewScreen(url: 'https://about.scrole.fun', title: 'webview_about_title'.tr))),
-            item(icon: Icons.settings_outlined, title: 'drawer_settings'.tr, onTap: () => Get.toNamed(AppPages.setting)),
-            const Spacer(),
+            Expanded(
+              child: Scrollbar(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: entries.map((entry) => ListTile(
+                    dense: true,
+                    minVerticalPadding: 8,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+                    leading: Icon(entry.icon, color: entry.color ?? colorScheme.onSurfaceVariant),
+                    title: Text(entry.label, style: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600, fontSize: 14)),
+                    onTap: entry.onTap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  )).toList(),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(18),
               child: Text('Scrole', style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12)),
@@ -341,10 +342,13 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
+    final colors = Theme.of(context).colorScheme;
+    final entries = MainShellMenuItems.build(
+      colors,
+      closeDrawer: () => Navigator.of(context).pop(),
+    );
     return Drawer(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: colors.surface,
       child: SafeArea(
         child: Column(
           children: [
@@ -354,62 +358,30 @@ class AppDrawer extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Row(
                 children: [
-                  Image.asset(
-                    ImagePath.logoApp,
-                    height: 32,
-                    fit: BoxFit.contain,
-                  ),
+                  Image.asset(ImagePath.logoApp, height: 32, fit: BoxFit.contain),
                   const SizedBox(width: 12),
-                  Text(
-                    'Scrole',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  Text('Scrole', style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                    letterSpacing: 0.5,
+                  )),
                 ],
               ),
             ),
             const Divider(height: 1),
             const SizedBox(height: 8),
-            ListTile(
-              leading: Icon(Icons.folder_copy_outlined, color: colorScheme.tertiary),
-              title: Text('drawer_my_content'.tr, style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Get.toNamed(AppPages.myContent);
-              },
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: entries.map((entry) => ListTile(
+                  leading: Icon(entry.icon, color: entry.color),
+                  title: Text(entry.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: entry.onTap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                )).toList(),
+              ),
             ),
-            ListTile(
-              leading: Icon(Icons.add_circle_outline_rounded, color: colorScheme.secondary),
-              title: Text('drawer_creation'.tr, style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Get.toNamed(AppPages.creationSelection);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.info_outline_rounded, color: colorScheme.primary),
-              title: Text('drawer_about'.tr, style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Get.to(() => ExternalWebViewScreen(
-                  url: 'https://about.scrole.fun',
-                  title: 'webview_about_title'.tr,
-                ));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.settings_outlined, color: colorScheme.onSurfaceVariant),
-              title: Text('drawer_settings'.tr, style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.of(context).pop();
-                Get.toNamed(AppPages.setting);
-              },
-            ),
-            const Spacer(),
             const SizedBox(height: 12),
           ],
         ),
