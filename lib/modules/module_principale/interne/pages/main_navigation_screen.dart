@@ -253,7 +253,10 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     );
   }
 
-  Widget _buildTabletRail(ColorScheme colors, MainLayoutController controller, ValueChanged<int> onSelected) {
+  Widget _buildTabletRail(ColorScheme colors) {
+    // Le rail tablette reprend les entrées du drawer, sans les destinations
+    // de la barre de navigation principale.
+    final entries = MainShellMenuItems.build(colors);
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -262,19 +265,18 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       child: Column(
         children: [
           const SizedBox(height: 12),
-          ...MainNavigationItems.all.map((item) => Obx(() => Padding(
+          ...entries.map((entry) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: IconButton(
-              tooltip: _navigationLabel(item),
-              onPressed: () => onSelected(item.index),
-              icon: _navigationIcon(
-                item,
-                controller.currentTab.value == item.index ? colors.primary : colors.onSurfaceVariant,
-                selected: controller.currentTab.value == item.index,
-                controller: controller,
+              tooltip: entry.label,
+              onPressed: entry.onTap,
+              icon: Icon(
+                entry.icon,
+                color: entry.color ?? colors.onSurfaceVariant,
+                size: 23,
               ),
             ),
-          ))),
+          )),
         ],
       ),
     );
@@ -319,7 +321,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       onDestinationSelected: destinationHandler,
       mobileDrawer: const AppDrawer(),
       mobileBottomNavigation: _buildBottomNavigation(colors, controller),
-      tabletRail: _buildTabletRail(colors, controller, destinationHandler),
+      tabletRail: _buildTabletRail(colors),
       desktopSidebar: _buildWideDrawer(colors),
       rightSidebar: const SizedBox.shrink(),
       onScrollNotification: _onScrollNotification,
