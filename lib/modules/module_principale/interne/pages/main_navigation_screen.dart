@@ -18,6 +18,8 @@ import '../../../../app_controller.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../controllers/main_layout_controller.dart';
 import '../widgets/main_app_bar.dart';
+import '../widgets/main_app_shell.dart';
+import '../../../../app/utils/main_responsive_breakpoints.dart';
 
 class MainLayoutPage extends StatefulWidget {
   const MainLayoutPage({super.key});
@@ -169,160 +171,119 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     );
   }
 
+  Widget _buildBottomNavigation(ColorScheme colors, MainLayoutController controller) {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: _currentIndex == 2 ? 4 : _currentIndex,
+      onTap: _onTabChanged,
+      backgroundColor: colors.surface,
+      selectedItemColor: colors.primary,
+      unselectedItemColor: colors.onSurfaceVariant,
+      showSelectedLabels: false,
+      showUnselectedLabels: false,
+      elevation: 8,
+      iconSize: 25,
+      items: [
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
+          activeIcon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
+          label: 'nav_home'.tr),
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset('assets/svg_icons/discussion.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
+          activeIcon: SvgPicture.asset('assets/svg_icons/discussion.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
+          label: 'Communautés'),
+        const BottomNavigationBarItem(icon: Icon(Icons.video_library_outlined),
+          activeIcon: Icon(Icons.video_library_rounded), label: 'Réels'),
+        BottomNavigationBarItem(
+          icon: SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
+          activeIcon: SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 24, height: 24,
+            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
+          label: 'nav_events'.tr),
+        BottomNavigationBarItem(
+          icon: Obx(() => Badge(isLabelVisible: controller.hasNotifications,
+            label: Text(controller.notificationBadge),
+            child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 24, height: 24,
+              colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)))),
+          activeIcon: Obx(() => Badge(isLabelVisible: controller.hasNotifications,
+            label: Text(controller.notificationBadge),
+            child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 24, height: 24,
+              colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)))),
+          label: 'Notifications'),
+        BottomNavigationBarItem(
+          icon: const _BottomNavProfileIcon(isSelected: false),
+          activeIcon: _BottomNavProfileIcon(isSelected: true),
+          label: 'nav_profile'.tr),
+      ],
+    );
+  }
+
+  Widget _buildTabletRail(ColorScheme colors, MainLayoutController controller) {
+    final items = <(int, IconData, String)>[
+      (0, Icons.home_rounded, 'nav_home'.tr),
+      (1, Icons.groups_rounded, 'Communautés'),
+      (2, Icons.video_library_rounded, 'Réels'),
+      (3, Icons.event_rounded, 'nav_events'.tr),
+      (4, Icons.notifications_rounded, 'Notifications'),
+      (5, Icons.person_rounded, 'nav_profile'.tr),
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(right: BorderSide(color: colors.outlineVariant.withValues(alpha: .35))),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          ...items.map((item) => Obx(() => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: IconButton(
+              tooltip: item.$3,
+              onPressed: () => _onTabChanged(item.$1),
+              icon: Icon(item.$2,
+                color: controller.currentTab.value == item.$1 ? colors.primary : colors.onSurfaceVariant),
+            ),
+          ))),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bootLog('MainNavigationScreen.build');
-    if (!Get.isRegistered<MainLayoutController>()) {
-      Get.put(MainLayoutController());
-    }
-
+    if (!Get.isRegistered<MainLayoutController>()) Get.put(MainLayoutController());
     final controller = Get.find<MainLayoutController>();
-    final colorScheme = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: CustomAppBar(controller: controller, onDestinationSelected: _onTabChanged),
-      drawer: const AppDrawer(),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWideLayout = constraints.maxWidth >= 760;
-          return Row(
-            children: [
-              if (isWideLayout) _buildWideDrawer(colorScheme),
-              Expanded(
-                child: Stack(
-                  children: [
-          Positioned.fill(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _onScrollNotification,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width >= 1100 ? 1180 : 1040,
-                  ),
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: List.generate(_pages.length, (index) {
-                      if (!_visited[index]) return const SizedBox.shrink();
-                      return _pages[index];
-                    }),
-                  ),
-                ),
-              ),
-            ),
+    return MainAppShell(
+      controller: controller,
+      onDestinationSelected: _onTabChanged,
+      mobileDrawer: const AppDrawer(),
+      mobileBottomNavigation: _buildBottomNavigation(colors, controller),
+      tabletRail: _buildTabletRail(colors, controller),
+      desktopSidebar: _buildWideDrawer(colors),
+      onScrollNotification: _onScrollNotification,
+      bottomNavigationVisible: _isBottomNavVisible,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MainResponsiveBreakpoints.isDesktop(MediaQuery.sizeOf(context).width)
+                ? MainResponsiveBreakpoints.desktopFeedMaxWidth
+                : MainResponsiveBreakpoints.tabletFeedMaxWidth,
           ),
-                    if (!isWideLayout)
-                    Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 250),
-                    offset: _isBottomNavVisible ? Offset.zero : const Offset(0, 1),
-                    child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 250),
-                    opacity: _isBottomNavVisible ? 1.0 : 0.0,
-                    child: BottomNavigationBar(
-                    type: BottomNavigationBarType.fixed,
-                    currentIndex: _currentIndex == 2 ? 4 : _currentIndex,
-                    onTap: _onTabChanged,
-                    backgroundColor: colorScheme.surface,
-                    selectedItemColor: colorScheme.primary,
-                    unselectedItemColor: colorScheme.onSurfaceVariant,
-                    showSelectedLabels: false,
-                    showUnselectedLabels: false,
-                    elevation: 8,
-                    iconSize: 25,
-                    items: [
-                    BottomNavigationBarItem(
-                    icon: SvgPicture.asset(
-                    'assets/svg_icons/japan-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                    ),
-                    activeIcon: SvgPicture.asset(
-                    'assets/svg_icons/japan-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                    ),
-                    label: 'nav_home'.tr,
-                    ),
-                    BottomNavigationBarItem(
-                    icon: SvgPicture.asset(
-                    'assets/svg_icons/discussion.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                    ),
-                    activeIcon: SvgPicture.asset(
-                    'assets/svg_icons/discussion.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                    ),
-                    label: 'Communautés',
-                    ),
-                    const BottomNavigationBarItem(
-                    icon: Icon(Icons.video_library_outlined),
-                    activeIcon: Icon(Icons.video_library_rounded),
-                    label: 'Réels',
-                    ),
-                    BottomNavigationBarItem(
-                    icon: SvgPicture.asset(
-                    'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                    ),
-                    activeIcon: SvgPicture.asset(
-                    'assets/svg_icons/event-promotion-sale-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                    ),
-                    label: 'nav_events'.tr,
-                    ),
-                    BottomNavigationBarItem(
-                    icon: Obx(() => Badge(
-                    isLabelVisible: controller.hasNotifications,
-                    label: Text(controller.notificationBadge),
-                    child: SvgPicture.asset(
-                    'assets/svg_icons/notification-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.onSurfaceVariant, BlendMode.srcIn),
-                    ),
-                    )),
-                    activeIcon: Obx(() => Badge(
-                    isLabelVisible: controller.hasNotifications,
-                    label: Text(controller.notificationBadge),
-                    child: SvgPicture.asset(
-                    'assets/svg_icons/notification-svgrepo-com.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
-                    ),
-                    )),
-                    label: 'Notifications',
-                    ),
-                    BottomNavigationBarItem(
-                    icon: const _BottomNavProfileIcon(isSelected: false),
-                    activeIcon: _BottomNavProfileIcon(isSelected: true),
-                    label: 'nav_profile'.tr,
-                    ),
-                    ],
-                    ),
-                    ),
-                    ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+          child: IndexedStack(
+            index: _currentIndex,
+            children: List.generate(_pages.length, (index) {
+              if (!_visited[index]) return const SizedBox.shrink();
+              return _pages[index];
+            }),
+          ),
+        ),
       ),
     );
   }
