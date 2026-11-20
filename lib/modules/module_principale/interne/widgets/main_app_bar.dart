@@ -138,7 +138,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  @override
   Size get preferredSize => const Size.fromHeight(72);
 
   static final GlobalKey _actionsKey = GlobalKey();
@@ -451,5 +450,4 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
     );
   }
-}
 }
