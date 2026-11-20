@@ -58,7 +58,7 @@ class _MainAppShellState extends State<MainAppShell> {
               controller: widget.controller,
               onDestinationSelected: widget.onDestinationSelected,
               onLogoTap: tablet
-                  ? () => setState(() => _tabletMenuExpanded = true)
+                  ? () => setState(() => _tabletMenuExpanded = !_tabletMenuExpanded)
                   : null,
             ),
           ),
@@ -124,9 +124,12 @@ class _MainAppShellState extends State<MainAppShell> {
             left: 0,
             child: SizedBox(
               width: MainResponsiveBreakpoints.desktopSidebarWidth,
-              child: Material(
-                elevation: 18,
-                child: widget.desktopSidebar,
+              child: Listener(
+                onPointerDown: (_) => setState(() => _tabletMenuExpanded = false),
+                child: Material(
+                  elevation: 18,
+                  child: widget.desktopSidebar,
+                ),
               ),
             ),
           ),
