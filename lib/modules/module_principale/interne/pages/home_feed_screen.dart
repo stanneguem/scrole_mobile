@@ -657,8 +657,8 @@ class _StoriesRow extends GetView<StoriesController> {
                                             (own?.author.photoUrl ?? ownProfilePhoto)!.isNotEmpty)
                                         ? AppCachedImage(
                                             imageUrl: own?.author.photoUrl ?? ownProfilePhoto!,
-                                            width: 56,
-                                            height: 56,
+                                            width: avatarSize,
+                                            height: avatarSize,
                                             fit: BoxFit.cover,
                                             errorWidget: Icon(Icons.person,
                                                 color: colorScheme.onSurfaceVariant),
@@ -748,8 +748,8 @@ class _StoriesRow extends GetView<StoriesController> {
                       ),
                       child: ClipOval(
                         child: SizedBox(
-                          width: 56,
-                          height: 56,
+                          width: avatarSize,
+                          height: avatarSize,
                           child: storyPreviewUrl != null && storyPreviewUrl.isNotEmpty
                               ? AppCachedImage(
                                   imageUrl: storyPreviewUrl,
