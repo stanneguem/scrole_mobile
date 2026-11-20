@@ -221,8 +221,12 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       elevation: 8,
       iconSize: 25,
       items: MainNavigationItems.all.map((item) => BottomNavigationBarItem(
-        icon: _navigationIcon(item, colors.onSurfaceVariant, selected: false, controller: controller),
-        activeIcon: _navigationIcon(item, colors.primary, selected: true, controller: controller),
+        icon: item.index == 4
+            ? Obx(() => _navigationIcon(item, colors.onSurfaceVariant, selected: false, controller: controller))
+            : _navigationIcon(item, colors.onSurfaceVariant, selected: false, controller: controller),
+        activeIcon: item.index == 4
+            ? Obx(() => _navigationIcon(item, colors.primary, selected: true, controller: controller))
+            : _navigationIcon(item, colors.primary, selected: true, controller: controller),
         label: _navigationLabel(item),
       )).toList(growable: false),
     );
@@ -378,7 +382,6 @@ class AppDrawer extends StatelessWidget {
                   leading: Icon(entry.icon, color: entry.color),
                   title: Text(entry.label, style: const TextStyle(fontWeight: FontWeight.w600)),
                   onTap: entry.onTap,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 )).toList(),
               ),
             ),
