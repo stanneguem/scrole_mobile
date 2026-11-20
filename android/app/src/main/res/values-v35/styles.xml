@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Android 15 enforces edge-to-edge for apps targeting API 35.
+        uCrop 2.2.x does not inset its toolbar correctly, so opt this
+        activity out on API 35 to keep the confirm action below the status bar.
+    -->
+    <style name="Ucrop.CropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>
