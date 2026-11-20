@@ -62,7 +62,7 @@ class _MainAppShellState extends State<MainAppShell> {
                   : null,
             ),
           ),
-          drawer: mobile ? widget.mobileDrawer as Drawer : null,
+          drawer: mobile ? widget.mobileDrawer : null,
           body: mobile
               ? _buildMobileBody()
               : tablet
