@@ -186,7 +186,7 @@ class FeedPostCard extends StatelessWidget {
     this.onVideoQualifiedView,
     this.onSponsoredInteraction,
     this.autoplayVideos = false,
-    this.margin = const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
+    this.margin = const EdgeInsets.symmetric(horizontal: 0, vertical: 9),
   });
 
   @override
@@ -237,6 +237,8 @@ class FeedPostCard extends StatelessWidget {
         width: double.infinity,
         margin: margin,
         decoration: BoxDecoration(
+          // Même surface que l'arrière-plan du fil : les cartes se
+          // fondent dans la page, l'espacement assurant leur séparation.
           color: colorScheme.surface,
           borderRadius: BorderRadius.zero,
           boxShadow: [
