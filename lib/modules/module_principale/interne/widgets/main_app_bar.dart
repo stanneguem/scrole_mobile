@@ -382,12 +382,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ] else ...[
                   _roundAction(
                     context,
-                    icon: Icons.explore_outlined,
-                    tooltip: 'Explorer',
-                    onTap: () => Get.to(() => const SearchScreen()),
-                  ),
-                  _roundAction(
-                    context,
                     icon: Icons.add_rounded,
                     tooltip: 'Créer',
                     onTap: () => _showCreationMenu(context),
@@ -400,14 +394,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   badge: double.tryParse(controller.messageBadge),
                   onTap: controller.openMessages,
                 )),
-                if (!isTablet)
-                  Obx(() => _roundAction(
-                    context,
-                    icon: Icons.notifications_none_rounded,
-                    tooltip: 'Notifications',
-                    badge: controller.hasNotifications ? double.tryParse(controller.notificationBadge) ?? 1 : null,
-                    onTap: controller.openNotifications,
-                  )),
                 const SizedBox(width: 8),
                 InkWell(
                   borderRadius: BorderRadius.circular(24),
