@@ -44,7 +44,7 @@ class _WideTopNavigation extends StatelessWidget {
               size: 24,
             ),
             child: destination.svgAsset != null
-                ? SvgPicture.asset(destination.svgAsset!, width: 23, height: 23)
+                ? SvgPicture.asset(destination.svgAsset!, width: 23, height: 23, colorFilter: ColorFilter.mode(selected ? colorScheme.primary : colorScheme.onSurfaceVariant, BlendMode.srcIn))
                 : Icon(destination.icon ?? Icons.circle_outlined, size: 24),
           );
           if (index == 4) {
