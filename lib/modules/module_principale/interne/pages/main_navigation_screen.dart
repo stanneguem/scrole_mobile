@@ -19,6 +19,7 @@ import '../../../module_authentification/centre/services/auth_service.dart';
 import '../controllers/main_layout_controller.dart';
 import '../widgets/main_app_bar.dart';
 import '../widgets/main_app_shell.dart';
+import '../widgets/main_navigation_items.dart';
 import '../../../../app/utils/main_responsive_breakpoints.dart';
 
 class MainLayoutPage extends StatefulWidget {
@@ -171,6 +172,41 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     );
   }
 
+  String _navigationLabel(MainNavigationItem item) {
+    return item.label == 'nav_home' || item.label == 'nav_events' || item.label == 'nav_profile'
+        ? item.label.tr
+        : item.label;
+  }
+
+  Widget _navigationIcon(
+    MainNavigationItem item,
+    Color color, {
+    required bool selected,
+    required MainLayoutController controller,
+  }) {
+    if (item.index == 5) return _BottomNavProfileIcon(isSelected: selected);
+    Widget icon = item.svgAsset != null
+        ? SvgPicture.asset(
+            item.svgAsset!,
+            width: 24,
+            height: 24,
+            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+          )
+        : Icon(
+            selected && item.index == 2 ? Icons.video_library_rounded : item.icon,
+            size: 24,
+            color: color,
+          );
+    if (item.index == 4) {
+      icon = Badge(
+        isLabelVisible: controller.hasNotifications,
+        label: Text(controller.notificationBadge),
+        child: icon,
+      );
+    }
+    return icon;
+  }
+
   Widget _buildBottomNavigation(ColorScheme colors, MainLayoutController controller) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
@@ -183,54 +219,15 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       showUnselectedLabels: false,
       elevation: 8,
       iconSize: 25,
-      items: [
-        BottomNavigationBarItem(
-          icon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
-          activeIcon: SvgPicture.asset('assets/svg_icons/japan-svgrepo-com.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
-          label: 'nav_home'.tr),
-        BottomNavigationBarItem(
-          icon: SvgPicture.asset('assets/svg_icons/discussion.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
-          activeIcon: SvgPicture.asset('assets/svg_icons/discussion.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
-          label: 'Communautés'),
-        const BottomNavigationBarItem(icon: Icon(Icons.video_library_outlined),
-          activeIcon: Icon(Icons.video_library_rounded), label: 'Réels'),
-        BottomNavigationBarItem(
-          icon: SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)),
-          activeIcon: SvgPicture.asset('assets/svg_icons/event-promotion-sale-svgrepo-com.svg', width: 24, height: 24,
-            colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)),
-          label: 'nav_events'.tr),
-        BottomNavigationBarItem(
-          icon: Obx(() => Badge(isLabelVisible: controller.hasNotifications,
-            label: Text(controller.notificationBadge),
-            child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 24, height: 24,
-              colorFilter: ColorFilter.mode(colors.onSurfaceVariant, BlendMode.srcIn)))),
-          activeIcon: Obx(() => Badge(isLabelVisible: controller.hasNotifications,
-            label: Text(controller.notificationBadge),
-            child: SvgPicture.asset('assets/svg_icons/notification-svgrepo-com.svg', width: 24, height: 24,
-              colorFilter: ColorFilter.mode(colors.primary, BlendMode.srcIn)))),
-          label: 'Notifications'),
-        BottomNavigationBarItem(
-          icon: const _BottomNavProfileIcon(isSelected: false),
-          activeIcon: _BottomNavProfileIcon(isSelected: true),
-          label: 'nav_profile'.tr),
-      ],
+      items: MainNavigationItems.all.map((item) => BottomNavigationBarItem(
+        icon: _navigationIcon(item, colors.onSurfaceVariant, selected: false, controller: controller),
+        activeIcon: _navigationIcon(item, colors.primary, selected: true, controller: controller),
+        label: _navigationLabel(item),
+      )).toList(growable: false),
     );
   }
 
   Widget _buildTabletRail(ColorScheme colors, MainLayoutController controller) {
-    final items = <(int, IconData, String)>[
-      (0, Icons.home_rounded, 'nav_home'.tr),
-      (1, Icons.groups_rounded, 'Communautés'),
-      (2, Icons.video_library_rounded, 'Réels'),
-      (3, Icons.event_rounded, 'nav_events'.tr),
-      (4, Icons.notifications_rounded, 'Notifications'),
-      (5, Icons.person_rounded, 'nav_profile'.tr),
-    ];
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -239,13 +236,17 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       child: Column(
         children: [
           const SizedBox(height: 12),
-          ...items.map((item) => Obx(() => Padding(
+          ...MainNavigationItems.all.map((item) => Obx(() => Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: IconButton(
-              tooltip: item.$3,
-              onPressed: () => _onTabChanged(item.$1),
-              icon: Icon(item.$2,
-                color: controller.currentTab.value == item.$1 ? colors.primary : colors.onSurfaceVariant),
+              tooltip: _navigationLabel(item),
+              onPressed: () => _onTabChanged(item.index),
+              icon: _navigationIcon(
+                item,
+                controller.currentTab.value == item.index ? colors.primary : colors.onSurfaceVariant,
+                selected: controller.currentTab.value == item.index,
+                controller: controller,
+              ),
             ),
           ))),
         ],
