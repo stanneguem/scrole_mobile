@@ -68,6 +68,7 @@ class AppCachedImage extends StatelessWidget {
         placeholder: placeholder,
         errorWidget: errorWidget,
         onImageLoaded: onImageLoaded,
+        cacheUntil: cacheUntil,
       );
     }
 
@@ -148,6 +149,7 @@ class _PersistentCachedImage extends StatefulWidget {
     this.placeholder,
     this.errorWidget,
     this.onImageLoaded,
+    this.cacheUntil,
   });
 
   final String imageUrl;
@@ -158,6 +160,7 @@ class _PersistentCachedImage extends StatefulWidget {
   final Widget? placeholder;
   final Widget? errorWidget;
   final VoidCallback? onImageLoaded;
+  final DateTime? cacheUntil;
 
   @override
   State<_PersistentCachedImage> createState() => _PersistentCachedImageState();
@@ -214,6 +217,14 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
 
   Future<void> _restoreAndLoad() async {
     final key = _cacheKey;
+    final expiry = widget.cacheUntil;
+    if (expiry != null && !expiry.isAfter(DateTime.now())) {
+      _memory.remove(key);
+      final expiredCache = Get.isRegistered<FastCacheService>() ? Get.find<FastCacheService>() : null;
+      if (expiredCache != null && expiredCache.isReady) await expiredCache.remove(key);
+      if (mounted) setState(() => _failed = true);
+      return;
+    }
     final inMemory = _memory[key];
     if (inMemory != null && mounted) {
       // A memory hit is still a cache access: refresh its persistent LRU
@@ -251,7 +262,8 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
       _memory[key] = bytes;
       if (mounted) setState(() => _bytes = bytes);
       final savedAt = DateTime.tryParse(stored['saved_at']?.toString() ?? '');
-      if (savedAt != null && DateTime.now().difference(savedAt) < _refreshAfter) {
+      if ((widget.cacheUntil == null || widget.cacheUntil!.isAfter(DateTime.now())) &&
+          savedAt != null && DateTime.now().difference(savedAt) < _refreshAfter) {
         await cache?.set(key, {
           'bytes': bytes,
           'saved_at': savedAt.toIso8601String(),
