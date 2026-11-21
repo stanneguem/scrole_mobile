@@ -81,11 +81,12 @@ class SessionService extends GetxService {
     } else {
       final support = await getApplicationSupportDirectory();
       final temporary = await getTemporaryDirectory();
+      // Ne supprimer que les répertoires explicitement isolés par userId.
+      // Les anciens répertoires R2/temp globaux peuvent contenir les fichiers
+      // encore utilisés par un autre compte connecté sur le même appareil.
       final scopedDirectories = <Directory>[
         Directory(p.join(support.path, 'chat_media', userId)),
         Directory(p.join(support.path, 'scrole_media', userId)),
-        Directory(p.join(support.path, 'r2_media_cache')),
-        Directory(p.join(temporary.path, 'r2_private_temp')),
       ];
       for (final directory in scopedDirectories) {
         if (await directory.exists()) {
