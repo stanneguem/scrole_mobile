@@ -56,6 +56,8 @@ class SessionService extends GetxService {
     _realtimeProfileFetchInFlight = null;
 
     _activeUserId = userId;
+    // Les clés Hive de cette session sont isolées de celles des autres comptes.
+    unawaited(_fastCache.setUserScope(userId));
     final resolve = _resolveForUser(userId);
     _resolveInFlight = resolve;
 
@@ -118,7 +120,12 @@ class SessionService extends GetxService {
     _prefsService.clearCache();
     _privacyService.clearCache();
     _syncService.clearCache();
-    await _fastCache.clear();
+    if (uid != null) {
+      await _fastCache.clearUserScope(uid);
+    } else {
+      await _fastCache.clear();
+    }
+    _fastCache.setUserScope(null);
     
     // Purge de la base SQLite pour cet utilisateur
     if (uid != null) {
