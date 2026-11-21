@@ -55,8 +55,8 @@ Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {
 VideoPlayerController createScutVideoController(String? localPath, String url) =>
     platform.createScutVideoController(localPath, url);
 
-Future<void> clearScutVideoCache() async {
-  if (!kIsWeb) return platform.clearScutVideoCache();
+Future<void> clearScutVideoCache({String? userId}) async {
+  if (!kIsWeb) return platform.clearScutVideoCache(userId: userId);
   await _webCache?.remove(_webManifestKey);
   // Pending watch signals are an outbox, not a disposable media cache.
 }
