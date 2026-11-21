@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../modules/module_creation_de_compte/externe/repositories/user_repository.dart';
 import '../local_storage/fast/fast_cache_service.dart';
+import '../local_storage/scut_video_cache.dart';
 import '../../modules/module_authentification/centre/services/auth_service.dart';
 import '../../modules/module_creation_de_compte/centre/services/user_service.dart';
 import '../local_storage/structured/app_cache_database.dart';
@@ -106,6 +107,7 @@ class SessionService extends GetxService {
     if (uid != null) {
       try {
         await StoriesController.clearLocalCacheForUser(uid);
+        await clearScutVideoCache(userId: uid);
         await _purgeAccountMediaCaches(uid);
       } catch (e) {
         // A cache-file failure must not prevent the user from completing logout.
