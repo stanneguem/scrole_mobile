@@ -2806,6 +2806,30 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
     }
   }
 
+  Future<void> _expireStoryMedia() async {
+    // Keep story lifetime enforcement identical on native and web even though
+    // each platform uses a different underlying media cache.
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      controller.removeListener(_onVideoChanged);
+      try {
+        await controller.pause();
+      } catch (_) {}
+      await controller.dispose();
+    }
+    await deleteCachedStoryVideo(
+      storyId: widget.storyId,
+      objectKey: widget.objectKey,
+    );
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _failed = true;
+      });
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) _controller?.pause();
@@ -2993,9 +3017,10 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
     WidgetsBinding.instance.addObserver(this);
     final untilExpiry = widget.expiresAt.difference(DateTime.now());
     if (untilExpiry > Duration.zero) {
-      _expiryCleanupTimer = Timer(untilExpiry, () {
-        deleteCachedStoryVideo(storyId: widget.storyId, objectKey: widget.objectKey);
-      });
+      _expiryCleanupTimer = Timer(untilExpiry, _expireStoryMedia);
+    } else {
+      _failed = true;
+      return;
     }
     _initialize();
   }
