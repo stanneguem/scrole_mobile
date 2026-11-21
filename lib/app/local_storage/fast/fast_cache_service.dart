@@ -72,7 +72,7 @@ class FastCacheService extends GetxService implements CacheStore {
       if (maxAge != null) {
         final age = DateTime.now().difference(entry.storedAt);
         if (age > maxAge) {
-          box.delete(key);
+          box.delete(_scopedKey(key));
           return null;
         }
       }
