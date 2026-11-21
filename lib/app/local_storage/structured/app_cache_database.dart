@@ -874,31 +874,66 @@ class AppDatabase {
     )''');
   }
 
-  /// Purge l'ensemble des données locales lors d'une déconnexion.
-  /// Plusieurs tables de cache/outbox ne sont pas indexées par user_id ;
-  /// vider toutes les lignes évite qu'un compte suivant récupère ces données.
+  /// Supprime les données locales appartenant au compte déconnecté.
+  ///
+  /// Les tables d'outbox sont filtrées par leur propriétaire afin de ne pas
+  /// perdre les opérations hors ligne d'un autre compte sur le même appareil.
+  /// Les tables partagées sans colonne d'appartenance sont conservées.
   Future<void> clearUserData(String userId) async {
     final db = await database;
-    try {
-      await db.execute('PRAGMA foreign_keys = OFF');
-      await db.transaction((txn) async {
-        final rows = await txn.rawQuery(
-          "SELECT name FROM sqlite_master "
-          "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-        );
-        for (final row in rows) {
-          final table = row['name']?.toString();
-          if (table == null || !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(table)) {
-            continue;
-          }
-          await txn.delete(table);
+    const ownerColumns = <String>{
+      'user_id',
+      'viewer_user_id',
+      'creator_id',
+      'author_id',
+      'user_a_id',
+      'user_b_id',
+      'sender_id',
+      'receiver_id',
+      'proposed_by',
+      'proposed_to',
+      'validated_by_user_id',
+      'invited_by',
+    };
+
+    await db.transaction((txn) async {
+      final rows = await txn.rawQuery(
+        "SELECT name FROM sqlite_master "
+        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+      );
+
+      for (final row in rows) {
+        final table = row['name']?.toString();
+        if (table == null ||
+            !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(table)) {
+          continue;
         }
-      });
-      debugPrint('[Database] Toutes les tables locales ont été purgées après déconnexion de $userId');
-    } finally {
-      await db.execute('PRAGMA foreign_keys = ON');
-    }
-    // Les conversations de salon utilisent un fichier SQLite séparé.
+
+        final columnRows = await txn.rawQuery('PRAGMA table_info("$table")');
+        final columns = columnRows
+            .map((column) => column['name']?.toString())
+            .whereType<String>()
+            .toSet();
+        final matchingOwners = ownerColumns.where(columns.contains).toList();
+
+        if (matchingOwners.isEmpty) continue;
+
+        final where = matchingOwners.map((column) => '"$column" = ?').join(' OR ');
+        await txn.delete(
+          table,
+          where: where,
+          whereArgs: List<Object?>.filled(matchingOwners.length, userId),
+        );
+      }
+
+      // Ces caches et curseurs ne portent pas d'identifiant de compte.
+      // Ils sont invalidés au changement de session pour forcer une resynchronisation.
+      await txn.delete('discovery_cache');
+      await txn.delete('activity_sync_cursors');
+      await txn.delete('event_sync_cursors');
+    });
+
+    debugPrint('[Database] Données locales de $userId purgées; autres comptes et outbox préservés');
     await SalonChatDatabase.instance.clearUserData(userId);
   }
 
