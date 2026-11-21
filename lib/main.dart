@@ -354,9 +354,11 @@ class _CrashlyticsDebugOverlay extends StatelessWidget {
           bottom: 16,
           child: FloatingActionButton.small(
             heroTag: 'crashlytics-debug-test',
-            tooltip: 'Crashlytics : provoquer un crash de test',
             onPressed: FirebaseMonitoringService.crashForTesting,
-            child: const Icon(Icons.bug_report_outlined),
+            child: const Icon(
+              Icons.bug_report_outlined,
+              semanticLabel: 'Crashlytics : provoquer un crash de test',
+            ),
           ),
         ),
       ],
