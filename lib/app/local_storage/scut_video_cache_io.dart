@@ -6,13 +6,44 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'feed_video_cache_io.dart';
 
-Future<Directory> _cacheDirectory() async {
+String? _activeCacheUserId() =>
+    Supabase.instance.client.auth.currentUser?.id;
+
+String _safeUserSegment(String userId) =>
+    sha256.convert(utf8.encode(userId)).toString();
+
+Future<Directory> _cacheDirectory({String? userId}) async {
+  final uid = userId ?? _activeCacheUserId();
+  if (uid == null || uid.isEmpty) {
+    throw StateError('Scut video cache requires an authenticated user');
+  }
   final root = await getApplicationSupportDirectory();
-  final directory = Directory(p.join(root.path, 'scut_video_cache'));
+  final directory = Directory(
+    p.join(root.path, 'scut_video_cache', _safeUserSegment(uid)),
+  );
   await directory.create(recursive: true);
   return directory;
+}
+
+Future<File> _manifestFile({String? userId}) async {
+  final uid = userId ?? _activeCacheUserId();
+  if (uid == null || uid.isEmpty) {
+    throw StateError('Scut feed manifest requires an authenticated user');
+  }
+  final root = await getApplicationSupportDirectory();
+  return File(p.join(root.path, 'scut_feed_cache_${_safeUserSegment(uid)}.json'));
+}
+
+Future<File> _pendingWatchFile({String? userId}) async {
+  final uid = userId ?? _activeCacheUserId();
+  if (uid == null || uid.isEmpty) {
+    throw StateError('Scut watch queue requires an authenticated user');
+  }
+  final root = await getApplicationSupportDirectory();
+  return File(p.join(root.path, 'scut_pending_watch_signals_${_safeUserSegment(uid)}.json'));
 }
 
 String _fileName(String url) {
@@ -30,16 +61,14 @@ String _fileName(String url) {
 }
 
 Future<List<dynamic>> readScutFeedManifest() async {
-  final root = await getApplicationSupportDirectory();
-  final file = File(p.join(root.path, 'scut_feed_cache.json'));
+  final file = await _manifestFile();
   if (!await file.exists()) return const [];
   final decoded = jsonDecode(await file.readAsString());
   return decoded is List ? decoded : const [];
 }
 
 Future<void> writeScutFeedManifest(List<Map<String, dynamic>> items) async {
-  final root = await getApplicationSupportDirectory();
-  final file = File(p.join(root.path, 'scut_feed_cache.json'));
+  final file = await _manifestFile();
   await file.writeAsString(jsonEncode(items), flush: true);
 }
 
@@ -95,24 +124,18 @@ VideoPlayerController createScutVideoController(
   return VideoPlayerController.networkUrl(Uri.parse(url));
 }
 
-Future<void> clearScutVideoCache() async {
+Future<void> clearScutVideoCache({String? userId}) async {
+  final uid = userId ?? _activeCacheUserId();
+  if (uid == null || uid.isEmpty) return;
   try {
-    final root = await getApplicationSupportDirectory();
-    final directory = Directory(p.join(root.path, 'scut_video_cache'));
+    final directory = await _cacheDirectory(userId: uid);
     if (await directory.exists()) await directory.delete(recursive: true);
-    await clearFeedVideoCache();
-    final manifest = File(p.join(root.path, 'scut_feed_cache.json'));
+    final manifest = await _manifestFile(userId: uid);
     if (await manifest.exists()) await manifest.delete();
-    final pending = File(p.join(root.path, 'scut_pending_watch_signals.json'));
-    if (await pending.exists()) await pending.delete();
+    // La file de signaux est un outbox : elle n'est pas supprimée ici.
   } catch (_) {
     // Logout must complete even if the OS temporarily denies cache deletion.
   }
-}
-
-Future<File> _pendingWatchFile() async {
-  final root = await getApplicationSupportDirectory();
-  return File(p.join(root.path, 'scut_pending_watch_signals.json'));
 }
 
 Future<List<Map<String, dynamic>>> readPendingScutWatchSignals() async {
