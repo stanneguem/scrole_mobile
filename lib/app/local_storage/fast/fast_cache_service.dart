@@ -24,11 +24,14 @@ class FastCacheService extends GetxService implements CacheStore {
     if (legacyKeys.isNotEmpty) await box.deleteAll(legacyKeys);
   }
 
-  Future<void> clearUserScope(String userId) async {
+  Future<void> clearUserScope(
+    String userId, {Set<String> preserveKeys = const {},}
+  ) async {
     if (!_ready) return;
     final prefix = '$_scopePrefix$userId:';
+    final preserved = preserveKeys.map((key) => '$prefix$key').toSet();
     final keys = box.keys.where((key) =>
-        key is String && key.startsWith(prefix)).toList();
+        key is String && key.startsWith(prefix) && !preserved.contains(key)).toList();
     if (keys.isNotEmpty) await box.deleteAll(keys);
   }
 
