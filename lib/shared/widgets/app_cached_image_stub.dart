@@ -179,6 +179,7 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
   static const int _maxSingleImageBytes = 12 * 1024 * 1024;
 
   Uint8List? _bytes;
+  String? _browserImageUrl;
   bool _failed = false;
 
   String get _cacheKey {
@@ -210,6 +211,7 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) {
       _bytes = null;
+      _browserImageUrl = null;
       _failed = false;
       _restoreAndLoad();
     }
@@ -289,7 +291,42 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
         _failed = false;
       });
     } else if (_bytes == null && mounted) {
-      setState(() => _failed = true);
+      // Fetching image bytes with package:http requires CORS permission from
+      // the R2 origin. Browsers can still render cross-origin images through
+      // their native image loader, so fall back to that path when byte caching
+      // is blocked by CORS instead of leaving a black story canvas.
+      final displayUrl = await _resolveBrowserImageUrl();
+      if (mounted && displayUrl != null) {
+        setState(() {
+          _browserImageUrl = displayUrl;
+          _failed = false;
+        });
+      } else if (mounted) {
+        setState(() => _failed = true);
+      }
+    }
+  }
+
+  Future<String?> _resolveBrowserImageUrl() async {
+    final source = widget.imageUrl.trim();
+    if (_isHttpUrl(source)) return source;
+    if (!const ['private/', 'messages/', 'stories/', 'bug-reports/',
+        'comments/', 'communities/', 'posts/', 'profiles/', 'events/']
+        .any(source.startsWith)) return null;
+    try {
+      final response = await Supabase.instance.client.functions.invoke(
+        'r2-media-upload',
+        body: {'action': 'create-download-url', 'object_key': source},
+      );
+      if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+        debugPrint('[IMAGE_CACHE] signed URL resolution failed status=${response.status} key=$source');
+        return null;
+      }
+      final url = Map<String, dynamic>.from(response.data as Map)['url']?.toString();
+      return url != null && _isHttpUrl(url) ? url : null;
+    } catch (e) {
+      debugPrint('[IMAGE_CACHE] signed URL resolution error key=$source: $e');
+      return null;
     }
   }
 
@@ -391,6 +428,23 @@ class _PersistentCachedImageState extends State<_PersistentCachedImage> {
         errorBuilder: (_, __, ___) => widget.errorWidget ?? _fallback(),
       );
       WidgetsBinding.instance.addPostFrameCallback((_) => widget.onImageLoaded?.call());
+    } else if (_browserImageUrl != null) {
+      child = Image.network(
+        _browserImageUrl!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        errorBuilder: (_, error, __) {
+          debugPrint('[IMAGE_CACHE] browser image render failed: $error');
+          return widget.errorWidget ?? _fallback();
+        },
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (frame != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => widget.onImageLoaded?.call());
+          }
+          return child;
+        },
+      );
     } else if (_failed) {
       child = widget.errorWidget ?? _fallback();
     } else {
