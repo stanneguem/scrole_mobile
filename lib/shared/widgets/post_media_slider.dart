@@ -475,13 +475,17 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final postId = widget.autoplayPostId;
+    // Story-embedded posts are already the active, visible media surface.
+    // They must not depend on the home-feed visibility registry or its
+    // 50%-visible card threshold to start playback.
+    final postId = widget.forceAutoplay ? null : widget.autoplayPostId;
     if (postId != null) {
       _cardEligible = FeedVideoAutoplayGate.isEligible(postId);
       FeedVideoAutoplayGate.register(postId, _onCardVisibilityChanged);
     } else {
       _cardEligible = true;
     }
+    _visible = widget.forceAutoplay;
     _autoPlay = widget.forceAutoplay;
     try {
       if (Get.isRegistered<PreferencesService>()) {
@@ -499,11 +503,29 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
         });
       }
     } catch (_) {}
+
+    if (widget.forceAutoplay) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _initializeIfNeeded();
+      });
+    }
   }
 
   @override
   void didUpdateWidget(covariant _InlineFeedVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.forceAutoplay != widget.forceAutoplay) {
+      _visible = widget.forceAutoplay;
+      _cardEligible = widget.forceAutoplay ||
+          (widget.autoplayPostId == null
+              ? true
+              : FeedVideoAutoplayGate.isEligible(widget.autoplayPostId!));
+      if (widget.forceAutoplay && _autoPlay) {
+        _initializeIfNeeded();
+      } else if (!widget.forceAutoplay && !_visible) {
+        unawaited(_releaseController());
+      }
+    }
     if (oldWidget.sequentialActive != widget.sequentialActive ||
         oldWidget.sequentialPlayback != widget.sequentialPlayback) {
       _sequentialCompletionSent = false;
@@ -698,7 +720,13 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) return; // Reprise uniquement après un nouveau signal de visibilité.
+    if (state == AppLifecycleState.resumed) {
+      if (widget.forceAutoplay) {
+        _visible = true;
+        _initializeIfNeeded();
+      }
+      return; // In the feed, resume only after a new visibility signal.
+    }
     _visible = false;
     _releaseController();
   }
@@ -715,7 +743,7 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     // VisibilityDetector may deliver a queued callback after this widget starts
     // disposing. Never touch a controller once the State is no longer mounted.
     if (!mounted) return;
-    final visible = info.visibleFraction >= 0.50;
+    final visible = widget.forceAutoplay || info.visibleFraction >= 0.50;
     if (_visible == visible) return;
     _visible = visible;
     final controller = _controller;
