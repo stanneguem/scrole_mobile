@@ -80,7 +80,6 @@ class SessionService extends GetxService {
       await ChatMediaCache.instance.clearForUser(userId);
     } else {
       final support = await getApplicationSupportDirectory();
-      final temporary = await getTemporaryDirectory();
       // Ne supprimer que les répertoires explicitement isolés par userId.
       // Les anciens répertoires R2/temp globaux peuvent contenir les fichiers
       // encore utilisés par un autre compte connecté sur le même appareil.
