@@ -2806,30 +2806,6 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
     }
   }
 
-  Future<void> _expireStoryMedia() async {
-    // Keep story lifetime enforcement identical on native and web even though
-    // each platform uses a different underlying media cache.
-    final controller = _controller;
-    _controller = null;
-    if (controller != null) {
-      controller.removeListener(_onVideoChanged);
-      try {
-        await controller.pause();
-      } catch (_) {}
-      await controller.dispose();
-    }
-    await deleteCachedStoryVideo(
-      storyId: widget.storyId,
-      objectKey: widget.objectKey,
-    );
-    if (mounted) {
-      setState(() {
-        _isDownloading = false;
-        _failed = true;
-      });
-    }
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) _controller?.pause();
@@ -3006,6 +2982,7 @@ class _StoryVideoPlayer extends StatefulWidget {
 
 class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
+
   bool _failed = false;
   bool _isDownloading = false;
   bool _completionHandled = false;
@@ -3023,6 +3000,30 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       return;
     }
     _initialize();
+  }
+
+  Future<void> _expireStoryMedia() async {
+    // Keep story lifetime enforcement identical on native and web even though
+    // each platform uses a different underlying media cache.
+    final controller = _controller;
+    _controller = null;
+    if (controller != null) {
+      controller.removeListener(_onVideoChanged);
+      try {
+        await controller.pause();
+      } catch (_) {}
+      await controller.dispose();
+    }
+    await deleteCachedStoryVideo(
+      storyId: widget.storyId,
+      objectKey: widget.objectKey,
+    );
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _failed = true;
+      });
+    }
   }
 
   @override
