@@ -109,7 +109,9 @@ class NotificationService {
   static final NotificationService instance = NotificationService._internal();
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? _fcm;
+  FirebaseMessaging get _firebaseMessaging =>
+      _fcm ??= FirebaseMessaging.instance;
   final FcmTokenRepository _tokenRepository = FcmTokenRepository(
     Supabase.instance.client,
   );
@@ -306,7 +308,7 @@ class NotificationService {
     });
 
     // Écouter le refresh spontané du token
-    _fcm.onTokenRefresh.listen((token) async {
+    _firebaseMessaging.onTokenRefresh.listen((token) async {
       debugPrint('[FCM] Token refreshed spontaneously');
       await _registerToken(token);
     });
@@ -344,15 +346,15 @@ class NotificationService {
     if (kIsWeb) return;
     try {
       debugPrint('[FCM] Rotating token for account isolation...');
-      await _fcm.deleteToken();
-      final newToken = await _fcm.getToken();
+      await _firebaseMessaging.deleteToken();
+      final newToken = await _firebaseMessaging.getToken();
       if (newToken != null) {
         await _registerToken(newToken);
       }
     } catch (e) {
       debugPrint('[FCM] Erreur lors de la rotation du token: $e');
       // Repli : tenter d'enregistrer le token actuel si deleteToken échoue
-      final currentToken = await _fcm.getToken();
+      final currentToken = await _firebaseMessaging.getToken();
       if (currentToken != null) await _registerToken(currentToken);
     }
   }
@@ -374,7 +376,7 @@ class NotificationService {
           ?.requestNotificationsPermission();
     }
 
-    await _fcm.requestPermission(alert: true, badge: true, sound: true);
+    await _firebaseMessaging.requestPermission(alert: true, badge: true, sound: true);
   }
 
   Future<void> _registerCurrentDeviceToken() async {
@@ -691,7 +693,7 @@ class NotificationService {
     // En premier plan, on laisse FlutterLocalNotifications gérer l'affichage.
     // Si iOS affiche aussi le payload FCM natif, la même notification apparaît
     // deux fois (bannière FCM + notification locale).
-    await _fcm.setForegroundNotificationPresentationOptions(
+    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
       alert: false,
       badge: true,
       sound: false,
@@ -854,7 +856,7 @@ class NotificationService {
 
   Future<void> _routeInitialFirebaseMessage() async {
     try {
-      final initial = await _fcm.getInitialMessage();
+      final initial = await _firebaseMessaging.getInitialMessage();
       if (initial == null || initial.data.isEmpty) return;
       // Wait until GetX routes and the initial app frame are available.
       await Future<void>.delayed(const Duration(milliseconds: 700));
@@ -982,9 +984,12 @@ class NotificationService {
   }
 
   Future<String?> getDeviceToken() async {
-    if (kIsWeb) return FirebaseMessaging.instance.getToken();
+    // FCM n'est pas initialisé sur le Web : la messagerie directe utilise
+    // NotificationService pour suivre la conversation active, sans dépendre
+    // du SDK Firebase Messaging.
+    if (kIsWeb) return null;
     try {
-      return await _fcm.getToken();
+      return await _firebaseMessaging.getToken();
     } catch (_) {
       return null;
     }
