@@ -123,7 +123,10 @@ class SessionService extends GetxService {
     _privacyService.clearCache();
     _syncService.clearCache();
     if (uid != null) {
-      await _fastCache.clearUserScope(uid);
+      await _fastCache.clearUserScope(
+        uid,
+        preserveKeys: {'scut.watch.pending.v1.user.$uid'},
+      );
     }
     // Sans identifiant de session, ne jamais vider Hive globalement :
     // d'autres comptes peuvent avoir des données hors ligne sur cet appareil.
