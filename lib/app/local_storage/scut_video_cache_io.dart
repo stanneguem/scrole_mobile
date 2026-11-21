@@ -7,6 +7,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+const int _maxScutVideoBytes = 24 * 1024 * 1024;
+const int _maxScutCacheBytes = 120 * 1024 * 1024;
+const Duration _scutCacheTtl = Duration(days: 7);
+
 String? _activeCacheUserId() =>
     Supabase.instance.client.auth.currentUser?.id;
 
@@ -75,8 +80,17 @@ Future<void> writeScutFeedManifest(List<Map<String, dynamic>> items) async {
 Future<String?> findScutCachedVideo(String url) async {
   if (_activeCacheUserId() == null) return null;
   final directory = await _cacheDirectory();
+  await _pruneScutCache(directory);
   final file = File(p.join(directory.path, _fileName(url)));
-  return await file.exists() ? file.path : null;
+  if (!await file.exists()) return null;
+  final stat = await file.stat();
+  if (stat.size <= 0 || stat.size > _maxScutVideoBytes ||
+      DateTime.now().difference(stat.modified) > _scutCacheTtl) {
+    try { await file.delete(); } catch (_) {}
+    return null;
+  }
+  try { await file.setLastModified(DateTime.now()); } catch (_) {}
+  return file.path;
 }
 
 Future<String?> cacheScutVideo(
@@ -85,28 +99,102 @@ Future<String?> cacheScutVideo(
 }) async {
   final uri = Uri.tryParse(url);
   if (_activeCacheUserId() == null || uri == null ||
-      uri.path.toLowerCase().endsWith('.m3u8')) return null;
+      !uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https') ||
+      uri.path.toLowerCase().endsWith('.m3u8') ||
+      uri.path.toLowerCase().endsWith('.mpd')) return null;
+  final cached = await findScutCachedVideo(url);
+  if (cached != null || !downloadIfOnline) return cached;
+
   final directory = await _cacheDirectory();
   final file = File(p.join(directory.path, _fileName(url)));
-  if (!await file.exists() && downloadIfOnline) {
-    try {
-      final response = await http
-          .get(uri)
-          .timeout(const Duration(seconds: 45));
-      if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-        await file.writeAsBytes(response.bodyBytes, flush: true);
-      }
-    } catch (_) {
-      // Streaming playback remains available when a cache download fails.
+  final partial = File('${file.path}.part');
+  final client = http.Client();
+  try {
+    final response = await client.send(http.Request('GET', uri))
+        .timeout(const Duration(seconds: 45));
+    if (response.statusCode != HttpStatus.ok ||
+        response.contentLength == null ||
+        response.contentLength! <= 0 ||
+        response.contentLength! > _maxScutVideoBytes) {
+      await response.stream.drain<void>();
+      return null;
     }
+
+    final sink = partial.openWrite();
+    var received = 0;
+    try {
+      await for (final chunk in response.stream.timeout(const Duration(seconds: 45))) {
+        received += chunk.length;
+        if (received > _maxScutVideoBytes) {
+          await sink.close();
+          try { await partial.delete(); } catch (_) {}
+          return null;
+        }
+        sink.add(chunk);
+      }
+      await sink.flush();
+      await sink.close();
+    } catch (_) {
+      await sink.close();
+      rethrow;
+    }
+
+    if (received == 0 || received != response.contentLength) {
+      try { await partial.delete(); } catch (_) {}
+      return null;
+    }
+    await partial.rename(file.path);
+    await _pruneScutCache(directory, exceptPath: file.path);
+    return file.path;
+  } catch (_) {
+    try { if (await partial.exists()) await partial.delete(); } catch (_) {}
+    return null;
+  } finally {
+    client.close();
   }
-  return await file.exists() ? file.path : null;
+}
+
+Future<void> _pruneScutCache(
+  Directory directory, {
+  String? exceptPath,
+}) async {
+  final now = DateTime.now();
+  final files = <({File file, DateTime modified, int size})>[];
+  await for (final entity in directory.list(followLinks: false)) {
+    if (entity is! File) continue;
+    try {
+      final stat = await entity.stat();
+      if (entity.path.endsWith('.part')) {
+        if (now.difference(stat.modified) > const Duration(hours: 1)) {
+          await entity.delete();
+        }
+        continue;
+      }
+      if (stat.size <= 0 || stat.size > _maxScutVideoBytes ||
+          now.difference(stat.modified) > _scutCacheTtl) {
+        await entity.delete();
+        continue;
+      }
+      files.add((file: entity, modified: stat.modified, size: stat.size));
+    } catch (_) {}
+  }
+  files.sort((a, b) => a.modified.compareTo(b.modified));
+  var total = files.fold<int>(0, (sum, entry) => sum + entry.size);
+  for (final entry in files) {
+    if (total <= _maxScutCacheBytes) break;
+    if (entry.file.path == exceptPath) continue;
+    try {
+      await entry.file.delete();
+      total -= entry.size;
+    } catch (_) {}
+  }
 }
 
 Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {
   if (_activeCacheUserId() == null) return;
   final directory = await _cacheDirectory();
   final keep = urlsToKeep.map(_fileName).toSet();
+  await _pruneScutCache(directory);
   await for (final entity in directory.list()) {
     if (entity is File && !keep.contains(p.basename(entity.path))) {
       try {
