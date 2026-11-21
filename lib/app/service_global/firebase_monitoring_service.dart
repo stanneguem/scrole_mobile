@@ -21,20 +21,7 @@ class FirebaseMonitoringService {
   static bool get _collectionEnabled =>
       kReleaseMode || const bool.fromEnvironment('ENABLE_FIREBASE_DIAGNOSTICS');
 
-  /// Le bouton de test n'existe que dans un build debug avec diagnostics activés.
-  static bool get canRunCrashTest =>
-      kDebugMode && _collectionEnabled && _initialized;
-
   static FirebaseAnalytics get analytics => FirebaseAnalytics.instance;
-
-  /// Provoque volontairement un crash pour valider l'envoi Crashlytics.
-  /// Protégé pour qu'aucun build profile/release ne puisse l'appeler.
-  static void crashForTesting() {
-    if (!canRunCrashTest) {
-      throw StateError('Le test Crashlytics est réservé au debug avec diagnostics activés.');
-    }
-    FirebaseCrashlytics.instance.crash();
-  }
 
   static Future<void> initialize() async {
     if (kIsWeb || _initialized) return;
