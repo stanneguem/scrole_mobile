@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 class AppTranslationAdditions {
   static const Map<String, Map<String, String>> keys = {
     'fr': {
+      'search_error_msg': "Erreur lors de la recherche. Réessayez.",
       'home_feed_is_with': 'est avec',
       'event_report_title': "Signaler l’événement",
       'event_report_reason_fraud': "Arnaque / fraude",
@@ -1590,6 +1591,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "Impossible d’enregistrer les modifications. Réessayez.",
 },
     'en': {
+      'search_error_msg': "Search failed. Please try again.",
       'home_feed_is_with': 'is with',
       'event_report_title': "Report event",
       'event_report_reason_fraud': "Scam / fraud",
@@ -3171,6 +3173,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "Could not save your edits. Please try again.",
 },
     'es': {
+      'search_error_msg': "No se pudo realizar la búsqueda. Inténtalo de nuevo.",
       'home_feed_is_with': 'está con',
       'event_report_title': "Denunciar evento",
       'event_report_reason_fraud': "Estafa / fraude",
@@ -4653,6 +4656,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "No se pudieron guardar los cambios. Inténtalo de nuevo.",
 },
     'de': {
+      'search_error_msg': "Die Suche ist fehlgeschlagen. Bitte versuche es erneut.",
       'home_feed_is_with': 'ist mit',
       'event_report_title': "Veranstaltung melden",
       'event_report_reason_fraud': "Betrug / Täuschung",
@@ -6118,6 +6122,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "Deine Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
 },
     'it': {
+      'search_error_msg': "Ricerca non riuscita. Riprova.",
       'home_feed_is_with': 'è con',
       'event_report_title': "Segnala evento",
       'event_report_reason_fraud': "Truffa / frode",
@@ -7581,6 +7586,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "Impossibile salvare le modifiche. Riprova.",
 },
     'pt': {
+      'search_error_msg': "A pesquisa falhou. Tente novamente.",
       'home_feed_is_with': 'está com',
       'event_report_title': "Denunciar evento",
       'event_report_reason_fraud': "Burla / fraude",
@@ -9044,6 +9050,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "Não foi possível salvar as alterações. Tente novamente.",
 },
     'zh': {
+      'search_error_msg': "搜索失败，请重试。",
       'home_feed_is_with': '与',
       'event_report_title': "举报活动",
       'event_report_reason_fraud': "诈骗 / 欺诈",
@@ -10509,6 +10516,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "无法保存修改，请重试。",
 },
     'ja': {
+      'search_error_msg': "検索に失敗しました。もう一度お試しください。",
       'home_feed_is_with': 'と一緒です',
       'event_report_title': "イベントを報告",
       'event_report_reason_fraud': "詐欺 / 不正行為",
@@ -11967,6 +11975,7 @@ class AppTranslationAdditions {
       'story_editor_export_error': "編集内容を保存できませんでした。もう一度お試しください。",
 },
     'ru': {
+      'search_error_msg': "Не удалось выполнить поиск. Попробуйте ещё раз.",
       'home_feed_is_with': 'вместе с',
       'event_report_title': "Пожаловаться на мероприятие",
       'event_report_reason_fraud': "Мошенничество / обман",
