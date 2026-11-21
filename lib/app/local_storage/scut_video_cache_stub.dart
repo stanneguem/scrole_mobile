@@ -13,7 +13,7 @@ Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {}
 VideoPlayerController createScutVideoController(String? localPath, String url) =>
     VideoPlayerController.networkUrl(Uri.parse(localPath ?? url));
 
-Future<void> clearScutVideoCache() async {}
+Future<void> clearScutVideoCache({String? userId}) async {}
 
 Future<void> queueScutWatchSignal(Map<String, dynamic> signal) async {}
 
