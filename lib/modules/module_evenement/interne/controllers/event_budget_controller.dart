@@ -17,8 +17,13 @@ class EventBudgetController extends GetxController {
     String action, {
     Map<String, dynamic> metadata = const {},
   }) {
+    // Analytics are optional for local budget calculations and tests. Avoid
+    // touching the global Supabase singleton when no event context exists.
+    if (_eventId == null || _eventId!.isEmpty) {
+      return Future<void>.value();
+    }
     final client = Supabase.instance.client;
-    if (_eventId == null || _eventId!.isEmpty || client.auth.currentUser == null) {
+    if (client.auth.currentUser == null) {
       return Future<void>.value();
     }
     final pending = _analyticsQueue.then((_) async {
