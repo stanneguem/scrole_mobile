@@ -257,38 +257,28 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
             ),
-            const Spacer(flex: 2),
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GlassmorphismButton(
-                        icon: SvgPicture.asset('assets/svg_icons/search.svg', width: 22, height: 22,
-                          colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
-                        onTap: () => Get.to(() => const SearchScreen()),
-                      ),
-                      const SizedBox(width: 8),
-                      GlassmorphismButton(
-                        icon: const Icon(Icons.add_rounded, size: 25),
-                        onTap: () => _showCreationMenu(context),
-                      ),
-                      const SizedBox(width: 8),
-                      Obx(() => GlassmorphismButton(
-                        icon: SvgPicture.asset('assets/svg_icons/chat-round-svgrepo-com.svg', width: 22, height: 22,
-                          colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
-                        badgeCount: double.tryParse(controller.messageBadge),
-                        onTap: controller.openMessages,
-                      )),
-                    ],
-                  ),
+            const SizedBox(width: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GlassmorphismButton(
+                  icon: SvgPicture.asset('assets/svg_icons/search.svg', width: 22, height: 22,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
+                  onTap: () => Get.to(() => const SearchScreen()),
                 ),
-              ),
+                const SizedBox(width: 8),
+                GlassmorphismButton(
+                  icon: const Icon(Icons.add_rounded, size: 25),
+                  onTap: () => _showCreationMenu(context),
+                ),
+                const SizedBox(width: 8),
+                Obx(() => GlassmorphismButton(
+                  icon: SvgPicture.asset('assets/svg_icons/chat-round-svgrepo-com.svg', width: 22, height: 22,
+                    colorFilter: ColorFilter.mode(colorScheme.onSurface, BlendMode.srcIn)),
+                  badgeCount: double.tryParse(controller.messageBadge),
+                  onTap: controller.openMessages,
+                )),
+              ],
             ),
           ],
         ),
