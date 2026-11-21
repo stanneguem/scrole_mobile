@@ -337,6 +337,33 @@ class _BootErrorApp extends StatelessWidget {
   }
 }
 
+class _CrashlyticsDebugOverlay extends StatelessWidget {
+  const _CrashlyticsDebugOverlay({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!FirebaseMonitoringService.canRunCrashTest) return child;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        child,
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'crashlytics-debug-test',
+            tooltip: 'Crashlytics : provoquer un crash de test',
+            onPressed: FirebaseMonitoringService.crashForTesting,
+            child: const Icon(Icons.bug_report_outlined),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -408,7 +435,7 @@ class MyApp extends StatelessWidget {
                       name: DESKTOP,
                     ),
                   ],
-                  child: child!,
+                  child: _CrashlyticsDebugOverlay(child: child!),
                 ),
               );
             },
