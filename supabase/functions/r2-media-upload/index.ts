@@ -247,7 +247,13 @@ Deno.serve(async (req: Request) => {
       const story = storyByVideo ?? storyByThumbnail;
       if (story && story.status === "active" && (!story.expires_at || new Date(story.expires_at).getTime() > Date.now())) {
         if (story.author_id === user.id) allowed = true;
-        else {
+        // Public stories are discoverable by every authenticated viewer. The
+        // tray can legitimately return them even when the viewer does not
+        // follow the author, so media authorization must honor the same
+        // audience rule instead of requiring a relationship unconditionally.
+        else if (String(story.audience ?? "public").toLowerCase() === "public") {
+          allowed = true;
+        } else {
           const { data: mutual } = await admin.from("friendships").select("user_a_id")
             .or(`and(user_a_id.eq.${user.id},user_b_id.eq.${story.author_id}),and(user_a_id.eq.${story.author_id},user_b_id.eq.${user.id})`).maybeSingle();
           const { data: follow } = await admin.from("user_follows").select("follower_id")
