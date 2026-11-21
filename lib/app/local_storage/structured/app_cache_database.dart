@@ -896,8 +896,10 @@ class AppDatabase {
       'invited_by',
     };
 
-    await db.transaction((txn) async {
-      final rows = await txn.rawQuery(
+    await db.execute('PRAGMA foreign_keys = OFF');
+    try {
+      await db.transaction((txn) async {
+        final rows = await txn.rawQuery(
         "SELECT name FROM sqlite_master "
         "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
       );
@@ -930,8 +932,11 @@ class AppDatabase {
       // Ils sont invalidés au changement de session pour forcer une resynchronisation.
       await txn.delete('discovery_cache');
       await txn.delete('activity_sync_cursors');
-      await txn.delete('event_sync_cursors');
-    });
+        await txn.delete('event_sync_cursors');
+      });
+    } finally {
+      await db.execute('PRAGMA foreign_keys = ON');
+    }
 
     debugPrint('[Database] Données locales de $userId purgées; autres comptes et outbox préservés');
     await SalonChatDatabase.instance.clearUserData(userId);
