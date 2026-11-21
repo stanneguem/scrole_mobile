@@ -6,7 +6,35 @@ import '../../storage/contracts/cache_store.dart';
 class FastCacheService extends GetxService implements CacheStore {
   Box? _box;
   bool _ready = false;
+  String? _userScope;
   bool get isReady => _ready;
+
+  static const String _scopePrefix = '__user_scope__:';
+
+  /// Cache les clés sous un espace propre à la session active.
+  /// Les entrées d'autres comptes restent isolées dans Hive.
+  Future<void> setUserScope(String? userId) async {
+    _userScope = userId;
+    if (!_ready || userId == null) return;
+
+    // Purge les anciennes clés non isolées, créées avant l'introduction
+    // des espaces par compte. Les espaces déjà isolés sont conservés.
+    final legacyKeys = box.keys.where((key) =>
+        key is String && !key.startsWith(_scopePrefix)).toList();
+    if (legacyKeys.isNotEmpty) await box.deleteAll(legacyKeys);
+  }
+
+  Future<void> clearUserScope(String userId) async {
+    if (!_ready) return;
+    final prefix = '$_scopePrefix$userId:';
+    final keys = box.keys.where((key) =>
+        key is String && key.startsWith(prefix)).toList();
+    if (keys.isNotEmpty) await box.deleteAll(keys);
+  }
+
+  String _scopedKey(String key) => _userScope == null
+      ? key
+      : '$_scopePrefix$_userScope:$key';
 
   Future<FastCacheService> init() async {
     if (_ready) return this;
@@ -34,7 +62,7 @@ class FastCacheService extends GetxService implements CacheStore {
     if (!_ready) return null;
     
     try {
-      final raw = box.get(key);
+      final raw = box.get(_scopedKey(key));
       if (raw == null) return null;
       if (raw is! Map || raw['t'] == null) {
         return _deepCast(raw) as T?;
@@ -58,7 +86,7 @@ class FastCacheService extends GetxService implements CacheStore {
     if (!_ready) return;
     try {
       final entry = _CacheEntry(data: value, storedAt: DateTime.now());
-      await box.put(key, entry.toMap());
+      await box.put(_scopedKey(key), entry.toMap());
     } catch (e) {
       print('Cache set error: $e');
     }
@@ -67,7 +95,7 @@ class FastCacheService extends GetxService implements CacheStore {
   Future<void> remove(String key) async {
     if (!_ready) return;
     try {
-      await box.delete(key);
+      await box.delete(_scopedKey(key));
     } catch (e) {
       print('Cache remove error: $e');
     }
@@ -85,8 +113,11 @@ class FastCacheService extends GetxService implements CacheStore {
   Future<void> clearPattern(String pattern) async {
     if (!_ready) return;
     try {
+      final scopedPattern = _userScope == null
+          ? pattern
+          : '$_scopePrefix$_userScope:$pattern';
       final keysToDelete = box.keys
-          .where((k) => k is String && k.startsWith(pattern))
+          .where((k) => k is String && k.startsWith(scopedPattern))
           .toList();
       for (final k in keysToDelete) {
         await box.delete(k);
