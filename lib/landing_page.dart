@@ -1075,7 +1075,7 @@ class _CommunitySection extends StatelessWidget {
                       children: [
                         Expanded(child: copy),
                         const SizedBox(width: 70),
-                        const Expanded(child: visual),
+                        Expanded(child: visual),
                       ],
                     )
                   : Column(
@@ -1083,7 +1083,7 @@ class _CommunitySection extends StatelessWidget {
                       children: [
                         copy,
                         const SizedBox(height: 44),
-                        const visual,
+                        visual,
                       ],
                     );
             },
