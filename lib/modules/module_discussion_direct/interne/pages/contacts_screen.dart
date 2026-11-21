@@ -181,35 +181,45 @@ class ContactsScreen extends GetView<ContactsController> {
   }
 
   Future<void> _openConversation(String userId, String userName, String? avatarUrl) async {
-    final chatService = Get.find<ChatService>();
-
     Get.dialog(
       const Center(child: CircularProgressIndicator()),
       barrierDismissible: false,
     );
 
-    final conversation = await chatService.startConversation(userId);
+    try {
+      final chatService = Get.find<ChatService>();
+      final conversation = await chatService.startConversation(userId);
 
-    if (Get.isDialogOpen ?? false) Get.back();
+      if (Get.isDialogOpen ?? false) Get.back();
 
-    if (conversation == null) {
+      if (conversation == null) {
+        Get.snackbar(
+          'Erreur',
+          'Impossible d\'ouvrir cette conversation.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      await Get.toNamed(
+        AppPages.conversation,
+        arguments: {
+          'userId': userId,
+          'name': conversation.name ?? userName,
+          'color': AppColors.primary,
+          'avatar': conversation.avatarUrl ?? avatarUrl,
+        },
+        parameters: {'chatId': conversation.id},
+      );
+    } catch (error, stackTrace) {
+      debugPrint('[Contacts] open conversation failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (Get.isDialogOpen ?? false) Get.back();
       Get.snackbar(
         'Erreur',
-        'Impossible d\'ouvrir cette conversation.',
+        'Impossible d\'ouvrir cette discussion. Réessayez.',
         snackPosition: SnackPosition.BOTTOM,
       );
-      return;
     }
-
-    await Get.toNamed(
-      AppPages.conversation,
-      arguments: {
-        'userId': userId,
-        'name': conversation.name ?? userName,
-        'color': AppColors.primary,
-        'avatar': conversation.avatarUrl ?? avatarUrl,
-      },
-      parameters: {'chatId': conversation.id},
-    );
   }
 }
