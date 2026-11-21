@@ -900,45 +900,48 @@ class AppDatabase {
     try {
       await db.transaction((txn) async {
         final rows = await txn.rawQuery(
-        "SELECT name FROM sqlite_master "
-        "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-      );
+          "SELECT name FROM sqlite_master "
+          "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        );
 
-      for (final row in rows) {
-        final table = row['name']?.toString();
-        if (table == null ||
-            !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(table)) {
-          continue;
+        for (final row in rows) {
+          final table = row['name']?.toString();
+          if (table == null ||
+              !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(table)) {
+            continue;
+          }
+
+          final columnRows = await txn.rawQuery('PRAGMA table_info("$table")');
+          final columns = columnRows
+              .map((column) => column['name']?.toString())
+              .whereType<String>()
+              .toSet();
+          final matchingOwners = ownerColumns.where(columns.contains).toList();
+
+          if (matchingOwners.isEmpty) continue;
+
+          final where =
+              matchingOwners.map((column) => '"$column" = ?').join(' OR ');
+          await txn.delete(
+            table,
+            where: where,
+            whereArgs: List<Object?>.filled(matchingOwners.length, userId),
+          );
         }
 
-        final columnRows = await txn.rawQuery('PRAGMA table_info("$table")');
-        final columns = columnRows
-            .map((column) => column['name']?.toString())
-            .whereType<String>()
-            .toSet();
-        final matchingOwners = ownerColumns.where(columns.contains).toList();
-
-        if (matchingOwners.isEmpty) continue;
-
-        final where = matchingOwners.map((column) => '"$column" = ?').join(' OR ');
-        await txn.delete(
-          table,
-          where: where,
-          whereArgs: List<Object?>.filled(matchingOwners.length, userId),
-        );
-      }
-
-      // Ces caches et curseurs ne portent pas d'identifiant de compte.
-      // Ils sont invalidés au changement de session pour forcer une resynchronisation.
-      await txn.delete('discovery_cache');
-      await txn.delete('activity_sync_cursors');
+        // Ces caches et curseurs ne portent pas d'identifiant de compte.
+        // Ils sont invalidés au changement de session pour forcer une resynchronisation.
+        await txn.delete('discovery_cache');
+        await txn.delete('activity_sync_cursors');
         await txn.delete('event_sync_cursors');
       });
     } finally {
       await db.execute('PRAGMA foreign_keys = ON');
     }
 
-    debugPrint('[Database] Données locales de $userId purgées; autres comptes et outbox préservés');
+    debugPrint(
+      '[Database] Données locales de $userId purgées; autres comptes et outbox préservés',
+    );
     await SalonChatDatabase.instance.clearUserData(userId);
   }
 
