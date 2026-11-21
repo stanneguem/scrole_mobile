@@ -544,12 +544,14 @@ class _InlineFeedVideoState extends State<_InlineFeedVideo> with WidgetsBindingO
     _initializing = true;
     VideoPlayerController? controller;
     try {
-      // Cache small MP4-like clips for subsequent visits/replays. Large files
-      // and adaptive streams fall back to native streaming without a copy.
-      final localPath = await findOrCacheFeedVideo(widget.url);
+      // A repost opened inside a story is an immediate playback surface.
+      // Do not wait for a complete disk-cache download before starting it:
+      // stream directly so the viewer can begin buffering/playing at once.
+      // Feed cards keep their bounded local cache optimization.
+      final localPath = widget.forceAutoplay
+          ? null
+          : await findOrCacheFeedVideo(widget.url);
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) return;
-      // Web never receives a filesystem path: it streams the remote URL.
-      // Native platforms may use the bounded disk cache when available.
       controller = createFeedVideoController(localPath, widget.url);
       await controller.initialize();
       if (!mounted || !_visible || !_cardEligible || !_autoPlay) {
