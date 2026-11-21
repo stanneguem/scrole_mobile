@@ -38,6 +38,9 @@ Future<String?> findOrCacheFeedVideo(String url) async {
   }
 
   final directory = await _feedVideoDirectory();
+  // Maintenance also runs on cache hits, so abandoned/expired files do not
+  // survive indefinitely when the user stops downloading new videos.
+  await _pruneFeedVideoCache(directory);
   final target = File(p.join(directory.path, _feedVideoCacheName(url)));
   if (await target.exists()) {
     final stat = await target.stat();
@@ -95,23 +98,44 @@ Future<String?> findOrCacheFeedVideo(String url) async {
   }
 }
 
-Future<void> _pruneFeedVideoCache(Directory directory, {required String exceptPath}) async {
-  final files = <File>[];
-  await for (final entity in directory.list()) {
-    if (entity is File && !entity.path.endsWith('.part')) files.add(entity);
-  }
-  files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
-  var total = 0;
-  for (final file in files) {
-    try { total += await file.length(); } catch (_) {}
-  }
-  for (final file in files) {
-    if (total <= _maxFeedVideoCacheBytes) break;
-    if (file.path == exceptPath) continue;
+Future<void> _pruneFeedVideoCache(
+  Directory directory, {
+  String? exceptPath,
+}) async {
+  final now = DateTime.now();
+  final files = <({File file, DateTime modified, int size})>[];
+
+  await for (final entity in directory.list(followLinks: false)) {
+    if (entity is! File) continue;
     try {
-      final size = await file.length();
-      await file.delete();
-      total -= size;
+      final stat = await entity.stat();
+      if (entity.path.endsWith('.part')) {
+        // A killed/failed download must not leave an unbounded temp file.
+        if (now.difference(stat.modified) > const Duration(hours: 1)) {
+          await entity.delete();
+        }
+        continue;
+      }
+      if (now.difference(stat.modified) > _feedVideoCacheTtl ||
+          stat.size <= 0 ||
+          stat.size > _maxFeedVideoBytes) {
+        await entity.delete();
+        continue;
+      }
+      files.add((file: entity, modified: stat.modified, size: stat.size));
+    } catch (_) {
+      // Ignore files concurrently removed by another cache operation.
+    }
+  }
+
+  files.sort((a, b) => a.modified.compareTo(b.modified));
+  var total = files.fold<int>(0, (sum, entry) => sum + entry.size);
+  for (final entry in files) {
+    if (total <= _maxFeedVideoCacheBytes) break;
+    if (entry.file.path == exceptPath) continue;
+    try {
+      await entry.file.delete();
+      total -= entry.size;
     } catch (_) {}
   }
 }
