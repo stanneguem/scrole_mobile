@@ -61,6 +61,7 @@ String _fileName(String url) {
 }
 
 Future<List<dynamic>> readScutFeedManifest() async {
+  if (_activeCacheUserId() == null) return const [];
   final file = await _manifestFile();
   if (!await file.exists()) return const [];
   final decoded = jsonDecode(await file.readAsString());
@@ -68,11 +69,13 @@ Future<List<dynamic>> readScutFeedManifest() async {
 }
 
 Future<void> writeScutFeedManifest(List<Map<String, dynamic>> items) async {
+  if (_activeCacheUserId() == null) return;
   final file = await _manifestFile();
   await file.writeAsString(jsonEncode(items), flush: true);
 }
 
 Future<String?> findScutCachedVideo(String url) async {
+  if (_activeCacheUserId() == null) return null;
   final directory = await _cacheDirectory();
   final file = File(p.join(directory.path, _fileName(url)));
   return await file.exists() ? file.path : null;
@@ -83,7 +86,8 @@ Future<String?> cacheScutVideo(
   required bool downloadIfOnline,
 }) async {
   final uri = Uri.tryParse(url);
-  if (uri == null || uri.path.toLowerCase().endsWith('.m3u8')) return null;
+  if (_activeCacheUserId() == null || uri == null ||
+      uri.path.toLowerCase().endsWith('.m3u8')) return null;
   final directory = await _cacheDirectory();
   final file = File(p.join(directory.path, _fileName(url)));
   if (!await file.exists() && downloadIfOnline) {
@@ -102,6 +106,7 @@ Future<String?> cacheScutVideo(
 }
 
 Future<void> pruneScutVideos(Iterable<String> urlsToKeep) async {
+  if (_activeCacheUserId() == null) return;
   final directory = await _cacheDirectory();
   final keep = urlsToKeep.map(_fileName).toSet();
   await for (final entity in directory.list()) {
