@@ -60,10 +60,11 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
 
   Future<XFile> _exportSelection() async {
     final source = html.VideoElement()
-      ..src = widget.videoFile.path
       ..preload = 'auto'
       ..muted = false;
-    await source.onLoadedMetadata.first.timeout(const Duration(seconds: 30));
+    final metadataLoaded = source.onLoadedMetadata.first;
+    source.src = widget.videoFile.path;
+    await metadataLoaded.timeout(const Duration(seconds: 30));
     final start = _range.start;
     final end = _range.end;
     if (end <= start || end - start > widget.maxDuration.inMilliseconds / 1000) {
@@ -95,8 +96,9 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     js_util.callMethod<void>(recorder, 'addEventListener', <Object?>['dataavailable', onData]);
     js_util.callMethod<void>(recorder, 'addEventListener', <Object?>['stop', onStop]);
     try {
+      final seekCompleted = source.onSeeked.first;
       source.currentTime = start;
-      await source.onSeeked.first.timeout(const Duration(seconds: 15));
+      await seekCompleted.timeout(const Duration(seconds: 15));
       js_util.callMethod<void>(recorder, 'start', <Object?>[250]);
       await source.play();
       while (source.currentTime < end && !source.ended) {
