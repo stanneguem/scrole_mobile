@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -104,12 +105,47 @@ Future<VideoPlayerController> createStoryPlaybackController({
     if (url.isEmpty) throw StateError('URL de lecture de la vidéo absente.');
   }
 
+  // Playback uses ExoPlayer's network data source immediately, so it can
+  // buffer and play progressively instead of waiting for the full object.
+  // A separate GET fills the durable cache in the background.
+  unawaited(_downloadStoryVideoToCache(
+    url: url,
+    storyId: storyId,
+    partialFile: partialFile,
+    videoFile: videoFile,
+    sizeFile: sizeFile,
+    expiryFile: expiryFile,
+    expiresAt: expiry,
+  ));
+  debugPrint('[STORY][ANDROID] Starting progressive network playback and background cache download story=$storyId');
+  return VideoPlayerController.networkUrl(Uri.parse(url));
+}
+
+Future<void> _downloadStoryVideoToCache({
+  required String url,
+  required String storyId,
+  required File partialFile,
+  required File videoFile,
+  required File sizeFile,
+  required File expiryFile,
+  required DateTime expiresAt,
+}) async {
   final client = http.Client();
+  var receivedBytes = 0;
   try {
-    final request = http.Request('GET', Uri.parse(url));
+    final request = http.Request('GET', Uri.parse(url))
+      ..headers['accept-encoding'] = 'identity';
     final streamed = await client.send(request).timeout(const Duration(minutes: 3));
-    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw HttpException('Téléchargement de la story impossible (HTTP ${streamed.statusCode}).');
+
+    // This is a full-object cache download, not a ranged playback request.
+    // Reject partial responses so a 206 body can never be mistaken for the
+    // complete video and promoted into the persistent cache.
+    if (streamed.statusCode != HttpStatus.ok) {
+      throw HttpException('Cache story requires HTTP 200, received ${streamed.statusCode}.');
+    }
+    final contentRange = streamed.headers['content-range'];
+    if (contentRange != null && contentRange.trim().isNotEmpty) {
+      throw HttpException('Unexpected partial Content-Range while caching story: $contentRange');
     }
 
     final expectedLength = streamed.contentLength;
@@ -117,13 +153,9 @@ Future<VideoPlayerController> createStoryPlaybackController({
       throw StateError('La vidéo de la story est vide (Content-Length invalide).');
     }
 
-    // Never expose a partially downloaded MP4 to ExoPlayer. A temporary file
-    // is promoted to the cache only after the complete HTTP body is received
-    // and its byte count matches the server's Content-Length.
-    var receivedBytes = 0;
     final sink = partialFile.openWrite();
     try {
-      await for (final chunk in streamed.stream) {
+      await for (final chunk in streamed.stream.timeout(const Duration(seconds: 45))) {
         receivedBytes += chunk.length;
         sink.add(chunk);
       }
@@ -131,26 +163,28 @@ Future<VideoPlayerController> createStoryPlaybackController({
       await sink.close();
     } catch (_) {
       await sink.close();
-      if (await partialFile.exists()) await partialFile.delete();
       rethrow;
     }
 
     if (receivedBytes <= 0 ||
         (expectedLength != null && receivedBytes != expectedLength)) {
-      if (await partialFile.exists()) await partialFile.delete();
       throw StateError(
-        'Téléchargement incomplet de la story : reçu=$receivedBytes, attendu=$expectedLength octets.',
+        'Cache story incomplet : reçu=$receivedBytes, attendu=$expectedLength octets.',
       );
     }
 
     if (await videoFile.exists()) await videoFile.delete();
     await partialFile.rename(videoFile.path);
     await sizeFile.writeAsString('$receivedBytes', flush: true);
-    await expiryFile.writeAsString(expiry.toIso8601String(), flush: true);
+    await expiryFile.writeAsString(expiresAt.toIso8601String(), flush: true);
     debugPrint(
-      '[STORY][ANDROID] Video story downloaded completely story=$storyId bytes=$receivedBytes contentLength=$expectedLength',
+      '[STORY][ANDROID][CACHE_COMPLETE] story=$storyId bytes=$receivedBytes contentLength=$expectedLength',
     );
-    return VideoPlayerController.file(videoFile);
+  } catch (e, st) {
+    debugPrint('[STORY][ANDROID][CACHE_FAILED] story=$storyId receivedBytes=$receivedBytes error=$e\\n$st');
+    try {
+      if (await partialFile.exists()) await partialFile.delete();
+    } catch (_) {}
   } finally {
     client.close();
   }
