@@ -19,6 +19,7 @@ import 'package:scrole/modules/module_discussion_direct/centre/models/message_mo
 import 'package:scrole/modules/module_discussion_direct/centre/repositories/messaging_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message.dart';
 import '../../../../shared/widgets/media_gallery_sheet_platform.dart';
+import '../../../../shared/widgets/message_video_trim_platform.dart';
 
 enum RecordingState { idle, recording, reviewing }
 
@@ -494,10 +495,24 @@ class ChatController extends GetxController {
         final pickedName = picked.name.isNotEmpty ? picked.name : 'attachment';
         final pickedExtension = pickedName.contains('.') ? pickedName.split('.').last.toLowerCase() : '';
         final pickedIsVideo = picked.mimeType?.startsWith('video/') == true ||
-            const {'mp4', 'mov', 'webm'}.contains(pickedExtension);
+            const {'mp4', 'mov', 'm4v', 'webm'}.contains(pickedExtension);
+        // Toutes les vidéos passent par le même éditeur que les stories,
+        // sur mobile comme sur Web. Une annulation retire simplement cette vidéo.
+        XFile selected = picked;
+        if (pickedIsVideo) {
+          final context = Get.context;
+          if (context == null) throw StateError('Écran de discussion indisponible.');
+          final trimmed = await trimMessageVideo(
+            context,
+            picked,
+            maxDuration: const Duration(seconds: 30),
+          );
+          if (trimmed == null) continue;
+          selected = trimmed;
+        }
         final file = pickedIsVideo || pickedExtension == 'gif'
-            ? picked
-            : await compressSelectedImage(picked, quality: 82);
+            ? selected
+            : await compressSelectedImage(selected, quality: 82);
         final name = file.name.isNotEmpty ? file.name : pickedName;
         final extension = name.contains('.') ? name.split('.').last.toLowerCase() : '';
         final mime = file.mimeType ??
