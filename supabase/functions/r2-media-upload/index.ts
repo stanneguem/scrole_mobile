@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3";
-import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.728.0";
+import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3.728.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -547,6 +547,16 @@ Deno.serve(async (req: Request) => {
       ContentType: contentType,
     });
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
+    // A presigned PUT must never declare the CRC32 of an empty body. Recent
+    // AWS SDK releases added that checksum to presigned URLs by default; a
+    // browser/mobile client then uploads real bytes against an empty checksum.
+    // Keep this invariant explicit so a future SDK upgrade fails closed.
+    const signedUpload = new URL(uploadUrl);
+    if (signedUpload.searchParams.has("x-amz-checksum-crc32") ||
+        signedUpload.searchParams.has("x-amz-sdk-checksum-algorithm")) {
+      console.error("[r2-media-upload] refusing presigned PUT with implicit checksum parameters");
+      return reply(500, { error: "presigned_upload_checksum_mismatch" });
+    }
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
     return reply(200, {
       upload_url: uploadUrl, object_key: key, ...(isPrivateObject ? {} : { public_url: `${publicBaseUrl}/${encodedKey}` }),
