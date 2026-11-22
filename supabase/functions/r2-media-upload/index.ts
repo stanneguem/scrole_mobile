@@ -220,6 +220,7 @@ Deno.serve(async (req: Request) => {
       return reply(503, { error: "private_media_bucket_not_configured" });
     }
 
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const conversationId = parts[1];
     const senderId = parts[2];
     const { data: conversation, error: conversationError } = await admin
