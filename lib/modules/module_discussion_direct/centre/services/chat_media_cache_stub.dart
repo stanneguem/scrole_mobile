@@ -110,15 +110,38 @@ class ChatMediaCachePlatform {
     if (remoteUrl.isEmpty) return null;
     try {
       final box = await _openBox();
-      final key = _cacheKey(remoteUrl);
-      final raw = box.get('$_prefix$key');
-      final meta = box.get('meta:$key');
-      if (raw is! Uint8List || meta is! Map) return null;
-      await box.put('meta:$key', <String, dynamic>{
-        ...Map<String, dynamic>.from(meta),
-        'last_access': DateTime.now().millisecondsSinceEpoch,
-      });
-      return _objectUrl(key, raw);
+      final uid = Supabase.instance.client.auth.currentUser?.id ?? 'anonymous';
+      final canonicalKey = _cacheKey(remoteUrl);
+      final candidates = <String>[canonicalKey];
+
+      // Read entries written by earlier versions, which keyed media by the
+      // signed URL (with or without its expiring query parameters).
+      final parsed = Uri.tryParse(remoteUrl);
+      if (parsed != null && _isHttpUrl(remoteUrl)) {
+        final stableUrl = parsed.replace(query: '', fragment: '').toString();
+        final legacyStable = sha256.convert('$uid|$stableUrl'.codeUnits).toString();
+        final legacyRaw = sha256.convert('$uid|$remoteUrl'.codeUnits).toString();
+        if (!candidates.contains(legacyStable)) candidates.add(legacyStable);
+        if (!candidates.contains(legacyRaw)) candidates.add(legacyRaw);
+      }
+
+      for (final key in candidates) {
+        final raw = box.get('$_prefix$key');
+        final meta = box.get('meta:$key');
+        if (raw is! Uint8List || meta is! Map) continue;
+        final updatedMeta = <String, dynamic>{
+          ...Map<String, dynamic>.from(meta),
+          'last_access': DateTime.now().millisecondsSinceEpoch,
+        };
+        await box.put('meta:$key', updatedMeta);
+        if (key != canonicalKey) {
+          await box.put('$_prefix$canonicalKey', raw);
+          await box.put('meta:$canonicalKey', updatedMeta);
+          await _deleteEntry(box, key);
+        }
+        return _objectUrl(canonicalKey, raw);
+      }
+      return null;
     } catch (error) {
       debugPrint('[WebMediaCache] IndexedDB read failed: $error');
       return null;
