@@ -7,10 +7,18 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const bunnyLibraryId = Deno.env.get("BUNNY_LIBRARY_ID")!;
 const bunnyApiKey = Deno.env.get("BUNNY_API_KEY")!;
 
-const json = (body: unknown, status = 200) =>
+const corsHeaders = (origin: string | null): HeadersInit => ({
+  "Access-Control-Allow-Origin": origin ?? "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type, accept, x-supabase-api-version",
+  "Access-Control-Max-Age": "86400",
+  "Vary": "Origin",
+});
+
+const json = (body: unknown, status = 200, origin: string | null = null) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders(origin) },
   });
 
 
@@ -235,12 +243,20 @@ async function deleteBunnyVideo(videoId: string): Promise<{
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("Origin");
+
+  // Browsers preflight cross-origin requests before sending the authenticated
+  // POST. Respond here without requiring Authorization on the OPTIONS request.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  }
+
   if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405);
+    return json({ error: "Method not allowed" }, 405, origin);
   }
 
   const auth = req.headers.get("Authorization");
-  if (!auth) return json({ error: "Authentication required" }, 401);
+  if (!auth) return json({ error: "Authentication required" }, 401, origin);
 
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: auth } },
@@ -257,7 +273,7 @@ Deno.serve(async (req) => {
   } = await userClient.auth.getUser();
 
   if (authError || !user) {
-    return json({ error: "Authentication required" }, 401);
+    return json({ error: "Authentication required" }, 401, origin);
   }
 
   const body = await req.json().catch(() => ({}));
@@ -267,7 +283,7 @@ Deno.serve(async (req) => {
     typeof postId !== "string" ||
     !/^[0-9a-fA-F-]{36}$/.test(postId)
   ) {
-    return json({ error: "post_id invalide" }, 400);
+    return json({ error: "post_id invalide" }, 400, origin);
   }
 
   // This RPC performs the authoritative authorization check first.
@@ -277,7 +293,7 @@ Deno.serve(async (req) => {
     });
 
   if (manifestError) {
-    return json({ error: manifestError.message }, 403);
+    return json({ error: manifestError.message }, 403, origin);
   }
 
   const { data: post, error: postError } = await adminClient
@@ -329,10 +345,10 @@ Deno.serve(async (req) => {
 
   for (const object of r2Objects.values()) {
     if (!isAllowedPostR2Key(object.key, post as unknown as Record<string, unknown>)) {
-      return json({ error: "Clé R2 non autorisée pour cette publication", post_id: postId }, 400);
+      return json({ error: "Clé R2 non autorisée pour cette publication", post_id: postId }, 400, origin);
     }
     try { getR2Configuration(object.key); } catch (error) {
-      return json({ error: "Configuration Cloudflare R2 incomplète", details: error instanceof Error ? error.message : String(error), post_id: postId }, 503);
+      return json({ error: "Configuration Cloudflare R2 incomplète", details: error instanceof Error ? error.message : String(error), post_id: postId }, 503, origin);
     }
   }
 
@@ -364,7 +380,7 @@ Deno.serve(async (req) => {
       stage: r2FailureStage,
       failed_key: currentR2Key,
       details,
-    }, 502);
+    }, 502, origin);
   }
 
   const deletedBunnyVideos: string[] = [];
