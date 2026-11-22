@@ -2,13 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:video_player/video_player.dart';
-import 'package:scrole/shared/widgets/video_trim_screen.dart';
 import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
 import 'package:scrole/modules/module_communautes/centre/persistence/salon_chat_local_cache.dart';
@@ -21,6 +19,7 @@ import 'package:scrole/modules/module_discussion_direct/interne/widgets/direct_v
 import 'package:scrole/shared/models/chat_message.dart' as legacy;
 import 'package:scrole/shared/widgets/media_gallery_sheet_platform.dart';
 import 'package:scrole/app/media/media_asset.dart';
+import 'package:flutter/foundation.dart';
 import 'package:scrole/shared/widgets/message_video_trim_platform.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -524,6 +523,9 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
   final AudioRecorder _recorder = AudioRecorder();
   DateTime? _recordingStartedAt;
   String? _recordingFilePath;
+  Uint8List? _recordingAudioData;
+  StreamSubscription<Uint8List>? _recordingStreamSub;
+  final BytesBuilder _recordingPcm = BytesBuilder(copy: false);
   RealtimeChannel? _channel;
   RealtimeChannel? _permissionsChannel;
   StreamSubscription<bool>? _connectivitySubscription;
@@ -1553,21 +1555,38 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
   Future<void> _startRecording() async {
     if (_recording || _reviewingRecording || _uploadingMedia) return;
     if (!_audioMessagesAllowed) return;
-    final permission = await Permission.microphone.request();
-    if (!permission.isGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('chat_groups_microphone_permission'.tr)),
-        );
+    if (!kIsWeb) {
+      final permission = await Permission.microphone.request();
+      if (!permission.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('chat_groups_microphone_permission'.tr)),
+          );
+        }
+        return;
       }
-      return;
     }
     try {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/salon_voice_${DateTime.now().microsecondsSinceEpoch}.m4a';
-      await _recorder.start(const RecordConfig(), path: path);
+      _recordingPcm.clear();
+      _recordingAudioData = null;
+      await _recorder.startStream(const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 44100,
+        numChannels: 1,
+      ));
+      await _recordingStreamSub?.cancel();
+      final stream = await _recorder.startStream(const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 44100,
+        numChannels: 1,
+      ));
+      _recordingStreamSub = stream.listen(
+        _recordingPcm.add,
+        onError: (Object error) {
+          debugPrint('[SALON_AUDIO] recording stream failed: $error');
+        },
+      );
       _recordingStartedAt = DateTime.now();
-      _recordingFilePath = path;
       _recordingTimer?.cancel();
       if (mounted) {
         setState(() {
@@ -1578,9 +1597,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
         });
       }
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && _recording) {
-          setState(() => _recordingDurationSeconds++);
-        }
+        if (mounted && _recording) setState(() => _recordingDurationSeconds++);
       });
     } catch (e) {
       if (mounted) {
@@ -1591,16 +1608,45 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
     }
   }
 
+  Uint8List _wrapPcmAsWav(Uint8List pcm) {
+    const sampleRate = 44100;
+    const channels = 1;
+    const bitsPerSample = 16;
+    final data = ByteData(44);
+    void ascii(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        data.setUint8(offset + i, value.codeUnitAt(i));
+      }
+    }
+    ascii(0, 'RIFF');
+    data.setUint32(4, 36 + pcm.length, Endian.little);
+    ascii(8, 'WAVE');
+    ascii(12, 'fmt ');
+    data.setUint32(16, 16, Endian.little);
+    data.setUint16(20, 1, Endian.little);
+    data.setUint16(22, channels, Endian.little);
+    data.setUint32(24, sampleRate, Endian.little);
+    data.setUint32(28, sampleRate * channels * bitsPerSample ~/ 8, Endian.little);
+    data.setUint16(32, channels * bitsPerSample ~/ 8, Endian.little);
+    data.setUint16(34, bitsPerSample, Endian.little);
+    ascii(36, 'data');
+    data.setUint32(40, pcm.length, Endian.little);
+    return Uint8List.fromList([...data.buffer.asUint8List(), ...pcm]);
+  }
+
   Future<void> _stopRecordingAndSend() async {
     if (!_recording) return;
     _recordingTimer?.cancel();
     try {
-      final path = await _recorder.stop();
-      if (path == null || _recordingDurationSeconds < 1) {
+      await _recorder.stop();
+      await _recordingStreamSub?.cancel();
+      _recordingStreamSub = null;
+      final pcm = _recordingPcm.takeBytes();
+      if (pcm.isEmpty || _recordingDurationSeconds < 1) {
         if (mounted) setState(() => _recording = false);
         return;
       }
-      _recordingFilePath = path;
+      _recordingAudioData = _wrapPcmAsWav(pcm);
       if (mounted) {
         setState(() {
           _recording = false;
@@ -1608,7 +1654,11 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           _playingRecordingReview = false;
         });
       }
-      await _recordingPreviewPlayer.setFilePath(path);
+      final dataUri = Uri.dataFromBytes(
+        _recordingAudioData!,
+        mimeType: 'audio/wav',
+      ).toString();
+      await _recordingPreviewPlayer.setUrl(dataUri);
     } catch (e) {
       if (mounted) {
         setState(() { _recording = false; _reviewingRecording = false; });
@@ -1644,6 +1694,10 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
       _recordingTimer?.cancel();
       try { await _recorder.stop(); } catch (_) {}
     }
+    await _recordingStreamSub?.cancel();
+    _recordingStreamSub = null;
+    _recordingPcm.clear();
+    _recordingAudioData = null;
     try { await _recordingPreviewPlayer.stop(); } catch (_) {}
     if (mounted) {
       setState(() {
@@ -1666,15 +1720,13 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
       await _cancelRecording();
       return;
     }
-    // AudioPlayer's source is not used as a filesystem contract; the recorder
-    // output path is retained explicitly by the preview state.
-    final filePath = _recordingFilePath;
-    if (filePath == null || !await File(filePath).exists()) return;
+    final audioBytes = _recordingAudioData;
     final id = _newUuid();
     final userId = _client.auth.currentUser?.id;
-    if (userId == null) return;
+    if (audioBytes == null || audioBytes.isEmpty || userId == null) return;
     final duration = _recordingDurationSeconds;
     final replySnapshot = _replyToMessage == null ? null : _replySnapshot(_replyToMessage!);
+    final dataUri = Uri.dataFromBytes(audioBytes, mimeType: 'audio/wav').toString();
     final optimistic = <String, dynamic>{
       'id': id,
       'sender_id': userId,
@@ -1682,8 +1734,8 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
       'type': 'audio',
       'content': '',
       if (replySnapshot != null) ...{'replied_to_id': replySnapshot['id'], 'reply_preview': replySnapshot},
-      'audio_url': filePath,
-      'local_audio_path': filePath,
+      'audio_url': dataUri,
+      'local_audio_path': dataUri,
       'duration_seconds': duration,
       'is_uploading': true,
       'is_deleted': false,
@@ -1700,7 +1752,17 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
     }
     try {
       await _recordingPreviewPlayer.stop();
-      final key = await _uploadFile(filePath, mediaType: 'audio');
+      final uploaded = await R2MediaRepository().uploadMediaAsset(
+        media: MediaAsset.fromXFile(XFile.fromData(
+          audioBytes,
+          name: 'salon_voice_$id.wav',
+          mimeType: 'audio/wav',
+        )),
+        category: 'salon_message_media',
+        mediaType: 'audio',
+        entityId: widget.salonId,
+      );
+      final key = uploaded.objectKey;
       await _client.rpc('send_salon_message', params: {
         'p_id': id,
         'p_salon_id': widget.salonId,
@@ -1717,6 +1779,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
             _messages[index] = {
               ..._messages[index],
               'audio_url': key,
+              'local_audio_path': null,
               'is_uploading': false,
             };
           }
@@ -1738,6 +1801,7 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           _uploadingMedia = false;
           _recordingStartedAt = null;
           _recordingFilePath = null;
+          _recordingAudioData = null;
           _recordingDurationSeconds = 0;
         });
       }
