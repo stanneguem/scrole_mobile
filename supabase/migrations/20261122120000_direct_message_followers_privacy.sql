@@ -47,41 +47,6 @@ BEGIN
   RETURN false;
 END;
 $function$
-DECLARE
-  v_allowed boolean := true;
-  v_connected boolean := false;
-BEGIN
-  IF auth.uid() IS NULL OR p_sender_id IS DISTINCT FROM auth.uid()
-     OR p_recipient_id IS NULL OR p_sender_id = p_recipient_id THEN
-    RETURN false;
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM public.blocage_utilisateur b
-    WHERE b.statut
-      AND ((b.bloqueur_id = p_sender_id AND b.bloque_id = p_recipient_id)
-        OR (b.bloqueur_id = p_recipient_id AND b.bloque_id = p_sender_id))
-      AND (b.bloque_jusquau IS NULL OR b.bloque_jusquau > now())
-  ) THEN
-    RETURN false;
-  END IF;
-
-  SELECT EXISTS (
-    SELECT 1 FROM public.friendships f
-    WHERE f.user_a_id = LEAST(p_sender_id, p_recipient_id)
-      AND f.user_b_id = GREATEST(p_sender_id, p_recipient_id)
-  ) INTO v_connected;
-
-  SELECT LOWER(COALESCE(up.allow_messages_from, 'everyone'))
-      IN ('everyone', 'tous', 'tout_le_monde')
-    INTO v_allowed
-  FROM public.user_privacy up
-  WHERE up.user_id = p_recipient_id;
-
-  v_allowed := COALESCE(v_allowed, true);
-  RETURN v_connected OR v_allowed;
-END;
-$function$
 
 
 REVOKE ALL ON FUNCTION public.can_send_direct_message_to(uuid, uuid) FROM PUBLIC;
