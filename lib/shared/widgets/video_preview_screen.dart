@@ -17,7 +17,7 @@ class VideoPreviewScreen extends StatefulWidget {
   const VideoPreviewScreen({
     super.key,
     required this.videoFile,
-    this.maxDuration = const Duration(seconds: 29),
+    this.maxDuration = const Duration(seconds: 60),
   });
 
   @override
