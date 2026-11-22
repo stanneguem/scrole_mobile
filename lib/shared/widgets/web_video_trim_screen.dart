@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:html' as html;
 import 'dart:math' as math;
 import 'dart:js_util' as js_util;
@@ -147,7 +146,10 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       final hasMp4Header = bytes.length >= 12 &&
           String.fromCharCodes(bytes.sublist(4, 8)) == 'ftyp';
       final isMp4 = outputMime == 'video/mp4' || hasMp4Header;
-      if (!hasWebmHeader && !hasMp4Header && isMp4) {
+      if (!hasWebmHeader && !hasMp4Header) {
+        throw StateError('Le navigateur a généré un conteneur vidéo incomplet ou illisible.');
+      }
+      if (isMp4 && !hasMp4Header) {
         throw StateError('Le fichier MP4 généré est incomplet ou illisible.');
       }
       final extension = isMp4 ? 'mp4' : 'webm';
