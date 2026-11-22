@@ -1075,7 +1075,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       final originalFile = File(picked.path);
       final trimmed = await Get.to<File>(() => VideoTrimScreen(
             videoFile: originalFile,
-            maxDuration: const Duration(seconds: 29),
+            maxDuration: maxPostVideoDuration,
           ));
       if (trimmed == null || !mounted) return;
       final file = trimmed;
@@ -1107,7 +1107,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     if (!current.isVideo) return;
     final updatedFile = await Get.to<File>(() => VideoPreviewScreen(
       videoFile: current.file,
-      maxDuration: const Duration(seconds: 29),
+      maxDuration: maxPostVideoDuration,
     ));
     if (updatedFile == null || !mounted) return;
     // La durée maximale est imposée par VideoPreviewScreen / VideoTrimScreen.
