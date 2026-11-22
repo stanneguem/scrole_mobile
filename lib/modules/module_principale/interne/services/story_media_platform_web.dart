@@ -14,11 +14,11 @@ Future<XFile?> trimStoryVideo(
   BuildContext context,
   XFile file, {
   required Duration maxDuration,
-}) {
-  return Get.to<XFile>(() => WebVideoTrimScreen(
+}) async {
+  return await Get.to<XFile>(() => WebVideoTrimScreen(
         videoFile: file,
         maxDuration: maxDuration,
-      )) ?? Future<XFile?>.value(null);
+      ));
 }
 
 Future<XFile?> createStoryVideoThumbnail(XFile file) async => null;
