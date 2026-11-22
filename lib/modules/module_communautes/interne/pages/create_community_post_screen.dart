@@ -1524,33 +1524,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                 ],
                               );
                             }
-                            if (index >= _selectedMedia.length) {
-                              final webIndex = index - _selectedMedia.length;
-                              final isVideo = _webSelectedIsVideo[webIndex];
-                              return Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  ColoredBox(
-                                    color: Colors.black87,
-                                    child: Center(
-                                      child: Icon(isVideo ? Icons.play_circle_fill_rounded : Icons.image_rounded, color: Colors.white, size: 44),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 6,
-                                    right: 6,
-                                    child: IconButton.filled(
-                                      onPressed: () => setState(() {
-                                        _webSelectedFiles.removeAt(webIndex);
-                                        _webSelectedIsVideo.removeAt(webIndex);
-                                        _webUploadedMedia.removeAt(webIndex);
-                                      }),
-                                      icon: const Icon(Icons.close_rounded),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
                             final media = _selectedMedia[index];
                             final isVideo = media.isVideo;
                             final file = media.file;
