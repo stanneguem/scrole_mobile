@@ -5,3 +5,9 @@ const int maxPostMedia = 20;
 /// Maximum number of photos allowed by the post composer.
 /// Photos also count toward [maxPostMedia], so a post cannot exceed 20 total items.
 const int maxPostPhotos = 20;
+
+/// Maximum duration accepted for videos attached to feed and community posts.
+const Duration maxPostVideoDuration = Duration(seconds: 60);
+
+/// Maximum duration accepted for story videos.
+const Duration maxStoryVideoDuration = Duration(seconds: 60);
