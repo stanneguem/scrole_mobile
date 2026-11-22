@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:js_util' as js_util;
@@ -75,15 +76,33 @@ class ChatMediaCachePlatform {
     }
   }
 
+  String _stableMediaRef(String remoteUrl) {
+    final parsed = Uri.tryParse(remoteUrl);
+    if (parsed != null &&
+        _isHttpUrl(remoteUrl) &&
+        parsed.host.contains('.r2.cloudflarestorage.com')) {
+      final objectKey = Uri.decodeComponent(
+        parsed.path.replaceFirst(RegExp(r'^/+'), ''),
+      );
+      if (_isR2ObjectKey(objectKey)) return objectKey;
+    }
+    if (parsed != null && _isHttpUrl(remoteUrl)) {
+      return parsed.replace(query: '', fragment: '').toString();
+    }
+    return remoteUrl;
+  }
+
+  String? _messageObjectKey(String remoteUrl) {
+    final stableRef = _stableMediaRef(remoteUrl);
+    return stableRef.startsWith('messages/') ? stableRef : null;
+  }
+
   String _cacheKey(String remoteUrl) {
     final uid = Supabase.instance.client.auth.currentUser?.id ?? 'anonymous';
-    // Signed URLs rotate their query token. The object path is the stable
-    // identity of the media, otherwise every refreshed signature duplicates
-    // the same image in IndexedDB.
-    final parsed = Uri.tryParse(remoteUrl);
-    final stableRef = parsed != null && _isHttpUrl(remoteUrl)
-        ? parsed.replace(query: '', fragment: '').toString()
-        : remoteUrl;
+    // Use the R2 object key as the identity, not its temporary signed URL.
+    // This also lets old messages resolve the same IndexedDB entry when the
+    // message payload stores a key but an earlier render used a signed URL.
+    final stableRef = _stableMediaRef(remoteUrl);
     return sha256.convert('$uid|$stableRef'.codeUnits).toString();
   }
 
@@ -149,11 +168,164 @@ class ChatMediaCachePlatform {
     return cacheRemote(ref);
   }
 
+  Future<Uint8List?> _downloadPrivateMessageMedia(String objectKey) async {
+    try {
+      final client = Supabase.instance.client;
+      final token = client.auth.currentSession?.accessToken;
+      if (token == null || token.isEmpty) return null;
+
+      // Download through the authenticated Supabase Edge Function. Browsers
+      // cannot reliably fetch private R2 presigned URLs when the bucket CORS
+      // policy does not allow the Scrole Web origin.
+      final endpoint = client.rest.url.replaceFirst(
+        RegExp(r'/rest/v1/?
+
+  Future<String?> _createR2DownloadUrl(String objectKey) async {
+    final response = await Supabase.instance.client.functions.invoke(
+      'r2-media-upload',
+      body: {'action': 'create-download-url', 'object_key': objectKey},
+    );
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      return null;
+    }
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final url = data['url'] as String?;
+    return url == null || url.isEmpty ? null : url;
+  }
+
+  Future<String?> _resolveDownloadUrl(String remoteUrl) async {
+    final parsed = Uri.tryParse(remoteUrl);
+    if (parsed != null && parsed.scheme == 'pending-media') {
+      // This reference is private to the sender's local IndexedDB store; it
+      // must never be signed as a Supabase Storage object for a recipient.
+      return null;
+    }
+    if (parsed != null &&
+        _isHttpUrl(remoteUrl) &&
+        parsed.host.contains('.r2.cloudflarestorage.com')) {
+      final objectKey = Uri.decodeComponent(parsed.path.replaceFirst(RegExp(r'^/+'), ''));
+      if (_isR2ObjectKey(objectKey)) {
+        // Never reuse an expired presigned R2 URL. Ask our Edge Function for
+        // a fresh URL using the stable object key.
+        return _createR2DownloadUrl(objectKey);
+      }
+    }
+    if (_isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
+      return remoteUrl;
+    }
+    if (_isR2ObjectKey(remoteUrl)) {
+      return _createR2DownloadUrl(remoteUrl);
+    }
+    return Supabase.instance.client.storage.from('chat-media').createSignedUrl(remoteUrl, 300);
+  }
+
+  Future<void> _deleteEntry(Box box, String key) async {
+    await box.delete('$_prefix$key');
+    await box.delete('meta:$key');
+    final objectUrl = _objectUrls.remove(key);
+    if (objectUrl != null) html.Url.revokeObjectUrl(objectUrl);
+  }
+
+  Future<void> _enforceLimit(Box box) async {
+    final entries = <MapEntry<String, Map<String, dynamic>>>[];
+    var total = 0;
+    for (final key in box.keys.whereType<String>()) {
+      if (!key.startsWith('meta:')) continue;
+      final raw = box.get(key);
+      if (raw is! Map) continue;
+      final meta = Map<String, dynamic>.from(raw);
+      final id = key.substring(5);
+      total += (meta['size'] as num?)?.toInt() ?? 0;
+      entries.add(MapEntry(id, meta));
+    }
+    entries.sort((a, b) =>
+        ((a.value['last_access'] as num?)?.toInt() ?? 0)
+            .compareTo((b.value['last_access'] as num?)?.toInt() ?? 0));
+    for (final entry in entries) {
+      if (total <= _maxBytes) break;
+      total -= (entry.value['size'] as num?)?.toInt() ?? 0;
+      await _deleteEntry(box, entry.key);
+    }
+  }
+
+  Future<void> clearForUser(String userId) async {
+    if (userId.isEmpty) return;
+    final box = await _openBox();
+    for (final key in box.keys.whereType<String>().toList()) {
+      if (!key.startsWith('meta:')) continue;
+      final raw = box.get(key);
+      if (raw is Map && raw['owner_id']?.toString() == userId) {
+        await _deleteEntry(box, key.substring(5));
+      }
+    }
+  }
+
+  Future<void> removeLocal(String remoteUrl) async {
+    if (remoteUrl.isEmpty) return;
+    final box = await _openBox();
+    await _deleteEntry(box, _cacheKey(remoteUrl));
+  }
+
+  Future<void> purgeOldFiles({int days = 14}) async {
+    // Message attachments can remain part of a conversation for years.
+    // Age-based deletion made old messages lose their local preview. Keep
+    // them until the bounded LRU policy needs space; R2 remains the recovery
+    // source if a browser cache entry is ever missing.
+    try {
+      final box = await _openBox();
+      await _enforceLimit(box);
+    } catch (error) {
+      debugPrint('[WebMediaCache] Cache maintenance failed: $error');
+    }
+  }
+}
+),
+        '/functions/v1/r2-media-upload',
+      );
+      final apiKey = client.rest.headers['apikey'];
+      if (apiKey == null || apiKey.isEmpty) {
+        debugPrint('[WebMediaCache] Supabase anon key unavailable for media proxy');
+        return null;
+      }
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'apikey': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'action': 'download-message-media',
+          'object_key': objectKey,
+        }),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[WebMediaCache] Private media proxy returned ${response.statusCode}');
+        return null;
+      }
+      if (response.bodyBytes.isEmpty ||
+          response.bodyBytes.lengthInBytes > _maxEntryBytes) {
+        return null;
+      }
+      return response.bodyBytes;
+    } catch (error) {
+      debugPrint('[WebMediaCache] Private media proxy failed: $error');
+      return null;
+    }
+  }
+
   Future<String?> cacheRemote(String remoteUrl) async {
     if (remoteUrl.isEmpty) return null;
     final cached = await localPathFor(remoteUrl);
     if (cached != null) return cached;
     try {
+      final messageObjectKey = _messageObjectKey(remoteUrl);
+      if (messageObjectKey != null) {
+        final bytes = await _downloadPrivateMessageMedia(messageObjectKey);
+        if (bytes == null) return null;
+        return cacheBytes(remoteUrl, bytes);
+      }
+
       final downloadUrl = await _resolveDownloadUrl(remoteUrl);
       if (downloadUrl == null) return null;
       final client = http.Client();
