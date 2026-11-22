@@ -160,7 +160,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
                     Expanded(
                       child: Center(
                         child: AspectRatio(
-                          aspectRatio: (_preview?.value.aspectRatio ?? 16 / 9).clamp(0.5, 2.4),
+                          aspectRatio: (_preview?.value.aspectRatio ?? 16 / 9).clamp(0.5, 2.4).toDouble(),
                           child: VideoPlayer(_preview!),
                         ),
                       ),
@@ -173,7 +173,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
                           RangeSlider(
                             min: 0,
                             max: maxSeconds,
-                            divisions: (maxSeconds * 10).round().clamp(1, 10000),
+                            divisions: (maxSeconds * 10).round().clamp(1, 10000).toInt(),
                             values: _range,
                             onChanged: _exporting ? null : (value) {
                               final limit = widget.maxDuration.inMilliseconds / 1000;
