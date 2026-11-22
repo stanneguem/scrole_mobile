@@ -205,6 +205,79 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  if (body.action === "download-message-media") {
+    const key = typeof body.object_key === "string" ? body.object_key.trim() : "";
+    const parts = key.split("/");
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const filename = parts[3] ?? "";
+    if (parts.length !== 4 || parts[0] !== "messages" ||
+        !uuid.test(parts[1] ?? "") || !uuid.test(parts[2] ?? "") ||
+        !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4a|aac|mp3|ogg|wav|webm)$/i.test(filename) ||
+        key.startsWith("/") || key.includes("..") || key.includes("\\\\")) {
+      return reply(400, { error: "invalid_message_media_key" });
+    }
+    if (!privateBucket || !privateAccessKeyId || !privateSecretAccessKey || !privateEndpoint) {
+      return reply(503, { error: "private_media_bucket_not_configured" });
+    }
+
+    const conversationId = parts[1];
+    const senderId = parts[2];
+    const { data: conversation, error: conversationError } = await admin
+      .from("direct_conversations")
+      .select("user_one_id,user_two_id")
+      .eq("id", conversationId)
+      .maybeSingle();
+    if (conversationError) return reply(500, { error: "conversation_lookup_failed" });
+    if (!conversation || ![conversation.user_one_id, conversation.user_two_id].includes(user.id)) {
+      return reply(403, { error: "conversation_participant_required" });
+    }
+
+    const [mediaReference, audioReference] = await Promise.all([
+      admin.from("direct_messages").select("id")
+        .eq("conversation_id", conversationId).eq("sender_id", senderId)
+        .contains("media_urls", [key]).limit(1).maybeSingle(),
+      admin.from("direct_messages").select("id")
+        .eq("conversation_id", conversationId).eq("sender_id", senderId)
+        .eq("audio_url", key).limit(1).maybeSingle(),
+    ]);
+    if (mediaReference.error || audioReference.error) {
+      return reply(500, { error: "message_media_reference_check_failed" });
+    }
+    if (!mediaReference.data && !audioReference.data) {
+      return reply(404, { error: "message_media_reference_not_found" });
+    }
+
+    try {
+      const privateS3 = new S3Client({
+        region: "auto",
+        endpoint: privateEndpoint,
+        credentials: { accessKeyId: privateAccessKeyId, secretAccessKey: privateSecretAccessKey },
+      });
+      const object = await privateS3.send(new GetObjectCommand({
+        Bucket: privateBucket,
+        Key: key,
+      }));
+      if (!object.Body) return reply(404, { error: "message_media_not_found" });
+      const bytes = await object.Body.transformToByteArray();
+      return new Response(bytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": object.ContentType || "application/octet-stream",
+          "Content-Length": String(bytes.byteLength),
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    } catch (error) {
+      console.error("[r2-media-upload] private message media download failed", {
+        conversationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return reply(404, { error: "message_media_unavailable" });
+    }
+  }
+
   if (body.action === "create-download-url") {
     const key = typeof body.object_key === "string" ? body.object_key.trim() : "";
     if (!key || key.includes("..") || key.startsWith("/") || key.includes("\\\\")) return reply(400, { error: "invalid_object_key" });
