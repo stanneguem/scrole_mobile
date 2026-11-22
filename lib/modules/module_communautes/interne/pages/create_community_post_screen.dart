@@ -1019,7 +1019,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         } finally {
           await probe?.dispose();
         }
-        if (duration == null || duration > const Duration(seconds: 29)) {
+        if (duration == null || duration <= Duration.zero || duration > const Duration(seconds: 29)) {
           Get.snackbar('Vidéo trop longue', 'Sur le Web, sélectionne une vidéo de 29 secondes maximum.');
           continue;
         }
