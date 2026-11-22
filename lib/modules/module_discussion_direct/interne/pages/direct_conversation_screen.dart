@@ -216,9 +216,14 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                     ),
                   ],
                 ),
-                if (controller.isOtherUserTyping.value)
+                if (controller.otherUserActivity.value == 'recording')
                   const Text(
-                    "En train d'écrire...",
+                    'Enregistre une note vocale…',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                  )
+                else if (controller.otherUserActivity.value == 'typing')
+                  const Text(
+                    "En train d'écrire…",
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                   ),
               ],
