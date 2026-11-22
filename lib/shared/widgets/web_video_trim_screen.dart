@@ -266,8 +266,10 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
+            Column(
+              children: [
             SizedBox(
               height: 48,
               child: Row(
@@ -344,6 +346,8 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
                   ],
                 ),
               ),
+              ],
+            ),
             if (_exporting)
               Positioned.fill(
                 child: Container(
