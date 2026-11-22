@@ -19,7 +19,8 @@ const IMAGE_TYPES: Record<string, string> = {
 };
 const VIDEO_TYPES: Record<string, string> = {
   "video/mp4": "mp4",
-  "video/quicktime": "mov",\n  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
 };
 const AUDIO_TYPES: Record<string, string> = {
   "audio/mp4": "m4a", "audio/aac": "aac", "audio/mpeg": "mp3",
@@ -212,7 +213,7 @@ Deno.serve(async (req: Request) => {
     const filename = parts[3] ?? "";
     if (parts.length !== 4 || parts[0] !== "messages" ||
         !uuid.test(parts[1] ?? "") || !uuid.test(parts[2] ?? "") ||
-        !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|webm|m4a|aac|mp3|ogg|wav|webm)$/i.test(filename) ||
+        !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|webm|m4a|aac|mp3|ogg|wav)$/i.test(filename) ||
         key.startsWith("/") || key.includes("..") || key.includes("\\\\")) {
       return reply(400, { error: "invalid_message_media_key" });
     }
