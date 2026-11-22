@@ -536,6 +536,10 @@ Deno.serve(async (req: Request) => {
       credentials: isPrivateObject
         ? { accessKeyId: privateAccessKeyId!, secretAccessKey: privateSecretAccessKey! }
         : { accessKeyId, secretAccessKey },
+      // R2 presigned PUTs are uploaded directly by browsers. Avoid the SDK's
+      // implicit CRC32 query/header requirement; the signed request only needs
+      // the exact Content-Type already enforced by the presigned command.
+      requestChecksumCalculation: "WHEN_REQUIRED",
     });
     const command = new PutObjectCommand({
       Bucket: targetBucket,
