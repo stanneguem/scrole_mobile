@@ -743,8 +743,18 @@ class NotificationService {
         if (conversationId != null && conversationId == _activeConversationId)
           return;
 
+        final messageNotificationId =
+            data['notification_id']?.toString() ??
+            data['message_id']?.toString() ??
+            message.messageId ??
+            '';
+        if (messageNotificationId.isEmpty) {
+          debugPrint('[FCM] Message push ignored: missing stable message id');
+          return;
+        }
+
         await showReplyableNotification(
-          id: message.hashCode.abs(),
+          id: messageNotificationId.hashCode.abs(),
           senderName: title,
           message: body,
           payload: jsonEncode(data),
