@@ -971,10 +971,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       }
 
       try {
-        // Le trim est obligatoire, même pour une vidéo de moins de 29 secondes.
+        // Le trim est obligatoire, même pour une vidéo de moins de 60 secondes.
         final trimmed = await Get.to<File>(() => VideoTrimScreen(
               videoFile: file,
-              maxDuration: const Duration(seconds: 29),
+              maxDuration: maxPostVideoDuration,
             ));
         if (trimmed == null || !mounted) continue;
         final videoFile = trimmed;
@@ -1019,8 +1019,8 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         } finally {
           await probe?.dispose();
         }
-        if (duration == null || duration <= Duration.zero || duration > const Duration(seconds: 29)) {
-          Get.snackbar('Vidéo trop longue', 'Sur le Web, sélectionne une vidéo de 29 secondes maximum.');
+        if (duration == null || duration <= Duration.zero || duration > maxPostVideoDuration) {
+          Get.snackbar('Vidéo trop longue', 'Sur le Web, sélectionne une vidéo de 60 secondes maximum.');
           continue;
         }
       }
@@ -1079,7 +1079,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           ));
       if (trimmed == null || !mounted) return;
       final file = trimmed;
-      // VideoTrimScreen applique déjà la limite de 29 secondes.
+      // VideoTrimScreen applique déjà la limite de 60 secondes.
       // Éviter une seconde extraction de métadonnées, source de rejets
       // injustifiés pour certains formats pourtant décodables nativement.
       final thumbnail = await _createVideoThumbnail(file);
