@@ -751,7 +751,7 @@ class MessagingRepository {
     try {
       final controller = _typingControllers.putIfAbsent(
         id,
-        () => StreamController<bool>.broadcast(),
+        () => StreamController<String?>.broadcast(),
       );
       final ch = _typingChannels[id] ??= _remote.subscribeTyping(id, (value) {
         if (!controller.isClosed &&
