@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -735,11 +736,11 @@ class _StoriesRow extends GetView<StoriesController> {
                   Get.to(() => StoryViewerScreen(
                     groups: allGroupsForViewer,
                     initialGroupIndex: viewerIndex,
-                  )).then((_) {
+                  ))?.then((_) {
                     // Web can keep the previous story-tray snapshot alive after
                     // closing the viewer. Reconcile viewed flags with the server
                     // so the author's ring and ordering update immediately.
-                    if (kIsWeb && mounted) {
+                    if (kIsWeb && context.mounted) {
                       controller.fetchStories();
                     }
                   });
