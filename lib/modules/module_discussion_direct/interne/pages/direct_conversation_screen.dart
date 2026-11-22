@@ -420,7 +420,7 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
         ),
       );
     }
-    if (m.status == MessageStatus.sending) {
+    if (m.status == MessageStatus.sending && m.type == MessageType.text) {
       content.add(
         Text(
           'Envoi...',
@@ -477,17 +477,19 @@ class DirectConversationScreen extends GetView<DirectConversationController> {
                       children: [
                         _status(m.status),
                         const SizedBox(width: 3),
-                        Text(
-                          _receiptLabel(m.status),
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: m.status == MessageStatus.read
-                                ? Colors.blue
-                                : hasWallpaper
-                                    ? Colors.white70
-                                    : colors.onSurfaceVariant.withValues(alpha: .65),
+                        if (m.status != MessageStatus.sending ||
+                            m.type == MessageType.text)
+                          Text(
+                            _receiptLabel(m.status),
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: m.status == MessageStatus.read
+                                  ? Colors.blue
+                                  : hasWallpaper
+                                      ? Colors.white70
+                                      : colors.onSurfaceVariant.withValues(alpha: .65),
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ],
