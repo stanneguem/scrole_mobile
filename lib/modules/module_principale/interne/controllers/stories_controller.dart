@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
+import '../../../../shared/constants/post_media_limits.dart';
 import '../../../../app/service_global/media_image_processor.dart';
 import '../services/story_media_platform.dart';
 import '../services/story_tray_legacy_cache.dart';
@@ -444,7 +445,7 @@ class StoriesController extends GetxController {
             if (duration <= Duration.zero) {
               throw StateError('Impossible de déterminer la durée de la vidéo.');
             }
-            if (duration > const Duration(seconds: 29)) {
+            if (duration > maxStoryVideoDuration) {
               Get.snackbar(
                 'post_composer_attention'.tr,
                 'post_composer_video_too_long'.tr,
