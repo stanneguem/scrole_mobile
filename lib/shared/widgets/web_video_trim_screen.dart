@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:html' as html;
 import 'dart:math' as math;
@@ -114,19 +115,47 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       js_util.callMethod<void>(recorder, 'stop', <Object?>[]);
       await stopped.future.timeout(const Duration(minutes: 2));
       if (chunks.isEmpty) throw StateError('Le navigateur n’a produit aucun segment vidéo.');
-      final blob = html.Blob(chunks, mime);
+      // MediaRecorder peut choisir un conteneur différent de celui demandé.
+      // On utilise son type réellement produit pour ne pas étiqueter du WebM en MP4.
+      final recordedMime = (js_util.getProperty(recorder, 'mimeType') as String?)
+          ?.split(';')
+          .first
+          .trim();
+      final outputMime = (recordedMime == null || recordedMime.isEmpty)
+          ? mime
+          : recordedMime;
+      final blob = html.Blob(chunks, outputMime);
       final reader = html.FileReader();
-      reader.readAsArrayBuffer(blob);
+      // readAsDataUrl évite les différences de représentation d'ArrayBuffer
+      // entre les navigateurs et les versions de dart:html.
+      reader.readAsDataUrl(blob);
       await reader.onLoad.first.timeout(const Duration(minutes: 2));
-      final result = reader.result;
-      if (result is! ByteBuffer) throw StateError('Export vidéo illisible.');
-      final bytes = Uint8List.view(result);
+      final dataUrl = reader.result;
+      if (dataUrl is! String || !dataUrl.startsWith('data:')) {
+        throw StateError('Le navigateur a retourné un export vidéo invalide.');
+      }
+      final separator = dataUrl.indexOf(',');
+      if (separator < 0) {
+        throw StateError('Les données de la vidéo exportée sont incomplètes.');
+      }
+      final bytes = base64Decode(dataUrl.substring(separator + 1));
       if (bytes.isEmpty) throw StateError('Le segment vidéo est vide.');
-      final extension = mime == 'video/mp4' ? 'mp4' : 'webm';
+      // Vérification minimale du conteneur avant de remettre le fichier à l'app.
+      final hasWebmHeader = bytes.length >= 4 &&
+          bytes[0] == 0x1A && bytes[1] == 0x45 &&
+          bytes[2] == 0xDF && bytes[3] == 0xA3;
+      final hasMp4Header = bytes.length >= 12 &&
+          String.fromCharCodes(bytes.sublist(4, 8)) == 'ftyp';
+      final isMp4 = outputMime == 'video/mp4' || hasMp4Header;
+      if (!hasWebmHeader && !hasMp4Header && isMp4) {
+        throw StateError('Le fichier MP4 généré est incomplet ou illisible.');
+      }
+      final extension = isMp4 ? 'mp4' : 'webm';
+      final finalMime = isMp4 ? 'video/mp4' : 'video/webm';
       return XFile.fromData(
         bytes,
         name: 'scrole-trimmed-${DateTime.now().millisecondsSinceEpoch}.$extension',
-        mimeType: mime,
+        mimeType: finalMime,
         length: bytes.length,
       );
     } finally {
