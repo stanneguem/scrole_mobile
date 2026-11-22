@@ -468,7 +468,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
+          canMessage: await _canMessageUser(current.userId, fallback: refreshedProfile.profile?.canMessage ?? current.canMessage),
           connectionRequestSent: false,
           relationshipState: (relation['state'] ?? 'none').toString(),
           requestId: relation['request_id']?.toString(),
@@ -556,7 +556,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
+          canMessage: await _canMessageUser(current.userId, fallback: refreshedProfile.profile?.canMessage ?? current.canMessage),
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
