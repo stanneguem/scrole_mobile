@@ -881,10 +881,11 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     List<String>? mentions,
     Map<String, dynamic>? poll,
     bool allowPromotion = true,
+    List<Map<String, dynamic>>? preUploadedMedia,
   }) async {
     final startedAt = DateTime.now();
     debugPrint('[POST_CREATE][COMPOSER] START communityId=$communityId requestedPostId=$requestedPostId audience=$audience contentLength=${content?.length ?? 0} imageCount=${imageFiles?.length ?? 0} videoCount=${videoFiles?.length ?? 0} orderedCount=${orderedMediaFiles?.length ?? 0} pollPresent=${poll != null}');
-    final totalMediaCount = orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0));
+    final totalMediaCount = preUploadedMedia?.length ?? (orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0)));
     if (totalMediaCount > maxPostMedia) {
       throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
     }
@@ -895,56 +896,63 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
 
     List<Map<String, String>> localMediaPaths = [];
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      // Copy selected files into app-owned storage quickly. Compression and
-      // upload happen in the background processor after the outbox row exists.
-      if (orderedMediaFiles != null && orderedMediaTypes != null &&
-          orderedMediaFiles.length == orderedMediaTypes.length) {
-        for (int i = 0; i < orderedMediaFiles.length; i++) {
-          final file = orderedMediaFiles[i];
-          if (!await file.exists()) continue;
-          final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
-          final extension = p.extension(file.path).isEmpty
-              ? (type == 'video' ? '.mp4' : '.img')
-              : p.extension(file.path);
-          final targetPath = p.join(
-            appDir.path, 'posts', postId,
-            '${type}_$i$extension',
-          );
-          await Directory(p.dirname(targetPath)).create(recursive: true);
-          final stableFile = await file.copy(targetPath);
-          if (await stableFile.length() <= 0) {
-            throw StateError('Le média sélectionné ${i + 1} est vide.');
-          }
-          localMediaPaths.add({'path': stableFile.path, 'type': type});
+      if (preUploadedMedia != null && preUploadedMedia.isNotEmpty) {
+        // Browser media is uploaded from XFile streams before queueing. Keep
+        // matching placeholders so the outbox reuses the durable R2 metadata.
+        for (var i = 0; i < preUploadedMedia.length; i++) {
+          final type = preUploadedMedia[i]['type']?.toString() == 'video' ? 'video' : 'photo';
+          localMediaPaths.add({
+            'path': 'https://preuploaded.invalid/$postId/$i',
+            'type': type,
+          });
         }
       } else {
-        // Backward compatibility for callers that still provide separate lists.
-        if (imageFiles != null) {
-          for (int i = 0; i < imageFiles.length; i++) {
-            final file = imageFiles[i];
+        final appDir = await getApplicationDocumentsDirectory();
+        // Copy selected native files into app-owned storage before queueing.
+        if (orderedMediaFiles != null && orderedMediaTypes != null &&
+            orderedMediaFiles.length == orderedMediaTypes.length) {
+          for (int i = 0; i < orderedMediaFiles.length; i++) {
+            final file = orderedMediaFiles[i];
             if (!await file.exists()) continue;
-            final extension = p.extension(file.path).isEmpty ? '.img' : p.extension(file.path);
-            final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i$extension');
+            final type = orderedMediaTypes[i] == 'video' ? 'video' : 'photo';
+            final extension = p.extension(file.path).isEmpty
+                ? (type == 'video' ? '.mp4' : '.img')
+                : p.extension(file.path);
+            final targetPath = p.join(appDir.path, 'posts', postId, '${type}_$i$extension');
             await Directory(p.dirname(targetPath)).create(recursive: true);
             final stableFile = await file.copy(targetPath);
-            localMediaPaths.add({'path': stableFile.path, 'type': 'photo'});
+            if (await stableFile.length() <= 0) {
+              throw StateError('Le média sélectionné ${i + 1} est vide.');
+            }
+            localMediaPaths.add({'path': stableFile.path, 'type': type});
           }
-        }
-        if (videoFiles != null) {
-          for (int i = 0; i < videoFiles.length; i++) {
-            final video = videoFiles[i];
-            if (!await video.exists()) continue;
-            final extension = p.extension(video.path).isEmpty ? '.mp4' : p.extension(video.path);
-            final targetPath = p.join(appDir.path, 'posts', postId, 'video_$i$extension');
-            await Directory(p.dirname(targetPath)).create(recursive: true);
-            final stableFile = await video.copy(targetPath);
-            localMediaPaths.add({'path': stableFile.path, 'type': 'video'});
+        } else {
+          if (imageFiles != null) {
+            for (int i = 0; i < imageFiles.length; i++) {
+              final file = imageFiles[i];
+              if (!await file.exists()) continue;
+              final extension = p.extension(file.path).isEmpty ? '.img' : p.extension(file.path);
+              final targetPath = p.join(appDir.path, 'posts', postId, 'photo_$i$extension');
+              await Directory(p.dirname(targetPath)).create(recursive: true);
+              final stableFile = await file.copy(targetPath);
+              localMediaPaths.add({'path': stableFile.path, 'type': 'photo'});
+            }
+          }
+          if (videoFiles != null) {
+            for (int i = 0; i < videoFiles.length; i++) {
+              final video = videoFiles[i];
+              if (!await video.exists()) continue;
+              final extension = p.extension(video.path).isEmpty ? '.mp4' : p.extension(video.path);
+              final targetPath = p.join(appDir.path, 'posts', postId, 'video_$i$extension');
+              await Directory(p.dirname(targetPath)).create(recursive: true);
+              final stableFile = await video.copy(targetPath);
+              localMediaPaths.add({'path': stableFile.path, 'type': 'video'});
+            }
           }
         }
       }
     } catch (e, st) {
-      debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARE_FAILED postId=$postId error=$e\n$st');
+      debugPrint('[POST_CREATE][COMPOSER] MEDIA_PREPARE_FAILED postId=$postId error=$e\\n$st');
       rethrow;
     }
 
@@ -996,6 +1004,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
       'p_community_id': communityId.isEmpty ? null : communityId,
       'p_audience': audience ?? 'public',
       'p_local_media': localMediaPaths,
+      'p_uploaded_media': preUploadedMedia ?? [],
       // Versioned payload lets the processor quarantine legacy/stale queue rows safely.
       'p_outbox_version': 2,
       'p_hashtags': hashtags ?? [],
