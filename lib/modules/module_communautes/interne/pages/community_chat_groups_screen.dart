@@ -1569,11 +1569,6 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
     try {
       _recordingPcm.clear();
       _recordingAudioData = null;
-      await _recorder.startStream(const RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: 44100,
-        numChannels: 1,
-      ));
       await _recordingStreamSub?.cancel();
       final stream = await _recorder.startStream(const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
