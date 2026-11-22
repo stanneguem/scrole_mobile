@@ -12,6 +12,7 @@ class SupabaseMessagingService {
   SupabaseMessagingService(this._client);
   final SupabaseClient _client;
   final Map<RealtimeChannel, Completer<void>> _typingReady = {};
+  final Map<RealtimeChannel, Future<void>> _typingOperations = {};
   String? get currentUserId => _client.auth.currentUser?.id;
 
   Future<Conversation?> getOrCreateConversation(String otherUserId) async {
@@ -172,19 +173,30 @@ class SupabaseMessagingService {
     'p_last_read_message_id': id
   });
 
-  Future<void> sendTyping(RealtimeChannel channel, String? activity) async {
-    final ready = _typingReady[channel];
-    if (ready != null && !ready.isCompleted) await ready.future;
-    if (activity != null && activity.isNotEmpty) {
-      await channel.track({
-        'user_id': currentUserId,
-        'activity': activity,
-        'typing': activity == 'typing',
-        'updated_at': DateTime.now().toUtc().toIso8601String()
-      });
-    } else {
-      await channel.untrack();
-    }
+  Future<void> sendTyping(RealtimeChannel channel, String? activity) {
+    // Serialize Presence updates. Without this queue, a delayed track() can
+    // arrive after untrack() and leave a stale activity on the peer's screen.
+    final previous = _typingOperations[channel] ?? Future<void>.value();
+    final operation = previous.catchError((_) {}).then((_) async {
+      final ready = _typingReady[channel];
+      if (ready != null && !ready.isCompleted) await ready.future;
+      if (activity != null && activity.isNotEmpty) {
+        await channel.track({
+          'user_id': currentUserId,
+          'activity': activity,
+          'typing': activity == 'typing',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      } else {
+        await channel.untrack();
+      }
+    });
+    _typingOperations[channel] = operation;
+    return operation.whenComplete(() {
+      if (identical(_typingOperations[channel], operation)) {
+        _typingOperations.remove(channel);
+      }
+    });
   }
 
   RealtimeChannel subscribeInbox({
