@@ -19,7 +19,9 @@ import 'package:scrole/app/service_global/notification_service.dart';
 import 'package:scrole/modules/module_notification/centre/services/notification_db_service.dart';
 import 'package:scrole/modules/module_discussion_direct/interne/widgets/direct_voice_message_player.dart';
 import 'package:scrole/shared/models/chat_message.dart' as legacy;
-import 'package:scrole/shared/widgets/media_gallery_sheet.dart';
+import 'package:scrole/shared/widgets/media_gallery_sheet_platform.dart';
+import 'package:scrole/app/media/media_asset.dart';
+import 'package:scrole/shared/widgets/message_video_trim_platform.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -1280,43 +1282,23 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
       builder: (galleryContext) => MediaGallerySheet(
         allowMixedMedia: true,
         onSelected: (files) {
-          Navigator.of(galleryContext).pop();
-          _uploadAndSendGalleryFiles(files);
+          // Le composant de galerie ferme lui-même sa feuille, y compris sur Web.
+          // Un second pop fermait aussi le salon dans le navigateur.
+          unawaited(_uploadAndSendGalleryFiles(files));
         },
       ),
     );
   }
 
-  Future<File?> _prepareSalonVideo(XFile pickedFile) async {
-    final source = File(pickedFile.path);
-    final controller = VideoPlayerController.file(source);
-    try {
-      await controller.initialize();
-      final duration = controller.value.duration;
-      if (duration <= const Duration(seconds: 30)) return source;
-    } finally {
-      await controller.dispose();
-    }
+  Future<XFile?> _prepareSalonVideo(XFile pickedFile) async {
     if (!mounted) return null;
-    final trimmed = await Navigator.of(context).push<File?>(
-      MaterialPageRoute(
-        builder: (_) => VideoTrimScreen(
-          videoFile: source,
-          maxDuration: const Duration(seconds: 30),
-        ),
-      ),
+    // Même éditeur et même limite sur Android, iOS et navigateur.
+    // L'éditeur contrôle la durée du segment exporté avant de le retourner.
+    return trimMessageVideo(
+      context,
+      pickedFile,
+      maxDuration: const Duration(seconds: 30),
     );
-    if (trimmed == null || !await trimmed.exists()) return null;
-    final verify = VideoPlayerController.file(trimmed);
-    try {
-      await verify.initialize();
-      if (verify.value.duration > const Duration(seconds: 30)) {
-        throw StateError('La vidéo découpée dépasse encore 30 secondes.');
-      }
-    } finally {
-      await verify.dispose();
-    }
-    return trimmed;
   }
 
   Future<void> _uploadAndSendGalleryFiles(List<XFile> files) async {
@@ -1340,22 +1322,14 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           throw Exception('chat_groups_image_not_allowed'.tr);
         }
 
-        File sourceFile = File(picked.path);
+        XFile sourceFile = picked;
         Duration? videoDuration;
         if (isVideo) {
           final prepared = await _prepareSalonVideo(picked);
           if (prepared == null) continue;
           sourceFile = prepared;
-          final durationController = VideoPlayerController.file(sourceFile);
-          try {
-            await durationController.initialize();
-            videoDuration = durationController.value.duration;
-          } finally {
-            await durationController.dispose();
-          }
-          if (videoDuration > const Duration(seconds: 30)) {
-            throw StateError('La vidéo doit durer 30 secondes maximum.');
-          }
+          // La durée est déjà limitée et validée par l'éditeur partagé.
+          // Ne pas utiliser VideoPlayerController.file : il n'existe pas sur Web.
         }
         preparedMedia.add({
           'file': sourceFile,
@@ -1405,11 +1379,11 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           if (replySnapshot != null) ...{'replied_to_id': replySnapshot['id'], 'reply_preview': replySnapshot},
           if (isImageGroup)
             'local_media_paths': indices
-                .map((index) => (preparedMedia[index]['file'] as File).path)
+                .map((index) => (preparedMedia[index]['file'] as XFile).path)
                 .toList(),
           if (!isImageGroup)
             'local_media_path':
-                (preparedMedia[indices.first]['file'] as File).path,
+                (preparedMedia[indices.first]['file'] as XFile).path,
           'is_uploading': true,
           'is_deleted': false,
           'sent_at': DateTime.now().toUtc().toIso8601String(),
@@ -1420,8 +1394,8 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
 
       // Future.wait conserve l'ordre des clés tout en téléversant en parallèle.
       final uploadedKeys = await Future.wait(preparedMedia.map((item) async {
-        final uploaded = await R2MediaRepository().uploadFile(
-          file: item['file'] as File,
+        final uploaded = await R2MediaRepository().uploadMediaAsset(
+          media: MediaAsset.fromXFile(item['file'] as XFile),
           category: 'salon_message_media',
           mediaType: item['is_video'] == true ? 'video' : 'image',
           entityId: widget.salonId,
