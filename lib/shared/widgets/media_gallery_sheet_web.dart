@@ -31,7 +31,12 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
       final files = widget.allowMixedMedia
           ? await picker.pickMultipleMedia(limit: widget.maxSelection)
           : await picker.pickMultiImage(limit: widget.maxSelection);
-      if (files.isNotEmpty) await widget.onSelected(files);
+      if (files.isNotEmpty) {
+        await widget.onSelected(files);
+        // Fermer uniquement la feuille de galerie après que le callback a
+        // lancé l'envoi, sans dépiler la page de conversation.
+        if (mounted) Navigator.of(context).pop(files);
+      }
     } catch (error, stackTrace) {
       debugPrint('[MEDIA_GALLERY_WEB] Browser file selection failed: $error\n$stackTrace');
       if (mounted) {
