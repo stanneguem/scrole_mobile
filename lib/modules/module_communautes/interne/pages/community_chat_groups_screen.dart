@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:video_player/video_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
