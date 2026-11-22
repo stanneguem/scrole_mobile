@@ -18,7 +18,7 @@ Future<XFile?> trimStoryVideo(
   return Get.to<XFile>(() => WebVideoTrimScreen(
         videoFile: file,
         maxDuration: maxDuration,
-      ));
+      )) ?? Future<XFile?>.value(null);
 }
 
 Future<XFile?> createStoryVideoThumbnail(XFile file) async => null;
