@@ -214,6 +214,24 @@ class ExternalProfileController extends GetxController {
     super.onClose();
   }
 
+  Future<bool> _canMessageUser(String recipientId, {required bool fallback}) async {
+    final senderId = Supabase.instance.client.auth.currentUser?.id;
+    if (senderId == null || senderId.isEmpty || recipientId.isEmpty) return false;
+    try {
+      final allowed = await Supabase.instance.client.rpc(
+        'can_send_direct_message_to',
+        params: {
+          'p_sender_id': senderId,
+          'p_recipient_id': recipientId,
+        },
+      );
+      return allowed == true;
+    } catch (e) {
+      debugPrint('[ExternalProfileController] message permission lookup failed: $e');
+      return fallback;
+    }
+  }
+
   Future<void> loadProfile() async {
     final hasCachedProfile = profile.value != null;
     if (!hasCachedProfile) {
@@ -302,7 +320,7 @@ class ExternalProfileController extends GetxController {
             final updated = result.profile!.copyWith(
               isFollowing: relation['is_following'] == true,
               isConnected: relation['is_friend'] == true,
-              canMessage: result.profile!.canMessage,
+              canMessage: await _canMessageUser(userId, fallback: result.profile!.canMessage),
               connectionRequestSent: relationState == 'requested',
               followsMe: relation['follows_me'] == true,
               relationshipState: relationState,
@@ -388,7 +406,7 @@ class ExternalProfileController extends GetxController {
           clearRequestId: freshRelation['request_id'] == null,
         retryAt: freshRelation['retry_at'] == null ? null : DateTime.tryParse(freshRelation['retry_at'].toString()),
           clearRetryAt: freshRelation['retry_at'] == null,
-        canMessage: refreshedProfile.profile?.canMessage ?? current.canMessage,
+        canMessage: await _canMessageUser(current.userId, fallback: refreshedProfile.profile?.canMessage ?? current.canMessage),
       );
       profile.value = updated;
       isFollowing.value = updated.isFollowing;
@@ -496,7 +514,7 @@ class ExternalProfileController extends GetxController {
         final updated = current.copyWith(
           isFollowing: relation['is_following'] == true,
           isConnected: relation['is_friend'] == true,
-          canMessage: current.canMessage,
+          canMessage: await _canMessageUser(current.userId, fallback: current.canMessage),
           connectionRequestSent: relation['state'] == 'requested',
           followsMe: relation['follows_me'] == true,
           relationshipState: (relation['state'] ?? 'none').toString(),
