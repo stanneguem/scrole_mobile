@@ -408,6 +408,7 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
               'is_public': uploaded.isPublic,
               'mime_type': uploaded.contentType,
               'size_bytes': uploaded.sizeBytes,
+              'thumbnail_unavailable': true,
               'duration_seconds': duration.inMilliseconds / 1000,
             },
           ],
