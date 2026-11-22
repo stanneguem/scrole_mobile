@@ -18,7 +18,7 @@ import '../../../../app/service_global/media_image_processor.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message_model.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/repositories/messaging_repository.dart';
 import 'package:scrole/modules/module_discussion_direct/centre/models/message.dart';
-import '../../../../shared/widgets/media_gallery_sheet.dart';
+import '../../../../shared/widgets/media_gallery_sheet_platform.dart';
 
 enum RecordingState { idle, recording, reviewing }
 
