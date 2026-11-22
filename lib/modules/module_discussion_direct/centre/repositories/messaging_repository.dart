@@ -540,8 +540,13 @@ class MessagingRepository {
     _ => 'bin',
   };
 
-  bool _isRemote(String v) =>
-      ChatMediaCache.isHttpUrl(v) || ChatMediaCache.isStorageKey(v);
+  bool _isRemote(String v) {
+    // pending-media:// references point to the sender's local IndexedDB/Hive
+    // blob, not to a remote object. They must be resolved and uploaded before
+    // inserting the message into Supabase.
+    if (PendingChatMediaStore.isReference(v)) return false;
+    return ChatMediaCache.isHttpUrl(v) || ChatMediaCache.isStorageKey(v);
+  }
 
   String _mime(String p) {
     final e = p.split('.').last.toLowerCase();
