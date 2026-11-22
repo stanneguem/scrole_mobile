@@ -37,6 +37,7 @@ class ChatController extends GetxController {
   final RxList<MessageModel> messages = <MessageModel>[].obs;
   final RxBool isTyping = false.obs;
   final RxBool isOtherUserTyping = false.obs;
+  final RxString otherUserActivity = ''.obs;
   final RxBool blockedByOtherUser = false.obs;
   final RxBool blockedByMe = false.obs;
   final RxBool conversationNotificationsEnabled = true.obs;
@@ -63,7 +64,7 @@ class ChatController extends GetxController {
   final RxBool isPlayingReview = false.obs;
   String? _lastWatchedId;
   StreamSubscription<List<Message>>? _messagesSub;
-  StreamSubscription<bool>? _typingSub;
+  StreamSubscription<String?>? _typingSub;
   StreamSubscription? _audioSub;
   Timer? _typingTimer;
   Timer? _readDebounce;
@@ -139,11 +140,15 @@ class ChatController extends GetxController {
       _recalculateUnread();
       isLoading.value = false;
     }, onError: (_) => isLoading.value = false);
-    _typingSub = _repository.watchTyping(id).listen((value) {
+    _typingSub = _repository.watchTyping(id).listen((activity) {
       _otherUserTypingTimer?.cancel();
-      isOtherUserTyping.value = value;
-      if (value) {
-        _otherUserTypingTimer = Timer(const Duration(seconds: 4), () => isOtherUserTyping.value = false);
+      otherUserActivity.value = activity ?? '';
+      isOtherUserTyping.value = activity != null;
+      if (activity != null) {
+        _otherUserTypingTimer = Timer(const Duration(seconds: 6), () {
+          otherUserActivity.value = '';
+          isOtherUserTyping.value = false;
+        });
       }
     });
     unawaited(_initialize(id));
@@ -294,7 +299,7 @@ class ChatController extends GetxController {
     isTyping.value = active;
     _typingTimer?.cancel();
     if (isDraftConversation) return;
-    _typingTimer = Timer(const Duration(milliseconds: 450), () => unawaited(_repository.setTyping(conversationId, active)));
+    _typingTimer = Timer(const Duration(milliseconds: 350), () => unawaited(_repository.setTyping(conversationId, active ? 'typing' : null)));
   }
 
   void _recalculateUnread() {
@@ -547,6 +552,7 @@ class ChatController extends GetxController {
         },
       );
       recordingState.value = RecordingState.recording;
+      if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, 'recording'));
       recordingDuration.value = 0;
       swipeOffset.value = 0;
       _recordingTimer?.cancel();
@@ -574,6 +580,7 @@ class ChatController extends GetxController {
   Future<void> stopRecording() async {
     if (recordingState.value != RecordingState.recording) return;
     _recordingTimer?.cancel();
+    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
     try {
       await audioRecorder.stop();
       await _recordingStreamSub?.cancel();
@@ -608,6 +615,7 @@ class ChatController extends GetxController {
 
   Future<void> cancelRecording() async {
     _recordingTimer?.cancel();
+    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
     try {
       await audioRecorder.stop();
     } catch (_) {}
@@ -663,6 +671,7 @@ class ChatController extends GetxController {
       repliedToId: repliedMessage.value?.id,
     );
     recordingState.value = RecordingState.idle;
+    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
     _recordingMessageId = null;
     _recordingMediaRef = null;
     clearReply();
@@ -673,7 +682,7 @@ class ChatController extends GetxController {
   void toggleEmojiPicker() { showEmojiPicker.value = !showEmojiPicker.value; if (showEmojiPicker.value) FocusManager.instance.primaryFocus?.unfocus(); }
   void toggleReactionPanel() {}
   void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _typingTimer?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
-  void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, false)); }
+  void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null)); }
   void _showError(String? message) { if (message != null && message.isNotEmpty) Get.snackbar('Message', message); }
 
   @override
@@ -682,6 +691,7 @@ class ChatController extends GetxController {
       unawaited(_repository.stopWatchingConversation(_lastWatchedId!));
     }
     NotificationService.instance.setActiveConversation(null);
+    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
     _messagesSub?.cancel();
     _typingSub?.cancel();
     messageController.removeListener(_composerChanged);
