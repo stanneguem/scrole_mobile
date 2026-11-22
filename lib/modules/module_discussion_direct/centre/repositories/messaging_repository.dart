@@ -785,7 +785,7 @@ class MessagingRepository {
     _outboxRunning = true;
     try {
       final db = await _db.database;
-      final rows = await db.query('direct_chat_outbox', where: 'user_id=? AND attempts < 5', whereArgs: [uid], orderBy: 'created_at ASC');
+      final rows = await db.query('direct_chat_outbox', where: 'user_id=?', whereArgs: [uid], orderBy: 'created_at ASC');
       
       for (final row in rows) {
         final payloadRaw = row['payload'] as String;
