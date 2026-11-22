@@ -35,6 +35,7 @@ class _ResolvedChatImage {
 
 class _ChatCachedMediaState extends State<ChatCachedMedia> {
   Future<_ResolvedChatImage>? _future;
+  _ResolvedChatImage? _lastResolved;
 
   @override
   void initState() {
@@ -74,27 +75,39 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
     return FutureBuilder<_ResolvedChatImage>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // Le média est déjà visible dans la bulle optimiste. Sa résolution
-          // locale / son téléchargement se poursuit sans spinner intrusif.
-          return _frame(const SizedBox.shrink());
-        }
-        final resolved = snapshot.data;
+        // Pendant le passage de la référence locale à l'URL distante,
+        // conserver la dernière image résolue. Aucun spinner et surtout
+        // aucune zone vide pendant la nouvelle résolution.
+        final resolved = snapshot.connectionState == ConnectionState.waiting
+            ? _lastResolved
+            : snapshot.data;
         if (resolved == null ||
             (resolved.bytes == null &&
                 (resolved.path == null || resolved.path!.isEmpty))) {
-          return _unavailable();
+          if (_lastResolved != null) {
+            return _buildResolved(_lastResolved!);
+          }
+          return snapshot.connectionState == ConnectionState.waiting
+              ? _frame(const SizedBox.shrink())
+              : _unavailable();
         }
-        return media_image.buildChatCachedMediaImage(
-          path: resolved.path ?? '',
-          bytes: resolved.bytes,
-          width: widget.width,
-          height: widget.height,
-          fit: widget.fit,
-          borderRadius: widget.borderRadius,
-          unavailable: _unavailable,
-        );
+        if (snapshot.connectionState != ConnectionState.waiting) {
+          _lastResolved = resolved;
+        }
+        return _buildResolved(resolved);
       },
+    );
+  }
+
+  Widget _buildResolved(_ResolvedChatImage resolved) {
+    return media_image.buildChatCachedMediaImage(
+      path: resolved.path ?? '',
+      bytes: resolved.bytes,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      borderRadius: widget.borderRadius,
+      unavailable: _unavailable,
     );
   }
 
