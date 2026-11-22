@@ -18,7 +18,6 @@ class ProfilePostDetailScreen extends StatefulWidget {
 
 class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
   late CommunityPost _post;
-  bool _deleting = false;
   bool _reactionBusy = false;
 
   bool get _isOwnPost {
@@ -45,44 +44,6 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
       // Keep the profile-provided post visible if the detail endpoint is
       // unavailable (for example, when a private post is no longer accessible).
       debugPrint('[PROFILE_POST_DETAIL] Unable to refresh post author data: $error');
-    }
-  }
-
-  Future<void> _confirmAndDeletePost() async {
-    if (!_isOwnPost || _deleting) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        icon: Icon(Icons.delete_outline_rounded, color: Theme.of(dialogContext).colorScheme.error, size: 30),
-        title: Text('delete_post_confirm_title'.tr),
-        content: Text('delete_post_confirm_message'.tr),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text('cancel'.tr)),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(dialogContext).colorScheme.error),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon: const Icon(Icons.delete_outline_rounded),
-            label: Text('delete'.tr),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _deleting = true);
-    try {
-      await HomeFeedRepository().deletePost(_post.id);
-      if (!mounted) return;
-      Get.snackbar('success'.tr, 'post_deleted_success'.tr, snackPosition: SnackPosition.BOTTOM);
-      Get.back(result: true);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _deleting = false);
-      Get.snackbar(
-        'error'.tr,
-        error.toString().replaceFirst('Exception: ', ''),
-        snackPosition: SnackPosition.BOTTOM,
-      );
     }
   }
 
@@ -140,22 +101,7 @@ class _ProfilePostDetailScreenState extends State<ProfilePostDetailScreen> {
         ),
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: [
-          if (_isOwnPost)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _deleting
-                  ? const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    )
-                  : IconButton(
-                      tooltip: 'delete'.tr,
-                      onPressed: _confirmAndDeletePost,
-                      icon: Icon(Icons.delete_outline_rounded, color: colors.error),
-                    ),
-            ),
-        ],
+        actions: const [],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
