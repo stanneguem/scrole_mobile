@@ -172,13 +172,14 @@ class SupabaseMessagingService {
     'p_last_read_message_id': id
   });
 
-  Future<void> sendTyping(RealtimeChannel channel, bool typing) async {
+  Future<void> sendTyping(RealtimeChannel channel, String? activity) async {
     final ready = _typingReady[channel];
     if (ready != null && !ready.isCompleted) await ready.future;
-    if (typing) {
+    if (activity != null && activity.isNotEmpty) {
       await channel.track({
         'user_id': currentUserId,
-        'typing': true,
+        'activity': activity,
+        'typing': activity == 'typing',
         'updated_at': DateTime.now().toUtc().toIso8601String()
       });
     } else {
@@ -252,13 +253,20 @@ class SupabaseMessagingService {
         });
   }
 
-  RealtimeChannel subscribeTyping(String conversationId, void Function(bool) onTyping) {
+  RealtimeChannel subscribeTyping(String conversationId, void Function(String?) onActivity) {
     final channel = _client.channel('messaging-typing:$conversationId');
     final ready = Completer<void>();
     _typingReady[channel] = ready;
     void emit() {
       final uid = currentUserId;
-      onTyping(channel.presenceState().expand((s) => s.presences).any((p) => p.payload['user_id']?.toString() != uid && p.payload['typing'] == true));
+      final activities = channel.presenceState().expand((s) => s.presences)
+          .where((p) => p.payload['user_id']?.toString() != uid)
+          .map((p) => p.payload['activity']?.toString() ??
+              (p.payload['typing'] == true ? 'typing' : null))
+          .whereType<String>()
+          .toList(growable: false);
+      onActivity(activities.contains('recording') ? 'recording' :
+          activities.contains('typing') ? 'typing' : null);
     }
 
     channel.onPresenceSync((_) => emit()).onPresenceJoin((_) => emit()).onPresenceLeave((_) => emit()).subscribe((status, error) {
