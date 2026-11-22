@@ -221,7 +221,13 @@ class ChatMediaCachePlatform {
         }),
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('[WebMediaCache] Private media proxy returned ${response.statusCode}');
+        final errorBody = utf8.decode(
+          response.bodyBytes.take(500).toList(),
+          allowMalformed: true,
+        );
+        debugPrint(
+          '[WebMediaCache] Private media proxy returned ${response.statusCode}: $errorBody',
+        );
         return null;
       }
       if (response.bodyBytes.isEmpty ||
