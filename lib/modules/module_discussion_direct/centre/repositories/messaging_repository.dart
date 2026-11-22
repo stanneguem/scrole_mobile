@@ -994,11 +994,7 @@ class MessagingRepository {
     }
     await _messages.upsert(uid, r);
     await _ensureConversationFromIncoming(uid, r);
-    await _refreshConversationList(
-      uid,
-      r.conversationId,
-      updateUnreadFromLocalCursor: !isHistoricalSync,
-    );
+    await _refreshConversationList(uid, r.conversationId);
 
     // Only a genuinely new live INSERT may trigger an inbox reconciliation.
     // UPDATE events and historical catch-up rows are never notifications.
@@ -1063,24 +1059,11 @@ class MessagingRepository {
     );
   }
 
-  Future<void> _refreshConversationList(
-    String uid,
-    String conversationId, {
-    bool updateUnreadFromLocalCursor = true,
-  }) async {
+  Future<void> _refreshConversationList(String uid, String conversationId) async {
+    // This helper refreshes previews only. Unread counts are authoritative on
+    // the server (direct_conversation_members.last_read_at), so deriving them
+    // from a partial local message cache can resurrect old messages as unread.
     await _messages.refreshConversationPreview(uid, conversationId);
-    if (!updateUnreadFromLocalCursor) return;
-
-    // Without a local cursor, the local cache cannot distinguish old messages
-    // from unread ones. Keep the server-provided count instead of counting
-    // every cached incoming message as new.
-    final cursor = await getLocalReadCursor(conversationId);
-    if (cursor == null || cursor.$1 == null) return;
-    await _conversations.setUnread(
-      uid,
-      conversationId,
-      await _messages.unreadCount(uid, conversationId, cursor.$1),
-    );
   }
 
   Future<void> _reconcileLocalPreviews(String uid) async {
