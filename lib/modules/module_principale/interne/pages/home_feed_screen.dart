@@ -732,7 +732,17 @@ class _StoriesRow extends GetView<StoriesController> {
               child: GestureDetector(
                 onTap: () {
                   final viewerIndex = hasOwnStory ? index : index - 1;
-                  Get.to(() => StoryViewerScreen(groups: allGroupsForViewer, initialGroupIndex: viewerIndex));
+                  Get.to(() => StoryViewerScreen(
+                    groups: allGroupsForViewer,
+                    initialGroupIndex: viewerIndex,
+                  )).then((_) {
+                    // Web can keep the previous story-tray snapshot alive after
+                    // closing the viewer. Reconcile viewed flags with the server
+                    // so the author's ring and ordering update immediately.
+                    if (kIsWeb && mounted) {
+                      controller.fetchStories();
+                    }
+                  });
                 },
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
