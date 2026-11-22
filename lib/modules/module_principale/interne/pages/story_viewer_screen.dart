@@ -3069,6 +3069,11 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       controller.addListener(_onVideoChanged);
       await controller.initialize();
       if (!mounted) return;
+      debugPrint(
+        '[STORY][PLAYER] Initialized story=${widget.storyId} '
+        'durationMs=${controller.value.duration.inMilliseconds} '
+        'size=${controller.value.size.width}x${controller.value.size.height}',
+      );
       await controller.setLooping(false);
       await controller.setVolume(1);
       setState(() => _isDownloading = false);
@@ -3170,8 +3175,10 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
     // The story viewer owns navigation; the video itself is not tappable.
     return IgnorePointer(
       child: SizedBox.expand(
+        // Keep the complete source frame visible on narrow Android screens.
+        // BoxFit.cover cropped landscape/atypical aspect-ratio stories.
         child: FittedBox(
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           child: SizedBox(
             width: controller.value.size.width,
             height: controller.value.size.height,
