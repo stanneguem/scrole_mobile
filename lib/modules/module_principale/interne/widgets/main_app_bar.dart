@@ -267,9 +267,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   onTap: () => Get.to(() => const SearchScreen()),
                 ),
                 const SizedBox(width: 8),
-                GlassmorphismButton(
-                  icon: const Icon(Icons.add_rounded, size: 25),
-                  onTap: () => _showCreationMenu(context),
+                KeyedSubtree(
+                  key: _actionsKey,
+                  child: GlassmorphismButton(
+                    icon: const Icon(Icons.add_rounded, size: 25),
+                    onTap: () => _showCreationMenu(context),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Obx(() => GlassmorphismButton(
@@ -362,6 +365,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     icon: Icons.add_rounded,
                     tooltip: 'Créer',
                     onTap: () => _showCreationMenu(context),
+                    key: _actionsKey,
                   ),
                   _roundAction(
                     context,
@@ -407,9 +411,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required String tooltip,
     required VoidCallback onTap,
     double? badge,
+    Key? key,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
+      key: key,
       padding: const EdgeInsets.symmetric(horizontal: 3),
       child: Tooltip(
         message: tooltip,
