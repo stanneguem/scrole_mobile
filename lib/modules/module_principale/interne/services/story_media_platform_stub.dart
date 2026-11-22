@@ -19,7 +19,7 @@ Future<XFile?> trimStoryVideo(
     final duration = controller.value.duration;
     final extension = MediaAsset.fromXFile(file).extension;
     if (duration <= Duration.zero || duration > maxDuration ||
-        !const {'mp4', 'mov'}.contains(extension)) return null;
+        !const {'mp4', 'mov', 'webm'}.contains(extension)) return null;
     return file;
   } finally {
     await controller.dispose();
