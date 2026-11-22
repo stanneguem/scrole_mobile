@@ -1342,7 +1342,10 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
       // conserve son propre message car le contrat SQL vidéo est unitaire.
       final preparedMedia = <Map<String, dynamic>>[];
       for (final picked in files) {
-        final extension = picked.path.split('.').last.toLowerCase();
+        final pickedName = picked.name.toLowerCase();
+        final extension = pickedName.contains('.')
+            ? pickedName.split('.').last
+            : picked.path.split('.').last.toLowerCase();
         final isVideo = const {'mp4', 'mov', 'm4v', 'webm'}.contains(extension) ||
             (picked.mimeType?.startsWith('video/') ?? false);
         if (isVideo && !_videoMessagesAllowed) {
