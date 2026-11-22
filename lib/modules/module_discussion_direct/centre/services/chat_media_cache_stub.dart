@@ -77,7 +77,14 @@ class ChatMediaCachePlatform {
 
   String _cacheKey(String remoteUrl) {
     final uid = Supabase.instance.client.auth.currentUser?.id ?? 'anonymous';
-    return sha256.convert('$uid|$remoteUrl'.codeUnits).toString();
+    // Signed URLs rotate their query token. The object path is the stable
+    // identity of the media, otherwise every refreshed signature duplicates
+    // the same image in IndexedDB.
+    final parsed = Uri.tryParse(remoteUrl);
+    final stableRef = parsed != null && _isHttpUrl(remoteUrl)
+        ? parsed.replace(query: '', fragment: '').toString()
+        : remoteUrl;
+    return sha256.convert('$uid|$stableRef'.codeUnits).toString();
   }
 
   Future<String?> localPathFor(String remoteUrl) async {
@@ -172,30 +179,43 @@ class ChatMediaCachePlatform {
     }
   }
 
-  Future<String?> _resolveDownloadUrl(String remoteUrl) async {
-    if (_isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
-      return remoteUrl;
+  Future<String?> _createR2DownloadUrl(String objectKey) async {
+    final response = await Supabase.instance.client.functions.invoke(
+      'r2-media-upload',
+      body: {'action': 'create-download-url', 'object_key': objectKey},
+    );
+    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
+      return null;
     }
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final url = data['url'] as String?;
+    return url == null || url.isEmpty ? null : url;
+  }
+
+  Future<String?> _resolveDownloadUrl(String remoteUrl) async {
     final parsed = Uri.tryParse(remoteUrl);
     if (parsed != null && parsed.scheme == 'pending-media') {
       // This reference is private to the sender's local IndexedDB store; it
       // must never be signed as a Supabase Storage object for a recipient.
       return null;
     }
-    final client = Supabase.instance.client;
-    if (_isR2ObjectKey(remoteUrl)) {
-      final response = await client.functions.invoke(
-        'r2-media-upload',
-        body: {'action': 'create-download-url', 'object_key': remoteUrl},
-      );
-      if (response.status < 200 || response.status >= 300 || response.data is! Map) {
-        return null;
+    if (parsed != null &&
+        _isHttpUrl(remoteUrl) &&
+        parsed.host.contains('.r2.cloudflarestorage.com')) {
+      final objectKey = Uri.decodeComponent(parsed.path.replaceFirst(RegExp(r'^/+'), ''));
+      if (_isR2ObjectKey(objectKey)) {
+        // Never reuse an expired presigned R2 URL. Ask our Edge Function for
+        // a fresh URL using the stable object key.
+        return _createR2DownloadUrl(objectKey);
       }
-      final data = Map<String, dynamic>.from(response.data as Map);
-      final url = data['url'] as String?;
-      return url == null || url.isEmpty ? null : url;
     }
-    return client.storage.from('chat-media').createSignedUrl(remoteUrl, 300);
+    if (_isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
+      return remoteUrl;
+    }
+    if (_isR2ObjectKey(remoteUrl)) {
+      return _createR2DownloadUrl(remoteUrl);
+    }
+    return Supabase.instance.client.storage.from('chat-media').createSignedUrl(remoteUrl, 300);
   }
 
   Future<void> _deleteEntry(Box box, String key) async {
