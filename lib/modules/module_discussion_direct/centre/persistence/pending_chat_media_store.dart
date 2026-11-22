@@ -86,6 +86,16 @@ class PendingChatMediaStore {
     required String mimeType,
   }) async {
     if (length <= 0) throw StateError('Le fichier sélectionné est vide.');
+    final normalizedMime = mimeType.toLowerCase();
+    final maxBytes = normalizedMime.startsWith('image/')
+        ? 15 * 1024 * 1024
+        : normalizedMime.startsWith('audio/')
+            ? 25 * 1024 * 1024
+            : 30 * 1024 * 1024;
+    if (length > maxBytes) {
+      final maxMb = maxBytes ~/ (1024 * 1024);
+      throw StateError('Cette pièce jointe dépasse la limite de $maxMb Mo.');
+    }
     final key = _key(userId, messageId, index);
     final box = await _box;
     final old = await box.get(key);
@@ -247,12 +257,12 @@ class PendingChatMediaWriter {
   bool _closed = false;
 
   int get bytesWritten => _bytesWritten;
-  static const int maxRecordingBytes = 30 * 1024 * 1024;
+  static const int maxRecordingBytes = 25 * 1024 * 1024;
 
   Future<void> add(List<int> bytes) async {
     if (_closed) throw StateError('Enregistrement déjà clôturé.');
     if (_bytesWritten + bytes.length > maxRecordingBytes) {
-      throw StateError('L’enregistrement vocal dépasse la limite de 30 Mo.');
+      throw StateError('L’enregistrement vocal dépasse la limite de 25 Mo.');
     }
     var offset = 0;
     while (offset < bytes.length) {
