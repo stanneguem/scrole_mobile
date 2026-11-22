@@ -379,6 +379,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     icon: Icons.add_rounded,
                     tooltip: 'Créer',
                     onTap: () => _showCreationMenu(context),
+                    key: _actionsKey,
                   ),
                 ],
                 Obx(() => _roundAction(
