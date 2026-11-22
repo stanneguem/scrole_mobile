@@ -3001,6 +3001,9 @@ class _StoryVideoPlayer extends StatefulWidget {
 
 class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
+  int _lastLoggedSecond = -1;
+  bool? _lastLoggedPlaying;
+  bool _completedLogged = false;
 
   bool _failed = false;
   bool _isDownloading = false;
@@ -3093,6 +3096,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
         'durationMs=${controller.value.duration.inMilliseconds} '
         'size=${controller.value.size.width}x${controller.value.size.height}',
       );
+      debugPrint('[STORY][ANDROID][SOURCE] story=${widget.storyId} objectKey=${widget.objectKey}');
       await controller.setLooping(false);
       await controller.setVolume(1);
       setState(() => _isDownloading = false);
@@ -3119,7 +3123,22 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
   void _onVideoChanged() {
     final controller = _controller;
     if (!mounted || controller == null || !controller.value.isInitialized) return;
-    if (controller.value.hasError) {
+    final value = controller.value;
+    final second = value.position.inSeconds;
+    if (second != _lastLoggedSecond || _lastLoggedPlaying != value.isPlaying || value.hasError) {
+      _lastLoggedSecond = second;
+      _lastLoggedPlaying = value.isPlaying;
+      debugPrint(
+        '[STORY][ANDROID][PROGRESS] story=${widget.storyId} '
+        'positionMs=${value.position.inMilliseconds} '
+        'durationMs=${value.duration.inMilliseconds} '
+        'buffered=${value.buffered.map((range) => "${range.start.inMilliseconds}-${range.end.inMilliseconds}").join(",")} '
+        'isPlaying=${value.isPlaying} isBuffering=${value.isBuffering} '
+        'hasError=${value.hasError} error=${value.errorDescription}',
+      );
+    }
+    if (value.hasError) {
+      debugPrint('[STORY][ANDROID][ERROR] story=${widget.storyId} error=${value.errorDescription}');
       setState(() => _failed = true);
       return;
     }
@@ -3134,12 +3153,20 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
         controller.value.position >= controller.value.duration &&
         !_completionHandled) {
       _completionHandled = true;
+      _completedLogged = true;
+      debugPrint('[STORY][ANDROID][COMPLETED] story=${widget.storyId} positionMs=${controller.value.position.inMilliseconds} durationMs=${controller.value.duration.inMilliseconds}');
       widget.onCompleted();
     }
   }
 
   @override
   void dispose() {
+    final value = _controller?.value;
+    debugPrint(
+      '[STORY][ANDROID][DISPOSE] story=${widget.storyId} '
+      'completed=$_completedLogged positionMs=${value?.position.inMilliseconds} '
+      'durationMs=${value?.duration.inMilliseconds} playing=${value?.isPlaying}',
+    );
     WidgetsBinding.instance.removeObserver(this);
     _controller?.removeListener(_onVideoChanged);
     _controller?.dispose();
