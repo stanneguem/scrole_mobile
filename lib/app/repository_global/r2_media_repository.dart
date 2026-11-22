@@ -51,7 +51,8 @@ class R2MediaRepository {
 
   static const Map<String, String> _videoTypes = {
     'mp4': 'video/mp4',
-    'mov': 'video/quicktime',\n    'webm': 'video/webm',
+    'mov': 'video/quicktime',
+    'webm': 'video/webm',
   };
 
   /// Supprime uniquement un ancien objet public R2 appartenant au profil
@@ -358,7 +359,8 @@ class R2MediaRepository {
       }
     } catch (e, stack) {
       debugPrint('[R2_UPLOAD][$traceId] PUT_EXCEPTION type=${e.runtimeType} error=$e');
-      debugPrint('[R2_UPLOAD][$traceId] PUT_STACK_TRACE\\n$stack');
+      debugPrint('[R2_UPLOAD][$traceId] PUT_STACK_TRACE\
+$stack');
       // A reset/timeout can happen after R2 received the full PUT. Delete the
       // known key even when the client never got the successful response.
       if (category == 'post_media' && objectKey.isNotEmpty) {
