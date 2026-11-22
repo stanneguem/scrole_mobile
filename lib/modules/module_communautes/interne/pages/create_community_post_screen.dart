@@ -14,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_compress/video_compress.dart';
 import 'package:scrole/shared/widgets/video_trim_screen.dart';
+import 'package:scrole/shared/widgets/web_video_trim_screen.dart';
 import 'package:scrole/shared/widgets/video_preview_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -1009,24 +1010,31 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       if (!mounted || _selectedMediaCount >= maxPostMedia) break;
       final isVideo = _isVideoSelection(picked);
       if (!isVideo && _selectedPhotoCount >= maxPostPhotos) continue;
+      XFile uploadFile = picked;
       Duration? duration;
       if (isVideo) {
+        final trimmed = await Get.to<XFile>(() => WebVideoTrimScreen(
+              videoFile: picked,
+              maxDuration: maxPostVideoDuration,
+            ));
+        if (trimmed == null || !mounted) continue;
+        uploadFile = trimmed;
         VideoPlayerController? probe;
         try {
-          probe = VideoPlayerController.networkUrl(Uri.parse(picked.path));
+          probe = VideoPlayerController.networkUrl(Uri.parse(uploadFile.path));
           await probe.initialize().timeout(const Duration(seconds: 30));
           duration = probe.value.duration;
         } finally {
           await probe?.dispose();
         }
         if (duration == null || duration <= Duration.zero || duration > maxPostVideoDuration) {
-          Get.snackbar('Vidéo trop longue', 'Sur le Web, sélectionne une vidéo de 60 secondes maximum.');
+          Get.snackbar('Vidéo trop longue', 'La vidéo découpée doit durer 60 secondes maximum.');
           continue;
         }
       }
       try {
         final uploaded = await repository.uploadMediaAsset(
-          media: MediaAsset.fromXFile(picked),
+          media: MediaAsset.fromXFile(uploadFile),
           category: 'post_media',
           mediaType: isVideo ? 'video' : 'image',
           communityId: widget.communityId,
@@ -1037,7 +1045,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         }
         if (!mounted) return;
         setState(() {
-          _webSelectedFiles.add(picked);
+          _webSelectedFiles.add(uploadFile);
           _webSelectedIsVideo.add(isVideo);
           _webUploadedMedia.add({
             'type': isVideo ? 'video' : 'photo',
@@ -1072,6 +1080,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       final picked = await _mediaPicker.pickVideo(source: ImageSource.gallery);
       if (picked == null || !mounted) return;
 
+      if (kIsWeb) {
+        await _handleWebGallerySelection([picked]);
+        return;
+      }
       final originalFile = File(picked.path);
       final trimmed = await Get.to<File>(() => VideoTrimScreen(
             videoFile: originalFile,
