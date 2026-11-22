@@ -1047,6 +1047,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             'is_public': uploaded.isPublic,
             'mime_type': uploaded.contentType,
             'size_bytes': uploaded.sizeBytes,
+            if (isVideo) 'thumbnail_unavailable': true,
             if (duration != null) 'duration_seconds': duration.inMilliseconds / 1000,
           });
           _prefilledUrl = null;
