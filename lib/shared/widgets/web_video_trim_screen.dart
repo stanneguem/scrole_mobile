@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:html' as html;
+import 'dart:js_util' as js_util;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -69,29 +70,40 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       throw StateError('Sélection vidéo invalide.');
     }
     final stream = source.captureStream();
-    final mime = html.MediaRecorder.isTypeSupported('video/mp4')
-        ? 'video/mp4'
-        : 'video/webm';
-    final recorder = html.MediaRecorder(stream, html.MediaRecorderOptions(mimeType: mime));
+    final mediaRecorderConstructor = js_util.getProperty(html.window, 'MediaRecorder');
+    final supportsMp4 = js_util.callMethod<bool>(
+      mediaRecorderConstructor,
+      'isTypeSupported',
+      <Object?>['video/mp4'],
+    );
+    final mime = supportsMp4 ? 'video/mp4' : 'video/webm';
+    final recorder = js_util.callConstructor(
+      mediaRecorderConstructor,
+      <Object?>[stream, <String, Object?>{'mimeType': mime}],
+    );
     final chunks = <html.Blob>[];
-    final dataSubscription = recorder.onDataAvailable.listen((event) {
-      if (event.data.size > 0) chunks.add(event.data);
-    });
     final stopped = Completer<void>();
-    final stopSubscription = recorder.onStop.listen((_) {
+    final onData = js_util.allowInterop((dynamic event) {
+      final data = js_util.getProperty(event, 'data');
+      if (data != null && (data as html.Blob).size > 0) {
+        chunks.add(data);
+      }
+    });
+    final onStop = js_util.allowInterop((dynamic _) {
       if (!stopped.isCompleted) stopped.complete();
     });
-
+    js_util.callMethod<void>(recorder, 'addEventListener', <Object?>['dataavailable', onData]);
+    js_util.callMethod<void>(recorder, 'addEventListener', <Object?>['stop', onStop]);
     try {
       source.currentTime = start;
       await source.onSeeked.first.timeout(const Duration(seconds: 15));
-      recorder.start(250);
+      js_util.callMethod<void>(recorder, 'start', <Object?>[250]);
       await source.play();
       while (source.currentTime < end && !source.ended) {
         await source.onTimeUpdate.first.timeout(const Duration(seconds: 2));
       }
       source.pause();
-      recorder.stop();
+      js_util.callMethod<void>(recorder, 'stop', <Object?>[]);
       await stopped.future.timeout(const Duration(minutes: 2));
       if (chunks.isEmpty) throw StateError('Le navigateur n’a produit aucun segment vidéo.');
       final blob = html.Blob(chunks, mime);
@@ -111,9 +123,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       );
     } finally {
       try { source.pause(); } catch (_) {}
-      try { recorder.stop(); } catch (_) {}
-      await dataSubscription.cancel();
-      await stopSubscription.cancel();
+      try { js_util.callMethod<void>(recorder, 'stop', <Object?>[]); } catch (_) {}
       for (final track in stream.getTracks()) {
         track.stop();
       }
@@ -127,7 +137,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     setState(() => _exporting = true);
     try {
       final result = await _exportSelection();
-      if (mounted) Get.back<XFile>(result);
+      if (mounted) Get.back(result: result);
     } catch (e) {
       if (mounted) {
         setState(() => _exporting = false);
