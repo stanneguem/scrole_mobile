@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../app/media/media_asset.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Persists outgoing attachment bytes outside SQLite. The existing Hive cache
 /// backend uses browser storage on Web; SQLite/outbox rows keep only a URI.
@@ -149,7 +150,8 @@ class PendingChatMediaStore {
   Future<MediaAsset?> resolve(String value) async {
     final uri = Uri.tryParse(value);
     if (uri == null || uri.scheme != _scheme ||
-        uri.host.isEmpty || uri.pathSegments.length != 2) return null;
+        uri.host.isEmpty || uri.pathSegments.length != 2 ||
+        uri.host != Supabase.instance.client.auth.currentUser?.id) return null;
     final index = int.tryParse(uri.pathSegments[1]);
     if (index == null) return null;
     final box = await _box;
