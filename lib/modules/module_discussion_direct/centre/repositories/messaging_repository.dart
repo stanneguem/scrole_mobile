@@ -37,7 +37,7 @@ class MessagingRepository {
   late final MessagesDao _messages;
   late final ConversationsDao _conversations;
 
-  final Map<String, StreamController<bool>> _typingControllers = {};
+  final Map<String, StreamController<String?>> _typingControllers = {};
   final Map<String, RealtimeChannel> _typingChannels = {};
   final Map<String, RealtimeChannel> _messageChannels = {};
   final Map<String, bool> _messageSubscribedOnce = {};
@@ -731,9 +731,9 @@ class MessagingRepository {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Stream<bool> watchTyping(String id) {
+  Stream<String?> watchTyping(String id) {
     if (id.startsWith('draft_')) return const Stream.empty();
-    final c = _typingControllers.putIfAbsent(id, () => StreamController<bool>.broadcast());
+    final c = _typingControllers.putIfAbsent(id, () => StreamController<String?>.broadcast());
     if (!_typingChannels.containsKey(id)) {
       _typingChannels[id] = _remote.subscribeTyping(id, (value) {
         // Presence events may arrive while the channel is being removed.
@@ -746,7 +746,7 @@ class MessagingRepository {
     return c.stream;
   }
 
-  Future<MessagingResult<void>> setTyping(String id, bool typing) async {
+  Future<MessagingResult<void>> setTyping(String id, String? activity) async {
     if (id.startsWith('draft_')) return const MessagingResult.success();
     try {
       final controller = _typingControllers.putIfAbsent(
@@ -759,7 +759,7 @@ class MessagingRepository {
           controller.add(value);
         }
       });
-      await _remote.sendTyping(ch, typing);
+      await _remote.sendTyping(ch, activity);
       return const MessagingResult.success();
     } catch (e) {
       return MessagingResult.failure('typing_failed', e.toString());
