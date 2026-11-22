@@ -471,6 +471,13 @@ class StoriesController extends GetxController {
             } catch (thumbnailError, thumbnailStack) {
               debugPrint('[STORY] [Controller] Thumbnail generation/upload failed: $thumbnailError\\n$thumbnailStack');
             }
+            final sourceBytes = await fileToUpload.length();
+            debugPrint(
+              '[STORY][UPLOAD][SOURCE] name=${fileToUpload.name} '
+              'extension=${MediaAsset.fromXFile(fileToUpload).extension} '
+              'mime=${fileToUpload.mimeType} bytes=$sourceBytes '
+              'durationMs=${duration.inMilliseconds}',
+            );
             debugPrint('[STORY] [Controller] Uploading story video to private Cloudflare R2 duration=${duration.inMilliseconds}ms');
             final uploaded = await _r2MediaRepo.uploadMediaAsset(
               media: MediaAsset.fromXFile(fileToUpload),
@@ -479,6 +486,7 @@ class StoriesController extends GetxController {
               videoDuration: duration,
             );
             imageUrl = uploaded.objectKey;
+            debugPrint('[STORY][UPLOAD][SUCCESS] story=$pId bytes=$sourceBytes contentType=${uploaded.contentType}');
           } finally {
             await videoController.dispose();
           }
