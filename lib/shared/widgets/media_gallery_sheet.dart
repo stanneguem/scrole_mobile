@@ -413,13 +413,12 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
         throw StateError('Sélection incomplète : $expectedCount médias choisis, ${xFiles.length} accessibles.');
       }
 
-      // Await the consumer (it may validate/trim a selected video), then return
-      // the selected files while closing this route exactly once. The caller
-      // must not pop the Navigator from inside onSelected: doing so would close
-      // both this gallery and the screen underneath it.
+      // This sheet was opened with Get.bottomSheet. Close that exact
+      // GetX-managed route instead of popping the nearest Navigator, which
+      // can be the conversation route on Android.
       await widget.onSelected(xFiles);
       if (!mounted) return;
-      Navigator.of(context).pop(xFiles);
+      Get.back(result: xFiles);
     } catch (error, stack) {
       debugPrint('[MEDIA_GALLERY] Selection/consumer failed: $error\n$stack');
       if (mounted) {
