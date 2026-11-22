@@ -313,7 +313,9 @@ class MessagingRepository {
       
       if (list.isNotEmpty) {
         for (final m in list) {
-          await _applyIncoming(uid, m);
+          // A history catch-up is not a new-message event. Replaying messages
+          // already stored on the server must never increase the unread badge.
+          await _applyIncoming(uid, m, isHistoricalSync: true);
         }
       }
       return const MessagingResult.success();
@@ -938,18 +940,20 @@ class MessagingRepository {
     final uid = currentUserId;
     if (uid == null) return;
     _ensureInboxRealtime();
-    
+
+    // The server owns the read cursor and unread count. Reconcile the inbox
+    // first on every wake (Android and Web), before hydrating message caches.
+    // This prevents a missing/stale local cursor from turning old messages
+    // into unread messages after an app restart or a tab resume.
+    await syncConversations();
+
     if (conversationId != null && conversationId.isNotEmpty) {
-      // Synchro ciblée sur une conversation
       await syncConversation(conversationId);
       await _restoreDeletedConversation(uid, conversationId);
     } else {
-      // Synchro globale (ex: retour au premier plan)
-      await syncConversations();
       final all = await _conversations.getAll(uid);
-      for (final c in all) {
-        // On récupère les messages manqués pour chaque conversation
-        unawaited(syncConversation(c.id));
+      for (final conversation in all) {
+        await syncConversation(conversation.id);
       }
     }
   }
@@ -967,7 +971,11 @@ class MessagingRepository {
     await _messages.upsert(uid, cached.copyWith(status: status));
   }
 
-  Future<void> _applyIncoming(String uid, Message m) async {
+  Future<void> _applyIncoming(
+    String uid,
+    Message m, {
+    bool isHistoricalSync = false,
+  }) async {
     final deleted = await _conversations.deletedAt(uid, m.conversationId);
     if (deleted != null && m.sentAt.millisecondsSinceEpoch > deleted) {
       final db = await _db.database;
@@ -977,6 +985,8 @@ class MessagingRepository {
     }
 
     final local = await _findByLocalId(uid, m.localId);
+    final existing = local ?? await _findMessage(uid, m.id);
+    final isNewIncoming = existing == null && m.senderId != uid;
     final r = local != null ? m.copyWith(localId: local.localId) : m;
     if (r.isDeletedForEveryone && r.senderIsCertifiedAtDeletion == true) {
       await _applyRemoteDeletion(uid, r.id);
@@ -984,7 +994,18 @@ class MessagingRepository {
     }
     await _messages.upsert(uid, r);
     await _ensureConversationFromIncoming(uid, r);
-    await _refreshConversationList(uid, r.conversationId);
+    await _refreshConversationList(
+      uid,
+      r.conversationId,
+      updateUnreadFromLocalCursor: !isHistoricalSync,
+    );
+
+    // Only a genuinely new live INSERT may trigger an inbox reconciliation.
+    // UPDATE events and historical catch-up rows are never notifications.
+    if (isNewIncoming && !isHistoricalSync) {
+      unawaited(syncConversations());
+    }
+
     if (r.senderId != uid && r.status != MessageStatus.read) {
       // Cache attachments on the recipient device before recording delivery;
       // recording the receipt allows the backend to delete the R2 objects.
@@ -1042,10 +1063,24 @@ class MessagingRepository {
     );
   }
 
-  Future<void> _refreshConversationList(String uid, String conversationId) async {
+  Future<void> _refreshConversationList(
+    String uid,
+    String conversationId, {
+    bool updateUnreadFromLocalCursor = true,
+  }) async {
     await _messages.refreshConversationPreview(uid, conversationId);
+    if (!updateUnreadFromLocalCursor) return;
+
+    // Without a local cursor, the local cache cannot distinguish old messages
+    // from unread ones. Keep the server-provided count instead of counting
+    // every cached incoming message as new.
     final cursor = await getLocalReadCursor(conversationId);
-    await _conversations.setUnread(uid, conversationId, await _messages.unreadCount(uid, conversationId, cursor?.$1));
+    if (cursor == null || cursor.$1 == null) return;
+    await _conversations.setUnread(
+      uid,
+      conversationId,
+      await _messages.unreadCount(uid, conversationId, cursor.$1),
+    );
   }
 
   Future<void> _reconcileLocalPreviews(String uid) async {
