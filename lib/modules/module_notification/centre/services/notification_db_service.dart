@@ -71,7 +71,16 @@ class NotificationDbService extends GetxService {
     return true;
   }
 
-  Future<List<Map<String, dynamic>>> _get(String userId) => database.then((db) => db.query('notifications', where: 'user_id = ? AND is_read = 0', whereArgs: [userId], orderBy: 'created_at DESC'));
+  // La liste conserve les notifications lues et non lues. Le compteur non lu
+  // est calculé séparément par _unread : lire ne doit jamais supprimer une ligne.
+  Future<List<Map<String, dynamic>>> _get(String userId) => database.then(
+        (db) => db.query(
+          'notifications',
+          where: 'user_id = ?',
+          whereArgs: [userId],
+          orderBy: 'created_at DESC',
+        ),
+      );
 
   Stream<List<NotificationEntry>> watchNotifications(String userId) async* {
     Future<List<NotificationEntry>> read() async => (await _get(userId)).map(_fromRow).toList();
