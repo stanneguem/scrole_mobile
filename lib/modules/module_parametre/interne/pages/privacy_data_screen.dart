@@ -102,10 +102,11 @@ class _PrivacyDataScreenState extends State<PrivacyDataScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(15, 0, 15, 14),
                 child: CupertinoSlidingSegmentedControl<String>(
-                  groupValue: p.allowMessagesFrom == 'friends' ? 'friends' : 'everyone',
+                  groupValue: const {'friends', 'followers'}.contains(p.allowMessagesFrom) ? p.allowMessagesFrom : 'everyone',
                   children: {
                     'everyone': Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text('privacy_messages_everyone'.tr, textAlign: TextAlign.center)),
                     'friends': Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text('privacy_messages_friends'.tr, textAlign: TextAlign.center)),
+                    'followers': Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text('privacy_messages_followers'.tr, textAlign: TextAlign.center)),
                   },
                   onValueChanged: (v) { if (v != null) _save(p.copyWith(allowMessagesFrom: v)); },
                 ),
