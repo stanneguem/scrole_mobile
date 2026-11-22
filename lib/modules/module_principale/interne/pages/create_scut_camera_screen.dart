@@ -1,5 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'package:scrole/app/media/media_asset.dart';
+import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'dart:ui' show FontFeature;
 
 import 'package:camera/camera.dart';
@@ -270,6 +274,10 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
 
   Future<void> _openGallery() async {
     if (_isRecording || _isOpeningNextScreen) return;
+    if (kIsWeb) {
+      await _openWebGallery();
+      return;
+    }
     try {
       final selected = await showModalBottomSheet<List<XFile>>(
         context: context,
@@ -344,6 +352,71 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
       if (_cameraController == null) {
         await _initializeCamera();
       }
+      Get.snackbar(
+        'Galerie indisponible',
+        error.toString().replaceFirst('Exception: ', ''),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  Future<void> _openWebGallery() async {
+    try {
+      final picked = await ImagePicker().pickVideo(source: ImageSource.gallery);
+      if (picked == null || !mounted) return;
+
+      VideoPlayerController? probe;
+      Duration duration;
+      try {
+        probe = VideoPlayerController.networkUrl(Uri.parse(picked.path));
+        await probe.initialize().timeout(const Duration(seconds: 30));
+        duration = probe.value.duration;
+      } finally {
+        await probe?.dispose();
+      }
+      if (duration <= Duration.zero || duration > const Duration(seconds: 28)) {
+        Get.snackbar(
+          'Vidéo non compatible',
+          'Pour créer un Scut sur le Web, sélectionne une vidéo de 28 secondes maximum.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      setState(() => _isOpeningNextScreen = true);
+      final uploaded = await R2MediaRepository().uploadMediaAsset(
+        media: MediaAsset.fromXFile(picked),
+        category: 'post_media',
+        mediaType: 'video',
+        videoDuration: duration,
+      );
+      if (!mounted) return;
+      final url = uploaded.publicUrl;
+      if (url == null || url.isEmpty || !uploaded.isPublic) {
+        throw StateError('R2 n’a pas retourné une URL publique pour cette vidéo.');
+      }
+      Get.off(
+        () => CreateCommunityPostScreen(
+          communityName: 'Fil d’actualité général',
+          prefilledMediaIsVideo: true,
+          prefilledUploadedMedia: [
+            {
+              'type': 'video',
+              'storage': 'r2',
+              'url': url,
+              'object_key': uploaded.objectKey,
+              'is_public': uploaded.isPublic,
+              'mime_type': uploaded.contentType,
+              'size_bytes': uploaded.sizeBytes,
+              'duration_seconds': duration.inMilliseconds / 1000,
+            },
+          ],
+        ),
+      );
+    } catch (error, stack) {
+      debugPrint('[SCUT_CAMERA][WEB] gallery selection failed: $error\\n$stack');
+      if (!mounted) return;
+      setState(() => _isOpeningNextScreen = false);
       Get.snackbar(
         'Galerie indisponible',
         error.toString().replaceFirst('Exception: ', ''),
