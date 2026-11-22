@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// Browser-native media selection for Flutter Web. The photo_manager gallery
@@ -33,9 +34,9 @@ class _MediaGallerySheetState extends State<MediaGallerySheet> {
           : await picker.pickMultiImage(limit: widget.maxSelection);
       if (files.isNotEmpty) {
         await widget.onSelected(files);
-        // Fermer uniquement la feuille de galerie après que le callback a
-        // lancé l'envoi, sans dépiler la page de conversation.
-        if (mounted) Navigator.of(context).pop(files);
+        // Fermer la route créée par Get.bottomSheet, sans dépiler
+        // la page de conversation Android/Web.
+        if (mounted) Get.back(result: files);
       }
     } catch (error, stackTrace) {
       debugPrint('[MEDIA_GALLERY_WEB] Browser file selection failed: $error\n$stackTrace');
