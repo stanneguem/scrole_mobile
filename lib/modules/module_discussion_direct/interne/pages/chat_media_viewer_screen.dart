@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 
@@ -81,8 +82,10 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
       Get.snackbar(
         ok ? '${kind[0].toUpperCase()}${kind.substring(1)} enregistrée' : 'Enregistrement impossible',
         ok
-            ? 'Le média a été enregistré dans la galerie de votre appareil.'
-            : 'Cette action n’est pas disponible dans le navigateur ou le média est inaccessible.',
+            ? (kIsWeb
+                ? 'Le téléchargement du média a démarré dans votre navigateur.'
+                : 'Le média a été enregistré dans la galerie de votre appareil.')
+            : 'Le média est inaccessible ou le téléchargement a échoué.',
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (_) {
