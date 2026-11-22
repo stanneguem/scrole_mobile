@@ -27,7 +27,7 @@ class VideoTrimScreen extends StatefulWidget {
   const VideoTrimScreen({
     super.key,
     required this.videoFile,
-    this.maxDuration = const Duration(seconds: 29),
+    this.maxDuration = const Duration(seconds: 60),
   });
 
   @override
@@ -82,7 +82,7 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   DateTime _lastSeek = DateTime.fromMillisecondsSinceEpoch(0);
 
   double get _totalMs => _videoDuration.inMilliseconds.toDouble();
-  /// Marge de sécurité : on reste 100 ms sous la limite (29 s -> 28,9 s)
+  /// Marge de sécurité : on reste 100 ms sous la durée maximale autorisée
   /// pour ne jamais atteindre la durée maximale autorisée.
   static const _safetyMarginMs = 100.0;
   double get _maxMs => math.max(
