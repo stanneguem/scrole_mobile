@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     // the recipient's server read cursor before sending; a delayed webhook
     // must not announce a message that has already been read or hidden.
     if (type === "message_received") {
-      const messageId = String(record.id ?? recordData.message_id ?? "");
+      const messageId = String(recordData.message_id ?? record.message_id ?? record.id ?? "");
       const conversationId = String(record.conversation_id ?? recordData.conversation_id ?? "");
       if (!messageId || !conversationId) {
         return json({ ok: true, sent: 0, reason: "message_push_missing_identity" });
