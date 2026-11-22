@@ -501,18 +501,18 @@ class MessagingRepository {
       try {
         final asset = await _pendingMedia.resolve(localRef);
         if (asset == null) {
-          debugPrint('[Messaging] Sender media cache skipped: pending asset missing.');
-          return;
+          throw StateError('Le média source de l’expéditeur est introuvable dans le cache local.');
         }
         final bytes = await asset.readAsBytes();
         final cached = await ChatMediaCache.instance.cacheBytes(remoteRef, bytes);
         if (cached == null) {
-          debugPrint('[Messaging] Sender media cache write failed for uploaded attachment.');
+          throw StateError('Impossible de conserver localement le média envoyé.');
         }
       } catch (error) {
-        // Upload and message delivery must not fail because a local cache
-        // write failed. The remote object remains available for a later fetch.
+        // Preserve the pending blob and outbox item until the sender's
+        // durable local copy exists. A later retry can safely finish delivery.
         debugPrint('[Messaging] Sender media cache failed: $error');
+        rethrow;
       }
     }
 
@@ -807,6 +807,9 @@ class MessagingRepository {
             final prepared = await _prepareMedia(m);
             if (prepared == null) throw StateError('Pièce jointe locale indisponible pour l’envoi.');
             await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
+            // The outbox retry path must provide the same sender-side offline
+            // guarantee as the immediate send path before pending blobs are removed.
+            await _cacheSenderMediaLocally(m, prepared);
             // Do not checkpoint remote URLs over the local references before
             // insert confirmation; the blob remains available for retries.
             final remote = await _remote.insertMessage(prepared);
