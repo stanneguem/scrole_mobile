@@ -14,7 +14,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_compress/video_compress.dart';
 import 'package:scrole/shared/widgets/video_trim_screen.dart';
-import 'package:scrole/shared/widgets/web_video_trim_screen.dart';
+import 'package:scrole/shared/widgets/video_trim_platform.dart';
 import 'package:scrole/shared/widgets/video_preview_screen.dart';
 import 'package:scrole/app/theme/app_colors.dart';
 import 'package:scrole/app/theme/text_styles.dart';
@@ -1013,10 +1013,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       XFile uploadFile = picked;
       Duration? duration;
       if (isVideo) {
-        final trimmed = await Get.to<XFile>(() => WebVideoTrimScreen(
-              videoFile: picked,
-              maxDuration: maxPostVideoDuration,
-            ));
+        final trimmed = await trimVideoForWeb(
+          context,
+          picked,
+          maxDuration: maxPostVideoDuration,
+        );
         if (trimmed == null || !mounted) continue;
         uploadFile = trimmed;
         VideoPlayerController? probe;
