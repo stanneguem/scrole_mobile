@@ -35,6 +35,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   int? _dragHandle;
   double _timelineWidth = 1;
   static const double _handleWidth = 18;
+  final List<String?> _thumbnailData = List<String?>.filled(12, null);
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
             ? duration.inMilliseconds / 1000 : max);
         _loading = false;
       });
+      unawaited(_loadTimelineThumbnails());
     } catch (e) {
       if (mounted) setState(() { _loading = false; _error = e.toString(); });
     }
@@ -159,6 +161,35 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     super.dispose();
   }
 
+  Future<void> _loadTimelineThumbnails() async {
+    final video = html.VideoElement()
+      ..preload = 'auto'
+      ..muted = true
+      ..src = widget.videoFile.path;
+    try {
+      await video.onLoadedMetadata.first.timeout(const Duration(seconds: 20));
+      final canvas = html.CanvasElement(width: 120, height: 72);
+      final context = canvas.context2D;
+      for (var i = 0; i < _thumbnailData.length; i++) {
+        if (!mounted) return;
+        final target = (video.duration * (i + 0.5) / _thumbnailData.length)
+            .clamp(0.0, math.max(0.0, video.duration - 0.05)).toDouble();
+        final seeked = video.onSeeked.first;
+        video.currentTime = target;
+        await seeked.timeout(const Duration(seconds: 8));
+        context.drawImageScaled(video, 0, 0, canvas.width!, canvas.height!);
+        final data = canvas.toDataUrl('image/jpeg', 0.55);
+        if (mounted) setState(() => _thumbnailData[i] = data);
+      }
+    } catch (e) {
+      debugPrint('[WebVideoTrim] timeline thumbnails unavailable: $e');
+    } finally {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+  }
+
   void _updateTrimFromDrag(double dx) {
     final total = _duration.inMilliseconds / 1000;
     if (total <= 0) return;
@@ -202,6 +233,9 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: .5),
                       color: i.isEven ? const Color(0xFF383838) : const Color(0xFF292929),
+                      child: _thumbnailData[i] == null
+                          ? null
+                          : Image.network(_thumbnailData[i]!, fit: BoxFit.cover, gaplessPlayback: true),
                     ),
                   )),
                 ),
