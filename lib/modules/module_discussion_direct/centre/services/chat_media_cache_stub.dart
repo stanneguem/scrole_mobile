@@ -12,8 +12,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class ChatMediaCachePlatform {
   ChatMediaCachePlatform();
 
-  static const int _maxBytes = 60 * 1024 * 1024;
-  static const int _maxEntryBytes = 15 * 1024 * 1024;
+  static const int _maxBytes = 120 * 1024 * 1024;
+  static const int _maxEntryBytes = 30 * 1024 * 1024;
   static const Duration _maxAge = Duration(days: 14);
   static const String _boxName = 'scrole_media_blobs_v1';
   static const String _prefix = 'blob:';
