@@ -885,7 +885,7 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
   }) async {
     final startedAt = DateTime.now();
     debugPrint('[POST_CREATE][COMPOSER] START communityId=$communityId requestedPostId=$requestedPostId audience=$audience contentLength=${content?.length ?? 0} imageCount=${imageFiles?.length ?? 0} videoCount=${videoFiles?.length ?? 0} orderedCount=${orderedMediaFiles?.length ?? 0} pollPresent=${poll != null}');
-    final totalMediaCount = preUploadedMedia?.length ?? (orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0)));
+    final totalMediaCount = (preUploadedMedia?.isNotEmpty == true) ? preUploadedMedia!.length : (orderedMediaFiles?.length ?? ((imageFiles?.length ?? 0) + (videoFiles?.length ?? 0)));
     if (totalMediaCount > maxPostMedia) {
       throw Exception('Une publication peut contenir au maximum $maxPostMedia médias.');
     }
