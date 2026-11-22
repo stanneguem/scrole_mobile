@@ -234,139 +234,6 @@ class ChatMediaCachePlatform {
       return null;
     }
   }
-  Future<String?> _createR2DownloadUrl(String objectKey) async {
-    final response = await Supabase.instance.client.functions.invoke(
-      'r2-media-upload',
-      body: {'action': 'create-download-url', 'object_key': objectKey},
-    );
-    if (response.status < 200 || response.status >= 300 || response.data is! Map) {
-      return null;
-    }
-    final data = Map<String, dynamic>.from(response.data as Map);
-    final url = data['url'] as String?;
-    return url == null || url.isEmpty ? null : url;
-  }
-
-  Future<String?> _resolveDownloadUrl(String remoteUrl) async {
-    final parsed = Uri.tryParse(remoteUrl);
-    if (parsed != null && parsed.scheme == 'pending-media') {
-      // This reference is private to the sender's local IndexedDB store; it
-      // must never be signed as a Supabase Storage object for a recipient.
-      return null;
-    }
-    if (parsed != null &&
-        _isHttpUrl(remoteUrl) &&
-        parsed.host.contains('.r2.cloudflarestorage.com')) {
-      final objectKey = Uri.decodeComponent(parsed.path.replaceFirst(RegExp(r'^/+'), ''));
-      if (_isR2ObjectKey(objectKey)) {
-        // Never reuse an expired presigned R2 URL. Ask our Edge Function for
-        // a fresh URL using the stable object key.
-        return _createR2DownloadUrl(objectKey);
-      }
-    }
-    if (_isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
-      return remoteUrl;
-    }
-    if (_isR2ObjectKey(remoteUrl)) {
-      return _createR2DownloadUrl(remoteUrl);
-    }
-    return Supabase.instance.client.storage.from('chat-media').createSignedUrl(remoteUrl, 300);
-  }
-
-  Future<void> _deleteEntry(Box box, String key) async {
-    await box.delete('$_prefix$key');
-    await box.delete('meta:$key');
-    final objectUrl = _objectUrls.remove(key);
-    if (objectUrl != null) html.Url.revokeObjectUrl(objectUrl);
-  }
-
-  Future<void> _enforceLimit(Box box) async {
-    final entries = <MapEntry<String, Map<String, dynamic>>>[];
-    var total = 0;
-    for (final key in box.keys.whereType<String>()) {
-      if (!key.startsWith('meta:')) continue;
-      final raw = box.get(key);
-      if (raw is! Map) continue;
-      final meta = Map<String, dynamic>.from(raw);
-      final id = key.substring(5);
-      total += (meta['size'] as num?)?.toInt() ?? 0;
-      entries.add(MapEntry(id, meta));
-    }
-    entries.sort((a, b) =>
-        ((a.value['last_access'] as num?)?.toInt() ?? 0)
-            .compareTo((b.value['last_access'] as num?)?.toInt() ?? 0));
-    for (final entry in entries) {
-      if (total <= _maxBytes) break;
-      total -= (entry.value['size'] as num?)?.toInt() ?? 0;
-      await _deleteEntry(box, entry.key);
-    }
-  }
-
-  Future<void> clearForUser(String userId) async {
-    if (userId.isEmpty) return;
-    final box = await _openBox();
-    for (final key in box.keys.whereType<String>().toList()) {
-      if (!key.startsWith('meta:')) continue;
-      final raw = box.get(key);
-      if (raw is Map && raw['owner_id']?.toString() == userId) {
-        await _deleteEntry(box, key.substring(5));
-      }
-    }
-  }
-
-  Future<void> removeLocal(String remoteUrl) async {
-    if (remoteUrl.isEmpty) return;
-    final box = await _openBox();
-    await _deleteEntry(box, _cacheKey(remoteUrl));
-  }
-
-  Future<void> purgeOldFiles({int days = 14}) async {
-    // Message attachments can remain part of a conversation for years.
-    // Age-based deletion made old messages lose their local preview. Keep
-    // them until the bounded LRU policy needs space; after delivery cleanup,
-    // the browser's persistent copy may be the only remaining media copy.
-    try {
-      final box = await _openBox();
-      await _enforceLimit(box);
-    } catch (error) {
-      debugPrint('[WebMediaCache] Cache maintenance failed: $error');
-    }
-  }
-}
-),
-        '/functions/v1/r2-media-upload',
-      );
-      final apiKey = client.rest.headers['apikey'];
-      if (apiKey == null || apiKey.isEmpty) {
-        debugPrint('[WebMediaCache] Supabase anon key unavailable for media proxy');
-        return null;
-      }
-      final response = await http.post(
-        Uri.parse(endpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'apikey': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'action': 'download-message-media',
-          'object_key': objectKey,
-        }),
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('[WebMediaCache] Private media proxy returned ${response.statusCode}');
-        return null;
-      }
-      if (response.bodyBytes.isEmpty ||
-          response.bodyBytes.lengthInBytes > _maxEntryBytes) {
-        return null;
-      }
-      return response.bodyBytes;
-    } catch (error) {
-      debugPrint('[WebMediaCache] Private media proxy failed: $error');
-      return null;
-    }
-  }
 
   Future<String?> cacheRemote(String remoteUrl) async {
     if (remoteUrl.isEmpty) return null;
@@ -494,8 +361,8 @@ class ChatMediaCachePlatform {
   Future<void> purgeOldFiles({int days = 14}) async {
     // Message attachments can remain part of a conversation for years.
     // Age-based deletion made old messages lose their local preview. Keep
-    // them until the bounded LRU policy needs space; R2 remains the recovery
-    // source if a browser cache entry is ever missing.
+    // them until the bounded LRU policy needs space; after delivery cleanup,
+    // the browser's persistent copy may be the only remaining media copy.
     try {
       final box = await _openBox();
       await _enforceLimit(box);
