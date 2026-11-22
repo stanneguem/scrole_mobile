@@ -856,6 +856,34 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
         .whereType<Map>()
         .map((value) => Map<String, dynamic>.from(value))
         .toList();
+    // Le RPC stocke plusieurs images sous forme de tableau JSON dans content.
+    // Reconstituer la liste de clés ici pour que les clients Web et mobile
+    // affichent chaque image via le cache média commun, sans traiter le JSON
+    // entier comme une URL.
+    for (final message in messages) {
+      final type = message['type']?.toString();
+      final content = message['content']?.toString() ?? '';
+      if (type == 'image' &&
+          (message['media_object_keys'] is! List ||
+              (message['media_object_keys'] as List).isEmpty)) {
+        try {
+          final decoded = jsonDecode(content);
+          if (decoded is List) {
+            message['media_object_keys'] = decoded
+                .map((value) => value.toString())
+                .where((value) => value.isNotEmpty)
+                .toList();
+          }
+        } catch (_) {
+          if (content.isNotEmpty) message['media_object_keys'] = [content];
+        }
+      } else if (type == 'video' &&
+          (message['media_object_key'] == null ||
+              message['media_object_key'].toString().isEmpty) &&
+          content.isNotEmpty) {
+        message['media_object_key'] = content;
+      }
+    }
     final senderIds = messages.map((message) => message['sender_id']?.toString())
         .whereType<String>().where((id) => id.isNotEmpty).toSet().toList();
     if (senderIds.isNotEmpty) {
