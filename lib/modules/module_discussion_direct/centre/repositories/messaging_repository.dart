@@ -1020,10 +1020,16 @@ class MessagingRepository with WidgetsBindingObserver {
       unawaited(syncConversations());
     }
 
-    if (r.senderId != uid && r.status != MessageStatus.read) {
-      // Cache attachments on the recipient device before recording delivery;
-      // recording the receipt allows the backend to delete the R2 objects.
-      unawaited(_cacheIncomingMediaThenAcknowledge(r));
+    if (r.senderId != uid) {
+      final hasMedia = (r.mediaUrls?.isNotEmpty ?? false) ||
+          (r.audioUrl?.isNotEmpty ?? false);
+      // A message can already be marked read by the time a Web client
+      // hydrates it (for example after reconnect/history sync). That must not
+      // skip the recipient's local media download: the sender may already
+      // have triggered R2 cleanup based on the delivery receipt.
+      if (r.status != MessageStatus.read || hasMedia) {
+        unawaited(_cacheIncomingMediaThenAcknowledge(r));
+      }
     }
   }
 
@@ -1036,14 +1042,19 @@ class MessagingRepository with WidgetsBindingObserver {
       try {
         final localPath = await ChatMediaCache.instance.resolveLocalPath(ref);
         if (localPath == null) {
-          debugPrint('[Messaging] Waiting for media cache before delivery receipt: ${message.id}');
+          debugPrint('[Messaging] Media cache unavailable before delivery receipt: '
+              'message=${message.id}, ref=${ref.split('/').take(2).join('/')}');
           return;
         }
       } catch (error) {
-        debugPrint('[Messaging] Media cache failed before delivery receipt: $error');
+        debugPrint('[Messaging] Media cache failed before delivery receipt: '
+            'message=${message.id}, error=$error');
         return;
       }
     }
+    // Read messages already have a server receipt. Still cache their media,
+    // but do not issue another delivery/cleanup request.
+    if (message.status == MessageStatus.read) return;
     try {
       await _remote.markDelivered(message.id, cleanupMedia: refs.isNotEmpty);
     } catch (error) {
