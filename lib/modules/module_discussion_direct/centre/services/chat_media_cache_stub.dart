@@ -145,6 +145,12 @@ class ChatMediaCachePlatform {
     if (_isHttpUrl(remoteUrl) && !remoteUrl.contains('/storage/v1/object/')) {
       return remoteUrl;
     }
+    final parsed = Uri.tryParse(remoteUrl);
+    if (parsed != null && parsed.scheme == 'pending-media') {
+      // This reference is private to the sender's local IndexedDB store; it
+      // must never be signed as a Supabase Storage object for a recipient.
+      return null;
+    }
     final client = Supabase.instance.client;
     if (_isR2ObjectKey(remoteUrl)) {
       final response = await client.functions.invoke(
