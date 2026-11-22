@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../module_authentification/centre/services/auth_service.dart';
 import '../../../module_notification/externe/repositories/fcm_token_repository.dart';
 import '../../centre/repositories/messaging_repository.dart';
 
-class FcmNotificationService with WidgetsBindingObserver {
+class FcmNotificationService {
   FcmNotificationService(this._repository)
     : _tokenRepository = FcmTokenRepository(Supabase.instance.client);
 
@@ -21,8 +20,6 @@ class FcmNotificationService with WidgetsBindingObserver {
   Worker? _authWorker;
 
   Future<void> initialize() async {
-    WidgetsBinding.instance.addObserver(this);
-
     if (!kIsWeb) {
       _openedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(
         (_) => _wakeSync(),
@@ -45,14 +42,6 @@ class FcmNotificationService with WidgetsBindingObserver {
     } catch (_) {}
     await _registerCurrentToken();
     await _wakeSync();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      debugPrint('[FCM] App resumed, triggering wake sync...');
-      _wakeSync();
-    }
   }
 
   Future<void> _registerCurrentToken() async {
@@ -82,7 +71,6 @@ class FcmNotificationService with WidgetsBindingObserver {
   }
 
   Future<void> dispose() async {
-    WidgetsBinding.instance.removeObserver(this);
     await _openedSubscription?.cancel();
     await _foregroundSubscription?.cancel();
     await _tokenSubscription?.cancel();
