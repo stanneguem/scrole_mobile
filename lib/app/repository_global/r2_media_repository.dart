@@ -51,7 +51,7 @@ class R2MediaRepository {
 
   static const Map<String, String> _videoTypes = {
     'mp4': 'video/mp4',
-    'mov': 'video/quicktime',
+    'mov': 'video/quicktime',\n    'webm': 'video/webm',
   };
 
   /// Supprime uniquement un ancien objet public R2 appartenant au profil
