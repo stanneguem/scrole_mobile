@@ -75,7 +75,9 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _frame(const CircularProgressIndicator(strokeWidth: 2));
+          // Le média est déjà visible dans la bulle optimiste. Sa résolution
+          // locale / son téléchargement se poursuit sans spinner intrusif.
+          return _frame(const SizedBox.shrink());
         }
         final resolved = snapshot.data;
         if (resolved == null ||
