@@ -604,6 +604,7 @@ class CommunityOutboxProcessor extends GetxService {
           for (int mediaIndex = 0; mediaIndex < uploadedMedia.length && mediaIndex < localMediaItems.length; mediaIndex++) {
             final media = uploadedMedia[mediaIndex];
             if (media['type']?.toString() != 'video' ||
+                media['thumbnail_unavailable'] == true ||
                 (media['thumbnail_url']?.toString().trim().isNotEmpty ?? false)) {
               continue;
             }
