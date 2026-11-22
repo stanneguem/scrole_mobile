@@ -441,8 +441,10 @@ class ChatController extends GetxController {
     await Get.bottomSheet<void>(
       MediaGallerySheet(
         maxSelection: 4,
+        // La galerie native ferme elle-même sa route après le callback.
+        // Ne pas appeler Get.back() ici : cela pouvait dépiler aussi la
+        // conversation et renvoyer l'utilisateur vers la liste des discussions.
         onSelected: (files) {
-          Get.back();
           unawaited(_sendMedia(files));
         },
       ),
