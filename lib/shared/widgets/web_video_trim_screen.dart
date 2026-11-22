@@ -80,7 +80,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     final mime = supportsMp4 ? 'video/mp4' : 'video/webm';
     final recorder = js_util.callConstructor(
       mediaRecorderConstructor,
-      <Object?>[stream, <String, Object?>{'mimeType': mime}],
+      <Object?>[stream, js_util.jsify(<String, Object?>{'mimeType': mime})],
     );
     final chunks = <html.Blob>[];
     final stopped = Completer<void>();
