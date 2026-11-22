@@ -567,6 +567,7 @@ class ExternalProfileController extends GetxController {
     await Get.toNamed(
       AppPages.conversation,
       arguments: {
+        'userId': current.userId,
         'name': current.displayName,
         'color': Theme.of(Get.context!).colorScheme.primary,
         'avatar': current.photoUrl,
