@@ -2773,6 +2773,8 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
   bool _failed = false;
   bool _isDownloading = false;
   bool _completionHandled = false;
+  int _lastLoggedSecond = -1;
+  bool? _lastLoggedPlaying;
   Timer? _expiryCleanupTimer;
 
   @override
@@ -2814,7 +2816,23 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
   void _onVideoChanged() {
     final controller = _controller;
     if (!mounted || controller == null || !controller.value.isInitialized) return;
-    if (controller.value.hasError) {
+    final value = controller.value;
+    final positionSecond = value.position.inSeconds;
+    if (positionSecond != _lastLoggedSecond ||
+        _lastLoggedPlaying != value.isPlaying || value.hasError) {
+      _lastLoggedSecond = positionSecond;
+      _lastLoggedPlaying = value.isPlaying;
+      debugPrint(
+        '[STORY][ANDROID][PROGRESS] story=${widget.storyId} '
+        'positionMs=${value.position.inMilliseconds} '
+        'durationMs=${value.duration.inMilliseconds} '
+        'buffered=${value.buffered.map((range) => "${range.start.inMilliseconds}-${range.end.inMilliseconds}").join(",")} '
+        'isPlaying=${value.isPlaying} isBuffering=${value.isBuffering} '
+        'hasError=${value.hasError} error=${value.errorDescription}',
+      );
+    }
+    if (value.hasError) {
+      debugPrint('[STORY][ANDROID][ERROR] story=${widget.storyId} error=${value.errorDescription}');
       setState(() => _failed = true);
       return;
     }
@@ -2829,6 +2847,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
         controller.value.duration > Duration.zero &&
         !_completionHandled) {
       _completionHandled = true;
+      debugPrint('[STORY][ANDROID][COMPLETED] story=${widget.storyId} positionMs=${value.position.inMilliseconds} durationMs=${value.duration.inMilliseconds}');
       widget.onCompleted();
     }
   }
@@ -3077,7 +3096,10 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       await controller.setLooping(false);
       await controller.setVolume(1);
       setState(() => _isDownloading = false);
-      if (!widget.isPaused) await controller.play();
+      if (!widget.isPaused) {
+        await controller.play();
+        debugPrint('[STORY][ANDROID][PLAY] story=${widget.storyId} playing=${controller.value.isPlaying} durationMs=${controller.value.duration.inMilliseconds} positionMs=${controller.value.position.inMilliseconds}');
+      }
     } catch (e) {
       debugPrint('[STORY] Standalone video initialization failed: $e');
       final failedController = _controller;
