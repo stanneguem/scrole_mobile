@@ -18,13 +18,29 @@ Future<VideoPlayerController> createChatMediaVideoController(String url) async {
   return VideoPlayerController.networkUrl(Uri.parse(source));
 }
 
-/// Browser downloads cannot be written into a device gallery.
-Future<bool> saveChatMediaToGallery(String url, String fileName) async => false;
+/// On Web, save the already-cached attachment through the browser download
+/// mechanism. The durable copy remains in IndexedDB; this only exports a file.
+Future<bool> saveChatMediaToGallery(String url, String fileName) async {
+  try {
+    final resolved = await ChatMediaCache.instance.resolveLocalPath(url);
+    if (resolved == null || resolved.isEmpty) return false;
+    final anchor = html.AnchorElement(href: resolved)
+      ..download = fileName
+      ..style.display = 'none';
+    html.document.body?.children.add(anchor);
+    anchor.click();
+    anchor.remove();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 /// Uses the browser share sheet when supported by share_plus.
 Future<bool> shareChatMedia(String url) async {
   try {
-    final uri = Uri.parse(url);
+    final resolved = await ChatMediaCache.instance.resolveLocalPath(url) ?? url;
+    final uri = Uri.parse(resolved);
     late final Uint8List bytes;
     late final String segment;
     late final String mimeType;
