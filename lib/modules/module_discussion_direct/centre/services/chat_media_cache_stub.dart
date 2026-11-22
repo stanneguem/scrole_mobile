@@ -174,12 +174,43 @@ class ChatMediaCachePlatform {
       final token = client.auth.currentSession?.accessToken;
       if (token == null || token.isEmpty) return null;
 
-      // Download through the authenticated Supabase Edge Function. Browsers
-      // cannot reliably fetch private R2 presigned URLs when the bucket CORS
-      // policy does not allow the Scrole Web origin.
+      // Use the authenticated Supabase Edge Function as a same-origin-style
+      // proxy: browsers may block direct reads from private R2 due to CORS.
       final endpoint = client.rest.url.replaceFirst(
-        RegExp(r'/rest/v1/?
-
+        '/rest/v1',
+        '/functions/v1/r2-media-upload',
+      );
+      final apiKey = client.rest.headers['apikey'];
+      if (apiKey == null || apiKey.isEmpty) {
+        debugPrint('[WebMediaCache] Supabase anon key unavailable for media proxy');
+        return null;
+      }
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'apikey': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'action': 'download-message-media',
+          'object_key': objectKey,
+        }),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[WebMediaCache] Private media proxy returned ${response.statusCode}');
+        return null;
+      }
+      if (response.bodyBytes.isEmpty ||
+          response.bodyBytes.lengthInBytes > _maxEntryBytes) {
+        return null;
+      }
+      return response.bodyBytes;
+    } catch (error) {
+      debugPrint('[WebMediaCache] Private media proxy failed: $error');
+      return null;
+    }
+  }
   Future<String?> _createR2DownloadUrl(String objectKey) async {
     final response = await Supabase.instance.client.functions.invoke(
       'r2-media-upload',
