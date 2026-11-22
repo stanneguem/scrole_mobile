@@ -66,7 +66,6 @@ class ChatController extends GetxController {
   StreamSubscription<List<Message>>? _messagesSub;
   StreamSubscription<String?>? _typingSub;
   StreamSubscription? _audioSub;
-  Timer? _typingTimer;
   Timer? _readDebounce;
   Timer? _recordingTimer;
   Timer? _otherUserTypingTimer;
@@ -705,8 +704,8 @@ class ChatController extends GetxController {
 
   void toggleEmojiPicker() { showEmojiPicker.value = !showEmojiPicker.value; if (showEmojiPicker.value) FocusManager.instance.primaryFocus?.unfocus(); }
   void toggleReactionPanel() {}
-  void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _typingTimer?.cancel(); _localActivityHeartbeat?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
-  void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; _setLocalActivity(null); }
+  void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _localActivityHeartbeat?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
+  void _stopTyping() { isTyping.value = false; _setLocalActivity(null); }
   void _showError(String? message) { if (message != null && message.isNotEmpty) Get.snackbar('Message', message); }
 
   @override
