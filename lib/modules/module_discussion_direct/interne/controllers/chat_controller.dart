@@ -531,6 +531,7 @@ class ChatController extends GetxController {
           mimeType: mime,
         ));
       }
+      if (persistedMedia.isEmpty) return;
       final message = MessageModel(
         id: localId,
         localId: localId,
