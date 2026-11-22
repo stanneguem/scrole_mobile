@@ -15,6 +15,7 @@ import 'package:scrole/app/theme/text_styles.dart';
 import 'package:scrole/app_controller.dart';
 import 'package:scrole/shared/widgets/app_cached_image.dart';
 import 'package:scrole/shared/widgets/user_certified_badge.dart';
+import 'package:scrole/shared/constants/post_media_limits.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_mentions_screen.dart';
 import 'package:scrole/modules/module_communautes/interne/pages/community_post_settings_screen.dart';
 import 'package:scrole/modules/module_principale/interne/controllers/stories_controller.dart';
@@ -42,7 +43,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   final TextEditingController _textController = TextEditingController();
   final List<XFile> _selectedFiles = [];
   bool _isPublishing = false;
-  static const Duration _maxVideoDuration = Duration(seconds: 29);
+  static const Duration _maxVideoDuration = maxStoryVideoDuration;
 
   bool _commentsEnabled = true;
   bool _sharingEnabled = true;
