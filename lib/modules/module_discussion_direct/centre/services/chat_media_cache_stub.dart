@@ -1,5 +1,6 @@
 import 'dart:html' as html;
 import 'dart:typed_data';
+import 'dart:js_util' as js_util;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
@@ -14,12 +15,13 @@ class ChatMediaCachePlatform {
 
   static const int _maxBytes = 120 * 1024 * 1024;
   static const int _maxEntryBytes = 30 * 1024 * 1024;
-  static const Duration _maxAge = Duration(days: 14);
   static const String _boxName = 'scrole_media_blobs_v1';
   static const String _prefix = 'blob:';
   static final Map<String, String> _objectUrls = <String, String>{};
   static Box? _box;
   static bool _hiveInitialized = false;
+  static Future<Box>? _openingBox;
+  static Future<void>? _persistenceRequest;
 
   static bool _isHttpUrl(String value) =>
       value.startsWith('http://') || value.startsWith('https://');
@@ -28,15 +30,49 @@ class ChatMediaCachePlatform {
       value.startsWith('private/') || value.startsWith('bug-reports/') ||
       value.startsWith('salon-messages/');
 
+  Future<void> _requestPersistentStorage() async {
+    // Browser storage is best-effort by default. Ask the browser to protect
+    // IndexedDB from automatic eviction; denial is non-fatal because R2 is
+    // still the durable source of truth.
+    _persistenceRequest ??= () async {
+      try {
+        final storage = js_util.getProperty(html.window.navigator, 'storage');
+        if (storage == null) return;
+        final persisted = await js_util.promiseToFuture<bool>(
+          js_util.callMethod(storage, 'persisted', <Object>[]),
+        );
+        if (!persisted) {
+          await js_util.promiseToFuture<bool>(
+            js_util.callMethod(storage, 'persist', <Object>[]),
+          );
+        }
+      } catch (error) {
+        debugPrint('[WebMediaCache] Persistent storage request unavailable: $error');
+      }
+    }();
+    await _persistenceRequest;
+  }
+
   Future<Box> _openBox() async {
-    if (!_hiveInitialized) {
-      await Hive.initFlutter();
-      _hiveInitialized = true;
-    }
     final existing = _box;
     if (existing != null && existing.isOpen) return existing;
-    _box = await Hive.openBox(_boxName);
-    return _box!;
+    final opening = _openingBox;
+    if (opening != null) return opening;
+    final future = () async {
+      if (!_hiveInitialized) {
+        await Hive.initFlutter();
+        _hiveInitialized = true;
+      }
+      await _requestPersistentStorage();
+      _box = await Hive.openBox(_boxName);
+      return _box!;
+    }();
+    _openingBox = future;
+    try {
+      return await future;
+    } finally {
+      _openingBox = null;
+    }
   }
 
   String _cacheKey(String remoteUrl) {
@@ -52,11 +88,6 @@ class ChatMediaCachePlatform {
       final raw = box.get('$_prefix$key');
       final meta = box.get('meta:$key');
       if (raw is! Uint8List || meta is! Map) return null;
-      final savedAt = DateTime.tryParse(meta['saved_at']?.toString() ?? '');
-      if (savedAt == null || DateTime.now().difference(savedAt) > _maxAge) {
-        await _deleteEntry(box, key);
-        return null;
-      }
       await box.put('meta:$key', <String, dynamic>{
         ...Map<String, dynamic>.from(meta),
         'last_access': DateTime.now().millisecondsSinceEpoch,
@@ -215,20 +246,15 @@ class ChatMediaCachePlatform {
   }
 
   Future<void> purgeOldFiles({int days = 14}) async {
+    // Message attachments can remain part of a conversation for years.
+    // Age-based deletion made old messages lose their local preview. Keep
+    // them until the bounded LRU policy needs space; R2 remains the recovery
+    // source if a browser cache entry is ever missing.
     try {
       final box = await _openBox();
-      final threshold = DateTime.now().subtract(Duration(days: days));
-      for (final key in box.keys.whereType<String>().toList()) {
-        if (!key.startsWith('meta:')) continue;
-        final raw = box.get(key);
-        if (raw is! Map) continue;
-        final savedAt = DateTime.tryParse(raw['saved_at']?.toString() ?? '');
-        if (savedAt == null || savedAt.isBefore(threshold)) {
-          await _deleteEntry(box, key.substring(5));
-        }
-      }
+      await _enforceLimit(box);
     } catch (error) {
-      debugPrint('[WebMediaCache] Purge failed: $error');
+      debugPrint('[WebMediaCache] Cache maintenance failed: $error');
     }
   }
 }
