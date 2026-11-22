@@ -516,7 +516,7 @@ class ChatController extends GetxController {
         final name = file.name.isNotEmpty ? file.name : pickedName;
         final extension = name.contains('.') ? name.split('.').last.toLowerCase() : '';
         final mime = file.mimeType ??
-            (const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm'}
+            (const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'm4v': 'video/mp4', 'webm': 'video/webm'}
                     .containsKey(extension)
                 ? const {'mp4': 'video/mp4', 'mov': 'video/quicktime', 'webm': 'video/webm'}[extension]!
                 : const {'png': 'image/png', 'webp': 'image/webp', 'gif': 'image/gif'}
