@@ -875,6 +875,27 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
+    if (kIsWeb) {
+      // Open the browser's native file chooser directly from the user's tap.
+      // The mobile photo_manager gallery is not part of the Web/PWA flow.
+      try {
+        final files = await _mediaPicker.pickMultipleMedia(limit: maxAllowed);
+        if (files.isNotEmpty && mounted) {
+          await _handleGallerySelection(files);
+        }
+      } catch (error, stack) {
+        debugPrint('[POST_COMPOSER][WEB] browser picker failed: $error\\n$stack');
+        if (mounted) {
+          Get.snackbar(
+            'Galerie indisponible',
+            error.toString().replaceFirst('Exception: ', ''),
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+      }
+      return;
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
