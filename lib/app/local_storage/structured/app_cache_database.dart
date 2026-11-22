@@ -905,72 +905,31 @@ class AppDatabase {
         );
 
         for (final row in rows) {
-          final table = row['name']?.toString();
-          if (table == null ||
-              !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*
-          final columns = columnRows
-              .map((column) => column['name']?.toString())
-              .whereType<String>()
-              .toSet();
-          final matchingOwners = ownerColumns.where(columns.contains).toList();
-
-          if (matchingOwners.isEmpty) continue;
-
-          final where =
-              matchingOwners.map((column) => '"$column" = ?').join(' OR ');
-          await txn.delete(
-            table,
-            where: where,
-            whereArgs: List<Object?>.filled(matchingOwners.length, userId),
-          );
-        }
-
-        // Ces caches et curseurs ne portent pas d'identifiant de compte.
-        // Ils sont invalidés au changement de session pour forcer une resynchronisation.
-        await txn.delete('discovery_cache');
-        await txn.delete('activity_sync_cursors');
-        await txn.delete('event_sync_cursors');
-      });
-    } finally {
-      await db.execute('PRAGMA foreign_keys = ON');
-    }
-
-    debugPrint(
-      '[Database] Données locales de $userId purgées; autres comptes et outbox préservés',
-    );
-    await SalonChatDatabase.instance.clearUserData(userId);
-  }
-
-  Future<void> close() async {
-    final db = _database;
-    if (db != null) {
-      await db.close();
-      _database = null;
-    }
-  }
-}
-).hasMatch(table)) {
+          final tableName = row['name'];
+          if (tableName is! String ||
+              !RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(tableName)) {
             continue;
           }
-          // Keep the durable direct-message outbox across logout. Its rows are
-          // already partitioned by user_id and contain the pending message
-          // payload; the corresponding binary chunks live in the separate
-          // user-scoped pending_chat_media Hive box.
-          if (table == 'direct_chat_outbox') continue;
 
-          final columnRows = await txn.rawQuery('PRAGMA table_info("$table")');
+          // L'outbox des messages directs et ses pièces jointes sont durables :
+          // ils doivent pouvoir être renvoyés après reconnexion au compte.
+          if (tableName == 'direct_chat_outbox') continue;
+
+          final columnRows =
+              await txn.rawQuery('PRAGMA table_info("$tableName")');
           final columns = columnRows
               .map((column) => column['name']?.toString())
               .whereType<String>()
               .toSet();
-          final matchingOwners = ownerColumns.where(columns.contains).toList();
+          final matchingOwners =
+              ownerColumns.where(columns.contains).toList();
 
           if (matchingOwners.isEmpty) continue;
 
           final where =
               matchingOwners.map((column) => '"$column" = ?').join(' OR ');
           await txn.delete(
-            table,
+            tableName,
             where: where,
             whereArgs: List<Object?>.filled(matchingOwners.length, userId),
           );
@@ -997,6 +956,7 @@ class AppDatabase {
     if (db != null) {
       await db.close();
       _database = null;
+      _dbOpenFuture = null;
     }
   }
 }
