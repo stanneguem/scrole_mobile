@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/media/media_asset.dart';
 import '../persistence/pending_chat_media_store.dart';
@@ -22,7 +23,7 @@ import '../models/message.dart';
 import '../models/messaging_result.dart';
 import '../../externe/services/supabase_messaging_service.dart';
 
-class MessagingRepository {
+class MessagingRepository with WidgetsBindingObserver {
   MessagingRepository(this._db, this._remote) {
     _database = MessagingDatabase(_db);
     _mediaCache = MediaLocalCache(_db);
@@ -46,6 +47,7 @@ class MessagingRepository {
   bool _inboxSubscribedOnce = false;
   StreamSubscription? _connectivitySubscription;
   bool _outboxRunning = false;
+  bool _lifecycleObserverRegistered = false;
   final PendingChatMediaStore _pendingMedia = PendingChatMediaStore();
 
   Future<PendingChatMediaWriter> beginPendingWavRecording({
@@ -139,6 +141,10 @@ class MessagingRepository {
 
   Future<void> initialize() async {
     await _database.ensureSchema();
+    if (!_lifecycleObserverRegistered) {
+      WidgetsBinding.instance.addObserver(this);
+      _lifecycleObserverRegistered = true;
+    }
     try {
       final connectivity = Get.find<ConnectivityService>();
       _connectivitySubscription = connectivity.onStatusChange.listen((status) {
@@ -882,7 +888,19 @@ class MessagingRepository {
     );
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && currentUserId != null) {
+      debugPrint('[Messaging] App resumed; reconciling inbox and unread state');
+      unawaited(handlePushWake(null));
+    }
+  }
+
   Future<void> dispose() async {
+    if (_lifecycleObserverRegistered) {
+      WidgetsBinding.instance.removeObserver(this);
+      _lifecycleObserverRegistered = false;
+    }
     _connectivitySubscription?.cancel();
     _inboxChannel?.unsubscribe();
     _inboxChannel = null;
