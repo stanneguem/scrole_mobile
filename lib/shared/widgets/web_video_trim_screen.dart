@@ -84,12 +84,32 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     }
     final stream = source.captureStream();
     final mediaRecorderConstructor = js_util.getProperty(html.window, 'MediaRecorder');
-    final supportsMp4 = js_util.callMethod<bool>(
-      mediaRecorderConstructor,
-      'isTypeSupported',
-      <Object?>['video/mp4'],
-    );
-    final mime = supportsMp4 ? 'video/mp4' : 'video/webm';
+    // Prefer interoperable WebM codecs on Chromium/Android. Do not infer
+    // codec compatibility from the container-only "video/mp4" capability:
+    // Chromium can otherwise produce the unusual VP9/Opus-in-MP4 combination,
+    // which some Android extractors report with a truncated duration.
+    const mimeCandidates = <String>[
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=vp9,opus',
+      'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+      'video/mp4',
+    ];
+    String? mime;
+    for (final candidate in mimeCandidates) {
+      final supported = js_util.callMethod<bool>(
+        mediaRecorderConstructor,
+        'isTypeSupported',
+        <Object?>[candidate],
+      );
+      if (supported) {
+        mime = candidate;
+        break;
+      }
+    }
+    if (mime == null) {
+      throw StateError('Ce navigateur ne propose aucun format vidéo compatible.');
+    }
+    debugPrint('[STORY][WEB_EXPORT][FORMAT] requestedMime=$mime');
     final recorder = js_util.callConstructor(
       mediaRecorderConstructor,
       <Object?>[stream, js_util.jsify(<String, Object?>{'mimeType': mime})],
