@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -11,7 +12,7 @@ class MediaGallerySheet extends StatefulWidget {
     this.allowMixedMedia = true,
   });
 
-  final Future<void> Function(List<XFile>) onSelected;
+  final FutureOr<void> Function(List<XFile>) onSelected;
   final int maxSelection;
   final bool allowMixedMedia;
 
