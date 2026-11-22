@@ -1526,7 +1526,7 @@ class _StoryViewersSheetState extends State<_StoryViewersSheet> {
 
   Future<void> _loadViewers() async {
     try {
-      final res = await _repo.getStoryViewers(widget.storyId, 50, 0);
+      final res = await _repo.getStoryViewers(widget.post.id, 50, 0);
       if (mounted) {
         setState(() {
           _viewers = res['items'] is List ? res['items'] : [];
@@ -1791,7 +1791,7 @@ class _StoryLikersSheetState extends State<_StoryLikersSheet> {
 
   Future<void> _loadLikers() async {
     try {
-      final res = await _repo.getStoryViewers(widget.storyId, 100, 0);
+      final res = await _repo.getStoryViewers(widget.post.id, 100, 0);
       if (mounted) {
         final items = res['items'] is List ? (res['items'] as List) : [];
         setState(() {
@@ -2043,7 +2043,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
       _errorMessage = null;
     });
     try {
-      final res = await _repo.getStoryComments(widget.storyId);
+      final res = await _repo.getStoryComments(widget.post.id);
       final items = res['items'] is List
           ? List<Map<String, dynamic>>.from(res['items'])
           : <Map<String, dynamic>>[];
@@ -2081,7 +2081,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
     try {
       // Charger uniquement les réponses du commentaire sélectionné.
       final res = await _repo.getStoryCommentReplies(
-        widget.storyId,
+        widget.post.id,
         commentId,
       );
       final replies = res['items'] is List
@@ -2196,7 +2196,7 @@ class _StoryCommentsSheetState extends State<_StoryCommentsSheet> {
 
       await _repo.createStoryComment(
         p_id: commentId,
-        p_story_id: widget.storyId,
+        p_story_id: widget.post.id,
         p_content: text,
         p_parent_comment_id: parentId,
       );
@@ -2823,7 +2823,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
       _lastLoggedSecond = positionSecond;
       _lastLoggedPlaying = value.isPlaying;
       debugPrint(
-        '[STORY][ANDROID][PROGRESS] story=${widget.storyId} '
+        '[STORY][ANDROID][PROGRESS] story=${widget.post.id} '
         'positionMs=${value.position.inMilliseconds} '
         'durationMs=${value.duration.inMilliseconds} '
         'buffered=${value.buffered.map((range) => "${range.start.inMilliseconds}-${range.end.inMilliseconds}").join(",")} '
@@ -2832,7 +2832,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
       );
     }
     if (value.hasError) {
-      debugPrint('[STORY][ANDROID][ERROR] story=${widget.storyId} error=${value.errorDescription}');
+      debugPrint('[STORY][ANDROID][ERROR] story=${widget.post.id} error=${value.errorDescription}');
       setState(() => _failed = true);
       return;
     }
@@ -2847,7 +2847,7 @@ class _StorySharedVideoPostState extends State<_StorySharedVideoPost> with Widge
         controller.value.duration > Duration.zero &&
         !_completionHandled) {
       _completionHandled = true;
-      debugPrint('[STORY][ANDROID][COMPLETED] story=${widget.storyId} positionMs=${value.position.inMilliseconds} durationMs=${value.duration.inMilliseconds}');
+      debugPrint('[STORY][ANDROID][COMPLETED] story=${widget.post.id} positionMs=${value.position.inMilliseconds} durationMs=${value.duration.inMilliseconds}');
       widget.onCompleted();
     }
   }
@@ -3034,7 +3034,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       await controller.dispose();
     }
     await deleteCachedStoryVideo(
-      storyId: widget.storyId,
+      storyId: widget.post.id,
       objectKey: widget.objectKey,
     );
     if (mounted) {
@@ -3077,7 +3077,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       if (mounted) setState(() => _isDownloading = true);
       final controller = await createStoryPlaybackController(
         objectKey: widget.objectKey,
-        storyId: widget.storyId,
+        storyId: widget.post.id,
         expiresAt: widget.expiresAt,
       );
       if (!mounted) {
@@ -3089,7 +3089,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       await controller.initialize();
       if (!mounted) return;
       debugPrint(
-        '[STORY][PLAYER] Initialized story=${widget.storyId} '
+        '[STORY][PLAYER] Initialized story=${widget.post.id} '
         'durationMs=${controller.value.duration.inMilliseconds} '
         'size=${controller.value.size.width}x${controller.value.size.height}',
       );
@@ -3098,7 +3098,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
       setState(() => _isDownloading = false);
       if (!widget.isPaused) {
         await controller.play();
-        debugPrint('[STORY][ANDROID][PLAY] story=${widget.storyId} playing=${controller.value.isPlaying} durationMs=${controller.value.duration.inMilliseconds} positionMs=${controller.value.position.inMilliseconds}');
+        debugPrint('[STORY][ANDROID][PLAY] story=${widget.post.id} playing=${controller.value.isPlaying} durationMs=${controller.value.duration.inMilliseconds} positionMs=${controller.value.position.inMilliseconds}');
       }
     } catch (e) {
       debugPrint('[STORY] Standalone video initialization failed: $e');
@@ -3108,7 +3108,7 @@ class _StoryVideoPlayerState extends State<_StoryVideoPlayer> with WidgetsBindin
         failedController.removeListener(_onVideoChanged);
         await failedController.dispose();
       }
-      await deleteCachedStoryVideo(storyId: widget.storyId, objectKey: widget.objectKey);
+      await deleteCachedStoryVideo(storyId: widget.post.id, objectKey: widget.objectKey);
       if (mounted) setState(() {
         _isDownloading = false;
         _failed = true;
