@@ -63,7 +63,8 @@ class _DirectVoiceMessagePlayerState extends State<DirectVoiceMessagePlayer> {
       if (pendingAsset != null) {
         await player.setAudioSource(_PendingMediaAudioSource(pendingAsset));
       } else if (playable!.startsWith('http://') ||
-          playable.startsWith('https://') || playable.startsWith('data:')) {
+          playable.startsWith('https://') || playable.startsWith('data:') ||
+          playable.startsWith('blob:')) {
         await player.setUrl(playable);
       } else {
         await player.setFilePath(playable);
