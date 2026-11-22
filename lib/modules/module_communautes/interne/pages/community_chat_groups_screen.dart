@@ -1379,11 +1379,14 @@ class _CommunityChatGroupConversationState extends State<CommunityChatGroupConve
           'type': group['type'],
           'content': '',
           if (replySnapshot != null) ...{'replied_to_id': replySnapshot['id'], 'reply_preview': replySnapshot},
-          if (isImageGroup)
+          // Image.file/VideoPlayerController.file ne savent pas afficher les
+          // chemins Blob du navigateur. Sur Web, on montre le média dès que sa
+          // clé R2 est disponible ; le mobile garde son aperçu local immédiat.
+          if (isImageGroup && !kIsWeb)
             'local_media_paths': indices
                 .map((index) => (preparedMedia[index]['file'] as XFile).path)
                 .toList(),
-          if (!isImageGroup)
+          if (!isImageGroup && !kIsWeb)
             'local_media_path':
                 (preparedMedia[indices.first]['file'] as XFile).path,
           'is_uploading': true,
