@@ -401,6 +401,10 @@ class MessagingRepository {
       await _messages.upsert(uid, prepared.copyWith(status: MessageStatus.pending));
       // Keep the original local references in the outbox until the server
       // confirms insertion. A retry can safely resolve the same binary blobs.
+      // The sender already owns the original bytes. Copy them into the same
+      // durable per-user media cache used by recipients before deleting the
+      // pending attachment blobs. This avoids downloading our own upload.
+      await _cacheSenderMediaLocally(pending, prepared);
       final remote = await _remote.insertMessage(prepared);
       if (remote == null) {
         throw StateError('Le serveur n’a pas confirmé le message.');
@@ -488,6 +492,37 @@ class MessagingRepository {
       return _pendingMedia.resolve(value);
     }
     return _assetFromPersistedValue(value);
+  }
+
+  Future<void> _cacheSenderMediaLocally(Message original, Message prepared) async {
+    Future<void> cachePair(String localRef, String? remoteRef) async {
+      if (remoteRef == null || remoteRef.isEmpty ||
+          !PendingChatMediaStore.isReference(localRef)) return;
+      try {
+        final asset = await _pendingMedia.resolve(localRef);
+        if (asset == null) {
+          debugPrint('[Messaging] Sender media cache skipped: pending asset missing.');
+          return;
+        }
+        final bytes = await asset.readAsBytes();
+        final cached = await ChatMediaCache.instance.cacheBytes(remoteRef, bytes);
+        if (cached == null) {
+          debugPrint('[Messaging] Sender media cache write failed for uploaded attachment.');
+        }
+      } catch (error) {
+        // Upload and message delivery must not fail because a local cache
+        // write failed. The remote object remains available for a later fetch.
+        debugPrint('[Messaging] Sender media cache failed: $error');
+      }
+    }
+
+    final localMedia = original.mediaUrls ?? const <String>[];
+    final remoteMedia = prepared.mediaUrls ?? const <String>[];
+    for (var i = 0; i < localMedia.length && i < remoteMedia.length; i++) {
+      await cachePair(localMedia[i], remoteMedia[i]);
+    }
+    final localAudio = original.audioUrl;
+    if (localAudio != null) await cachePair(localAudio, prepared.audioUrl);
   }
 
   Future<void> _cleanupPendingMedia(Message original) async {
