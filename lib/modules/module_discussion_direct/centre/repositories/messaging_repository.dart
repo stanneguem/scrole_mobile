@@ -1040,7 +1040,7 @@ class MessagingRepository with WidgetsBindingObserver {
     ];
     for (final ref in refs) {
       try {
-        final localPath = await ChatMediaCache.instance.resolveLocalPath(ref);
+        final localPath = await ChatMediaCache.instance.cacheRemote(ref);
         if (localPath == null) {
           debugPrint('[Messaging] Media cache unavailable before delivery receipt: '
               'message=${message.id}, ref=${ref.split('/').take(2).join('/')}');
