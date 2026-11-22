@@ -184,6 +184,30 @@ class ChatMediaCachePlatform {
 
   Future<String?> resolveLocalPath(String ref) async {
     if (ref.isEmpty) return null;
+
+    // Display fallback for private direct-message media: if the durable
+    // IndexedDB download fails (for example a transient proxy/CORS failure),
+    // still render through a short-lived authenticated R2 URL. This URL is
+    // display-only; the delivery pipeline uses cacheRemote() and never treats
+    // this fallback as a durable local copy.
+    final messageKey = _messageObjectKey(ref);
+    if (messageKey != null) {
+      final cached = await localPathFor(ref);
+      if (cached != null) return cached;
+      final downloaded = await cacheRemote(ref);
+      if (downloaded != null) return downloaded;
+      try {
+        final fallbackUrl = await _createR2DownloadUrl(messageKey);
+        if (fallbackUrl != null) {
+          debugPrint('[WebMediaCache] Using temporary display URL after local cache failure');
+        }
+        return fallbackUrl;
+      } catch (error) {
+        debugPrint('[WebMediaCache] Temporary display URL fallback failed: $error');
+        return null;
+      }
+    }
+
     if (_isHttpUrl(ref)) {
       final cached = await localPathFor(ref);
       if (cached != null) return cached;
