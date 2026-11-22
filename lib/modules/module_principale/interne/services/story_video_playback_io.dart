@@ -8,7 +8,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 String _storyVideoExtension(String objectKey) {
   final path = Uri.tryParse(objectKey)?.path ?? objectKey;
-  return p.extension(path).toLowerCase() == '.mov' ? '.mov' : '.mp4';
+  final extension = p.extension(path).toLowerCase();
+  if (extension == '.mov') return '.mov';
+  if (extension == '.webm') return '.webm';
+  return '.mp4';
 }
 
 Future<void> deleteCachedStoryVideo({
@@ -46,7 +49,7 @@ Future<VideoPlayerController> createStoryPlaybackController({
       final cachedExpiry = DateTime.tryParse(await entity.readAsString());
       if (cachedExpiry == null || !cachedExpiry.isAfter(now)) {
         final basePath = entity.path.substring(0, entity.path.length - '.expiry'.length);
-        for (final extension in ['.mp4', '.mov']) {
+        for (final extension in ['.mp4', '.mov', '.webm']) {
           final cachedMedia = File('$basePath$extension');
           if (await cachedMedia.exists()) await cachedMedia.delete();
         }
