@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:html' as html;
+import 'dart:math' as math;
 import 'dart:js_util' as js_util;
 
 import 'package:flutter/material.dart';
@@ -31,6 +32,9 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   String? _error;
   Duration _duration = Duration.zero;
   RangeValues _range = const RangeValues(0, 60);
+  int? _dragHandle;
+  double _timelineWidth = 1;
+  static const double _handleWidth = 18;
 
   @override
   void initState() {
@@ -155,21 +159,159 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     super.dispose();
   }
 
+  void _updateTrimFromDrag(double dx) {
+    final total = _duration.inMilliseconds / 1000;
+    if (total <= 0) return;
+    final delta = dx / _timelineWidth * total;
+    final max = widget.maxDuration.inMilliseconds / 1000;
+    var start = _range.start;
+    var end = _range.end;
+    if (_dragHandle == 0) {
+      start = (start + delta).clamp(0.0, end - 0.1).toDouble();
+      if (end - start > max) start = end - max;
+    } else if (_dragHandle == 1) {
+      end = (end + delta).clamp(start + 0.1, total).toDouble();
+      if (end - start > max) end = start + max;
+    } else if (_dragHandle == 2) {
+      final length = end - start;
+      start = (start + delta).clamp(0.0, total - length).toDouble();
+      end = start + length;
+    }
+    setState(() => _range = RangeValues(start, end));
+    _preview?.seekTo(Duration(milliseconds: (start * 1000).round()));
+  }
+
+  Widget _buildTimeline() {
+    final total = math.max(0.1, _duration.inMilliseconds / 1000);
+    final start = _range.start / total;
+    final end = _range.end / total;
+    return LayoutBuilder(builder: (context, constraints) {
+      _timelineWidth = constraints.maxWidth;
+      final left = start * constraints.maxWidth;
+      final right = end * constraints.maxWidth;
+      final selectedWidth = math.max(36.0, right - left);
+      return SizedBox(
+        height: 58,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  children: List.generate(12, (i) => Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: .5),
+                      color: i.isEven ? const Color(0xFF383838) : const Color(0xFF292929),
+                    ),
+                  )),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Row(children: [
+                  Container(width: left.clamp(0.0, constraints.maxWidth), color: Colors.black.withValues(alpha: .62)),
+                  Expanded(child: Container(width: math.max(0, constraints.maxWidth-right), color: Colors.black.withValues(alpha: .62))),
+                ]),
+              ),
+            ),
+            Positioned(left: left, width: selectedWidth, top: 0, bottom: 0,
+              child: IgnorePointer(child: Container(
+                decoration: const BoxDecoration(
+                  border: Border.symmetric(horizontal: BorderSide(color: Color(0xFFFFD21F), width: 3)),
+                ),
+              )),
+            ),
+            Positioned(left: left.clamp(0.0, constraints.maxWidth-18), top: 0, bottom: 0, width: 18,
+              child: GestureDetector(
+                onHorizontalDragStart: (_) => _dragHandle = 0,
+                onHorizontalDragUpdate: (d) => _updateTrimFromDrag(d.delta.dx),
+                onHorizontalDragEnd: (_) => _dragHandle = null,
+                child: Container(
+                  decoration: const BoxDecoration(color: Color(0xFFFFD21F), borderRadius: BorderRadius.horizontal(left: Radius.circular(8))),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.chevron_left_rounded, color: Colors.black, size: 22),
+                ),
+              ),
+            ),
+            Positioned(left: (right-18).clamp(0.0, constraints.maxWidth-18), top: 0, bottom: 0, width: 18,
+              child: GestureDetector(
+                onHorizontalDragStart: (_) => _dragHandle = 1,
+                onHorizontalDragUpdate: (d) => _updateTrimFromDrag(d.delta.dx),
+                onHorizontalDragEnd: (_) => _dragHandle = null,
+                child: Container(
+                  decoration: const BoxDecoration(color: Color(0xFFFFD21F), borderRadius: BorderRadius.horizontal(right: Radius.circular(8))),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.chevron_right_rounded, color: Colors.black, size: 22),
+                ),
+              ),
+            ),
+            Positioned(left: (left+18).clamp(0.0, constraints.maxWidth), width: math.max(0.0, selectedWidth-36), top: 0, bottom: 0,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragStart: (_) => _dragHandle = 2,
+                onHorizontalDragUpdate: (d) => _updateTrimFromDrag(d.delta.dx),
+                onHorizontalDragEnd: (_) => _dragHandle = null,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final maxSeconds = _duration.inMilliseconds / 1000;
+    final ready = !_loading && _error == null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Découper la vidéo')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text('Cette vidéo ne peut pas être lue dans le navigateur. $_error'),
-                ))
-              : Column(
-                  children: [
-                    Expanded(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+                    onPressed: _exporting ? null : () => Get.back<XFile?>(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up_rounded, color: Color(0xFFFFD21F), size: 22),
+                    onPressed: _loading || _error != null ? null : () {
+                      final controller = _preview;
+                      if (controller != null) {
+                        controller.setVolume(controller.value.volume > 0 ? 0 : 1);
+                      }
+                    },
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: ready && !_exporting ? _confirm : null,
+                    child: const Text('Terminer', style: TextStyle(
+                      color: Color(0xFFFFD21F), fontWeight: FontWeight.w800, fontSize: 16,
+                    )),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                : _error != null
+                  ? Center(child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text('Impossible de lire cette vidéo sur cet appareil. $_error',
+                        style: const TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+                    ))
+                  : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        final controller = _preview;
+                        if (controller == null) return;
+                        controller.value.isPlaying ? controller.pause() : controller.play();
+                      },
                       child: Center(
                         child: AspectRatio(
                           aspectRatio: (_preview?.value.aspectRatio ?? 16 / 9).clamp(0.5, 2.4).toDouble(),
@@ -177,46 +319,49 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      child: Column(
-                        children: [
-                          Text('Sélection : ${_range.start.toStringAsFixed(1)} s – ${_range.end.toStringAsFixed(1)} s'),
-                          RangeSlider(
-                            min: 0,
-                            max: maxSeconds,
-                            divisions: (maxSeconds * 10).round().clamp(1, 10000).toInt(),
-                            values: _range,
-                            onChanged: _exporting ? null : (value) {
-                              final limit = widget.maxDuration.inMilliseconds / 1000;
-                              var next = value;
-                              if (next.end - next.start > limit) {
-                                next = RangeValues(next.start, next.start + limit);
-                              }
-                              setState(() => _range = next);
-                              _preview?.seekTo(Duration(milliseconds: (next.start * 1000).round()));
-                            },
-                          ),
-                          Text('Maximum autorisé : ${widget.maxDuration.inSeconds} secondes'),
-                        ],
+            ),
+            if (ready)
+              Container(
+                color: Colors.black,
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        final controller = _preview;
+                        if (controller == null) return;
+                        controller.value.isPlaying ? controller.pause() : controller.play();
+                      },
+                      child: Container(
+                        width: 44, height: 52,
+                        decoration: BoxDecoration(color: const Color(0xFF2C2C2E), borderRadius: BorderRadius.circular(10)),
+                        child: Icon(_preview?.value.isPlaying == true ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          color: Colors.white, size: 28),
                       ),
                     ),
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _exporting ? null : _confirm,
-                            child: _exporting
-                                ? const CircularProgressIndicator()
-                                : const Text('Utiliser cette vidéo'),
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildTimeline()),
                   ],
                 ),
+              ),
+            if (_exporting)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: .72),
+                  alignment: Alignment.center,
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(color: Color(0xFFFFD21F)),
+                      SizedBox(height: 16),
+                      Text('Découpage en cours…', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
