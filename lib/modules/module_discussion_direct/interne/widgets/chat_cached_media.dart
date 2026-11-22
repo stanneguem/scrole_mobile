@@ -65,9 +65,25 @@ class _ChatCachedMediaState extends State<ChatCachedMedia> {
     if (value.startsWith('data:')) {
       return _ResolvedChatImage(path: value);
     }
-    return _ResolvedChatImage(
-      path: await ChatMediaCache.instance.resolveLocalPath(value),
-    );
+    final cache = ChatMediaCache.instance;
+    var localPath = await cache.resolveLocalPath(value);
+    if (localPath != null && localPath.isNotEmpty) {
+      return _ResolvedChatImage(path: localPath);
+    }
+
+    // Incoming messages are persisted before their background media download
+    // finishes. The conversation stream can therefore build this widget while
+    // another task is still filling the private cache. Wait for that same cache
+    // entry instead of permanently keeping the first empty FutureBuilder result.
+    // This does not start another download: localPathFor only checks the cache.
+    for (var attempt = 0; attempt < 20; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      localPath = await cache.localPathFor(value);
+      if (localPath != null && localPath.isNotEmpty) {
+        return _ResolvedChatImage(path: localPath);
+      }
+    }
+    return const _ResolvedChatImage();
   }
 
   @override
