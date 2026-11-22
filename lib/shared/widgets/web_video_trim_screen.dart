@@ -73,6 +73,12 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     await metadataLoaded.timeout(const Duration(seconds: 30));
     final start = _range.start;
     final end = _range.end;
+    debugPrint(
+      '[STORY][WEB_EXPORT][SOURCE] name=${widget.videoFile.name} '
+      'sourceDurationMs=${duration.inMilliseconds} '
+      'selectedStartMs=${(start * 1000).round()} '
+      'selectedEndMs=${(end * 1000).round()}',
+    );
     if (end <= start || end - start > widget.maxDuration.inMilliseconds / 1000) {
       throw StateError('Sélection vidéo invalide.');
     }
@@ -124,6 +130,11 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
           ? mime
           : recordedMime;
       final blob = html.Blob(chunks, outputMime);
+      debugPrint(
+        '[STORY][WEB_EXPORT][RECORDED] recorderMime=${js_util.getProperty(recorder, 'mimeType')} '
+        'outputMime=$outputMime blobBytes=${blob.size} '
+        'selectedDurationMs=${((end - start) * 1000).round()}',
+      );
       final reader = html.FileReader();
       // readAsDataUrl évite les différences de représentation d'ArrayBuffer
       // entre les navigateurs et les versions de dart:html.
@@ -139,6 +150,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       }
       final bytes = base64Decode(dataUrl.substring(separator + 1));
       if (bytes.isEmpty) throw StateError('Le segment vidéo est vide.');
+      debugPrint('[STORY][WEB_EXPORT][BYTES] bytes=${bytes.length} mime=$outputMime');
       // Vérification minimale du conteneur avant de remettre le fichier à l'app.
       final hasWebmHeader = bytes.length >= 4 &&
           bytes[0] == 0x1A && bytes[1] == 0x45 &&
