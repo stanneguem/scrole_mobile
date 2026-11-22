@@ -715,7 +715,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    if (filesToPublish.length + videosToPublish.length > maxPostMedia) {
+    if (_selectedMediaCount > maxPostMedia || filesToPublish.length + videosToPublish.length > maxPostMedia) {
       Get.snackbar('post_composer_limit_title'.tr, 'post_composer_media_limit'.trParams({'max': '$maxPostMedia'}), backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
