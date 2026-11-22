@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:video_player/video_player.dart';
+import 'package:scrole/app/media/media_asset.dart';
+import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -34,6 +39,7 @@ class CreateCommunityPostScreen extends StatefulWidget {
   final String? prefilledMediaUrl;
   final bool prefilledMediaIsVideo;
   final CommunityPost? sharedPost;
+  final List<Map<String, dynamic>> prefilledUploadedMedia;
 
   const CreateCommunityPostScreen({
     super.key,
@@ -43,6 +49,7 @@ class CreateCommunityPostScreen extends StatefulWidget {
     this.prefilledMediaUrl,
     this.prefilledMediaIsVideo = false,
     this.sharedPost,
+    this.prefilledUploadedMedia = const [],
   });
 
   @override
@@ -60,11 +67,14 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   late final TextEditingController _textController;
   // Single source of truth: this list preserves the exact order in which media are selected.
   final List<_SelectedPostMedia> _selectedMedia = [];
+  final List<XFile?> _webSelectedFiles = [];
+  final List<Map<String, dynamic>> _webUploadedMedia = [];
+  final List<bool> _webSelectedIsVideo = [];
   List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
   List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
-  int get _selectedMediaCount => _selectedMedia.length;
-  int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length;
+  int get _selectedMediaCount => _selectedMedia.length + _webUploadedMedia.length;
+  int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length + _webSelectedIsVideo.where((isVideo) => !isVideo).length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
   bool _isPublishing = false;
@@ -101,6 +111,9 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     super.initState();
     _textController = TextEditingController(text: widget.prefilledText ?? '');
     _prefilledUrl = widget.prefilledMediaUrl;
+    _webUploadedMedia.addAll(widget.prefilledUploadedMedia);
+    _webSelectedFiles.addAll(List<XFile?>.filled(widget.prefilledUploadedMedia.length, null));
+    _webSelectedIsVideo.addAll(widget.prefilledUploadedMedia.map((media) => media['type']?.toString() == 'video'));
     if (widget.prefilledMediaIsVideo && _prefilledUrl != null && _prefilledUrl!.isNotEmpty && !_prefilledUrl!.startsWith('http')) {
       _selectedMedia.add(_SelectedPostMedia(file: File(_prefilledUrl!), isVideo: true));
       _prefilledUrl = null;
@@ -120,6 +133,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       widget.sharedPost != null ||
       _textController.text.trim().isNotEmpty ||
       _selectedMedia.isNotEmpty ||
+      _webUploadedMedia.isNotEmpty ||
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
 
@@ -691,7 +705,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final content = _textController.text.trim();
 
-    if (content.isEmpty && filesToPublish.isEmpty && videosToPublish.isEmpty && _pollData == null) {
+    if (content.isEmpty && filesToPublish.isEmpty && videosToPublish.isEmpty && _selectedMediaCount == 0 && _pollData == null) {
       Get.snackbar('post_composer_empty_title'.tr, 'post_composer_empty_message'.tr, backgroundColor: Colors.black87, colorText: Colors.white);
       return;
     }
@@ -763,6 +777,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         mentions: mentionsList,
         poll: _pollData,
         allowPromotion: isCommunity ? _allowPromotion : true,
+        preUploadedMedia: _webUploadedMedia,
       );
       if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
         final communityIds = _selectedCommunityIds.toList();
@@ -912,6 +927,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
 
   Future<void> _handleGallerySelection(List<XFile> files) async {
+    if (kIsWeb) {
+      await _handleWebGallerySelection(files);
+      return;
+    }
     // Traitement volontairement séquentiel : un seul travail vidéo natif à la fois.
     for (final picked in files) {
       if (!mounted || _selectedMediaCount >= maxPostMedia) break;
@@ -959,6 +978,61 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         // Future.timeout n'annule pas l'appel natif sous-jacent : ne pas lancer
         // une seconde extraction si la première a dépassé le délai.
         if (e is TimeoutException) break;
+      }
+    }
+  }
+
+  Future<void> _handleWebGallerySelection(List<XFile> files) async {
+    final repository = R2MediaRepository();
+    for (final picked in files) {
+      if (!mounted || _selectedMediaCount >= maxPostMedia) break;
+      final isVideo = _isVideoSelection(picked);
+      if (!isVideo && _selectedPhotoCount >= maxPostPhotos) continue;
+      Duration? duration;
+      if (isVideo) {
+        VideoPlayerController? probe;
+        try {
+          probe = VideoPlayerController.networkUrl(Uri.parse(picked.path));
+          await probe.initialize().timeout(const Duration(seconds: 30));
+          duration = probe.value.duration;
+        } finally {
+          await probe?.dispose();
+        }
+        if (duration == null || duration > const Duration(seconds: 29)) {
+          Get.snackbar('Vidéo trop longue', 'Sur le Web, sélectionne une vidéo de 29 secondes maximum.');
+          continue;
+        }
+      }
+      try {
+        final uploaded = await repository.uploadMediaAsset(
+          media: MediaAsset.fromXFile(picked),
+          category: 'post_media',
+          mediaType: isVideo ? 'video' : 'image',
+          communityId: widget.communityId,
+          videoDuration: duration,
+        );
+        if (uploaded.publicUrl == null || uploaded.publicUrl!.isEmpty || !uploaded.isPublic) {
+          throw StateError('R2 n’a pas retourné une URL publique pour ce média.');
+        }
+        if (!mounted) return;
+        setState(() {
+          _webSelectedFiles.add(picked);
+          _webSelectedIsVideo.add(isVideo);
+          _webUploadedMedia.add({
+            'type': isVideo ? 'video' : 'photo',
+            'storage': 'r2',
+            'url': uploaded.publicUrl,
+            'object_key': uploaded.objectKey,
+            'is_public': uploaded.isPublic,
+            'mime_type': uploaded.contentType,
+            'size_bytes': uploaded.sizeBytes,
+            if (duration != null) 'duration_seconds': duration.inMilliseconds / 1000,
+          });
+          _prefilledUrl = null;
+        });
+      } catch (error, stack) {
+        debugPrint('[POST_COMPOSER][WEB] upload failed: $error\\n$stack');
+        if (mounted) Get.snackbar('Ajout du média impossible', error.toString());
       }
     }
   }
@@ -1421,6 +1495,35 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                           ),
                           itemCount: _selectedMediaCount,
                           itemBuilder: (context, index) {
+                            if (index >= _selectedMedia.length) {
+                              final webIndex = index - _selectedMedia.length;
+                              final webFile = _webSelectedFiles[webIndex];
+                              final webIsVideo = _webSelectedIsVideo[webIndex];
+                              return Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: webIsVideo
+                                        ? const ColoredBox(color: Colors.black87, child: Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 48)))
+                                        : webFile == null
+                                            ? const ColoredBox(color: Colors.black87)
+                                            : FutureBuilder<Uint8List>(
+                                                future: webFile.readAsBytes(),
+                                                builder: (context, snapshot) => snapshot.hasData ? Image.memory(snapshot.data!, fit: BoxFit.cover) : const Center(child: CircularProgressIndicator()),
+                                              ),
+                                  ),
+                                  Positioned(top: 6, right: 6, child: IconButton.filled(
+                                    onPressed: () => setState(() {
+                                      _webSelectedFiles.removeAt(webIndex);
+                                      _webSelectedIsVideo.removeAt(webIndex);
+                                      _webUploadedMedia.removeAt(webIndex);
+                                    }),
+                                    icon: const Icon(Icons.close_rounded),
+                                  )),
+                                ],
+                              );
+                            }
                             final media = _selectedMedia[index];
                             final isVideo = media.isVideo;
                             final file = media.file;
