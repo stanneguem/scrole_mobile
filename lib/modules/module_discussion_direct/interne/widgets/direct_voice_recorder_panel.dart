@@ -61,7 +61,7 @@ class DirectVoiceRecorderPanel extends StatelessWidget {
                   if (!reviewing) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Glissez vers la gauche pour annuler',
+                      'salon_voice_cancel_hint'.tr,
                       style: TextStyle(
                         fontSize: 11,
                         color: colors.onSurfaceVariant.withValues(alpha: .7),
@@ -134,7 +134,9 @@ class _WaveformHeaderState extends State<_WaveformHeader>
             ),
             const SizedBox(width: 8),
             Text(
-              widget.reviewing ? 'Aperçu du message vocal' : 'Enregistrement vocal',
+              widget.reviewing
+                  ? 'salon_voice_preview_title'.tr
+                  : 'salon_voice_recording_title'.tr,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
