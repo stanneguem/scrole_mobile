@@ -49,6 +49,62 @@ Deno.serve(async (req: Request) => {
     if (!userId) return json({ error: "missing_user_id" }, 400);
 
     const type = String(record.type ?? "info").toLowerCase();
+    const recordData = record.data && typeof record.data === "object" ? { ...record.data } : {};
+
+    // Message pushes are wake-up hints. Re-check the canonical message and
+    // the recipient's server read cursor before sending; a delayed webhook
+    // must not announce a message that has already been read or hidden.
+    if (type === "message_received") {
+      const messageId = String(record.id ?? recordData.message_id ?? "");
+      const conversationId = String(record.conversation_id ?? recordData.conversation_id ?? "");
+      if (!messageId || !conversationId) {
+        return json({ ok: true, sent: 0, reason: "message_push_missing_identity" });
+      }
+      const { data: currentMessage, error: messageError } = await supabaseAdmin
+        .from("direct_messages")
+        .select("id,conversation_id,sender_id,created_at,deleted_at")
+        .eq("id", messageId)
+        .eq("conversation_id", conversationId)
+        .maybeSingle();
+      if (messageError) {
+        console.error("direct message status lookup failed", messageError);
+        return json({ error: "direct_message_status_lookup_failed" }, 500);
+      }
+      if (!currentMessage || currentMessage.deleted_at !== null ||
+          String(currentMessage.sender_id) === userId) {
+        return json({ ok: true, sent: 0, reason: "message_no_longer_pending" });
+      }
+
+      const { data: membership, error: membershipError } = await supabaseAdmin
+        .from("direct_conversation_members")
+        .select("last_read_at,is_deleted")
+        .eq("conversation_id", conversationId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membershipError) {
+        console.error("direct conversation read cursor lookup failed", membershipError);
+        return json({ error: "direct_message_read_cursor_lookup_failed" }, 500);
+      }
+      if (!membership || membership.is_deleted === true ||
+          (membership.last_read_at != null &&
+           new Date(currentMessage.created_at).getTime() <= new Date(membership.last_read_at).getTime())) {
+        return json({ ok: true, sent: 0, reason: "message_already_read_or_not_visible" });
+      }
+
+      const { data: hiddenMessage, error: hiddenError } = await supabaseAdmin
+        .from("direct_message_hidden_for")
+        .select("message_id")
+        .eq("message_id", messageId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (hiddenError) {
+        console.error("direct message visibility lookup failed", hiddenError);
+        return json({ error: "direct_message_visibility_lookup_failed" }, 500);
+      }
+      if (hiddenMessage) {
+        return json({ ok: true, sent: 0, reason: "message_hidden_for_recipient" });
+      }
+    }
 
     // The SQL webhook is asynchronous: the user may have read or deleted the
     // row before this Edge Function starts. Never send stale push notifications.
@@ -82,7 +138,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: "recipient_lookup_failed" }, 500);
     }
 
-    const recordData = record.data && typeof record.data === "object" ? { ...record.data } : {};
     const isE2eeMessage = type === "e2ee_message_received" ||
       recordData.e2ee === true || recordData.e2ee === "true" ||
       String(recordData.encryption_mode ?? "").toLowerCase() === "e2ee";
@@ -217,7 +272,13 @@ Deno.serve(async (req: Request) => {
       const isIos = String(device.platform ?? "").toLowerCase() === "ios";
       const message: any = { token: device.device_token, data, android: { priority: "HIGH" } };
       if (type === "message_received") {
-        message.apns = { payload: { aps: { "content-available": 1 } } };
+        // Message alerts are time-sensitive. Expire queued wake-ups quickly;
+        // the inbox unread count is reconciled from Supabase on next resume.
+        message.android.ttl = "60s";
+        message.apns = {
+          headers: { "apns-expiration": String(Math.floor(Date.now() / 1000) + 60) },
+          payload: { aps: { "content-available": 1 } },
+        };
       } else if (isIos) {
         // iOS : bloc notification conservé. Android : message data seul, l'app affiche une seule notification locale.
         message.notification = { title, body };
