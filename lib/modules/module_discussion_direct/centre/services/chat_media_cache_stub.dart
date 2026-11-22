@@ -33,8 +33,8 @@ class ChatMediaCachePlatform {
 
   Future<void> _requestPersistentStorage() async {
     // Browser storage is best-effort by default. Ask the browser to protect
-    // IndexedDB from automatic eviction; denial is non-fatal because R2 is
-    // still the durable source of truth.
+    // IndexedDB from automatic eviction: delivered chat objects are deleted
+    // from R2 after this client has durably cached them.
     _persistenceRequest ??= () async {
       try {
         final storage = js_util.getProperty(html.window.navigator, 'storage');
@@ -323,8 +323,8 @@ class ChatMediaCachePlatform {
   Future<void> purgeOldFiles({int days = 14}) async {
     // Message attachments can remain part of a conversation for years.
     // Age-based deletion made old messages lose their local preview. Keep
-    // them until the bounded LRU policy needs space; R2 remains the recovery
-    // source if a browser cache entry is ever missing.
+    // them until the bounded LRU policy needs space; after delivery cleanup,
+    // the browser's persistent copy may be the only remaining media copy.
     try {
       final box = await _openBox();
       await _enforceLimit(box);
