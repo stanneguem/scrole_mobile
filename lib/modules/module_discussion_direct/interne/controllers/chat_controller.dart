@@ -70,6 +70,8 @@ class ChatController extends GetxController {
   Timer? _readDebounce;
   Timer? _recordingTimer;
   Timer? _otherUserTypingTimer;
+  Timer? _localActivityHeartbeat;
+  String? _localActivity;
   final Set<String> _pendingReadIds = {};
   StreamSubscription<Uint8List>? _recordingStreamSub;
   PendingChatMediaWriter? _recordingWriter;
@@ -145,7 +147,7 @@ class ChatController extends GetxController {
       otherUserActivity.value = activity ?? '';
       isOtherUserTyping.value = activity != null;
       if (activity != null) {
-        _otherUserTypingTimer = Timer(const Duration(seconds: 6), () {
+        _otherUserTypingTimer = Timer(const Duration(seconds: 8), () {
           otherUserActivity.value = '';
           isOtherUserTyping.value = false;
         });
@@ -295,11 +297,32 @@ class ChatController extends GetxController {
   }
 
   void _composerChanged() {
-    final active = messageController.text.trim().isNotEmpty;
+    final active = messageController.text.trim().isNotEmpty &&
+        recordingState.value != RecordingState.recording;
     isTyping.value = active;
-    _typingTimer?.cancel();
+    _setLocalActivity(active ? 'typing' : null);
+  }
+
+  /// Publishes state transitions immediately, then refreshes Presence while
+  /// the user remains active. This avoids the old one-shot signal expiring
+  /// while someone is still typing or recording.
+  void _setLocalActivity(String? activity) {
     if (isDraftConversation) return;
-    _typingTimer = Timer(const Duration(milliseconds: 350), () => unawaited(_repository.setTyping(conversationId, active ? 'typing' : null)));
+    if (_localActivity == activity &&
+        (activity == null || _localActivityHeartbeat?.isActive == true)) {
+      return;
+    }
+    _localActivity = activity;
+    _localActivityHeartbeat?.cancel();
+    if (activity == null) {
+      unawaited(_repository.setTyping(conversationId, null));
+      return;
+    }
+    unawaited(_repository.setTyping(conversationId, activity));
+    _localActivityHeartbeat = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_repository.setTyping(conversationId, activity)),
+    );
   }
 
   void _recalculateUnread() {
@@ -552,7 +575,8 @@ class ChatController extends GetxController {
         },
       );
       recordingState.value = RecordingState.recording;
-      if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, 'recording'));
+      isTyping.value = false;
+      _setLocalActivity('recording');
       recordingDuration.value = 0;
       swipeOffset.value = 0;
       _recordingTimer?.cancel();
@@ -580,7 +604,7 @@ class ChatController extends GetxController {
   Future<void> stopRecording() async {
     if (recordingState.value != RecordingState.recording) return;
     _recordingTimer?.cancel();
-    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
+    _setLocalActivity(null);
     try {
       await audioRecorder.stop();
       await _recordingStreamSub?.cancel();
@@ -615,7 +639,7 @@ class ChatController extends GetxController {
 
   Future<void> cancelRecording() async {
     _recordingTimer?.cancel();
-    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
+    _setLocalActivity(null);
     try {
       await audioRecorder.stop();
     } catch (_) {}
@@ -681,8 +705,8 @@ class ChatController extends GetxController {
 
   void toggleEmojiPicker() { showEmojiPicker.value = !showEmojiPicker.value; if (showEmojiPicker.value) FocusManager.instance.primaryFocus?.unfocus(); }
   void toggleReactionPanel() {}
-  void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _typingTimer?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
-  void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null)); }
+  void disposeAudio() { _recordingTimer?.cancel(); _recordingStreamSub?.cancel(); _typingTimer?.cancel(); _localActivityHeartbeat?.cancel(); _readDebounce?.cancel(); _otherUserTypingTimer?.cancel(); _audioSub?.cancel(); audioRecorder.dispose(); audioPlayer.dispose(); }
+  void _stopTyping() { _typingTimer?.cancel(); isTyping.value = false; _setLocalActivity(null); }
   void _showError(String? message) { if (message != null && message.isNotEmpty) Get.snackbar('Message', message); }
 
   @override
@@ -691,7 +715,7 @@ class ChatController extends GetxController {
       unawaited(_repository.stopWatchingConversation(_lastWatchedId!));
     }
     NotificationService.instance.setActiveConversation(null);
-    if (!isDraftConversation) unawaited(_repository.setTyping(conversationId, null));
+    _setLocalActivity(null);
     _messagesSub?.cancel();
     _typingSub?.cancel();
     messageController.removeListener(_composerChanged);
