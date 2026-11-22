@@ -75,7 +75,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     final end = _range.end;
     debugPrint(
       '[STORY][WEB_EXPORT][SOURCE] name=${widget.videoFile.name} '
-      'sourceDurationMs=${duration.inMilliseconds} '
+      'sourceDurationMs=${(source.duration * 1000).round()} '
       'selectedStartMs=${(start * 1000).round()} '
       'selectedEndMs=${(end * 1000).round()}',
     );
