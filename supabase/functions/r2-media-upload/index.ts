@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.728.0";
-import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3.728.0";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.700.0";
+import { getSignedUrl } from "npm:@aws-sdk/s3-request-presigner@3.700.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
