@@ -686,6 +686,12 @@ class _CreateScutCameraScreenState extends State<CreateScutCameraScreen>
                           style: const TextStyle(color: Colors.white),
                         ),
                         const SizedBox(height: 14),
+                        if (kIsWeb)
+                          OutlinedButton.icon(
+                            onPressed: _openGallery,
+                            icon: const Icon(Icons.video_library_outlined),
+                            label: const Text('Choisir une vidéo'),
+                          ),
                         OutlinedButton(
                           onPressed: _initializeCamera,
                           child: const Text('Réessayer'),
