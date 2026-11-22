@@ -19,7 +19,7 @@ const IMAGE_TYPES: Record<string, string> = {
 };
 const VIDEO_TYPES: Record<string, string> = {
   "video/mp4": "mp4",
-  "video/quicktime": "mov",
+  "video/quicktime": "mov",\n  "video/webm": "webm",
 };
 const AUDIO_TYPES: Record<string, string> = {
   "audio/mp4": "m4a", "audio/aac": "aac", "audio/mpeg": "mp3",
@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     for (const key of keys) {
       const parts = key.split("/");
       const filename = parts[parts.length - 1] ?? "";
-      const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov)$/i.test(filename);
+      const validFilename = /^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|webm)$/i.test(filename);
       const userPostKey = !communityId && parts.length === 3 && parts[0] === "posts" && parts[1] === user.id;
       const publicCommunityKey = !!communityId && parts.length === 4 && parts[0] === "communities" && parts[1] === communityId && parts[2] === "posts";
       const privateCommunityKey = !!communityId && parts.length === 6 && parts[0] === "private" && parts[1] === "communities" && parts[2] === communityId && parts[3] === "posts" && parts[4] === user.id;
@@ -212,7 +212,7 @@ Deno.serve(async (req: Request) => {
     const filename = parts[3] ?? "";
     if (parts.length !== 4 || parts[0] !== "messages" ||
         !uuid.test(parts[1] ?? "") || !uuid.test(parts[2] ?? "") ||
-        !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|m4a|aac|mp3|ogg|wav|webm)$/i.test(filename) ||
+        !/^[a-f0-9-]+\.(jpg|jpeg|png|webp|avif|gif|mp4|mov|webm|m4a|aac|mp3|ogg|wav|webm)$/i.test(filename) ||
         key.startsWith("/") || key.includes("..") || key.includes("\\\\")) {
       return reply(400, { error: "invalid_message_media_key" });
     }
@@ -448,8 +448,8 @@ Deno.serve(async (req: Request) => {
   const maxBytes = isVideo ? 100 * 1024 * 1024 : isAudio ? 25 * 1024 * 1024 : 15 * 1024 * 1024;
   if (sizeBytes > maxBytes) return reply(413, { error: "media_size_limit_exceeded", maximum_bytes: maxBytes });
   const duration = Number(body.duration_seconds);
-  if (isVideo && Number.isFinite(duration) && duration > 30) {
-    return reply(400, { error: "video_duration_limit_exceeded", maximum_seconds: 30 });
+  if (isVideo && Number.isFinite(duration) && duration > 60) {
+    return reply(400, { error: "video_duration_limit_exceeded", maximum_seconds: 60 });
   }
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -634,7 +634,7 @@ Deno.serve(async (req: Request) => {
     const encodedKey = key.split("/").map(encodeURIComponent).join("/");
     return reply(200, {
       upload_url: uploadUrl, object_key: key, ...(isPrivateObject ? {} : { public_url: `${publicBaseUrl}/${encodedKey}` }),
-      is_public: !isPrivateObject, content_type: contentType, size_bytes: sizeBytes, expires_in: 300, max_video_duration_seconds: 30,
+      is_public: !isPrivateObject, content_type: contentType, size_bytes: sizeBytes, expires_in: 300, max_video_duration_seconds: 60,
     });
   } catch (error) {
     console.error("[r2-media-upload] signed URL generation failed", error);
