@@ -243,7 +243,7 @@ class ChatMediaCachePlatform {
           'action': 'download-message-media',
           'object_key': objectKey,
         }),
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode < 200 || response.statusCode >= 300) {
         final errorBody = utf8.decode(
           response.bodyBytes.take(500).toList(),
