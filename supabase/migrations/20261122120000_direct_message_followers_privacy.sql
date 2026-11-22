@@ -46,7 +46,7 @@ BEGIN
 
   RETURN false;
 END;
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.can_send_direct_message_to(uuid, uuid) FROM PUBLIC;
@@ -114,7 +114,7 @@ BEGIN
 
   RETURN v_id;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.send_direct_message(p_conversation_id uuid, p_text text DEFAULT NULL::text, p_type text DEFAULT 'text'::text, p_audio_url text DEFAULT NULL::text, p_media_urls text[] DEFAULT '{}'::text[], p_replied_to_id uuid DEFAULT NULL::uuid)
@@ -166,7 +166,7 @@ BEGIN
   WHERE id = p_conversation_id;
   RETURN v_message;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.insert_direct_message(p_message_id uuid, p_conversation_id uuid, p_text text DEFAULT NULL::text, p_type text DEFAULT 'text'::text, p_audio_url text DEFAULT NULL::text, p_media_urls text[] DEFAULT '{}'::text[], p_replied_to_id uuid DEFAULT NULL::uuid)
@@ -214,7 +214,7 @@ BEGIN
   WHERE id = p_conversation_id;
   RETURN v_message;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_external_profile_legacy(p_user_id uuid)
@@ -429,7 +429,7 @@ BEGIN
     'interests', v_interests
   );
 END;
-$function$
+$function$;
 
 
 DROP POLICY IF EXISTS direct_messages_insert_sender_member ON public.direct_messages;
