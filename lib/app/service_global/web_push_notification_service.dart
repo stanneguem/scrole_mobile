@@ -36,7 +36,7 @@ class WebPushNotificationService extends GetxService {
       unawaited(NotificationDeepLinkRouter.open(message.data));
     });
     _tokenRefresh = _messaging.onTokenRefresh.listen((token) {
-      unawaited(_register(token));
+      unawaited(_register(token).then((_) {}));
     });
     try {
       final auth = Get.find<AuthService>();
