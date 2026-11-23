@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:get/get.dart';
 
 import '../../../../app/routes/app_pages.dart';
@@ -48,10 +50,27 @@ abstract final class MainShellMenuItems {
         icon: Icons.info_outline_rounded,
         label: 'drawer_about'.tr,
         color: colors.primary,
-        onTap: () {
+        onTap: () async {
           close();
+          final uri = Uri.parse('https://about.scrole.fun');
+          if (kIsWeb) {
+            // The About site is accessible directly but does not render inside
+            // the Flutter Web iframe. Open it in a browser tab instead.
+            final opened = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (!opened) {
+              Get.snackbar(
+                'drawer_about'.tr,
+                'Impossible d’ouvrir la page. Réessaie dans un instant.',
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            }
+            return;
+          }
           Get.to(() => ExternalWebViewScreen(
-            url: 'https://about.scrole.fun',
+            url: uri.toString(),
             title: 'webview_about_title'.tr,
           ));
         },
