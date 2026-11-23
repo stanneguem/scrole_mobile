@@ -901,8 +901,16 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
         // matching placeholders so the outbox reuses the durable R2 metadata.
         for (var i = 0; i < preUploadedMedia.length; i++) {
           final type = preUploadedMedia[i]['type']?.toString() == 'video' ? 'video' : 'photo';
+          final uploadedUrl = preUploadedMedia[i]['url']?.toString().trim() ?? '';
+          if (uploadedUrl.isEmpty ||
+              !(uploadedUrl.startsWith('https://') || uploadedUrl.startsWith('http://'))) {
+            throw StateError('Le média web ${i + 1} n’a pas d’URL R2 valide.');
+          }
+          // Le processeur outbox reconnaît une URL distante et réutilise
+          // directement le média déjà envoyé depuis le navigateur. Un faux
+          // chemin local provoquait FileNotFound sur les vidéos WebM.
           localMediaPaths.add({
-            'path': 'https://preuploaded.invalid/$postId/$i',
+            'path': uploadedUrl,
             'type': type,
           });
         }
