@@ -73,8 +73,7 @@ class WebPushNotificationService extends GetxService {
       }
       final token = await _messaging.getToken(vapidKey: vapidPublicKey);
       if (token == null || token.isEmpty) return false;
-      await _register(token);
-      return true;
+      return await _register(token);
     } catch (error, stack) {
       debugPrint('[WebPush] Activation failed: $error');
       debugPrint('$stack');
@@ -97,8 +96,8 @@ class WebPushNotificationService extends GetxService {
     }
   }
 
-  Future<void> _register(String token) async {
-    if (Supabase.instance.client.auth.currentUser == null) return;
+  Future<bool> _register(String token) async {
+    if (Supabase.instance.client.auth.currentUser == null) return false;
     try {
       final missed = await _tokens.registerToken(
         token: token,
@@ -136,8 +135,10 @@ class WebPushNotificationService extends GetxService {
         }
       }
       debugPrint('[WebPush] Browser token registered.');
+      return true;
     } catch (error) {
       debugPrint('[WebPush] Token registration failed: $error');
+      return false;
     }
   }
 
