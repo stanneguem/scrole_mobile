@@ -361,8 +361,23 @@ class CommunityOutboxProcessor extends GetxService {
           final cachedMediaList = cachedUploadedMedia is List ? cachedUploadedMedia : <dynamic>[];
           final reusableCount = cachedMediaList.length <= localMediaItems.length ? cachedMediaList.length : 0;
           if (reusableCount > 0) {
-            uploadedMedia = cachedMediaList.take(reusableCount).where((media) => media is Map && media['url'] != null).map((media) => Map<String, dynamic>.from(media as Map)).toList();
-            debugPrint('[POST_CREATE][$postKind] MEDIA_REUSE operationId=$operationId count=${uploadedMedia.length}/${localMediaItems.length} reason=previous_upload_progress');
+            // Keep cache indexes aligned with p_local_media. Filtering invalid
+            // entries with where() used to shift later media onto the wrong slot.
+            for (var cacheIndex = 0; cacheIndex < reusableCount; cacheIndex++) {
+              final rawCached = cachedMediaList[cacheIndex];
+              if (rawCached is! Map || rawCached['url'] == null) break;
+              final cached = Map<String, dynamic>.from(rawCached);
+              final cachedType = cached['type']?.toString() == 'video' ? 'video' : 'photo';
+              final localType = localMediaItems[cacheIndex]['type']?.toString() == 'video' ? 'video' : 'photo';
+              if (cachedType != localType) break;
+              final localPath = (localMediaItems[cacheIndex]['path'] ?? '').toString();
+              if ((localPath.startsWith('http://') || localPath.startsWith('https://')) &&
+                  cached['url']?.toString() != localPath) break;
+              uploadedMedia.add(cached);
+            }
+            if (uploadedMedia.isNotEmpty) {
+              debugPrint('[POST_CREATE][$postKind] MEDIA_REUSE operationId=$operationId count=${uploadedMedia.length}/${localMediaItems.length} reason=previous_upload_progress');
+            }
           }
 
           final supabaseClient = Supabase.instance.client;
@@ -503,7 +518,24 @@ class CommunityOutboxProcessor extends GetxService {
             }
             if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
               if (mediaType == 'video') {
-                throw Exception('Une vidéo locale ne peut pas être une URL distante non vérifiée.');
+                // Le compositeur Web téléverse le Blob vers R2 avant d'insérer
+                // l'outbox. Lors d'une reprise, on doit réutiliser la ligne R2
+                // correspondante, jamais traiter l'URL comme un fichier local.
+                final rawCached = i < cachedMediaList.length ? cachedMediaList[i] : null;
+                final cached = rawCached is Map ? Map<String, dynamic>.from(rawCached) : null;
+                final cachedUrl = cached?['url']?.toString() ?? '';
+                final cachedKey = cached?['object_key']?.toString() ?? '';
+                if (cached == null ||
+                    cachedUrl != localPath ||
+                    cached?['type']?.toString() != 'video' ||
+                    cached?['storage']?.toString() != 'r2' ||
+                    cachedKey.isEmpty) {
+                  throw StateError('La vidéo Web a déjà une URL distante, mais son reçu R2 est absent ou désynchronisé dans l’outbox.');
+                }
+                if (uploadedMedia.length == i) uploadedMedia.add(cached);
+                await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
+                debugPrint('[POST_CREATE][$postKind] WEB_R2_CACHE_REUSE operationId=$operationId index=${i + 1} key=$cachedKey');
+                continue;
               }
               uploadedMedia.add({'type': 'photo', 'storage': 'supabase', 'url': localPath}); // legacy queued remote URL; new local uploads always go to R2
               await _persistUploadedMedia(db, id, payload, uploadedMedia, operationId, postKind);
