@@ -82,13 +82,11 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
   DateTime _lastSeek = DateTime.fromMillisecondsSinceEpoch(0);
 
   double get _totalMs => _videoDuration.inMilliseconds.toDouble();
-  /// Marge de sécurité : on reste 100 ms sous la durée maximale autorisée
-  /// pour ne jamais atteindre la durée maximale autorisée.
-  static const _safetyMarginMs = 100.0;
-  double get _maxMs => math.max(
-    1000.0,
-    widget.maxDuration.inMilliseconds.toDouble() - _safetyMarginMs,
-  );
+  /// Limite exacte, exprimée en millisecondes entières.
+  double get _maxMs => widget.maxDuration.inMilliseconds.toDouble();
+
+  double _clampTrimMs(double value) =>
+      value.round().clamp(0, _totalMs.round()).toDouble();
   double get _minMs => math.min(1000.0, _totalMs);
 
   @override
@@ -368,8 +366,8 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
 
     try {
       await _trimmer.saveTrimmedVideo(
-        startValue: _selectedStartMs,
-        endValue: _selectedEndMs,
+        startValue: _clampTrimMs(_selectedStartMs),
+        endValue: _clampTrimMs(math.min(_selectedEndMs, _selectedStartMs + _maxMs)),
         onSave: (outputPath) {
           if (mounted) setState(() => _isSaving = false);
           if (outputPath != null &&
@@ -429,16 +427,16 @@ class _VideoTrimScreenState extends State<VideoTrimScreen> with WidgetsBindingOb
 
     switch (mode) {
       case _DragMode.start:
-        start = (start + deltaMs).clamp(0.0, end - _minMs).toDouble();
+        start = _clampTrimMs((start + deltaMs).clamp(0.0, end - _minMs).toDouble());
         if (end - start > limit) start = end - limit;
         break;
       case _DragMode.end:
-        end = (end + deltaMs).clamp(start + _minMs, _totalMs).toDouble();
+        end = _clampTrimMs((end + deltaMs).clamp(start + _minMs, _totalMs).toDouble());
         if (end - start > limit) end = start + limit;
         break;
       case _DragMode.move:
         final len = end - start;
-        start = (start + deltaMs).clamp(0.0, _totalMs - len).toDouble();
+        start = _clampTrimMs((start + deltaMs).clamp(0.0, _totalMs - len).toDouble());
         end = start + len;
         break;
     }
