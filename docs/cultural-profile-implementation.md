@@ -1,132 +1,159 @@
-# Profil culturel Scrole — préparation de l'implémentation
+# Profil culturel Scrole — plan de travail
 
 Branche cible : `feature/story-video-post-reshare`
 
-## Décision de périmètre
+## 1. Décision validée et périmètre
 
-Cette première phase livre uniquement le catalogue culturel et le profil culturel :
-- recherche et sélection d'animes, mangas, films et séries ;
-- jusqu'à 5 favoris (Top 5) par catégorie : anime, manga, film, série ;
-- jusqu'à 5 titres en cours au total, avec saison/épisode pour les séries lorsque disponibles ;
-- historique terminé sans limite artificielle ;
-- écran intermédiaire « Éditer mon profil » avec deux entrées : informations du profil et profil culturel ;
-- affichage public des listes culturelles sur le profil.
+La première version du profil culturel couvre **uniquement les animes et les mangas**. Le fournisseur du catalogue est **Jikan API** (`https://api.jikan.moe/v4`), API non officielle donnant accès aux données de MyAnimeList.
 
-Hors périmètre de cette phase : publication Cosplay, classement des cosplayers et règles d'accès communautaires.
+Fonctionnalités prévues :
+- recherche et consultation des fiches anime et manga ;
+- jusqu'à 5 favoris (Top 5) pour les animes et jusqu'à 5 pour les mangas ;
+- jusqu'à 5 titres « En cours » au total, anime et manga confondus ;
+- suivi de progression : épisode pour un anime, chapitre et/ou volume pour un manga, selon les données disponibles ;
+- historique « Terminés » sans limite artificielle ;
+- écran intermédiaire « Éditer mon profil » avec deux choix : informations personnelles et profil culturel ;
+- affichage des listes culturelles sur le profil public, dans le respect de la visibilité du profil.
 
-## Fournisseurs et licences
+Chaque catégorie peut rester vide. L'utilisateur peut modifier ses listes à tout moment.
 
-### Anime et manga
-Jikan (API non officielle MyAnimeList) : `https://api.jikan.moe/v4`.
-Utiliser les endpoints de recherche et de détail pour anime, manga et personnages. Mettre en cache les réponses et appliquer une limitation côté serveur. Jikan n'est pas une source de droits sur les visuels : conserver les URL d'images comme références du fournisseur, sous réserve de ses conditions applicables.
+Hors périmètre explicite de cette phase :
+- films et séries TV ;
+- publication Cosplay et sélection de personnages dans les publications ;
+- classement des cosplayers ;
+- règles d'accès aux communautés fondées sur les goûts culturels.
 
-### Films et séries — TMDB (fournisseur retenu)
+## 2. Fournisseur et précautions
 
-Scrole utilisera **TMDB** pour la recherche et les fiches de films et de séries :
-- API officielle v3/v4 : `https://developer.themoviedb.org/` ;
-- recherche de films et séries via les endpoints `/search/movie` et `/search/tv` ;
-- détails, saisons et épisodes via les endpoints de détails correspondants ;
-- conserver `provider = tmdb` et les identifiants TMDB dans le catalogue unifié.
+### Jikan
 
-**Condition commerciale obligatoire avant la mise en production :** la clé développeur gratuite TMDB est réservée aux usages non commerciaux. TMDB considère un projet comme commercial lorsque son objectif principal est de générer des revenus au bénéfice de son propriétaire. Scrole ayant vocation à intégrer des publicités et des promotions, il faut demander et obtenir une licence commerciale écrite auprès de TMDB avant d'activer ce fournisseur en production. La documentation officielle demande de contacter `[email protected]` et de préciser le pays du projet. Ne pas considérer la clé API gratuite comme une autorisation commerciale.
+- API : `https://api.jikan.moe/v4`
+- Documentation : `https://docs.api.jikan.moe/`
+- Recherche et détails anime/manga via les endpoints Jikan correspondants.
+- Normaliser les réponses dans le modèle interne de Scrole.
+- Respecter les limites de débit, les conditions d'utilisation et les recommandations de cache de Jikan.
+- Jikan est une API non officielle de MyAnimeList : ne pas la présenter comme une API officielle MyAnimeList.
+- Les URL d'images fournies par le catalogue ne constituent pas, à elles seules, une garantie de droits de réutilisation. Vérifier les conditions applicables avant l'affichage en production ; prévoir un visuel de remplacement si une image est indisponible ou ne peut pas être utilisée.
 
-Prévoir dans le budget et le dossier de demande :
-- description de Scrole, de ses fonctionnalités et de son modèle économique (publicités/promotions éventuelles) ;
-- pays d'exploitation et audience estimée ;
-- volume de requêtes, fréquence de synchronisation et stratégie de cache ;
-- supports et emplacements où les données et affiches seront affichées ;
-- tarif, quotas, conditions de stockage/cache et droits d'utilisation des images.
+Aucune clé secrète ne doit être embarquée dans l'application. Les appels externes passent par le serveur Supabase afin de centraliser validation, cache et limitation de débit.
 
-Attribution officielle à intégrer dans « À propos / Crédits », conformément aux exigences TMDB :
-- logo TMDB approuvé, sans le rendre plus visible que la marque Scrole ;
-- mention exacte : « This product uses the TMDB API but is not endorsed or certified by TMDB. »
-- lien vers `https://www.themoviedb.org`.
+## 3. Architecture des données
 
-Les conditions commerciales et les droits sur les images/posters doivent être confirmés dans l'accord écrit. En attendant, l'intégration doit rester désactivée en production ou en mode développement uniquement conformément aux conditions autorisées. Ne pas exposer le token TMDB dans Flutter : le conserver dans les secrets Supabase et appeler TMDB depuis les Edge Functions.
+Réutiliser les tables et modèles existants s'ils couvrent déjà tout ou partie du besoin. Ne créer aucune table en doublon avant l'audit du schéma Supabase.
 
-## Architecture proposée
-
-### Modèle unifié
-
-Une table catalogue normalisée permet de ne pas lier les listes utilisateur à un fournisseur particulier.
+### Catalogue normalisé — proposition
 
 `cultural_media_catalog`
 - `id uuid primary key`
-- `media_type`: `anime | manga | movie | tv_series`
-- `provider`: `jikan | tmdb | manual`
-- `provider_id text`
+- `media_type`: `anime | manga`
+- `provider`: `jikan`
+- `provider_id text` : identifiant Jikan
 - `title`, `original_title`, `synopsis`
-- `poster_url` nullable, `poster_rights_status` nullable
-- `release_year`, `metadata jsonb`
+- `poster_url text nullable`
+- `release_year integer nullable`
+- `metadata jsonb` : genres, statut, format, auteurs, volumes, chapitres, épisodes et autres données utiles
 - `created_at`, `updated_at`
-- contrainte unique (`provider`, `media_type`, `provider_id`)
+- unicité sur (`provider`, `media_type`, `provider_id`)
+
+### Listes des utilisateurs — proposition
 
 `user_cultural_media`
 - `id uuid primary key`
 - `user_id uuid references auth.users`
 - `media_id uuid references cultural_media_catalog`
 - `list_type`: `top_favorite | watching | completed`
-- `rank smallint nullable` (1 à 5 uniquement pour Top 5)
-- `season_number integer nullable`
-- `episode_number integer nullable`
+- `rank smallint nullable` : rang 1 à 5 pour les favoris
+- `progress_episode integer nullable`
+- `progress_chapter integer nullable`
+- `progress_volume integer nullable`
 - `started_at timestamptz nullable`, `completed_at timestamptz nullable`
 - `created_at`, `updated_at`
-- unicité utilisateur/média/liste ; index sur utilisateur, liste et rang.
+- unicité adaptée pour empêcher les doublons dans une même liste.
 
-Contraintes métier :
-- maximum 5 entrées `top_favorite` par utilisateur et par `media_type` ;
-- maximum 5 entrées `watching` par utilisateur, tous types confondus ;
-- aucune limite de nombre pour `completed` ;
-- un titre ne peut pas être simultanément `watching` et `completed` ;
-- le rang Top 5 est unique dans une catégorie pour un utilisateur.
+### Règles métier à faire respecter côté base
 
-Les limites doivent être imposées dans PostgreSQL (fonction transactionnelle/trigger avec verrouillage par utilisateur ou RPC dédiée), pas uniquement dans Flutter. Les règles RLS doivent limiter la modification aux lignes du propriétaire et autoriser la lecture publique selon la visibilité du profil.
+- maximum 5 favoris anime par utilisateur ;
+- maximum 5 favoris manga par utilisateur ;
+- maximum 5 titres en cours par utilisateur, tous types confondus ;
+- historique terminé sans limite ;
+- un même titre ne peut pas être simultanément « En cours » et « Terminé » ;
+- rangs Top 5 uniques et compris entre 1 et 5 dans chaque catégorie ;
+- progression non négative et cohérente avec le type de média.
 
-### Recherche catalogue
+Les limites doivent être garanties côté PostgreSQL par des opérations transactionnelles (RPC et/ou trigger avec verrouillage approprié), pas uniquement par l'interface Flutter. Activer RLS sur les tables exposées. Les utilisateurs ne peuvent modifier que leurs propres listes ; la lecture publique doit respecter la visibilité du profil. Vérifier les politiques existantes avant toute modification.
 
-Créer une couche serveur Supabase Edge Functions :
-- `cultural-catalog-search` : valide le type et la requête, interroge le fournisseur autorisé, normalise les résultats ;
-- `cultural-catalog-details` : récupère/complète les détails d'un titre sélectionné ;
-- cache serveur des réponses et limitation de débit ;
-- clés API conservées dans les secrets Supabase, jamais dans l'application ;
-- identifiants fournisseur conservés pour permettre migration et déduplication ;
-- ne pas aspirer massivement les catalogues : recherche à la demande et cache borné.
+## 4. API serveur Supabase
 
-### Interface Flutter
+Créer, après audit des Edge Functions existantes, les fonctions suivantes ou étendre les fonctions déjà présentes :
 
-1. Transformer l'action « Éditer mon profil » en écran de choix :
-   - « Informations personnelles » : ouvre le parcours existant sans régression ;
-   - « Profil culturel » : ouvre le nouvel éditeur.
-2. Éditeur culturel avec onglets/sections Anime, Manga, Films, Séries.
-3. Dans chaque catégorie : recherche, résultats, ajout au Top 5, réorganisation du Top 5, retrait.
-4. Section « En cours » transversale, maximum cinq titres, progression saison/épisode lorsque disponible.
-5. Section « Déjà vus / terminés » avec ajout et retrait, sans plafond artificiel.
-6. Affichage public compact sur le profil : Top 5 par catégorie, titres en cours et historique consultable avec pagination.
+- `cultural-catalog-search` : valide le type (`anime` ou `manga`) et la requête, appelle Jikan, normalise les résultats et renvoie une liste paginée ;
+- `cultural-catalog-details` : récupère les détails d'un titre sélectionné et met à jour le cache catalogue ;
+- opérations sécurisées de gestion des listes : ajouter, retirer, réordonner les favoris, passer un titre en cours ou terminé, mettre à jour la progression.
 
-## Ordre d'implémentation
+Exigences :
+- cache serveur pour réduire les appels à Jikan ;
+- limitation de débit et gestion des erreurs/temporisations ;
+- déduplication par identifiant Jikan et type de média ;
+- validation stricte des entrées ;
+- aucune clé ou secret dans Flutter ;
+- une panne de Jikan ne doit pas empêcher de consulter les titres déjà enregistrés.
 
-1. Vérifier les écrans profil existants, les conventions GetX, les modèles et le schéma Supabase déjà présents afin de réutiliser les composants.
-2. Obtenir et archiver l'accord commercial TMDB et valider les droits d'affichage des affiches.
-3. Ajouter migration SQL, contraintes, index, RLS et RPC transactionnelles.
-4. Développer les Edge Functions et tests de normalisation/cache/limites.
-5. Développer l'éditeur culturel et l'écran intermédiaire sans casser l'édition actuelle.
-6. Ajouter l'affichage public, pagination et cache local.
-7. Tester Web + Android : limites concurrentes, doublons, suppression, changement de catégorie, profil privé/public, erreurs API et absence d'images.
+## 5. Parcours et écrans Flutter
 
-## Critères d'acceptation
+### A. Hub d'édition du profil
 
-- Un utilisateur peut compléter seulement certaines catégories.
-- Impossible d'enregistrer un sixième favori dans une catégorie ou un sixième titre en cours, même en appelant directement l'API.
-- L'historique terminé n'est pas limité à cinq.
-- Les listes restent intactes après déconnexion/reconnexion et sont visibles sur un autre appareil.
-- Une panne du fournisseur n'empêche pas l'affichage des titres déjà enregistrés.
-- Aucun secret fournisseur n'est embarqué dans le client.
-- Les affiches ne sont affichées que si leur usage est autorisé et traçable.
+Au clic sur « Éditer mon profil », ouvrir un écran de choix :
+1. « Informations personnelles » : reprend exactement le parcours actuel ;
+2. « Profil culturel » : ouvre le nouvel éditeur.
 
-## Prérequis avant activation de TMDB en production
+Ne pas régresser l'édition du profil existante.
 
-Obtenir et archiver :
-- accord/licence commerciale TMDB couvrant explicitement Scrole et son modèle économique ;
-- barème, quotas, SLA et conditions de cache ;
-- droits explicites sur les images/posters ou stratégie sans posters ;
-- règles d'attribution à afficher dans « À propos / Crédits ».
+### B. Éditeur culturel
+
+- Deux sections : Anime et Manga.
+- Recherche avec champ de saisie, chargement, états vides et gestion d'erreur.
+- Résultats avec affiche, titre, année et résumé disponible.
+- Fiche de détail avant ou pendant l'ajout.
+- Gestion du Top 5 : ajouter, retirer et réordonner.
+- Section transversale « En cours » : maximum 5 titres au total.
+- Progression adaptée : épisode pour anime ; chapitre/volume pour manga.
+- Section « Terminés » : historique consultable et sans plafond artificiel.
+- États de chargement, absence d'image, absence de résultat et indisponibilité réseau.
+
+### C. Profil public
+
+Afficher, selon les réglages de confidentialité :
+- Top 5 Anime ;
+- Top 5 Manga ;
+- titres en cours et leur progression ;
+- historique des titres terminés, avec pagination ou chargement progressif.
+
+L'affichage doit rester cohérent avec le thème clair/sombre et le design actuel de Scrole.
+
+## 6. Ordre de réalisation
+
+1. **Audit du projet** : retrouver les routes, écrans, contrôleurs GetX, modèles et composants du profil ; examiner les tables, politiques RLS, RPC et Edge Functions Supabase existantes. Identifier ce qui peut être réutilisé.
+2. **Conception finale des données** : valider le schéma après l'audit, écrire les règles de validation et les cas de migration.
+3. **Backend Supabase** : migration SQL, index, contraintes, RLS et RPC transactionnelles ; vérifier les accès propriétaire/public.
+4. **Intégration Jikan** : Edge Functions de recherche et détail, normalisation, cache, pagination, limitation de débit et tests d'erreurs.
+5. **Éditeur Flutter** : hub « Éditer mon profil », sections Anime/Manga, Top 5, En cours et Terminés.
+6. **Profil public** : affichage des listes, progression et historique paginé.
+7. **Tests et stabilisation** : tests unitaires, intégration Supabase et parcours Web/Android ; corriger les régressions avant livraison.
+
+## 7. Critères d'acceptation
+
+- L'utilisateur peut laisser Anime ou Manga vide.
+- Il ne peut pas dépasser 5 favoris dans une catégorie, ni 5 titres en cours au total, y compris en contournant l'interface.
+- L'historique terminé n'est pas limité à 5.
+- Un titre ne figure pas simultanément dans « En cours » et « Terminé ».
+- La progression anime/manga est correctement enregistrée et restaurée.
+- Les données persistent après déconnexion/reconnexion et sont synchronisées entre appareils.
+- Le profil public respecte les paramètres de confidentialité.
+- Une panne de Jikan ne masque pas les titres déjà enregistrés.
+- Aucun secret serveur n'est présent dans le code Flutter.
+- Les images indisponibles ou non autorisées ont un affichage de remplacement.
+- Les parcours fonctionnent sur Android et sur le Web.
+
+## 8. Première étape à exécuter
+
+Commencer par l'audit du profil Flutter et du schéma Supabase sur la branche cible. À cette étape, ne pas modifier les écrans ni la base : produire l'inventaire des composants réutilisables, des tables et des fonctions existantes, puis arrêter les choix de schéma définitifs avant la migration.
