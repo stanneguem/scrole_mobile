@@ -1864,6 +1864,125 @@ class _WebSelectedVideoPreviewState extends State<_WebSelectedVideoPreview> {
     if (controller.value.isPlaying) { await controller.pause(); } else { await controller.play(); }
     if (mounted) setState(() {});
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final initialized = controller?.value.isInitialized == true;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _togglePlayback,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Colors.black87),
+          if (initialized)
+            FittedBox(
+              fit: BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: controller!.value.size.width,
+                height: controller.value.size.height,
+                child: VideoPlayer(controller),
+              ),
+            )
+          else
+            Center(
+              child: _loading
+                  ? const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.videocam_off_rounded,
+                          color: Colors.white70,
+                          size: 30,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _failed ? 'Aperçu vidéo indisponible' : 'Vidéo prête',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                        if (_failed)
+                          TextButton(
+                            onPressed: _initialize,
+                            child: const Text('Réessayer'),
+                          ),
+                      ],
+                    ),
+            ),
+          if (initialized)
+            Center(
+              child: AnimatedOpacity(
+                opacity: controller!.value.isPlaying ? 0 : 1,
+                duration: const Duration(milliseconds: 150),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.black45,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
+                  SizedBox(width: 4),
+                  Text(
+                    'Vidéo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (widget.uploading)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                backgroundColor: Colors.white24,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _controller?.dispose();
