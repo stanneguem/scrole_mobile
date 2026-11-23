@@ -45,6 +45,13 @@ class WebPushNotificationService extends GetxService {
     return this;
   }
 
+  Future<bool> get isPermissionGranted async {
+    if (!kIsWeb) return false;
+    final settings = await _messaging.getNotificationSettings();
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
+  }
+
   Future<bool> enablePushNotifications() async {
     if (!kIsWeb) return false;
     try {
