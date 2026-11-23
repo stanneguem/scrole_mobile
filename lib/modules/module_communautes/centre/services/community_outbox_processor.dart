@@ -513,8 +513,12 @@ class CommunityOutboxProcessor extends GetxService {
                 if (mediaType == 'video') {
                   final videoDurationMs = (await VideoCompress.getMediaInfo(localPath))?.duration ?? 0;
                   debugPrint('[POST_CREATE][$postKind] VIDEO_DURATION_CHECK operationId=$operationId index=${i + 1} durationMs=${videoDurationMs.round()} durationSeconds=${(videoDurationMs / 1000).toStringAsFixed(3)}');
-                  if (videoDurationMs > const Duration(seconds: 30).inMilliseconds) {
-                    throw StateError('Cette vidéo dépasse 30 secondes. Sélectionne-la à nouveau et découpe-la à 29 secondes maximum avant de publier.');
+                  // Le trim vise 59 s. Certains muxeurs Android ajoutent quelques
+                  // millisecondes de padding audio/vidéo au conteneur final ;
+                  // accepter ce padding tant que le fichier reste <= 60 s.
+                  const maxEncodedPostVideoDurationMs = 60000;
+                  if (videoDurationMs > maxEncodedPostVideoDurationMs) {
+                    throw StateError('Cette vidéo dépasse 60 secondes après découpage. Sélectionne-la à nouveau et ajuste le trim avant de publier.');
                   }
                   final uploaded = await r2MediaRepository.uploadFile(
                     file: file, category: 'post_media', mediaType: 'video',
