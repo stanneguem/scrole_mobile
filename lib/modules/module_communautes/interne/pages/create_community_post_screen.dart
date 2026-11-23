@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:video_player/video_player.dart';
 import 'package:scrole/app/media/media_asset.dart';
 import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'dart:io';
@@ -1020,23 +1019,17 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         );
         if (trimmed == null || !mounted) continue;
         uploadFile = trimmed;
-        VideoPlayerController? probe;
-        try {
-          probe = VideoPlayerController.networkUrl(Uri.parse(uploadFile.path));
-          await probe.initialize().timeout(const Duration(seconds: 30));
-          duration = probe.value.duration;
-        } finally {
-          await probe?.dispose();
-        }
-        // Browser duration metadata can round to the nearest second. The trim UI
-        // targets 59s for headroom, while the actual published file must remain
-        // strictly below 60s; compare milliseconds rather than Duration's
-        // display value to avoid rejecting valid sub-minute clips.
-        const hardMaxVideoDurationMs = 60000;
-        if (duration == null || duration <= Duration.zero || duration.inMilliseconds > hardMaxVideoDurationMs) {
-          Get.snackbar('Vidéo trop longue', 'La vidéo découpée doit durer moins de 60 secondes.');
-          continue;
-        }
+        // WebVideoTrimScreen exporte un XFile.fromData (Blob) : son champ
+        // path n'est pas une URL média fiable pour VideoPlayerController.
+        // Le contrôle de durée est déjà effectué sur le segment exact dans
+        // WebVideoTrimScreen avant l'export. Recharger ce Blob avec
+        // video_player provoquait duration=null et le faux message « vidéo
+        // trop longue », même pour une vidéo de quelques secondes.
+        duration = null;
+        debugPrint(
+          '[POST_COMPOSER][WEB] trimmed video accepted '
+          'name=${uploadFile.name} mime=${uploadFile.mimeType}',
+        );
       }
       try {
         final uploaded = await repository.uploadMediaAsset(
