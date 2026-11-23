@@ -804,6 +804,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             'is_public': uploaded.isPublic,
             'mime_type': uploaded.contentType,
             'size_bytes': uploaded.sizeBytes,
+            if (videoDuration != null) 'duration_seconds': videoDuration.inMilliseconds / 1000,
             if (isVideo) 'thumbnail_unavailable': true,
           };
           debugPrint('[POST_COMPOSER][WEB] PUBLISH_UPLOAD_DONE index=${i + 1} key=${uploaded.objectKey} bytes=${uploaded.sizeBytes}');
