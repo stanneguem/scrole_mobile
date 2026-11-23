@@ -502,6 +502,7 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
   PageRoute<dynamic>? _route;
   bool _isPlaying = false;
   int _generation = 0;
+  String? _playbackUrl;
 
   @override
   void initState() {
@@ -543,11 +544,29 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
   Future<void> _initializePlayer() async {
     if (!mounted || _controller != null) return;
     final generation = ++_generation;
-    final controller = createStoryVideoController(widget.file);
-    _controller = controller;
-    final initialized = _initializeController(controller, generation);
+    final initialized = _initializePlayerFromFile(generation);
     _initialized = initialized;
     if (mounted) setState(() {});
+  }
+
+  Future<void> _initializePlayerFromFile(int generation) async {
+    String? sourceUrl;
+    try {
+      sourceUrl = await resolveStoryVideoPlaybackUrl(widget.file);
+      if (!mounted || generation != _generation) {
+        releaseStoryVideoPlaybackUrl(sourceUrl);
+        return;
+      }
+      final controller = createStoryVideoController(XFile(sourceUrl));
+      _controller = controller;
+      _playbackUrl = sourceUrl;
+      await _initializeController(controller, generation);
+    } catch (error) {
+      if (sourceUrl != null && _playbackUrl != sourceUrl) {
+        releaseStoryVideoPlaybackUrl(sourceUrl);
+      }
+      rethrow;
+    }
   }
 
   Future<void> _initializeController(
@@ -595,6 +614,9 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
       } catch (_) {}
       await controller.dispose();
     }
+    final sourceUrl = _playbackUrl;
+    _playbackUrl = null;
+    if (sourceUrl != null) releaseStoryVideoPlaybackUrl(sourceUrl);
     if (mounted) setState(() {});
   }
 
@@ -617,6 +639,9 @@ class _StoryVideoPreviewState extends State<_StoryVideoPreview>
     _controller = null;
     controller?.removeListener(_onPlayerChanged);
     if (controller != null) unawaited(controller.dispose());
+    final sourceUrl = _playbackUrl;
+    _playbackUrl = null;
+    if (sourceUrl != null) releaseStoryVideoPlaybackUrl(sourceUrl);
     super.dispose();
   }
 
