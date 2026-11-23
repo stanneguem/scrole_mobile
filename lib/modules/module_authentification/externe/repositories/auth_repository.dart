@@ -19,7 +19,10 @@ class AuthRepository {
       await client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb
-            ? 'http://localhost:45265/login-callback'
+            // Utilise l'origine réelle de l'application (scrole.fun en
+            // production, localhost pendant le développement). Supabase
+            // Flutter détecte ensuite le code OAuth sur cette URL.
+            ? Uri.base.origin
             : 'com.scrole.app://login-callback',
       );
       return true;
