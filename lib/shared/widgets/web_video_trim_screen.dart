@@ -27,6 +27,7 @@ class WebVideoTrimScreen extends StatefulWidget {
 
 class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   VideoPlayerController? _preview;
+  html.VideoElement? _captureSource;
   bool _loading = true;
   bool _exporting = false;
   String? _error;
@@ -50,6 +51,18 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       await controller.initialize().timeout(const Duration(seconds: 30));
       final duration = controller.value.duration;
       if (duration <= Duration.zero) throw StateError('Durée vidéo introuvable.');
+
+      // Précharger l'élément HTML d'export pendant l'ouverture de l'écran.
+      // Le clic sur « Terminer » pourra ainsi déclencher play() avant le
+      // premier await et conserver l'autorisation de lecture du navigateur.
+      final captureSource = html.VideoElement()..preload = 'auto';
+      _captureSource = captureSource;
+      final captureMetadata = captureSource.onLoadedMetadata.first;
+      captureSource.src = widget.videoFile.path;
+      await captureMetadata.timeout(const Duration(seconds: 30));
+      if (!captureSource.duration.isFinite || captureSource.duration <= 0) {
+        throw StateError('Durée vidéo introuvable pour l’export.');
+      }
       if (!mounted) return;
       setState(() {
         _duration = duration;
@@ -69,12 +82,13 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   }
 
   Future<XFile> _exportSelection() async {
-    final source = html.VideoElement()
-      ..preload = 'auto'
-      ..muted = false;
-    final metadataLoaded = source.onLoadedMetadata.first;
-    source.src = widget.videoFile.path;
-    await metadataLoaded.timeout(const Duration(seconds: 30));
+    final source = _captureSource;
+    if (source == null || source.readyState < 1) {
+      throw StateError('La vidéo source n’est pas prête pour le découpage.');
+    }
+    source
+      ..muted = false
+      ..pause();
     final startMs = (_range.start * 1000).round();
     final endMs = (_range.end * 1000).round().clamp(startMs, math.min(source.duration * 1000, startMs + widget.maxDuration.inMilliseconds).round());
     final start = startMs / 1000;
@@ -136,9 +150,12 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     try {
       final seekCompleted = source.onSeeked.first;
       source.currentTime = start;
+      // Appeler play() avant tout await conserve l'autorisation déclenchée
+      // par le clic utilisateur sur « Terminer » dans les navigateurs stricts.
+      final playFuture = source.play();
       await seekCompleted.timeout(const Duration(seconds: 15));
+      await playFuture;
       js_util.callMethod<void>(recorder, 'start', <Object?>[250]);
-      await source.play();
       // timeupdate is throttled (often ~250 ms), so waiting for it can record
       // well past the selected out-point. Poll the media clock and stop at the
       // first check at/after the exact millisecond boundary.
@@ -230,6 +247,12 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   @override
   void dispose() {
     _preview?.dispose();
+    final source = _captureSource;
+    if (source != null) {
+      try { source.pause(); } catch (_) {}
+      source.removeAttribute('src');
+      source.load();
+    }
     super.dispose();
   }
 
