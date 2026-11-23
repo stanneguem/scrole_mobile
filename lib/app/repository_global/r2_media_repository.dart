@@ -155,6 +155,7 @@ class R2MediaRepository {
 
     final sizeBytes = await media.length();
     if (sizeBytes <= 0) throw StateError('Le fichier sélectionné est vide.');
+    debugPrint('[R2_UPLOAD][$traceId] START mode=xfile category=$category type=$mediaType extension=$extension mime=$contentType bytes=$sizeBytes communityId=$communityId durationMs=${videoDuration?.inMilliseconds ?? 0}');
 
     final response = await _client.functions.invoke(
       'r2-media-upload',
@@ -200,11 +201,13 @@ class R2MediaRepository {
 
     final client = http.Client();
     try {
+      debugPrint('[R2_UPLOAD][$traceId] PUT_START category=$category key=$objectKey bytes=$sizeBytes contentType=$contentType');
       final sendFuture = client.send(request).timeout(const Duration(minutes: 3));
       await request.sink.addStream(trackedStream);
       await request.sink.close();
       final streamed = await sendFuture;
       final result = await http.Response.fromStream(streamed).timeout(const Duration(seconds: 30));
+      debugPrint('[R2_UPLOAD][$traceId] PUT_RESPONSE status=${result.statusCode} bytesSent=$sentBytes/$sizeBytes category=$category key=$objectKey');
       if (result.statusCode < 200 || result.statusCode >= 300) {
         throw StateError('Échec du téléversement R2 (HTTP ${result.statusCode}).');
       }
