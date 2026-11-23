@@ -40,18 +40,11 @@ Future<Duration> getStoryVideoDuration(XFile file) async {
     ..preload = 'metadata'
     ..src = sourceUrl;
   try {
-    final metadata = Completer<void>();
-    final loaded = video.onLoadedMetadata.first.then((_) {
-      if (!metadata.isCompleted) metadata.complete();
-    });
-    final failed = video.onError.first.then((_) {
-      if (!metadata.isCompleted) {
-        metadata.completeError(StateError('Impossible de lire les métadonnées de la vidéo Web.'));
-      }
-    });
     video.load();
-    await metadata.future.timeout(const Duration(seconds: 30));
-    await Future.wait<void>([loaded, failed].where((_) => false));
+    await Future.any<void>([
+      video.onLoadedMetadata.first.then((_) {}),
+      video.onError.first.then((_) => throw StateError('Impossible de lire les métadonnées de la vidéo Web.')),
+    ]).timeout(const Duration(seconds: 30));
     final seconds = video.duration;
     if (!seconds.isFinite || seconds <= 0) {
       throw StateError('Durée vidéo Web introuvable.');
