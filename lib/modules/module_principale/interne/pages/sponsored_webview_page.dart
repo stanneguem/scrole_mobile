@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:scrole/shared/widgets/webview_iframe.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -26,6 +28,7 @@ class _SponsoredWebViewPageState extends State<SponsoredWebViewPage> {
   void initState() {
     super.initState();
     _currentUrl = widget.url;
+    if (kIsWeb) return;
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -152,7 +155,103 @@ class _SponsoredWebViewPageState extends State<SponsoredWebViewPage> {
   }
 
   @override
+  Widget _buildWebView() {
+    final uri = Uri.tryParse(widget.url);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Page web'),
+        leading: IconButton(
+          tooltip: 'Fermer',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Actualiser',
+            onPressed: () => setState(() => _webReloadKey++),
+            icon: const Icon(Icons.refresh),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Options du navigateur',
+            onSelected: (value) async {
+              switch (value) {
+                case 'browser':
+                  if (uri != null) await _launchExternal(uri);
+                  break;
+                case 'copy':
+                  await Clipboard.setData(ClipboardData(text: widget.url));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Lien copié.')),
+                    );
+                  }
+                  break;
+                case 'share':
+                  if (uri != null) {
+                    await SharePlus.instance.share(ShareParams(uri: uri));
+                  }
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'browser',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.open_in_browser),
+                  title: Text('Ouvrir dans un nouvel onglet'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'copy',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.copy),
+                  title: Text('Copier le lien'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'share',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.share),
+                  title: Text('Partager le lien'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: uri == null || !{'http', 'https'}.contains(uri.scheme)
+          ? const Center(child: Text('Cette adresse web n’est pas valide.'))
+          : Column(
+              children: [
+                Expanded(
+                  child: WebViewIframe(
+                    key: ValueKey(_webReloadKey),
+                    url: uri.toString(),
+                  ),
+                ),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Text(
+                    'Certains sites interdisent leur affichage intégré. '
+                    'Si la page reste blanche, ouvre-la dans un nouvel onglet.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  int _webReloadKey = 0;
+
   Widget build(BuildContext context) {
+    if (kIsWeb) return _buildWebView();
     final theme = Theme.of(context);
     return PopScope(
       canPop: false,
