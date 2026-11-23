@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../modules/module_authentification/centre/services/auth_service.dart';
 import '../../modules/module_notification/externe/repositories/fcm_token_repository.dart';
+import '../../modules/module_notification/centre/services/notification_db_service.dart';
+import '../../modules/module_notification/centre/services/notification_deep_link_router.dart';
 
 /// FCM Web registration. Browser permission is requested only from the
 /// explicit enablePushNotifications() action (never during app startup).
@@ -19,15 +22,18 @@ class WebPushNotificationService extends GetxService {
       FcmTokenRepository(Supabase.instance.client);
   StreamSubscription<String>? _tokenRefresh;
   StreamSubscription<RemoteMessage>? _foreground;
+  StreamSubscription<RemoteMessage>? _opened;
   Worker? _authWorker;
   bool _initialized = false;
 
   Future<WebPushNotificationService> init() async {
     if (!kIsWeb) return this;
     _foreground = FirebaseMessaging.onMessage.listen((message) {
-      // Foreground delivery is synchronized through Supabase Realtime and
-      // the in-app notification centre; do not show a duplicate browser alert.
+      // Foreground notifications are already synchronized by Supabase Realtime.
       debugPrint('[WebPush] Foreground push received: ${message.data['type']}');
+    });
+    _opened = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      unawaited(NotificationDeepLinkRouter.open(message.data));
     });
     _tokenRefresh = _messaging.onTokenRefresh.listen((token) {
       unawaited(_register(token));
@@ -42,6 +48,7 @@ class WebPushNotificationService extends GetxService {
     }
     _initialized = true;
     await _registerExistingPermission();
+    unawaited(_handleBrowserLaunchPayload());
     return this;
   }
 
@@ -93,15 +100,59 @@ class WebPushNotificationService extends GetxService {
   Future<void> _register(String token) async {
     if (Supabase.instance.client.auth.currentUser == null) return;
     try {
-      await _tokens.registerToken(
+      final missed = await _tokens.registerToken(
         token: token,
         platform: 'web',
         deviceBrand: 'Browser',
         deviceModel: defaultTargetPlatform.name,
       );
+      if (Get.isRegistered<NotificationDbService>()) {
+        final db = Get.find<NotificationDbService>();
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          for (final row in missed) {
+            final rawData = row['data'];
+            final data = rawData is Map
+                ? Map<String, dynamic>.from(rawData)
+                : <String, dynamic>{};
+            final id = row['id']?.toString();
+            if (id == null || id.isEmpty) continue;
+            await db.saveNotification(
+              id: id,
+              userId: userId,
+              title: row['title']?.toString() ?? 'Scrole',
+              message: row['body']?.toString() ?? '',
+              type: row['type']?.toString() ?? 'info',
+              payload: jsonEncode({
+                ...data,
+                'type': row['type'] ?? 'info',
+                'notification_id': id,
+                if (row['actor_id'] != null) 'actor_id': row['actor_id'],
+              }),
+              createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+              isRead: row['read_at'] != null,
+            );
+          }
+        }
+      }
       debugPrint('[WebPush] Browser token registered.');
     } catch (error) {
       debugPrint('[WebPush] Token registration failed: $error');
+    }
+  }
+
+  Future<void> _handleBrowserLaunchPayload() async {
+    if (!kIsWeb) return;
+    final encoded = Uri.base.queryParameters['push_data'];
+    if (encoded == null || encoded.isEmpty) return;
+    try {
+      final decoded = jsonDecode(encoded);
+      if (decoded is Map) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        await NotificationDeepLinkRouter.open(Map<String, dynamic>.from(decoded));
+      }
+    } catch (error) {
+      debugPrint('[WebPush] Invalid launch payload: $error');
     }
   }
 
@@ -123,6 +174,7 @@ class WebPushNotificationService extends GetxService {
     _authWorker?.dispose();
     unawaited(_tokenRefresh?.cancel());
     unawaited(_foreground?.cancel());
+    unawaited(_opened?.cancel());
     super.onClose();
   }
 }
