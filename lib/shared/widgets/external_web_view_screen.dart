@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'webview_iframe.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Affiche une page web dans Scrole, sans quitter l'application.
@@ -25,6 +29,7 @@ class _ExternalWebViewScreenState extends State<ExternalWebViewScreen> {
   bool _disposed = false;
   bool _controllerReady = false;
   String? _pageTitle;
+  int _webReloadKey = 0;
 
   Uri? get _initialUri => Uri.tryParse(widget.url);
 
@@ -32,6 +37,12 @@ class _ExternalWebViewScreenState extends State<ExternalWebViewScreen> {
   void initState() {
     super.initState();
     final uri = _initialUri;
+    if (kIsWeb) {
+      if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+        _hasError = true;
+      }
+      return;
+    }
     if (uri == null ||
         (uri.scheme != 'https' && uri.scheme != 'http') ||
         uri.host.isEmpty) {
@@ -121,6 +132,10 @@ class _ExternalWebViewScreenState extends State<ExternalWebViewScreen> {
   }
 
   Future<void> _reload() async {
+    if (kIsWeb) {
+      if (mounted) setState(() => _webReloadKey++);
+      return;
+    }
     final controller = _controller;
     final uri = _initialUri;
     if (_disposed || controller == null || uri == null ||
@@ -148,8 +163,59 @@ class _ExternalWebViewScreenState extends State<ExternalWebViewScreen> {
     super.dispose();
   }
 
+  Widget _buildWebPage(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final uri = _initialUri;
+    final host = uri?.host.replaceFirst(RegExp(r'^www\\.'), '') ?? '';
+    return Scaffold(
+      backgroundColor: colors.surface,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(widget.title ?? 'Page web', maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (host.isNotEmpty)
+              Text(host, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: colors.onSurfaceVariant)),
+          ],
+        ),
+        actions: [
+          IconButton(tooltip: 'Actualiser', onPressed: _reload, icon: const Icon(Icons.refresh_rounded)),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (uri == null) return;
+              switch (value) {
+                case 'browser':
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  break;
+                case 'copy':
+                  await Clipboard.setData(ClipboardData(text: uri.toString()));
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lien copié.')));
+                  break;
+                case 'share':
+                  await SharePlus.instance.share(ShareParams(uri: uri));
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'browser', child: ListTile(dense: true, leading: Icon(Icons.open_in_browser), title: Text('Ouvrir dans un nouvel onglet'))),
+              PopupMenuItem(value: 'copy', child: ListTile(dense: true, leading: Icon(Icons.copy), title: Text('Copier le lien'))),
+              PopupMenuItem(value: 'share', child: ListTile(dense: true, leading: Icon(Icons.share), title: Text('Partager le lien'))),
+            ],
+          ),
+        ],
+      ),
+      body: uri == null || !{'http', 'https'}.contains(uri.scheme) || uri.host.isEmpty
+          ? const Center(child: Text('Cette adresse web n’est pas valide.'))
+          : WebViewIframe(key: ValueKey(_webReloadKey), url: uri.toString()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) return _buildWebPage(context);
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final uri = _initialUri;
