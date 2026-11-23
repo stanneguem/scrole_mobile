@@ -779,12 +779,17 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           if (existingUrl.startsWith('https://') || existingUrl.startsWith('http://')) continue;
 
           final isVideo = _webSelectedIsVideo[i];
-          debugPrint('[POST_COMPOSER][WEB] PUBLISH_UPLOAD_START index=${i + 1} type=${isVideo ? 'video' : 'photo'}');
+          final videoDuration = isVideo ? await getStoryVideoDuration(draftFile) : null;
+          if (videoDuration != null && videoDuration > maxPostVideoDuration) {
+            throw StateError('La vidéo dépasse 59 secondes après découpage.');
+          }
+          debugPrint('[POST_COMPOSER][WEB] PUBLISH_UPLOAD_START index=${i + 1} type=${isVideo ? 'video' : 'photo'} bytes=${await draftFile.length()} durationMs=${videoDuration?.inMilliseconds ?? 0} extension=${MediaAsset.fromXFile(draftFile).extension}');
           final uploaded = await repository.uploadMediaAsset(
             media: MediaAsset.fromXFile(draftFile),
             category: 'post_media',
             mediaType: isVideo ? 'video' : 'image',
             communityId: widget.communityId,
+            videoDuration: videoDuration,
           );
           newlyUploadedWebKeys.add(uploaded.objectKey);
           final publicUrl = uploaded.publicUrl?.trim() ?? '';
