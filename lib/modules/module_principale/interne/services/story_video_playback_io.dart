@@ -105,13 +105,10 @@ Future<VideoPlayerController> createStoryPlaybackController({
     if (url.isEmpty) throw StateError('URL de lecture de la vidéo absente.');
   }
 
-  // A story must be fully downloaded before playback starts. Starting an
-  // ExoPlayer network stream here can expose only the first buffered segment
-  // when the connection/CDN interrupts a later range request. Stories are
-  // limited to 60 seconds, so prefer a complete local file over progressive
-  // playback and keep playback independent from network fluctuations.
-  debugPrint('[STORY][ANDROID] Downloading complete story before playback story=$storyId');
-  final downloadedBytes = await _downloadStoryVideoToCache(
+  // Start playback immediately through the network data source. In parallel,
+  // download the complete object into a temporary file; only a verified,
+  // finished download is promoted to the durable cache for the next opening.
+  unawaited(_downloadStoryVideoToCache(
     url: url,
     storyId: storyId,
     partialFile: partialFile,
@@ -119,9 +116,12 @@ Future<VideoPlayerController> createStoryPlaybackController({
     sizeFile: sizeFile,
     expiryFile: expiryFile,
     expiresAt: expiry,
+  ));
+  debugPrint(
+    '[STORY][ANDROID][STREAM_START] story=$storyId '
+    'cacheDownload=background',
   );
-  debugPrint('[STORY][ANDROID][READY] story=$storyId bytes=$downloadedBytes source=local');
-  return VideoPlayerController.file(videoFile);
+  return VideoPlayerController.networkUrl(Uri.parse(url));
 }
 
 Future<int> _downloadStoryVideoToCache({
