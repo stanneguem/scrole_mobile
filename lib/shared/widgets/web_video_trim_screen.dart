@@ -18,7 +18,7 @@ class WebVideoTrimScreen extends StatefulWidget {
   const WebVideoTrimScreen({
     super.key,
     required this.videoFile,
-    this.maxDuration = const Duration(seconds: 60),
+    this.maxDuration = const Duration(seconds: 59),
   });
 
   @override
@@ -76,7 +76,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     source.src = widget.videoFile.path;
     await metadataLoaded.timeout(const Duration(seconds: 30));
     final startMs = (_range.start * 1000).round();
-    final endMs = (_range.end * 1000).round().clamp(startMs, widget.maxDuration.inMilliseconds);
+    final endMs = (_range.end * 1000).round().clamp(startMs, math.min(source.duration * 1000, startMs + widget.maxDuration.inMilliseconds).round());
     final start = startMs / 1000;
     final end = endMs / 1000;
     debugPrint(
@@ -274,7 +274,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       start = (start + delta).clamp(0.0, end - 0.1).toDouble();
       if (end - start > max) start = end - max;
     } else if (_dragHandle == 1) {
-      end = (end + delta).clamp(start + 0.1, total).toDouble();
+      end = (end + delta).clamp(start + 0.1, math.min(total, start + max)).toDouble();
       if (end - start > max) end = start + max;
     } else if (_dragHandle == 2) {
       final length = end - start;
@@ -282,7 +282,7 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       end = start + length;
     }
     final startMs = (start * 1000).round();
-    final endMs = (end * 1000).round().clamp(startMs, widget.maxDuration.inMilliseconds);
+    final endMs = (end * 1000).round().clamp(startMs, math.min(_duration.inMilliseconds, startMs + widget.maxDuration.inMilliseconds).round());
     setState(() => _range = RangeValues(startMs / 1000, endMs / 1000));
     _preview?.seekTo(Duration(milliseconds: (start * 1000).round()));
   }
