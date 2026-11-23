@@ -42,3 +42,19 @@ Future<XFile?> createStoryVideoThumbnail(XFile file) async {
   );
   return await thumbnail.exists() ? XFile(thumbnail.path) : null;
 }
+
+Future<String> resolveStoryVideoPlaybackUrl(XFile file) async => file.path;
+
+void releaseStoryVideoPlaybackUrl(String url) {}
+
+Future<Duration> getStoryVideoDuration(XFile file) async {
+  final controller = createStoryVideoController(file);
+  try {
+    await controller.initialize().timeout(const Duration(seconds: 30));
+    final duration = controller.value.duration;
+    if (duration <= Duration.zero) throw StateError('Durée vidéo introuvable.');
+    return duration;
+  } finally {
+    await controller.dispose();
+  }
+}
