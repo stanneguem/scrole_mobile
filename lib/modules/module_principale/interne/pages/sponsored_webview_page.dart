@@ -154,7 +154,6 @@ class _SponsoredWebViewPageState extends State<SponsoredWebViewPage> {
     return true;
   }
 
-  @override
   Widget _buildWebView() {
     final uri = Uri.tryParse(widget.url);
     return Scaffold(
@@ -250,6 +249,7 @@ class _SponsoredWebViewPageState extends State<SponsoredWebViewPage> {
 
   int _webReloadKey = 0;
 
+  @override
   Widget build(BuildContext context) {
     if (kIsWeb) return _buildWebView();
     final theme = Theme.of(context);
