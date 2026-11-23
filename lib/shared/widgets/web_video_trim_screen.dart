@@ -54,8 +54,12 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       setState(() {
         _duration = duration;
         final max = widget.maxDuration.inMilliseconds / 1000;
-        _range = RangeValues(0, duration.inMilliseconds / 1000 < max
-            ? duration.inMilliseconds / 1000 : max);
+        final durationMs = duration.inMilliseconds;
+        final maxMs = widget.maxDuration.inMilliseconds;
+        _range = RangeValues(
+          0,
+          (durationMs < maxMs ? durationMs : maxMs) / 1000,
+        );
         _loading = false;
       });
       unawaited(_loadTimelineThumbnails());
@@ -71,8 +75,10 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
     final metadataLoaded = source.onLoadedMetadata.first;
     source.src = widget.videoFile.path;
     await metadataLoaded.timeout(const Duration(seconds: 30));
-    final start = _range.start;
-    final end = _range.end;
+    final startMs = (_range.start * 1000).round();
+    final endMs = (_range.end * 1000).round().clamp(startMs, widget.maxDuration.inMilliseconds);
+    final start = startMs / 1000;
+    final end = endMs / 1000;
     debugPrint(
       '[STORY][WEB_EXPORT][SOURCE] name=${widget.videoFile.name} '
       'sourceDurationMs=${(source.duration * 1000).round()} '
@@ -256,7 +262,8 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
   void _updateTrimFromDrag(double dx) {
     final total = _duration.inMilliseconds / 1000;
     if (total <= 0) return;
-    final delta = dx / _timelineWidth * total;
+    final deltaMs = (dx / _timelineWidth * total * 1000).round();
+    final delta = deltaMs / 1000;
     final max = widget.maxDuration.inMilliseconds / 1000;
     var start = _range.start;
     var end = _range.end;
@@ -271,7 +278,9 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       start = (start + delta).clamp(0.0, total - length).toDouble();
       end = start + length;
     }
-    setState(() => _range = RangeValues(start, end));
+    final startMs = (start * 1000).round();
+    final endMs = (end * 1000).round().clamp(startMs, widget.maxDuration.inMilliseconds);
+    setState(() => _range = RangeValues(startMs / 1000, endMs / 1000));
     _preview?.seekTo(Duration(milliseconds: (start * 1000).round()));
   }
 
