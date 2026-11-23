@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:html' as html;
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
