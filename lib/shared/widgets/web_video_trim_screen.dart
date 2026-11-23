@@ -139,8 +139,11 @@ class _WebVideoTrimScreenState extends State<WebVideoTrimScreen> {
       await seekCompleted.timeout(const Duration(seconds: 15));
       js_util.callMethod<void>(recorder, 'start', <Object?>[250]);
       await source.play();
+      // timeupdate is throttled (often ~250 ms), so waiting for it can record
+      // well past the selected out-point. Poll the media clock and stop at the
+      // first check at/after the exact millisecond boundary.
       while (source.currentTime < end && !source.ended) {
-        await source.onTimeUpdate.first.timeout(const Duration(seconds: 2));
+        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
       source.pause();
       js_util.callMethod<void>(recorder, 'stop', <Object?>[]);
