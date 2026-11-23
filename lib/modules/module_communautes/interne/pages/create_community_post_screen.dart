@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:scrole/app/media/media_asset.dart';
+import 'package:scrole/modules/module_principale/interne/services/story_media_platform.dart';
 import 'package:video_player/video_player.dart';
 import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'dart:io';
@@ -1801,41 +1802,54 @@ class _WebSelectedVideoPreview extends StatefulWidget {
 class _WebSelectedVideoPreviewState extends State<_WebSelectedVideoPreview> {
   VideoPlayerController? _controller;
   String? _source;
+  String? _ownedBlobUrl;
   bool _loading = true;
   bool _failed = false;
-  String? get _playbackSource {
+  String? get _remoteSource {
     final remote = widget.url?.trim();
-    if (remote != null && remote.startsWith('http')) return remote;
-    final local = widget.file?.path.trim();
-    if (local != null && (local.startsWith('blob:') || local.startsWith('http'))) return local;
-    return null;
+    return remote != null && (remote.startsWith('http://') || remote.startsWith('https://'))
+        ? remote : null;
   }
   @override
   void initState() { super.initState(); _initialize(); }
   @override
   void didUpdateWidget(covariant _WebSelectedVideoPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_playbackSource != _source) _initialize();
+    if (_remoteSource != _source && _remoteSource != null) _initialize();
   }
   Future<void> _initialize() async {
-    final source = _playbackSource;
-    if (source == null) { if (mounted) setState(() { _loading = false; _failed = true; }); return; }
     final previous = _controller;
     _controller = null;
-    _source = source;
+    final previousBlob = _ownedBlobUrl;
+    _ownedBlobUrl = null;
     await previous?.dispose();
+    if (previousBlob != null) releaseStoryVideoPlaybackUrl(previousBlob);
     if (!mounted) return;
     setState(() { _loading = true; _failed = false; });
-    final controller = VideoPlayerController.networkUrl(Uri.parse(source));
-    _controller = controller;
     try {
+      final remote = _remoteSource;
+      final file = widget.file;
+      if (remote == null && file == null) throw StateError('Fichier vidéo absent du brouillon.');
+      final source = remote ?? await resolveStoryVideoPlaybackUrl(file!);
+      if (!mounted) {
+        if (remote == null && source.startsWith('blob:') && source != file!.path) {
+          releaseStoryVideoPlaybackUrl(source);
+        }
+        return;
+      }
+      _source = source;
+      if (remote == null && source.startsWith('blob:') && source != file!.path) {
+        _ownedBlobUrl = source;
+      }
+      final controller = VideoPlayerController.networkUrl(Uri.parse(source));
+      _controller = controller;
       await controller.initialize().timeout(const Duration(seconds: 25));
       await controller.setLooping(true);
       if (!mounted || _controller != controller) { await controller.dispose(); return; }
       setState(() => _loading = false);
     } catch (error) {
       debugPrint('[POST_COMPOSER][WEB_PREVIEW] initialization failed: $error');
-      if (mounted && _controller == controller) setState(() { _loading = false; _failed = true; });
+      if (mounted) setState(() { _loading = false; _failed = true; });
     }
   }
   Future<void> _togglePlayback() async {
@@ -1845,27 +1859,10 @@ class _WebSelectedVideoPreviewState extends State<_WebSelectedVideoPreview> {
     if (mounted) setState(() {});
   }
   @override
-  void dispose() { _controller?.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    final controller = _controller;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _togglePlayback,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (controller != null && controller.value.isInitialized)
-            FittedBox(fit: BoxFit.cover, child: SizedBox(width: controller.value.size.width, height: controller.value.size.height, child: VideoPlayer(controller)))
-          else
-            const ColoredBox(color: Colors.black87),
-          Center(child: _loading
-              ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Icon(_failed ? Icons.videocam_off_rounded : (controller?.value.isPlaying == true ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded), color: Colors.white, size: 48)),
-          if (widget.uploading)
-            const Positioned(left: 8, bottom: 8, child: Text('Envoi…', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600))),
-        ],
-      ),
-    );
+  void dispose() {
+    _controller?.dispose();
+    final blobUrl = _ownedBlobUrl;
+    if (blobUrl != null) releaseStoryVideoPlaybackUrl(blobUrl);
+    super.dispose();
   }
 }
