@@ -7,7 +7,7 @@ const int maxPostMedia = 20;
 const int maxPostPhotos = 20;
 
 /// Maximum duration accepted for videos attached to feed and community posts.
-const Duration maxPostVideoDuration = Duration(seconds: 60);
+const Duration maxPostVideoDuration = Duration(seconds: 59);
 
 /// Maximum duration accepted for story videos.
-const Duration maxStoryVideoDuration = Duration(seconds: 60);
+const Duration maxStoryVideoDuration = Duration(seconds: 59);
