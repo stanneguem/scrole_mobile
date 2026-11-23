@@ -144,9 +144,7 @@ Future<int> _downloadStoryVideoToCache({
         // Always request the complete object, never a byte range. Identity
         // encoding keeps Content-Length comparable to bytes written to disk.
         final request = http.Request('GET', Uri.parse(url))
-          ..headers['accept-encoding'] = 'identity'
-          ..headers['range'] = '';
-        request.headers.remove('range');
+          ..headers['accept-encoding'] = 'identity';
         final streamed = await client.send(request).timeout(
           const Duration(minutes: 4),
         );
