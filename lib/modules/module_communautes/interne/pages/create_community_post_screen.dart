@@ -71,7 +71,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   final List<XFile?> _webSelectedFiles = [];
   final List<Map<String, dynamic>> _webUploadedMedia = [];
   final List<bool> _webSelectedIsVideo = [];
-  bool _webMediaUploading = false;
   List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
   List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
@@ -135,6 +134,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       widget.sharedPost != null ||
       _textController.text.trim().isNotEmpty ||
       _selectedMedia.isNotEmpty ||
+      _webSelectedFiles.isNotEmpty ||
       _webUploadedMedia.isNotEmpty ||
       (_prefilledUrl != null && _prefilledUrl!.isNotEmpty) ||
       _pollData != null;
@@ -722,10 +722,6 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
-    if (_webMediaUploading || _webUploadedMedia.any((m) => m['uploading'] == true)) {
-      Get.snackbar('Envoi en cours', 'Attends la fin du téléversement de la vidéo avant de publier.');
-      return;
-    }
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
 
@@ -1064,13 +1060,16 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   }
 
   Future<void> _handleWebGallerySelection(List<XFile> files) async {
-    final repository = R2MediaRepository();
+    // Comme sur Android, la sélection et le recadrage ne font que préparer
+    // un brouillon local dans le compositeur. Aucun appel R2 ici.
     for (final picked in files) {
       if (!mounted || _selectedMediaCount >= maxPostMedia) break;
       final isVideo = _isVideoSelection(picked);
-      if (!isVideo && _selectedPhotoCount >= maxPostPhotos) continue;
-      XFile uploadFile = picked;
-      Duration? duration;
+      if (!isVideo && _selectedPhotoCount >= maxPostPhotos) {
+        Get.snackbar('post_composer_photo_limit_title'.tr, 'post_composer_photo_limit_message'.trParams({'max': '$maxPostPhotos'}));
+        continue;
+      }
+      XFile draftFile = picked;
       if (isVideo) {
         final trimmed = await trimVideoForWeb(
           context,
@@ -1078,67 +1077,15 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           maxDuration: maxPostVideoDuration,
         );
         if (trimmed == null || !mounted) continue;
-        uploadFile = trimmed;
-        duration = null; // Durée déjà validée dans l'écran de trim.
+        draftFile = trimmed;
       }
-      int? reservedWebIndex;
-      if (isVideo) {
-        setState(() {
-          reservedWebIndex = _webSelectedFiles.length;
-          _webSelectedFiles.add(uploadFile);
-          _webSelectedIsVideo.add(true);
-          _webUploadedMedia.add({'type': 'video', 'uploading': true});
-          _webMediaUploading = true;
-          _prefilledUrl = null;
-        });
-      }
-      try {
-        final uploaded = await repository.uploadMediaAsset(
-          media: MediaAsset.fromXFile(uploadFile),
-          category: 'post_media',
-          mediaType: isVideo ? 'video' : 'image',
-          communityId: widget.communityId,
-          videoDuration: duration,
-        );
-        if (uploaded.publicUrl == null || uploaded.publicUrl!.isEmpty || !uploaded.isPublic) {
-          throw StateError('R2 n’a pas retourné une URL publique pour ce média.');
-        }
-        if (!mounted) return;
-        setState(() {
-          final mediaData = <String, dynamic>{
-            'type': isVideo ? 'video' : 'photo',
-            'storage': 'r2',
-            'url': uploaded.publicUrl,
-            'object_key': uploaded.objectKey,
-            'is_public': uploaded.isPublic,
-            'mime_type': uploaded.contentType,
-            'size_bytes': uploaded.sizeBytes,
-            if (isVideo) 'thumbnail_unavailable': true,
-            if (duration != null) 'duration_seconds': duration.inMilliseconds / 1000,
-          };
-          if (reservedWebIndex != null && reservedWebIndex! < _webUploadedMedia.length) {
-            _webUploadedMedia[reservedWebIndex!] = mediaData;
-          } else {
-            _webSelectedFiles.add(uploadFile);
-            _webSelectedIsVideo.add(isVideo);
-            _webUploadedMedia.add(mediaData);
-          }
-          _webMediaUploading = _webUploadedMedia.any((m) => m['uploading'] == true);
-        });
-      } catch (error, stack) {
-        debugPrint('[POST_COMPOSER][WEB] upload failed: $error\\n$stack');
-        if (mounted) {
-          setState(() {
-            if (reservedWebIndex != null && reservedWebIndex! < _webSelectedFiles.length) {
-              _webSelectedFiles.removeAt(reservedWebIndex!);
-              _webSelectedIsVideo.removeAt(reservedWebIndex!);
-              _webUploadedMedia.removeAt(reservedWebIndex!);
-            }
-            _webMediaUploading = _webUploadedMedia.any((m) => m['uploading'] == true);
-          });
-          Get.snackbar('Ajout du média impossible', error.toString());
-        }
-      }
+      if (!mounted) return;
+      setState(() {
+        _webSelectedFiles.add(draftFile);
+        _webSelectedIsVideo.add(isVideo);
+        _webUploadedMedia.add({'type': isVideo ? 'video' : 'photo', 'draft': true});
+        _prefilledUrl = null;
+      });
     }
   }
 
@@ -1614,7 +1561,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: webIsVideo
-                                        ? _WebSelectedVideoPreview(file: webFile, url: _webUploadedMedia[webIndex]['url']?.toString(), uploading: _webUploadedMedia[webIndex]['uploading'] == true)
+                                        ? _WebSelectedVideoPreview(file: webFile, url: _webUploadedMedia[webIndex]['url']?.toString(), uploading: false)
                                         : webFile == null
                                             ? const ColoredBox(color: Colors.black87)
                                             : FutureBuilder<Uint8List>(
