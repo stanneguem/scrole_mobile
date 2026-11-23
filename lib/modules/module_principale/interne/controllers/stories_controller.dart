@@ -438,13 +438,11 @@ class StoriesController extends GetxController {
     if ((kind == 'image' || kind == 'video') && fileToUpload != null) {
       try {
         if (kind == 'video') {
-          final videoController = createStoryVideoController(fileToUpload);
-          try {
-            await videoController.initialize().timeout(const Duration(seconds: 30));
-            final duration = videoController.value.duration;
-            if (duration <= Duration.zero) {
-              throw StateError('Impossible de déterminer la durée de la vidéo.');
-            }
+          // Sur Web, le trim retourne un XFile.fromData en mémoire :
+          // son path peut être vide. Le helper plateforme lit les métadonnées
+          // depuis les octets/Blob au lieu de supposer un chemin fichier.
+          final duration = await getStoryVideoDuration(fileToUpload);
+          {
             if (duration > maxStoryVideoDuration) {
               Get.snackbar(
                 'post_composer_attention'.tr,
@@ -487,8 +485,6 @@ class StoriesController extends GetxController {
             );
             imageUrl = uploaded.objectKey;
             debugPrint('[STORY][UPLOAD][SUCCESS] story=$pId bytes=$sourceBytes contentType=${uploaded.contentType}');
-          } finally {
-            await videoController.dispose();
           }
         } else {
         debugPrint('[STORY] [Controller] Compressing story image...');
