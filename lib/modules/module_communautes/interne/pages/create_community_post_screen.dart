@@ -953,6 +953,15 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             borderRadius: 16,
           );
         }
+      } else if (webComposerClosed) {
+        Get.snackbar(
+          isOffline ? 'Connexion interrompue' : 'Publication non confirmée',
+          isOffline
+              ? 'Le téléversement a été interrompu. Rouvre Scrole et réessaie de publier.'
+              : e.toString().replaceFirst('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 6),
+        );
       }
     }
   }
