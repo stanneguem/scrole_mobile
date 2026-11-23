@@ -27,7 +27,7 @@ class VideoTrimScreen extends StatefulWidget {
   const VideoTrimScreen({
     super.key,
     required this.videoFile,
-    this.maxDuration = const Duration(seconds: 60),
+    this.maxDuration = const Duration(seconds: 59),
   });
 
   @override
