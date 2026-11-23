@@ -7,6 +7,7 @@ import '../../../module_creation_de_compte/centre/services/user_service.dart';
 import '../../../module_notification/externe/repositories/fcm_token_repository.dart';
 import '../../../../app/service_global/notification_service.dart';
 import '../../../../app/service_global/firebase_monitoring_service.dart';
+import '../../../../app/service_global/web_push_notification_service.dart';
 import '../../../../app/local_storage/scut_video_cache.dart';
 import '../../externe/repositories/auth_repository.dart';
 
@@ -109,13 +110,22 @@ class AuthService extends GetxService {
   Future<void> signOut() async {
     try {
       isLoading.value = true;
-      final token = await NotificationService.instance.getDeviceToken();
-      if (token != null) {
+      if (kIsWeb) {
         try {
-          // Désactiver le token sur le serveur avant de se déconnecter
-          await _fcmTokenRepository.unregisterToken(token);
+          if (Get.isRegistered<WebPushNotificationService>()) {
+            await Get.find<WebPushNotificationService>().disablePushNotifications();
+          }
         } catch (e) {
-          if (kDebugMode) print('Erreur désactivation device push: $e');
+          if (kDebugMode) print('Erreur désactivation push Web: $e');
+        }
+      } else {
+        final token = await NotificationService.instance.getDeviceToken();
+        if (token != null) {
+          try {
+            await _fcmTokenRepository.unregisterToken(token);
+          } catch (e) {
+            if (kDebugMode) print('Erreur désactivation device push: $e');
+          }
         }
       }
 
