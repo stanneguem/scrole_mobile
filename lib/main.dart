@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,6 +18,8 @@ import 'package:scrole/app/repository_global/centre_interets_repository.dart';
 import 'package:scrole/app/service_global/language_service.dart';
 import 'package:scrole/app/service_global/notification_service.dart';
 import 'package:scrole/app/service_global/web_realtime_notification_service.dart';
+import 'package:scrole/app/service_global/web_push_notification_service.dart';
+import 'package:scrole/firebase_options.dart';
 import 'package:scrole/app/service_global/app_config_service.dart';
 import 'package:scrole/app/service_global/app_deep_link_service.dart';
 import 'package:scrole/app/service_global/connectivity_service.dart';
@@ -60,6 +63,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialiser Crashlytics avant le bootstrap pour capturer aussi les erreurs
   // qui surviennent pendant le chargement des services et de Supabase.
+  if (kIsWeb) {
+    try {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    } catch (error) {
+      debugPrint('[FirebaseWeb] Initialisation impossible: $error');
+    }
+  }
   await FirebaseMonitoringService.initialize();
 
   // Register Android App Links before the heavier bootstrap work. On a cold
@@ -281,6 +291,10 @@ Future<void> _initDeferred() async {
     if (kIsWeb) {
       await Get.putAsync<WebRealtimeNotificationService>(
         () => WebRealtimeNotificationService().init(),
+        permanent: true,
+      );
+      await Get.putAsync<WebPushNotificationService>(
+        () => WebPushNotificationService().init(),
         permanent: true,
       );
     } else {
