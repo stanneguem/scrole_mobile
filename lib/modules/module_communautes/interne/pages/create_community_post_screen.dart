@@ -765,7 +765,47 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
+    final webMediaForPublish = _webUploadedMedia
+        .map((media) => Map<String, dynamic>.from(media))
+        .toList();
+
     try {
+      // Le téléversement Web commence uniquement après le clic sur Partager.
+      // Jusque-là, les XFile restent des brouillons locaux comme les File Android.
+      if (kIsWeb && _webSelectedFiles.isNotEmpty) {
+        final repository = R2MediaRepository();
+        for (var i = 0; i < _webSelectedFiles.length; i++) {
+          final draftFile = _webSelectedFiles[i];
+          if (draftFile == null) continue; // Média pré-téléversé fourni par un partage.
+          final existingUrl = webMediaForPublish[i]['url']?.toString().trim() ?? '';
+          if (existingUrl.startsWith('https://') || existingUrl.startsWith('http://')) continue;
+
+          final isVideo = _webSelectedIsVideo[i];
+          debugPrint('[POST_COMPOSER][WEB] PUBLISH_UPLOAD_START index=${i + 1} type=${isVideo ? 'video' : 'photo'}');
+          final uploaded = await repository.uploadMediaAsset(
+            media: MediaAsset.fromXFile(draftFile),
+            category: 'post_media',
+            mediaType: isVideo ? 'video' : 'image',
+            communityId: widget.communityId,
+          );
+          final publicUrl = uploaded.publicUrl?.trim() ?? '';
+          if (publicUrl.isEmpty || !uploaded.isPublic) {
+            throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour le média ${i + 1}.');
+          }
+          webMediaForPublish[i] = {
+            'type': isVideo ? 'video' : 'photo',
+            'storage': 'r2',
+            'url': publicUrl,
+            'object_key': uploaded.objectKey,
+            'is_public': uploaded.isPublic,
+            'mime_type': uploaded.contentType,
+            'size_bytes': uploaded.sizeBytes,
+            if (isVideo) 'thumbnail_unavailable': true,
+          };
+          debugPrint('[POST_COMPOSER][WEB] PUBLISH_UPLOAD_DONE index=${i + 1} key=${uploaded.objectKey} bytes=${uploaded.sizeBytes}');
+        }
+      }
+
       await service.createCommunityPost(
         requestedPostId: postId,
         eventId: _selectedEvent?['id']?.toString(),
@@ -783,7 +823,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         mentions: mentionsList,
         poll: _pollData,
         allowPromotion: isCommunity ? _allowPromotion : true,
-        preUploadedMedia: _webUploadedMedia,
+        preUploadedMedia: webMediaForPublish,
       );
       if (_selectedCommunityIds.isNotEmpty || _selectedEventIds.isNotEmpty) {
         final communityIds = _selectedCommunityIds.toList();
@@ -811,6 +851,25 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       }
     } catch (e) {
       debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+      // Si un upload Web a réussi mais que la mise en file du post échoue,
+      // supprimer les objets R2 créés pour éviter les médias orphelins.
+      if (kIsWeb) {
+        final uploadedKeys = webMediaForPublish
+            .where((media) => media['storage']?.toString() == 'r2')
+            .map((media) => media['object_key']?.toString().trim() ?? '')
+            .where((key) => key.isNotEmpty)
+            .toList();
+        if (uploadedKeys.isNotEmpty) {
+          try {
+            await R2MediaRepository().deleteFailedPostMedia(
+              objectKeys: uploadedKeys,
+              communityId: widget.communityId,
+            );
+          } catch (cleanupError) {
+            debugPrint('[POST_COMPOSER][WEB] R2 cleanup failed: $cleanupError');
+          }
+        }
+      }
 
       // A network interruption should be explained in user-friendly terms,
       // rather than exposing the raw socket/Supabase exception in a red alert.
