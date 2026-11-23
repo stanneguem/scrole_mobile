@@ -105,10 +105,13 @@ Future<VideoPlayerController> createStoryPlaybackController({
     if (url.isEmpty) throw StateError('URL de lecture de la vidéo absente.');
   }
 
-  // Playback uses ExoPlayer's network data source immediately, so it can
-  // buffer and play progressively instead of waiting for the full object.
-  // A separate GET fills the durable cache in the background.
-  unawaited(_downloadStoryVideoToCache(
+  // A story must be fully downloaded before playback starts. Starting an
+  // ExoPlayer network stream here can expose only the first buffered segment
+  // when the connection/CDN interrupts a later range request. Stories are
+  // limited to 60 seconds, so prefer a complete local file over progressive
+  // playback and keep playback independent from network fluctuations.
+  debugPrint('[STORY][ANDROID] Downloading complete story before playback story=$storyId');
+  final downloadedBytes = await _downloadStoryVideoToCache(
     url: url,
     storyId: storyId,
     partialFile: partialFile,
@@ -116,12 +119,12 @@ Future<VideoPlayerController> createStoryPlaybackController({
     sizeFile: sizeFile,
     expiryFile: expiryFile,
     expiresAt: expiry,
-  ));
-  debugPrint('[STORY][ANDROID] Starting progressive network playback and background cache download story=$storyId');
-  return VideoPlayerController.networkUrl(Uri.parse(url));
+  );
+  debugPrint('[STORY][ANDROID][READY] story=$storyId bytes=$downloadedBytes source=local');
+  return VideoPlayerController.file(videoFile);
 }
 
-Future<void> _downloadStoryVideoToCache({
+Future<int> _downloadStoryVideoToCache({
   required String url,
   required String storyId,
   required File partialFile,
@@ -130,62 +133,94 @@ Future<void> _downloadStoryVideoToCache({
   required File expiryFile,
   required DateTime expiresAt,
 }) async {
+  const maxAttempts = 3;
+  Object? lastError;
   final client = http.Client();
-  var receivedBytes = 0;
   try {
-    final request = http.Request('GET', Uri.parse(url))
-      ..headers['accept-encoding'] = 'identity';
-    final streamed = await client.send(request).timeout(const Duration(minutes: 3));
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      var receivedBytes = 0;
+      IOSink? sink;
+      try {
+        // Always request the complete object, never a byte range. Identity
+        // encoding keeps Content-Length comparable to bytes written to disk.
+        final request = http.Request('GET', Uri.parse(url))
+          ..headers['accept-encoding'] = 'identity'
+          ..headers['range'] = '';
+        request.headers.remove('range');
+        final streamed = await client.send(request).timeout(
+          const Duration(minutes: 4),
+        );
 
-    // This is a full-object cache download, not a ranged playback request.
-    // Reject partial responses so a 206 body can never be mistaken for the
-    // complete video and promoted into the persistent cache.
-    if (streamed.statusCode != HttpStatus.ok) {
-      throw HttpException('Cache story requires HTTP 200, received ${streamed.statusCode}.');
-    }
-    final contentRange = streamed.headers['content-range'];
-    if (contentRange != null && contentRange.trim().isNotEmpty) {
-      throw HttpException('Unexpected partial Content-Range while caching story: $contentRange');
-    }
+        if (streamed.statusCode != HttpStatus.ok) {
+          throw HttpException(
+            'Téléchargement complet requis : HTTP ${streamed.statusCode}.',
+          );
+        }
+        final contentRange = streamed.headers['content-range'];
+        if (contentRange != null && contentRange.trim().isNotEmpty) {
+          throw HttpException(
+            'Réponse partielle inattendue pendant le téléchargement : $contentRange',
+          );
+        }
 
-    final expectedLength = streamed.contentLength;
-    if (expectedLength != null && expectedLength <= 0) {
-      throw StateError('La vidéo de la story est vide (Content-Length invalide).');
-    }
+        final expectedLength = streamed.contentLength;
+        if (expectedLength != null && expectedLength <= 0) {
+          throw StateError('La vidéo de la story est vide.');
+        }
 
-    final sink = partialFile.openWrite();
-    try {
-      await for (final chunk in streamed.stream.timeout(const Duration(seconds: 45))) {
-        receivedBytes += chunk.length;
-        sink.add(chunk);
+        if (await partialFile.exists()) await partialFile.delete();
+        sink = partialFile.openWrite();
+        await for (final chunk in streamed.stream.timeout(
+          const Duration(seconds: 60),
+        )) {
+          receivedBytes += chunk.length;
+          sink.add(chunk);
+        }
+        await sink.flush();
+        await sink.close();
+        sink = null;
+
+        // A clean end-of-stream validates chunked responses even when the
+        // server omits Content-Length. When supplied, the exact byte count
+        // is mandatory before promoting the temporary file to the cache.
+        if (receivedBytes <= 0 ||
+            (expectedLength != null && receivedBytes != expectedLength)) {
+          throw StateError(
+            'Story incomplète : reçu=$receivedBytes, attendu=$expectedLength octets.',
+          );
+        }
+
+        if (await videoFile.exists()) await videoFile.delete();
+        await partialFile.rename(videoFile.path);
+        await sizeFile.writeAsString('$receivedBytes', flush: true);
+        await expiryFile.writeAsString(expiresAt.toIso8601String(), flush: true);
+        debugPrint(
+          '[STORY][ANDROID][CACHE_COMPLETE] story=$storyId '
+          'bytes=$receivedBytes contentLength=$expectedLength attempt=$attempt',
+        );
+        return receivedBytes;
+      } catch (error) {
+        lastError = error;
+        try {
+          await sink?.close();
+        } catch (_) {}
+        try {
+          if (await partialFile.exists()) await partialFile.delete();
+        } catch (_) {}
+        debugPrint(
+          '[STORY][ANDROID][DOWNLOAD_RETRY] story=$storyId '
+          'attempt=$attempt/$maxAttempts bytes=$receivedBytes error=$error',
+        );
+        if (attempt < maxAttempts) {
+          await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+        }
       }
-      await sink.flush();
-      await sink.close();
-    } catch (_) {
-      await sink.close();
-      rethrow;
     }
-
-    if (receivedBytes <= 0 ||
-        (expectedLength != null && receivedBytes != expectedLength)) {
-      throw StateError(
-        'Cache story incomplet : reçu=$receivedBytes, attendu=$expectedLength octets.',
-      );
-    }
-
-    if (await videoFile.exists()) await videoFile.delete();
-    await partialFile.rename(videoFile.path);
-    await sizeFile.writeAsString('$receivedBytes', flush: true);
-    await expiryFile.writeAsString(expiresAt.toIso8601String(), flush: true);
-    debugPrint(
-      '[STORY][ANDROID][CACHE_COMPLETE] story=$storyId bytes=$receivedBytes contentLength=$expectedLength',
-    );
-  } catch (e, st) {
-    debugPrint('[STORY][ANDROID][CACHE_FAILED] story=$storyId receivedBytes=$receivedBytes error=$e\\n$st');
-    try {
-      if (await partialFile.exists()) await partialFile.delete();
-    } catch (_) {}
   } finally {
     client.close();
   }
+
+  throw StateError(
+    'Impossible de télécharger intégralement la story après $maxAttempts tentatives : $lastError',
+  );
 }
