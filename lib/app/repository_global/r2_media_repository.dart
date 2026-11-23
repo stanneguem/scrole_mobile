@@ -157,21 +157,28 @@ class R2MediaRepository {
     if (sizeBytes <= 0) throw StateError('Le fichier sélectionné est vide.');
     debugPrint('[R2_UPLOAD][$traceId] START mode=xfile category=$category type=$mediaType extension=$extension mime=$contentType bytes=$sizeBytes communityId=$communityId durationMs=${videoDuration?.inMilliseconds ?? 0}');
 
-    final response = await _client.functions.invoke(
-      'r2-media-upload',
-      body: <String, dynamic>{
-        'action': 'create-upload-url',
-        'category': category,
-        'media_type': mediaType,
-        if (mediaRole != null) 'media_role': mediaRole,
-        'content_type': contentType,
-        'extension': extension,
-        'size_bytes': sizeBytes,
-        if (entityId != null) 'entity_id': entityId,
-        if (communityId != null) 'community_id': communityId,
-        if (videoDuration != null) 'duration_seconds': videoDuration.inMilliseconds / 1000,
-      },
-    ).timeout(const Duration(seconds: 30));
+    dynamic response;
+    try {
+      response = await _client.functions.invoke(
+        'r2-media-upload',
+        body: <String, dynamic>{
+          'action': 'create-upload-url',
+          'category': category,
+          'media_type': mediaType,
+          if (mediaRole != null) 'media_role': mediaRole,
+          'content_type': contentType,
+          'extension': extension,
+          'size_bytes': sizeBytes,
+          if (entityId != null) 'entity_id': entityId,
+          if (communityId != null) 'community_id': communityId,
+          if (videoDuration != null) 'duration_seconds': videoDuration.inMilliseconds / 1000,
+        },
+      ).timeout(const Duration(seconds: 30));
+      debugPrint('[R2_UPLOAD][$traceId] SIGNED_URL_RESPONSE status=${response.status} category=$category');
+    } catch (error, stack) {
+      debugPrint('[R2_UPLOAD][$traceId] SIGNED_URL_FAILED category=$category type=${error.runtimeType} error=$error\\n$stack');
+      rethrow;
+    }
 
     if (response.status < 200 || response.status >= 300 || response.data is! Map) {
       final details = response.data is Map ? (response.data as Map)['error']?.toString() : null;
@@ -211,7 +218,8 @@ class R2MediaRepository {
       if (result.statusCode < 200 || result.statusCode >= 300) {
         throw StateError('Échec du téléversement R2 (HTTP ${result.statusCode}).');
       }
-    } catch (error) {
+    } catch (error, stack) {
+      debugPrint('[R2_UPLOAD][$traceId] PUT_FAILED category=$category key=$objectKey type=${error.runtimeType} error=$error\\n$stack');
       if (category == 'post_media') {
         try {
           await deleteFailedPostMedia(objectKeys: [objectKey], communityId: communityId);
