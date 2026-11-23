@@ -18,17 +18,17 @@ class WebViewIframe extends StatefulWidget {
 }
 
 class _WebViewIframeState extends State<WebViewIframe> {
-  static const String _viewType = 'scrole-external-webview';
-  static bool _registered = false;
+  static int _nextViewId = 0;
+  late final String _viewType;
 
   @override
   void initState() {
     super.initState();
+    _viewType = 'scrole-external-webview-${_nextViewId++}';
     _registerFactory();
   }
 
   void _registerFactory() {
-    if (_registered) return;
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final frame = html.IFrameElement()
         ..src = widget.url
@@ -47,7 +47,6 @@ class _WebViewIframeState extends State<WebViewIframe> {
 
       return frame;
     });
-    _registered = true;
   }
 
   @override
