@@ -270,7 +270,13 @@ Deno.serve(async (req: Request) => {
 
     for (const device of tokens) {
       const isIos = String(device.platform ?? "").toLowerCase() === "ios";
+      const isWeb = String(device.platform ?? "").toLowerCase() === "web";
       const message: any = { token: device.device_token, data, android: { priority: "HIGH" } };
+      if (isWeb) {
+        // Data-only Web Push is rendered by firebase-messaging-sw.js, avoiding
+        // duplicate notifications and keeping E2EE payloads free of previews.
+        message.webpush = { headers: { Urgency: "high", TTL: type === "message_received" ? "60" : "86400" } };
+      }
       if (type === "message_received") {
         // Message alerts are time-sensitive. Expire queued wake-ups quickly;
         // the inbox unread count is reconciled from Supabase on next resume.
