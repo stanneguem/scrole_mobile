@@ -52,17 +52,41 @@ class _WelcomeOnboardingScreenState extends State<WelcomeOnboardingScreen> {
     try {
       final uid = _db.auth.currentUser?.id;
       if (uid == null) throw StateError('Session utilisateur absente');
-      final profiles = await _db.from('user_profiles')
-          .select('user_id, username, first_name, last_name, photo_url, account_status, deleted_at')
-          .neq('user_id', uid)
-          .eq('account_status', 'active')
-          .isFilter('deleted_at', null)
-          .limit(20);
+      List<Map<String, dynamic>> suggestedUsers;
+      try {
+        // The server ranks the whole active platform, not an arbitrary first
+        // page of profiles. Certified profiles come first, then follower count.
+        final response = await _db.rpc(
+          'get_social_discovery_suggested_profiles',
+          params: {'p_limit': 20},
+        );
+        if (response is! List) {
+          throw StateError('Réponse de suggestions de profils invalide');
+        }
+        suggestedUsers = response
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList();
+      } catch (e) {
+        // Keep onboarding usable if the ranking migration has not yet been
+        // applied in the connected Supabase environment.
+        debugPrint('[ONBOARDING] ranked profile suggestions unavailable: $e');
+        final fallback = await _db.from('user_profiles')
+            .select('user_id, username, first_name, last_name, photo_url, account_status, deleted_at')
+            .neq('user_id', uid)
+            .eq('account_status', 'active')
+            .isFilter('deleted_at', null)
+            .limit(20);
+        suggestedUsers = (fallback as List)
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList();
+      }
       final communities = await _db.from('communities')
           .select('id, name, slug, description, photo_profile, visibility, status, require_manual_approval')
           .eq('visibility', 'public').eq('status', 'active').limit(20);
       if (!mounted) return;
-      _users = (profiles as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      _users = suggestedUsers;
       _communities = (communities as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     } catch (e) {
       _loadError = 'onboarding_load_error'.tr;
