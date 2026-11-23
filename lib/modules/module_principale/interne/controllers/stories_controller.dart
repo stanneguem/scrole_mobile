@@ -442,48 +442,48 @@ class StoriesController extends GetxController {
           // son path peut être vide. Le helper plateforme lit les métadonnées
           // depuis les octets/Blob au lieu de supposer un chemin fichier.
           final duration = await getStoryVideoDuration(fileToUpload);
-            if (duration > maxStoryVideoDuration) {
-              Get.snackbar(
-                'post_composer_attention'.tr,
-                'post_composer_video_too_long'.tr,
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.black87,
-                colorText: Colors.white,
+          if (duration > maxStoryVideoDuration) {
+            Get.snackbar(
+              'post_composer_attention'.tr,
+              'post_composer_video_too_long'.tr,
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.black87,
+              colorText: Colors.white,
+            );
+            return;
+          }
+          debugPrint('[STORY] [Controller] Generating story video thumbnail...');
+          try {
+            final generatedThumbnail = await createStoryVideoThumbnail(fileToUpload);
+            if (generatedThumbnail != null) {
+              final thumbUpload = await _r2MediaRepo.uploadMediaAsset(
+                media: MediaAsset.fromXFile(generatedThumbnail),
+                category: 'story_media',
+                mediaType: 'image',
+                mediaRole: 'thumbnail',
               );
-              return;
+              thumbnailUrl = thumbUpload.objectKey;
+              debugPrint('[STORY] [Controller] Story thumbnail uploaded: $thumbnailUrl');
             }
-            debugPrint('[STORY] [Controller] Generating story video thumbnail...');
-            try {
-              final generatedThumbnail = await createStoryVideoThumbnail(fileToUpload);
-              if (generatedThumbnail != null) {
-                final thumbUpload = await _r2MediaRepo.uploadMediaAsset(
-                  media: MediaAsset.fromXFile(generatedThumbnail),
-                  category: 'story_media',
-                  mediaType: 'image',
-                  mediaRole: 'thumbnail',
-                );
-                thumbnailUrl = thumbUpload.objectKey;
-                debugPrint('[STORY] [Controller] Story thumbnail uploaded: $thumbnailUrl');
-              }
-            } catch (thumbnailError, thumbnailStack) {
-              debugPrint('[STORY] [Controller] Thumbnail generation/upload failed: $thumbnailError\\n$thumbnailStack');
-            }
-            final sourceBytes = await fileToUpload.length();
-            debugPrint(
-              '[STORY][UPLOAD][SOURCE] name=${fileToUpload.name} '
-              'extension=${MediaAsset.fromXFile(fileToUpload).extension} '
-              'mime=${fileToUpload.mimeType} bytes=$sourceBytes '
-              'durationMs=${duration.inMilliseconds}',
-            );
-            debugPrint('[STORY][UPLOAD][START] story=$pId durationMs=${duration.inMilliseconds} bytes=$sourceBytes extension=${MediaAsset.fromXFile(fileToUpload).extension}');
-            final uploaded = await _r2MediaRepo.uploadMediaAsset(
-              media: MediaAsset.fromXFile(fileToUpload),
-              category: 'story_media',
-              mediaType: 'video',
-              videoDuration: duration,
-            );
-            imageUrl = uploaded.objectKey;
-            debugPrint('[STORY][UPLOAD][SUCCESS] story=$pId key=${uploaded.objectKey} bytes=$sourceBytes contentType=${uploaded.contentType}');
+          } catch (thumbnailError, thumbnailStack) {
+            debugPrint('[STORY] [Controller] Thumbnail generation/upload failed: $thumbnailError\\n$thumbnailStack');
+          }
+          final sourceBytes = await fileToUpload.length();
+          debugPrint(
+            '[STORY][UPLOAD][SOURCE] name=${fileToUpload.name} '
+            'extension=${MediaAsset.fromXFile(fileToUpload).extension} '
+            'mime=${fileToUpload.mimeType} bytes=$sourceBytes '
+            'durationMs=${duration.inMilliseconds}',
+          );
+          debugPrint('[STORY][UPLOAD][START] story=$pId durationMs=${duration.inMilliseconds} bytes=$sourceBytes extension=${MediaAsset.fromXFile(fileToUpload).extension}');
+          final uploaded = await _r2MediaRepo.uploadMediaAsset(
+            media: MediaAsset.fromXFile(fileToUpload),
+            category: 'story_media',
+            mediaType: 'video',
+            videoDuration: duration,
+          );
+          imageUrl = uploaded.objectKey;
+          debugPrint('[STORY][UPLOAD][SUCCESS] story=$pId key=${uploaded.objectKey} bytes=$sourceBytes contentType=${uploaded.contentType}');
         } else {
         debugPrint('[STORY] [Controller] Compressing story image...');
         final finalFile = await compressSelectedImage(fileToUpload, quality: 80);
