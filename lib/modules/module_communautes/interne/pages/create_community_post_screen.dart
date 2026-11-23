@@ -30,6 +30,7 @@ import 'package:scrole/modules/module_principale/interne/controllers/home_feed_c
 import 'package:scrole/modules/module_principale/centre/models/community_post.dart';
 import 'package:scrole/modules/module_principale/interne/widgets/feed_post_card.dart';
 import 'package:scrole/modules/module_communautes/centre/services/community_service.dart';
+import 'package:scrole/modules/module_communautes/centre/services/community_outbox_processor.dart';
 import 'package:scrole/modules/module_communautes/centre/models/news/community_hashtag.dart';
 import 'community_poll_composer_screen.dart';
 import 'community_post_hashtag_selection_screen.dart';
@@ -763,9 +764,25 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
     final newlyUploadedWebKeys = <String>[];
+    final webComposerClosed = kIsWeb && _webSelectedFiles.any((file) => file != null);
+    final webOutbox = webComposerClosed && Get.isRegistered<CommunityOutboxProcessor>()
+        ? Get.find<CommunityOutboxProcessor>()
+        : null;
     final webMediaForPublish = _webUploadedMedia
         .map((media) => Map<String, dynamic>.from(media))
         .toList();
+
+    if (webComposerClosed) {
+      // Comme sur Android, le compositeur disparaît dès que l'utilisateur
+      // confirme. La méthode asynchrone continue avec ses XFile capturés.
+      if (webOutbox != null) {
+        webOutbox.isPublishingPost.value = true;
+        webOutbox.postPublishingProgress.value = 0.02;
+        webOutbox.publishingCommunityId.value = widget.communityId ?? '';
+      }
+      FocusManager.instance.primaryFocus?.unfocus();
+      Get.back(closeOverlays: true);
+    }
 
     try {
       // Le téléversement Web commence uniquement après le clic sur Partager.
@@ -790,6 +807,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             mediaType: isVideo ? 'video' : 'image',
             communityId: widget.communityId,
             videoDuration: videoDuration,
+            onProgress: (sentBytes, totalBytes) {
+              if (webOutbox == null || totalBytes <= 0) return;
+              final fraction = (sentBytes / totalBytes).clamp(0.0, 1.0);
+              final overall = (i + fraction) / _webSelectedFiles.length;
+              webOutbox.postPublishingProgress.value = (0.02 + overall * 0.86).clamp(0.02, 0.88).toDouble();
+            },
           );
           newlyUploadedWebKeys.add(uploaded.objectKey);
           final publicUrl = uploaded.publicUrl?.trim() ?? '';
@@ -811,6 +834,12 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         }
       }
 
+      // Le téléversement R2 est terminé : on passe la main à la file outbox
+      // persistée qui finalise la publication et pilote ensuite la progression.
+      if (webComposerClosed && webOutbox != null) {
+        webOutbox.postPublishingProgress.value = 0.90;
+        webOutbox.isPublishingPost.value = false;
+      }
       await service.createCommunityPost(
         requestedPostId: postId,
         eventId: _selectedEvent?['id']?.toString(),
@@ -844,9 +873,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
           debugPrint('[POST] Saving entity mentions failed postId=$postId error=$error');
         }));
       }
-      if (!mounted) return;
-      FocusManager.instance.primaryFocus?.unfocus();
-      Get.back(closeOverlays: true);
+      if (!webComposerClosed) {
+        if (!mounted) return;
+        FocusManager.instance.primaryFocus?.unfocus();
+        Get.back(closeOverlays: true);
+      }
       if (isCommunity) {
         if (feedController != null) {
           unawaited(feedController.fetchCommunityFeed(isRefresh: true));
@@ -856,6 +887,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       }
     } catch (e) {
       debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
+      if (webComposerClosed && webOutbox != null) {
+        webOutbox.isPublishingPost.value = false;
+        webOutbox.postPublishingProgress.value = 0.0;
+        webOutbox.publishingCommunityId.value = '';
+      }
       // Si un upload Web a réussi mais que la mise en file du post échoue,
       // supprimer les objets R2 créés pour éviter les médias orphelins.
       if (kIsWeb && newlyUploadedWebKeys.isNotEmpty) {
