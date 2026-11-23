@@ -897,8 +897,10 @@ class CommunityService extends GetxService with WidgetsBindingObserver {
     List<Map<String, String>> localMediaPaths = [];
     try {
       if (preUploadedMedia != null && preUploadedMedia.isNotEmpty) {
-        // Browser media is uploaded from XFile streams before queueing. Keep
-        // matching placeholders so the outbox reuses the durable R2 metadata.
+        // Le compositeur Web téléverse les XFile uniquement après le clic
+        // sur Partager, puis transmet ici les métadonnées R2 à la file durable.
+        // Conserver une entrée locale par média permet à l'outbox de réutiliser
+        // ces uploads sans tenter de relire un chemin File côté navigateur.
         for (var i = 0; i < preUploadedMedia.length; i++) {
           final type = preUploadedMedia[i]['type']?.toString() == 'video' ? 'video' : 'photo';
           final uploadedUrl = preUploadedMedia[i]['url']?.toString().trim() ?? '';
