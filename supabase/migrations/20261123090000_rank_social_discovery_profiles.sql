@@ -17,7 +17,7 @@ returns table (
 )
 language sql
 stable
-security definer
+security invoker
 set search_path = ''
 as $function$
   with eligible_profiles as (
@@ -38,7 +38,8 @@ as $function$
         'none'
       ) as certification_level
     from public.user_profiles up
-    where up.user_id <> auth.uid()
+    where auth.uid() is not null
+      and up.user_id <> auth.uid()
       and lower(coalesce(up.account_status::text, 'active')) = 'active'
       and up.deleted_at is null
   )
