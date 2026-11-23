@@ -51,7 +51,7 @@ class _WebViewIframeState extends State<WebViewIframe> {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox.expand(
+    return SizedBox.expand(
       child: HtmlElementView(viewType: _viewType),
     );
   }
