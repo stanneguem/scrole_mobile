@@ -458,7 +458,18 @@ Deno.serve(async (req: Request) => {
     const { data: profile, error: profileError } = await admin
       .from("user_profiles").select("account_status, deleted_at").eq("user_id", user.id).maybeSingle();
     if (profileError) return reply(500, { error: "profile_check_failed" });
-    if (!profile || profile.account_status !== "active" || profile.deleted_at !== null) return reply(403, { error: "account_unavailable" });
+
+    // New users upload their own avatar/cover before initialize_account creates
+    // user_profiles. Permit that narrow onboarding case, but keep suspended or
+    // deleted existing accounts blocked and require active profiles for all
+    // other media categories.
+    const isProfileMedia = category === "profile_avatar" || category === "profile_cover";
+    if (!profile && !isProfileMedia) {
+      return reply(403, { error: "account_unavailable" });
+    }
+    if (profile && (profile.account_status !== "active" || profile.deleted_at !== null)) {
+      return reply(403, { error: "account_unavailable" });
+    }
   }
 
   // Validate category-specific authorization before signing an upload.
