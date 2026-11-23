@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -140,6 +141,13 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   static final GlobalKey _actionsKey = GlobalKey();
 
   Future<void> _showCreationMenu(BuildContext context) async {
+    // Sur le Web, les Scuts/Reels ne sont pas disponibles : le bouton +
+    // ouvre directement le compositeur de publication classique.
+    if (kIsWeb) {
+      _openCreation('post');
+      return;
+    }
+
     final actionsContext = _actionsKey.currentContext;
     final actionsBox = actionsContext?.findRenderObject() as RenderBox?;
     final overlayBox =
