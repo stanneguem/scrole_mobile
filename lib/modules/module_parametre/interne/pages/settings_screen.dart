@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get/get.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/text_styles.dart';
+import '../../../../app/service_global/web_push_notification_service.dart';
 import '../controllers/settings_controller.dart';
 
 
@@ -98,6 +100,12 @@ class SettingsScreen extends StatelessWidget {
                             (t) => t.label,
                       ),
                     ),
+
+                    if (kIsWeb) ...[
+                      const SizedBox(height: 24),
+                      _SectionLabel('Notifications du navigateur', textSecondary),
+                      const _WebPushSettingsCard(),
+                    ],
 
                     const SizedBox(height: 24),
                     _SectionLabel('settings_section_support'.tr, textSecondary),
@@ -399,6 +407,84 @@ class _SettingsTile extends StatelessWidget {
             ],
             Icon(Icons.chevron_right_rounded, color: secondaryColor, size: 20),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WebPushSettingsCard extends StatefulWidget {
+  const _WebPushSettingsCard();
+
+  @override
+  State<_WebPushSettingsCard> createState() => _WebPushSettingsCardState();
+}
+
+class _WebPushSettingsCardState extends State<_WebPushSettingsCard> {
+  bool _enabled = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final enabled = await Get.find<WebPushNotificationService>().isPermissionGranted;
+      if (mounted) setState(() { _enabled = enabled; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _toggle() async {
+    if (_loading) return;
+    setState(() => _loading = true);
+    final service = Get.find<WebPushNotificationService>();
+    bool success = false;
+    if (_enabled) {
+      await service.disablePushNotifications();
+      success = true;
+    } else {
+      success = await service.enablePushNotifications();
+    }
+    await _refresh();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+          ? (_enabled ? 'Les notifications push sont activées.' : 'Les notifications push ont été désactivées.')
+          : 'Autorisation refusée. Vérifie les paramètres de notifications de ton navigateur.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? AppColors.surfaceDark : AppColors.surface;
+    final border = isDark ? AppColors.black1 : AppColors.border;
+    final primary = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final secondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
+      ),
+      child: SwitchListTile.adaptive(
+        value: _enabled,
+        onChanged: _loading ? null : (_) => _toggle(),
+        activeColor: AppColors.primary,
+        secondary: Icon(Icons.notifications_active_rounded, color: secondary),
+        title: Text('Notifications push', style: AppTextStyles.body.copyWith(color: primary, fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          _loading ? 'Vérification…' : _enabled
+            ? 'Ce navigateur peut recevoir les notifications Scrole.'
+            : 'Recevoir les notifications même lorsque Scrole est en arrière-plan.',
+          style: AppTextStyles.bodySmall.copyWith(color: secondary),
         ),
       ),
     );
