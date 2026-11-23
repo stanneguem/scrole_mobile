@@ -20,11 +20,29 @@ Hors périmètre de cette phase : publication Cosplay, classement des cosplayers
 Jikan (API non officielle MyAnimeList) : `https://api.jikan.moe/v4`.
 Utiliser les endpoints de recherche et de détail pour anime, manga et personnages. Mettre en cache les réponses et appliquer une limitation côté serveur. Jikan n'est pas une source de droits sur les visuels : conserver les URL d'images comme références du fournisseur, sous réserve de ses conditions applicables.
 
-### Films et séries
-Ne pas utiliser la licence développeur gratuite TMDB dans Scrole : TMDB précise qu'elle est réservée aux usages non commerciaux et qu'un projet commercial doit obtenir un accord séparé.
-Piste privilégiée à contractualiser : TheTVDB, qui propose des clés API licenciées pour les projets commerciaux et des tarifs/contrats selon l'usage. Attention : la licence API ne donne pas automatiquement les droits sur les images, bandes-annonces ou programmes ; les droits des visuels doivent être vérifiés séparément.
-TVmaze est une solution alternative pour les séries TV : son offre Startup indique une licence CC BY avec attribution, mais elle ne couvre pas à elle seule le catalogue de films.
-Ne pas activer de fournisseur films/séries en production tant que les conditions écrites, l'attribution, les droits d'images et le tarif applicables à Scrole ne sont pas validés.
+### Films et séries — TMDB (fournisseur retenu)
+
+Scrole utilisera **TMDB** pour la recherche et les fiches de films et de séries :
+- API officielle v3/v4 : `https://developer.themoviedb.org/` ;
+- recherche de films et séries via les endpoints `/search/movie` et `/search/tv` ;
+- détails, saisons et épisodes via les endpoints de détails correspondants ;
+- conserver `provider = tmdb` et les identifiants TMDB dans le catalogue unifié.
+
+**Condition commerciale obligatoire avant la mise en production :** la clé développeur gratuite TMDB est réservée aux usages non commerciaux. TMDB considère un projet comme commercial lorsque son objectif principal est de générer des revenus au bénéfice de son propriétaire. Scrole ayant vocation à intégrer des publicités et des promotions, il faut demander et obtenir une licence commerciale écrite auprès de TMDB avant d'activer ce fournisseur en production. La documentation officielle demande de contacter `[email protected]` et de préciser le pays du projet. Ne pas considérer la clé API gratuite comme une autorisation commerciale.
+
+Prévoir dans le budget et le dossier de demande :
+- description de Scrole, de ses fonctionnalités et de son modèle économique (publicités/promotions éventuelles) ;
+- pays d'exploitation et audience estimée ;
+- volume de requêtes, fréquence de synchronisation et stratégie de cache ;
+- supports et emplacements où les données et affiches seront affichées ;
+- tarif, quotas, conditions de stockage/cache et droits d'utilisation des images.
+
+Attribution officielle à intégrer dans « À propos / Crédits », conformément aux exigences TMDB :
+- logo TMDB approuvé, sans le rendre plus visible que la marque Scrole ;
+- mention exacte : « This product uses the TMDB API but is not endorsed or certified by TMDB. »
+- lien vers `https://www.themoviedb.org`.
+
+Les conditions commerciales et les droits sur les images/posters doivent être confirmés dans l'accord écrit. En attendant, l'intégration doit rester désactivée en production ou en mode développement uniquement conformément aux conditions autorisées. Ne pas exposer le token TMDB dans Flutter : le conserver dans les secrets Supabase et appeler TMDB depuis les Edge Functions.
 
 ## Architecture proposée
 
@@ -35,7 +53,7 @@ Une table catalogue normalisée permet de ne pas lier les listes utilisateur à 
 `cultural_media_catalog`
 - `id uuid primary key`
 - `media_type`: `anime | manga | movie | tv_series`
-- `provider`: `jikan | thetvdb | tvmaze | wikidata | manual`
+- `provider`: `jikan | tmdb | manual`
 - `provider_id text`
 - `title`, `original_title`, `synopsis`
 - `poster_url` nullable, `poster_rights_status` nullable
@@ -88,7 +106,7 @@ Créer une couche serveur Supabase Edge Functions :
 ## Ordre d'implémentation
 
 1. Vérifier les écrans profil existants, les conventions GetX, les modèles et le schéma Supabase déjà présents afin de réutiliser les composants.
-2. Valider par écrit la licence fournisseur films/séries et les droits d'affichage des affiches.
+2. Obtenir et archiver l'accord commercial TMDB et valider les droits d'affichage des affiches.
 3. Ajouter migration SQL, contraintes, index, RLS et RPC transactionnelles.
 4. Développer les Edge Functions et tests de normalisation/cache/limites.
 5. Développer l'éditeur culturel et l'écran intermédiaire sans casser l'édition actuelle.
@@ -105,10 +123,10 @@ Créer une couche serveur Supabase Edge Functions :
 - Aucun secret fournisseur n'est embarqué dans le client.
 - Les affiches ne sont affichées que si leur usage est autorisé et traçable.
 
-## Prérequis avant activation du catalogue films/séries
+## Prérequis avant activation de TMDB en production
 
 Obtenir et archiver :
-- accord/licence commerciale couvrant l'usage de Scrole et son modèle économique ;
+- accord/licence commerciale TMDB couvrant explicitement Scrole et son modèle économique ;
 - barème, quotas, SLA et conditions de cache ;
 - droits explicites sur les images/posters ou stratégie sans posters ;
 - règles d'attribution à afficher dans « À propos / Crédits ».
