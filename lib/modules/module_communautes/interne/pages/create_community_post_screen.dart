@@ -1028,8 +1028,13 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         } finally {
           await probe?.dispose();
         }
-        if (duration == null || duration <= Duration.zero || duration > maxPostVideoDuration) {
-          Get.snackbar('Vidéo trop longue', 'La vidéo découpée doit durer 60 secondes maximum.');
+        // Browser duration metadata can round to the nearest second. The trim UI
+        // targets 59s for headroom, while the actual published file must remain
+        // strictly below 60s; compare milliseconds rather than Duration's
+        // display value to avoid rejecting valid sub-minute clips.
+        const hardMaxVideoDurationMs = 60000;
+        if (duration == null || duration <= Duration.zero || duration.inMilliseconds > hardMaxVideoDurationMs) {
+          Get.snackbar('Vidéo trop longue', 'La vidéo découpée doit durer moins de 60 secondes.');
           continue;
         }
       }
