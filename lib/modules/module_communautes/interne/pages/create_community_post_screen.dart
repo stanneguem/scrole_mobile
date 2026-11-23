@@ -765,6 +765,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
 
     final service = Get.isRegistered<CommunityService>() ? Get.find<CommunityService>() : Get.put(CommunityService());
 
+    final newlyUploadedWebKeys = <String>[];
     final webMediaForPublish = _webUploadedMedia
         .map((media) => Map<String, dynamic>.from(media))
         .toList();
@@ -788,6 +789,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             mediaType: isVideo ? 'video' : 'image',
             communityId: widget.communityId,
           );
+          newlyUploadedWebKeys.add(uploaded.objectKey);
           final publicUrl = uploaded.publicUrl?.trim() ?? '';
           if (publicUrl.isEmpty || !uploaded.isPublic) {
             throw StateError('Cloudflare R2 n’a pas retourné une URL publique pour le média ${i + 1}.');
@@ -853,21 +855,14 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       debugPrint('[POST] Publish failed for community=$cId post=$postId: $e');
       // Si un upload Web a réussi mais que la mise en file du post échoue,
       // supprimer les objets R2 créés pour éviter les médias orphelins.
-      if (kIsWeb) {
-        final uploadedKeys = webMediaForPublish
-            .where((media) => media['storage']?.toString() == 'r2')
-            .map((media) => media['object_key']?.toString().trim() ?? '')
-            .where((key) => key.isNotEmpty)
-            .toList();
-        if (uploadedKeys.isNotEmpty) {
-          try {
-            await R2MediaRepository().deleteFailedPostMedia(
-              objectKeys: uploadedKeys,
-              communityId: widget.communityId,
-            );
-          } catch (cleanupError) {
-            debugPrint('[POST_COMPOSER][WEB] R2 cleanup failed: $cleanupError');
-          }
+      if (kIsWeb && newlyUploadedWebKeys.isNotEmpty) {
+        try {
+          await R2MediaRepository().deleteFailedPostMedia(
+            objectKeys: newlyUploadedWebKeys,
+            communityId: widget.communityId,
+          );
+        } catch (cleanupError) {
+          debugPrint('[POST_COMPOSER][WEB] R2 cleanup failed: $cleanupError');
         }
       }
 
