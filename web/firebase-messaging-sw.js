@@ -21,7 +21,7 @@ messaging.onBackgroundMessage((payload) => {
     body: data.body || 'Vous avez une nouvelle notification.',
     icon: '/icons/Icon-192.png',
     badge: '/icons/Icon-192.png',
-    data: { url: data.url || data.deep_link || '/', notificationId: data.notification_id || null },
+    data: { url: data.url || '/', deepLink: data.deep_link || null, payload: data, notificationId: data.notification_id || null },
     tag: data.notification_id || undefined,
     renotify: false
   };
@@ -30,7 +30,10 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+  const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin);
+  const payload = event.notification.data?.payload;
+  if (payload) targetUrl.searchParams.set('push_data', JSON.stringify(payload));
+  const target = targetUrl.href;
   event.waitUntil((async () => {
     const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of windows) {
