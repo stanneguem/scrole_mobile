@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:scrole/app/media/media_asset.dart';
+import 'package:video_player/video_player.dart';
 import 'package:scrole/app/repository_global/r2_media_repository.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -70,10 +71,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
   final List<XFile?> _webSelectedFiles = [];
   final List<Map<String, dynamic>> _webUploadedMedia = [];
   final List<bool> _webSelectedIsVideo = [];
+  bool _webMediaUploading = false;
   List<File> get _selectedFiles => _selectedMedia.where((m) => !m.isVideo).map((m) => m.file).toList();
   List<File> get _selectedVideos => _selectedMedia.where((m) => m.isVideo).map((m) => m.file).toList();
   final ImagePicker _mediaPicker = ImagePicker();
-  int get _selectedMediaCount => _selectedMedia.length + _webUploadedMedia.length;
+  int get _selectedMediaCount => _selectedMedia.length + _webSelectedFiles.length;
   int get _selectedPhotoCount => _selectedMedia.where((m) => !m.isVideo).length + _webSelectedIsVideo.where((isVideo) => !isVideo).length;
   String? _prefilledUrl;
   Map<String, dynamic>? _pollData;
@@ -720,6 +722,10 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
       return;
     }
 
+    if (_webMediaUploading || _webUploadedMedia.any((m) => m['uploading'] == true)) {
+      Get.snackbar('Envoi en cours', 'Attends la fin du téléversement de la vidéo avant de publier.');
+      return;
+    }
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
 
@@ -1019,17 +1025,18 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         );
         if (trimmed == null || !mounted) continue;
         uploadFile = trimmed;
-        // WebVideoTrimScreen exporte un XFile.fromData (Blob) : son champ
-        // path n'est pas une URL média fiable pour VideoPlayerController.
-        // Le contrôle de durée est déjà effectué sur le segment exact dans
-        // WebVideoTrimScreen avant l'export. Recharger ce Blob avec
-        // video_player provoquait duration=null et le faux message « vidéo
-        // trop longue », même pour une vidéo de quelques secondes.
-        duration = null;
-        debugPrint(
-          '[POST_COMPOSER][WEB] trimmed video accepted '
-          'name=${uploadFile.name} mime=${uploadFile.mimeType}',
-        );
+        duration = null; // Durée déjà validée dans l'écran de trim.
+      }
+      int? reservedWebIndex;
+      if (isVideo) {
+        setState(() {
+          reservedWebIndex = _webSelectedFiles.length;
+          _webSelectedFiles.add(uploadFile);
+          _webSelectedIsVideo.add(true);
+          _webUploadedMedia.add({'type': 'video', 'uploading': true});
+          _webMediaUploading = true;
+          _prefilledUrl = null;
+        });
       }
       try {
         final uploaded = await repository.uploadMediaAsset(
@@ -1044,9 +1051,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         }
         if (!mounted) return;
         setState(() {
-          _webSelectedFiles.add(uploadFile);
-          _webSelectedIsVideo.add(isVideo);
-          _webUploadedMedia.add({
+          final mediaData = <String, dynamic>{
             'type': isVideo ? 'video' : 'photo',
             'storage': 'r2',
             'url': uploaded.publicUrl,
@@ -1056,12 +1061,29 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
             'size_bytes': uploaded.sizeBytes,
             if (isVideo) 'thumbnail_unavailable': true,
             if (duration != null) 'duration_seconds': duration.inMilliseconds / 1000,
-          });
-          _prefilledUrl = null;
+          };
+          if (reservedWebIndex != null && reservedWebIndex! < _webUploadedMedia.length) {
+            _webUploadedMedia[reservedWebIndex!] = mediaData;
+          } else {
+            _webSelectedFiles.add(uploadFile);
+            _webSelectedIsVideo.add(isVideo);
+            _webUploadedMedia.add(mediaData);
+          }
+          _webMediaUploading = _webUploadedMedia.any((m) => m['uploading'] == true);
         });
       } catch (error, stack) {
         debugPrint('[POST_COMPOSER][WEB] upload failed: $error\\n$stack');
-        if (mounted) Get.snackbar('Ajout du média impossible', error.toString());
+        if (mounted) {
+          setState(() {
+            if (reservedWebIndex != null && reservedWebIndex! < _webSelectedFiles.length) {
+              _webSelectedFiles.removeAt(reservedWebIndex!);
+              _webSelectedIsVideo.removeAt(reservedWebIndex!);
+              _webUploadedMedia.removeAt(reservedWebIndex!);
+            }
+            _webMediaUploading = _webUploadedMedia.any((m) => m['uploading'] == true);
+          });
+          Get.snackbar('Ajout du média impossible', error.toString());
+        }
       }
     }
   }
@@ -1538,7 +1560,7 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: webIsVideo
-                                        ? const ColoredBox(color: Colors.black87, child: Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white, size: 48)))
+                                        ? _WebSelectedVideoPreview(file: webFile, url: _webUploadedMedia[webIndex]['url']?.toString(), uploading: _webUploadedMedia[webIndex]['uploading'] == true)
                                         : webFile == null
                                             ? const ColoredBox(color: Colors.black87)
                                             : FutureBuilder<Uint8List>(
@@ -1762,6 +1784,87 @@ class _SelectedVideoPreview extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+class _WebSelectedVideoPreview extends StatefulWidget {
+  final XFile? file;
+  final String? url;
+  final bool uploading;
+  const _WebSelectedVideoPreview({required this.file, required this.url, required this.uploading});
+  @override
+  State<_WebSelectedVideoPreview> createState() => _WebSelectedVideoPreviewState();
+}
+class _WebSelectedVideoPreviewState extends State<_WebSelectedVideoPreview> {
+  VideoPlayerController? _controller;
+  String? _source;
+  bool _loading = true;
+  bool _failed = false;
+  String? get _playbackSource {
+    final remote = widget.url?.trim();
+    if (remote != null && remote.startsWith('http')) return remote;
+    final local = widget.file?.path.trim();
+    if (local != null && (local.startsWith('blob:') || local.startsWith('http'))) return local;
+    return null;
+  }
+  @override
+  void initState() { super.initState(); _initialize(); }
+  @override
+  void didUpdateWidget(covariant _WebSelectedVideoPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_playbackSource != _source) _initialize();
+  }
+  Future<void> _initialize() async {
+    final source = _playbackSource;
+    if (source == null) { if (mounted) setState(() { _loading = false; _failed = true; }); return; }
+    final previous = _controller;
+    _controller = null;
+    _source = source;
+    await previous?.dispose();
+    if (!mounted) return;
+    setState(() { _loading = true; _failed = false; });
+    final controller = VideoPlayerController.networkUrl(Uri.parse(source));
+    _controller = controller;
+    try {
+      await controller.initialize().timeout(const Duration(seconds: 25));
+      await controller.setLooping(true);
+      if (!mounted || _controller != controller) { await controller.dispose(); return; }
+      setState(() => _loading = false);
+    } catch (error) {
+      debugPrint('[POST_COMPOSER][WEB_PREVIEW] initialization failed: $error');
+      if (mounted && _controller == controller) setState(() { _loading = false; _failed = true; });
+    }
+  }
+  Future<void> _togglePlayback() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (controller.value.isPlaying) { await controller.pause(); } else { await controller.play(); }
+    if (mounted) setState(() {});
+  }
+  @override
+  void dispose() { _controller?.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _togglePlayback,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (controller != null && controller.value.isInitialized)
+            FittedBox(fit: BoxFit.cover, child: SizedBox(width: controller.value.size.width, height: controller.value.size.height, child: VideoPlayer(controller)))
+          else
+            const ColoredBox(color: Colors.black87),
+          Center(child: _loading
+              ? const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Icon(_failed ? Icons.videocam_off_rounded : (controller?.value.isPlaying == true ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded), color: Colors.white, size: 48)),
+          if (widget.uploading)
+            const Positioned(left: 8, bottom: 8, child: Text('Envoi…', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600))),
+        ],
+      ),
     );
   }
 }
