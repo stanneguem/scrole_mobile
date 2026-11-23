@@ -834,11 +834,11 @@ class _CreateCommunityPostScreenState extends State<CreateCommunityPostScreen> {
         }
       }
 
-      // Le téléversement R2 est terminé : on passe la main à la file outbox
-      // persistée qui finalise la publication et pilote ensuite la progression.
+      // Le téléversement R2 est terminé : la barre reste visible pendant
+      // l'insertion dans l'outbox puis jusqu'à la création effective du post
+      // par le RPC. CommunityOutboxProcessor la masquera à la fin du traitement.
       if (webComposerClosed && webOutbox != null) {
         webOutbox.postPublishingProgress.value = 0.90;
-        webOutbox.isPublishingPost.value = false;
       }
       await service.createCommunityPost(
         requestedPostId: postId,
